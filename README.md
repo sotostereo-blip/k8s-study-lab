@@ -1,0 +1,72 @@
+# k8s-study-lab
+
+A local study environment for Kubernetes certifications, built to practise
+**the exam content and technical English at the same time**.
+
+Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
+
+- **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
+- **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
+- **Built-in English support**: technical terms are clickable and show a simple English
+  definition. The Spanish translation is available on demand, and the dashboard tracks how
+  often you needed it, so you can watch that number go down.
+
+Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).
+
+## Quick start
+
+```bash
+cp .env.example .env        # optional
+docker compose up --build
+```
+
+Open http://localhost:5173. The API runs on http://localhost:8000 (docs at `/docs`).
+
+### Without Docker
+
+```bash
+# backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# frontend (another terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+## Project layout
+
+```
+backend/     FastAPI API, SQLite progress, spaced repetition
+frontend/    React (Vite) UI
+content/     Questions and glossary as YAML  ← contributions welcome
+labs/        (phase 2) kind cluster configs for hands-on CKA/CKAD tasks
+scripts/     validate_content.py
+docs/        CONTENT_FORMAT.md, ROADMAP.md
+```
+
+## Adding questions
+
+See [docs/CONTENT_FORMAT.md](docs/CONTENT_FORMAT.md), then run:
+
+```bash
+python scripts/validate_content.py
+cd backend && pytest -q
+```
+
+**All questions must be original.** CNCF exams are covered by a confidentiality
+agreement; never add questions remembered from a real exam.
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## License
+
+Code: [MIT](LICENSE). Content in `content/`: [CC BY-SA 4.0](content/LICENSE).
+
+This project is not affiliated with the CNCF or the Linux Foundation.
+Kubernetes is a registered trademark of The Linux Foundation.

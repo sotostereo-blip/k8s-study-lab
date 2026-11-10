@@ -1,0 +1,38 @@
+domain: cloud-native-architecture
+questions:
+  - id: kcna-arch-001
+    difficulty: 2
+    type: single
+    question: What does the Horizontal Pod Autoscaler (HPA) change when load increases?
+    options:
+      - { id: a, text: The CPU and memory limits of the existing Pods }
+      - { id: b, text: The number of nodes in the cluster }
+      - { id: c, text: The number of Pod replicas of a workload such as a Deployment }
+      - { id: d, text: The container image version }
+    answer: [c]
+    explanation: |
+      The HPA scales horizontally: it adjusts the replica count based on
+      metrics such as CPU utilization or custom metrics. Changing requests and
+      limits is vertical scaling (VPA), and adding nodes is the job of a
+      cluster autoscaler.
+    docs:
+      - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+    glossary: [hpa, replica, deployment]
+
+  - id: kcna-arch-002
+    difficulty: 2
+    type: single
+    question: How does Prometheus usually collect metrics from applications?
+    options:
+      - { id: a, text: Applications push metrics to Prometheus over SMTP. }
+      - { id: b, text: Prometheus scrapes (pulls) metrics from HTTP endpoints exposed by the targets. }
+      - { id: c, text: Prometheus reads metrics directly from etcd. }
+      - { id: d, text: Prometheus parses the container logs to calculate metrics. }
+    answer: [b]
+    explanation: |
+      Prometheus uses a pull model: at a regular interval it scrapes an HTTP
+      endpoint (often /metrics) on each target. For short-lived jobs that
+      cannot be scraped, a Pushgateway can be used as an exception.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/
+    glossary: [prometheus, observability, metrics]

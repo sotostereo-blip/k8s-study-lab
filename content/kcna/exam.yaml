@@ -1,0 +1,24 @@
+# KCNA - Kubernetes and Cloud Native Associate
+# Domains and weights from the Linux Foundation program update
+# (effective no earlier than 2025-11-24). Verify against the official
+# curriculum before each exam: https://github.com/cncf/curriculum
+id: kcna
+name: Kubernetes and Cloud Native Associate
+format: multiple-choice
+exam_minutes: 90
+exam_questions: 60
+passing_score: 75
+domains:
+  - id: kubernetes-fundamentals
+    name: Kubernetes Fundamentals
+    weight: 44
+  - id: container-orchestration
+    name: Container Orchestration
+    weight: 28
+  - id: cloud-native-application-delivery
+    name: Cloud Native Application Delivery
+    weight: 16
+  - id: cloud-native-architecture
+    name: Cloud Native Architecture
+    weight: 12
+    notes: Includes observability since the 2025 update.

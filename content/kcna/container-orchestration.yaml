@@ -1,0 +1,56 @@
+domain: container-orchestration
+questions:
+  - id: kcna-orch-001
+    difficulty: 2
+    type: single
+    question: Which interface allows the kubelet to work with different container runtimes such as containerd or CRI-O?
+    options:
+      - { id: a, text: Container Network Interface (CNI) }
+      - { id: b, text: Container Storage Interface (CSI) }
+      - { id: c, text: Container Runtime Interface (CRI) }
+      - { id: d, text: Open Container Initiative (OCI) }
+    answer: [c]
+    explanation: |
+      The CRI is a gRPC API between the kubelet and the container runtime.
+      CNI is for Pod networking and CSI is for storage. OCI defines standards
+      for image formats and runtimes, but it is not the API the kubelet calls.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/cri/
+    glossary: [cri, kubelet, container-runtime]
+
+  - id: kcna-orch-002
+    difficulty: 1
+    type: single
+    question: A container's liveness probe fails repeatedly. What does Kubernetes do?
+    options:
+      - { id: a, text: It removes the Pod from the Service endpoints but keeps the container running. }
+      - { id: b, text: The kubelet restarts the container according to the Pod's restart policy. }
+      - { id: c, text: The scheduler moves the Pod to a different node. }
+      - { id: d, text: Nothing; liveness probes only write events to the log. }
+    answer: [b]
+    explanation: |
+      When a liveness probe fails past its failure threshold, the kubelet kills
+      the container and restarts it according to the restart policy. Removing
+      a Pod from Service endpoints is what happens when a readiness probe fails.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+    glossary: [probe, kubelet]
+
+  - id: kcna-orch-003
+    difficulty: 2
+    type: single
+    question: You want exactly one copy of a log-collection agent running on every node in the cluster, including nodes added later. Which resource fits best?
+    options:
+      - { id: a, text: Deployment with replicas equal to the number of nodes }
+      - { id: b, text: DaemonSet }
+      - { id: c, text: StatefulSet }
+      - { id: d, text: CronJob }
+    answer: [b]
+    explanation: |
+      A DaemonSet ensures that all (or selected) nodes run one copy of a Pod.
+      When a node joins the cluster, the DaemonSet automatically adds a Pod to
+      it. A Deployment with a fixed replica count does not guarantee one Pod
+      per node.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+    glossary: [daemonset, node]

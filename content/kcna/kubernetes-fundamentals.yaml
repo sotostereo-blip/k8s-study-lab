@@ -1,0 +1,114 @@
+domain: kubernetes-fundamentals
+questions:
+  - id: kcna-fund-001
+    difficulty: 1
+    type: single
+    question: What is the smallest deployable unit of computing that you can create and manage in Kubernetes?
+    options:
+      - { id: a, text: A container }
+      - { id: b, text: A Pod }
+      - { id: c, text: A Node }
+      - { id: d, text: A Deployment }
+    answer: [b]
+    explanation: |
+      A Pod is the smallest deployable unit. It wraps one or more containers
+      that share the same network namespace (IP address and ports) and can
+      share storage volumes. Kubernetes never schedules a bare container.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/
+    glossary: [pod, container, node]
+
+  - id: kcna-fund-002
+    difficulty: 1
+    type: single
+    question: Which control plane component stores the desired and current state of the whole cluster?
+    options:
+      - { id: a, text: kube-apiserver }
+      - { id: b, text: kube-scheduler }
+      - { id: c, text: etcd }
+      - { id: d, text: kubelet }
+    answer: [c]
+    explanation: |
+      etcd is a consistent, highly available key-value store that holds all
+      cluster data. The API server is the only component that talks to etcd
+      directly; everything else reads and writes state through the API server.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/components/
+    glossary: [etcd, control-plane, kube-apiserver]
+
+  - id: kcna-fund-003
+    difficulty: 1
+    type: single
+    question: A new Pod has been created but has no node assigned yet. Which component is responsible for choosing a node for it?
+    options:
+      - { id: a, text: kube-controller-manager }
+      - { id: b, text: kube-scheduler }
+      - { id: c, text: kube-proxy }
+      - { id: d, text: kubelet }
+    answer: [b]
+    explanation: |
+      The kube-scheduler watches for Pods without a node and selects the best
+      node based on resource requests, affinity rules, taints and tolerations,
+      and other constraints. After that, the kubelet on the chosen node starts
+      the containers.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+    glossary: [kube-scheduler, kubelet, node]
+
+  - id: kcna-fund-004
+    difficulty: 2
+    type: single
+    question: Which Service type exposes an application on a static port on every node's IP address?
+    options:
+      - { id: a, text: ClusterIP }
+      - { id: b, text: NodePort }
+      - { id: c, text: ExternalName }
+      - { id: d, text: Headless }
+    answer: [b]
+    explanation: |
+      A NodePort Service opens the same port (by default in the range
+      30000-32767) on every node and forwards traffic to the Service.
+      ClusterIP, the default type, is reachable only from inside the cluster.
+      A LoadBalancer Service builds on top of NodePort.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+    glossary: [service, node]
+
+  - id: kcna-fund-005
+    difficulty: 2
+    type: single
+    question: Which statement about Kubernetes Secrets is true in a default cluster configuration?
+    options:
+      - { id: a, text: Secret values are encrypted with AES before they are stored in etcd. }
+      - { id: b, text: Secret values are base64-encoded and stored unencrypted in etcd unless encryption at rest is configured. }
+      - { id: c, text: Secrets can only be mounted as files, never used as environment variables. }
+      - { id: d, text: Secrets are stored on each node's disk and never in etcd. }
+    answer: [b]
+    explanation: |
+      Base64 is an encoding, not encryption. By default Secret data is stored
+      unencrypted in etcd. You should enable encryption at rest, restrict
+      access with RBAC, and limit who can create Pods in a namespace, because
+      anyone who can create a Pod can read the Secrets it mounts.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/secret/
+    glossary: [secret, etcd, rbac]
+
+  - id: kcna-fund-006
+    difficulty: 2
+    type: multiple
+    question: Which TWO of the following are workload resources that create and manage Pods for you?
+    options:
+      - { id: a, text: Deployment }
+      - { id: b, text: Service }
+      - { id: c, text: StatefulSet }
+      - { id: d, text: ConfigMap }
+      - { id: e, text: Ingress }
+    answer: [a, c]
+    explanation: |
+      Deployments and StatefulSets are workload resources: they keep a desired
+      number of Pods running. Other workload resources include DaemonSet, Job
+      and CronJob. Services and Ingresses route traffic, and ConfigMaps hold
+      configuration; none of them create Pods.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/
+    glossary: [deployment, statefulset, service, configmap, ingress]

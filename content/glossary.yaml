@@ -1,0 +1,144 @@
+# Technical glossary. `definition` is in simple English (the main study aid);
+# `es` is the Spanish fallback, shown only on demand.
+# `match` lists the forms highlighted in question text (case-insensitive).
+terms:
+  - id: pod
+    term: Pod
+    match: [Pod, Pods]
+    definition: The smallest unit Kubernetes runs. A group of one or more containers that share network and storage.
+    es: La unidad mínima que ejecuta Kubernetes; uno o más contenedores que comparten red y almacenamiento.
+  - id: container
+    term: Container
+    match: [container, containers]
+    definition: A packaged application with everything it needs to run, isolated from other processes.
+    es: Aplicación empaquetada con todo lo que necesita para ejecutarse, aislada de otros procesos.
+  - id: node
+    term: Node
+    match: [node, nodes]
+    definition: A machine (virtual or physical) that runs Pods. It has a kubelet and a container runtime.
+    es: Máquina (virtual o física) que ejecuta Pods.
+  - id: control-plane
+    term: Control plane
+    match: [control plane]
+    definition: The components that make global decisions about the cluster, such as the API server, scheduler and etcd.
+    es: Plano de control; los componentes que toman las decisiones globales del clúster.
+  - id: etcd
+    term: etcd
+    match: [etcd]
+    definition: A distributed key-value store where Kubernetes keeps all cluster data.
+    es: Almacén clave-valor distribuido donde Kubernetes guarda todo el estado del clúster.
+  - id: kube-apiserver
+    term: kube-apiserver
+    match: [kube-apiserver, API server]
+    definition: The front door of the control plane. Every request to the cluster goes through it.
+    es: La puerta de entrada del plano de control; toda petición al clúster pasa por él.
+  - id: kube-scheduler
+    term: kube-scheduler
+    match: [kube-scheduler, scheduler]
+    definition: Chooses which node each new Pod should run on.
+    es: Elige en qué nodo se ejecuta cada Pod nuevo.
+  - id: kubelet
+    term: kubelet
+    match: [kubelet]
+    definition: An agent on every node that makes sure the containers described in Pods are running and healthy.
+    es: Agente en cada nodo que asegura que los contenedores de los Pods estén corriendo y sanos.
+  - id: container-runtime
+    term: Container runtime
+    match: [container runtime, container runtimes]
+    definition: The software that actually runs containers, for example containerd or CRI-O.
+    es: Software que ejecuta los contenedores, por ejemplo containerd o CRI-O.
+  - id: cri
+    term: CRI
+    match: [CRI, Container Runtime Interface]
+    definition: Container Runtime Interface. The API the kubelet uses to talk to the container runtime.
+    es: Interfaz entre el kubelet y el runtime de contenedores.
+  - id: service
+    term: Service
+    match: [Service, Services]
+    definition: A stable network address and name for a set of Pods, with load balancing between them.
+    es: Dirección y nombre de red estables para un grupo de Pods, con balanceo de carga.
+  - id: ingress
+    term: Ingress
+    match: [Ingress, Ingresses]
+    definition: Rules that route external HTTP/HTTPS traffic to Services inside the cluster.
+    es: Reglas que enrutan tráfico HTTP/HTTPS externo hacia Services del clúster.
+  - id: deployment
+    term: Deployment
+    match: [Deployment, Deployments]
+    definition: Manages a set of identical Pods and handles rolling updates and rollbacks.
+    es: Gestiona un conjunto de Pods idénticos y sus actualizaciones y rollbacks.
+  - id: statefulset
+    term: StatefulSet
+    match: [StatefulSet, StatefulSets]
+    definition: Like a Deployment, but each Pod has a stable name and its own persistent storage.
+    es: Como un Deployment, pero cada Pod tiene nombre estable y almacenamiento propio.
+  - id: daemonset
+    term: DaemonSet
+    match: [DaemonSet, DaemonSets]
+    definition: Runs one copy of a Pod on every node (or on selected nodes).
+    es: Ejecuta una copia de un Pod en cada nodo (o en nodos seleccionados).
+  - id: replica
+    term: Replica
+    match: [replica, replicas]
+    definition: One copy of a Pod. A workload can run several replicas for capacity and availability.
+    es: Una copia de un Pod.
+  - id: configmap
+    term: ConfigMap
+    match: [ConfigMap, ConfigMaps]
+    definition: Stores non-confidential configuration as key-value pairs for Pods to use.
+    es: Guarda configuración no confidencial como pares clave-valor.
+  - id: secret
+    term: Secret
+    match: [Secret, Secrets]
+    definition: Stores small amounts of sensitive data, such as passwords or tokens.
+    es: Guarda pequeñas cantidades de datos sensibles, como contraseñas o tokens.
+  - id: rbac
+    term: RBAC
+    match: [RBAC]
+    definition: Role-Based Access Control. Decides who can do which actions on which resources.
+    es: Control de acceso basado en roles.
+  - id: probe
+    term: Probe
+    match: [probe, probes, liveness probe, readiness probe]
+    definition: A periodic health check the kubelet runs on a container (liveness, readiness or startup).
+    es: Chequeo de salud periódico que el kubelet hace a un contenedor.
+  - id: hpa
+    term: HPA
+    match: [Horizontal Pod Autoscaler, HPA]
+    definition: Horizontal Pod Autoscaler. Changes the number of replicas automatically based on metrics.
+    es: Escala automáticamente el número de réplicas según métricas.
+  - id: gitops
+    term: GitOps
+    match: [GitOps]
+    definition: Managing infrastructure and apps by declaring the desired state in Git and letting an agent apply it.
+    es: Gestionar infraestructura y apps declarando el estado deseado en Git.
+  - id: reconciliation
+    term: Reconciliation
+    match: [reconciles, reconcile, reconciliation]
+    definition: The loop that compares desired state with actual state and fixes any difference.
+    es: Ciclo que compara el estado deseado con el real y corrige las diferencias.
+  - id: helm
+    term: Helm
+    match: [Helm]
+    definition: A package manager for Kubernetes. Packages are called charts.
+    es: Gestor de paquetes para Kubernetes; los paquetes se llaman charts.
+  - id: manifest
+    term: Manifest
+    match: [manifest, manifests]
+    definition: A YAML or JSON file that describes a Kubernetes object you want to create.
+    es: Archivo YAML o JSON que describe un objeto de Kubernetes.
+  - id: prometheus
+    term: Prometheus
+    match: [Prometheus]
+    definition: An open source monitoring system that collects metrics by scraping HTTP endpoints.
+    es: Sistema de monitoreo que recolecta métricas consultando endpoints HTTP.
+  - id: metrics
+    term: Metrics
+    match: [metrics]
+    definition: Numeric measurements over time, such as CPU usage or request count.
+    es: Mediciones numéricas en el tiempo, como uso de CPU o número de peticiones.
+  - id: observability
+    term: Observability
+    match: [observability]
+    definition: How well you can understand a system's internal state from its outputs, mainly metrics, logs and traces.
+    es: Capacidad de entender el estado interno de un sistema a partir de métricas, logs y trazas.

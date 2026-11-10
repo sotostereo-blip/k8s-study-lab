@@ -1,0 +1,38 @@
+domain: cloud-native-application-delivery
+questions:
+  - id: kcna-deliv-001
+    difficulty: 1
+    type: single
+    question: In a GitOps workflow, what is treated as the single source of truth for the desired state of the system?
+    options:
+      - { id: a, text: The live state of the cluster }
+      - { id: b, text: A Git repository }
+      - { id: c, text: The CI server's build logs }
+      - { id: d, text: The container registry }
+    answer: [b]
+    explanation: |
+      In GitOps, the desired state is declared in a Git repository. An agent
+      such as Argo CD or Flux continuously compares the cluster with Git and
+      reconciles any difference. Changes are made through commits and pull
+      requests, which gives you history, review and easy rollback.
+    docs:
+      - https://opengitops.dev/
+    glossary: [gitops, reconciliation]
+
+  - id: kcna-deliv-002
+    difficulty: 2
+    type: single
+    question: What is the main purpose of Helm in the Kubernetes ecosystem?
+    options:
+      - { id: a, text: To build container images from a Dockerfile }
+      - { id: b, text: To package, version and install Kubernetes applications as charts }
+      - { id: c, text: To provide a service mesh between microservices }
+      - { id: d, text: To store metrics from the cluster }
+    answer: [b]
+    explanation: |
+      Helm is a package manager for Kubernetes. A chart is a versioned package
+      of templated manifests plus default values, which you can install,
+      upgrade and roll back as a release.
+    docs:
+      - https://helm.sh/docs/intro/using_helm/
+    glossary: [helm, manifest]

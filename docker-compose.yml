@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./backend/app:/app/app      # live reload while developing
+      - ./content:/content:ro       # study content (questions, glossary)
+      - ./data:/data                # your progress (SQLite), not committed
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment:
+      VITE_API_TARGET: http://backend:8000
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on: [backend]
