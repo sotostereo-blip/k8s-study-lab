@@ -5,10 +5,10 @@ questions:
     type: single
     question: What does the Horizontal Pod Autoscaler (HPA) change when load increases?
     options:
-      - { id: a, text: The CPU and memory limits of the existing Pods }
-      - { id: b, text: The number of nodes in the cluster }
-      - { id: c, text: The number of Pod replicas of a workload such as a Deployment }
-      - { id: d, text: The container image version }
+      - { id: a, text: "The CPU and memory limits of the existing Pods" }
+      - { id: b, text: "The number of nodes in the cluster node pool" }
+      - { id: c, text: "The number of Pod replicas of a workload" }
+      - { id: d, text: "The image version used by the containers" }
     answer: [c]
     explanation: |
       The HPA scales horizontally: it adjusts the replica count based on
@@ -24,10 +24,10 @@ questions:
     type: single
     question: How does Prometheus usually collect metrics from applications?
     options:
-      - { id: a, text: Applications push metrics to Prometheus over SMTP. }
-      - { id: b, text: Prometheus scrapes (pulls) metrics from HTTP endpoints exposed by the targets. }
-      - { id: c, text: Prometheus reads metrics directly from etcd. }
-      - { id: d, text: Prometheus parses the container logs to calculate metrics. }
+      - { id: a, text: "Applications push their metrics to Prometheus over HTTP." }
+      - { id: b, text: "Prometheus scrapes (pulls) metrics from HTTP endpoints." }
+      - { id: c, text: "Prometheus reads Pod metrics directly from etcd." }
+      - { id: d, text: "Prometheus parses container logs to calculate metrics." }
     answer: [b]
     explanation: |
       Prometheus uses a pull model: at a regular interval it scrapes an HTTP
@@ -36,3 +36,307 @@ questions:
     docs:
       - https://prometheus.io/docs/introduction/overview/
     glossary: [prometheus, observability, metrics]
+
+  - id: kcna-arch-003
+    difficulty: 1
+    type: single
+    question: >-
+      According to the CNCF definition, which technologies are typical of the cloud native approach?
+    options:
+      - { id: a, text: "Mainframes, batch jobs and nightly scripts run by operators" }
+      - { id: b, text: "Containers, service meshes, microservices and declarative APIs" }
+      - { id: c, text: "Large virtual machines that are configured and patched by hand" }
+      - { id: d, text: "A single shared database and a monolithic application server" }
+    answer: [b]
+    explanation: |
+      The CNCF definition says these techniques enable loosely coupled systems
+      that are resilient, manageable and observable, and that let engineers make
+      high-impact changes frequently and predictably.
+    docs:
+      - https://github.com/cncf/toc/blob/main/DEFINITION.md
+    glossary: [microservices, service-mesh]
+
+  - id: kcna-arch-004
+    difficulty: 1
+    type: single
+    question: >-
+      What are the three maturity levels of CNCF projects?
+    options:
+      - { id: a, text: "Alpha, Beta and Stable, like Kubernetes API versions" }
+      - { id: b, text: "Bronze, Silver and Gold, based on the number of users" }
+      - { id: c, text: "Sandbox, Incubating and Graduated" }
+      - { id: d, text: "Draft, Candidate and Final, decided by public vote" }
+    answer: [c]
+    explanation: |
+      Projects enter as Sandbox, move to Incubating as adoption grows, and become
+      Graduated when they show wide adoption, a healthy community and good
+      governance. Kubernetes was the first graduated project.
+    docs:
+      - https://www.cncf.io/projects/
+    glossary: [cncf]
+
+  - id: kcna-arch-005
+    difficulty: 2
+    type: single
+    question: >-
+      Which group in the CNCF approves projects and decides on their maturity level?
+    options:
+      - { id: a, text: "The Technical Oversight Committee (TOC)" }
+      - { id: b, text: "The Kubernetes release team and SIG leads" }
+      - { id: c, text: "The CNCF Governing Board of member companies" }
+      - { id: d, text: "The Linux Foundation legal team" }
+    answer: [a]
+    explanation: |
+      The TOC is the technical governing body of the CNCF. Within Kubernetes
+      itself, Special Interest Groups (SIGs) own different areas such as
+      networking, storage or node.
+    docs:
+      - https://github.com/cncf/toc
+    glossary: [cncf]
+
+  - id: kcna-arch-006
+    difficulty: 2
+    type: single
+    question: >-
+      What is an advantage of a microservices architecture compared with a monolith?
+    options:
+      - { id: a, text: "It is simpler to operate, because there are fewer moving parts" }
+      - { id: b, text: "It removes network calls, because all code runs in one process" }
+      - { id: c, text: "It forces every service to share one database, so data is consistent" }
+      - { id: d, text: "Teams can develop, deploy and scale each service independently" }
+    answer: [d]
+    explanation: |
+      Microservices give independence and flexible scaling, but add complexity:
+      network calls, distributed data and the need for good observability. A
+      monolith can be the better choice for small teams.
+    docs:
+      - https://github.com/cncf/toc/blob/main/DEFINITION.md
+    glossary: [microservices]
+
+  - id: kcna-arch-007
+    difficulty: 2
+    type: single
+    question: >-
+      What does "serverless" usually mean in cloud native computing?
+    options:
+      - { id: a, text: "You deploy code without managing servers, and it scales automatically" }
+      - { id: b, text: "Applications run on end-user devices instead of in a data center" }
+      - { id: c, text: "Kubernetes clusters run without a control plane or an etcd database" }
+      - { id: d, text: "Each function runs on its own dedicated physical server for isolation" }
+    answer: [a]
+    explanation: |
+      Servers still exist, but the platform hides them. You pay or use resources
+      only when requests arrive. Knative is a popular project that brings
+      serverless workloads to Kubernetes.
+    docs:
+      - https://knative.dev/docs/
+    glossary: [serverless]
+
+  - id: kcna-arch-008
+    difficulty: 1
+    type: single
+    question: >-
+      Which three kinds of telemetry are often called the pillars or signals of observability?
+    options:
+      - { id: a, text: "CPU, memory, disk" }
+      - { id: b, text: "Metrics, logs and traces" }
+      - { id: c, text: "Pods, Services, Ingresses" }
+      - { id: d, text: "Alerts, tickets, dashboards" }
+    answer: [b]
+    explanation: |
+      Metrics are numbers over time, logs are records of events, and traces show
+      the path of a request through many services. Using them together helps you
+      understand why a system behaves the way it does.
+    docs:
+      - https://opentelemetry.io/docs/concepts/signals/
+    glossary: [observability, metrics, logs, trace]
+
+  - id: kcna-arch-009
+    difficulty: 2
+    type: single
+    question: >-
+      What is OpenTelemetry?
+    options:
+      - { id: a, text: "A time-series database that stores metrics and evaluates alert rules" }
+      - { id: b, text: "A dashboard tool that draws graphs from many data sources" }
+      - { id: c, text: "A vendor-neutral set of APIs, SDKs and tools for traces, metrics and logs" }
+      - { id: d, text: "A log shipper that runs as a DaemonSet on every node" }
+    answer: [c]
+    explanation: |
+      OpenTelemetry standardizes how telemetry is produced and sent. You
+      instrument once and can send data to many backends, such as Prometheus,
+      Jaeger or commercial tools, often through the OpenTelemetry Collector.
+    docs:
+      - https://opentelemetry.io/docs/what-is-opentelemetry/
+    glossary: [opentelemetry, trace]
+
+  - id: kcna-arch-010
+    difficulty: 2
+    type: single
+    question: >-
+      In distributed tracing, what is a span?
+    options:
+      - { id: a, text: "One operation inside a trace, with a start time and duration" }
+      - { id: b, text: "A log line that contains the request ID of an HTTP call" }
+      - { id: c, text: "The time window Prometheus uses to calculate a rate" }
+      - { id: d, text: "A group of alert rules that are evaluated together" }
+    answer: [a]
+    explanation: |
+      A trace is a tree of spans. Each span represents one operation, such as an
+      HTTP call or a database query, so you can see where the time of a request
+      is spent.
+    docs:
+      - https://opentelemetry.io/docs/concepts/signals/traces/
+    glossary: [trace, span]
+
+  - id: kcna-arch-011
+    difficulty: 2
+    type: single
+    question: >-
+      Kubernetes does not store container logs long-term. What is a common pattern to collect them?
+    options:
+      - { id: a, text: "Configure the API server to save all container logs in etcd" }
+      - { id: b, text: "Run kubectl logs from a CronJob and save the output to a ConfigMap" }
+      - { id: c, text: "Mount a PersistentVolume in each Pod and keep logs there forever" }
+      - { id: d, text: "Run a logging agent as a DaemonSet that ships logs to a backend" }
+    answer: [d]
+    explanation: |
+      Containers write to stdout and stderr, and the runtime saves them on the
+      node. A logging agent on each node reads those files and forwards them, so
+      logs survive Pod and node deletion.
+    docs:
+      - https://kubernetes.io/docs/concepts/cluster-administration/logging/
+    glossary: [logs, daemonset]
+
+  - id: kcna-arch-012
+    difficulty: 2
+    type: single
+    question: >-
+      Which component of the Prometheus ecosystem groups, silences and routes alerts to channels such as email or chat?
+    options:
+      - { id: a, text: "Pushgateway" }
+      - { id: b, text: "Alertmanager" }
+      - { id: c, text: "node_exporter" }
+      - { id: d, text: "PromQL" }
+    answer: [b]
+    explanation: |
+      Prometheus evaluates alerting rules and sends firing alerts to
+      Alertmanager, which handles deduplication, grouping, silencing and
+      notification routing.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/alertmanager/
+    glossary: [prometheus, alertmanager]
+
+  - id: kcna-arch-013
+    difficulty: 3
+    type: single
+    question: >-
+      What is the difference between an SLI and an SLO?
+    options:
+      - { id: a, text: "An SLI is an agreement with customers; an SLO is the penalty if it fails" }
+      - { id: b, text: "An SLI is measured by the cloud provider; an SLO is measured by the app" }
+      - { id: c, text: "An SLI is what you measure, such as success rate; an SLO is its target" }
+      - { id: d, text: "An SLO is a type of alert; an SLI is the dashboard that shows it" }
+    answer: [c]
+    explanation: |
+      SLI = indicator (what you measure). SLO = objective (the target). An SLA is
+      an agreement with customers that often includes consequences if the
+      objective is not met.
+    docs:
+      - https://sre.google/sre-book/service-level-objectives/
+    glossary: [sli, slo, sla]
+
+  - id: kcna-arch-014
+    difficulty: 2
+    type: single
+    question: >-
+      kubectl top pods returns an error that metrics are not available. What is most likely missing?
+    options:
+      - { id: a, text: "metrics-server" }
+      - { id: b, text: "Grafana" }
+      - { id: c, text: "An Ingress controller" }
+      - { id: d, text: "A StorageClass" }
+    answer: [a]
+    explanation: |
+      metrics-server collects CPU and memory usage from the kubelets and exposes
+      it through the Metrics API. kubectl top and the HPA use this API.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/
+    glossary: [metrics, hpa]
+
+  - id: kcna-arch-015
+    difficulty: 2
+    type: single
+    question: >-
+      What is FinOps?
+    options:
+      - { id: a, text: "A Kubernetes scheduler plugin that places Pods on the cheapest nodes" }
+      - { id: b, text: "A security standard for financial applications running in the cloud" }
+      - { id: c, text: "A logging format that adds cost information to every log line" }
+      - { id: d, text: "A practice uniting finance and engineering to understand and optimize cloud cost" }
+    answer: [d]
+    explanation: |
+      In the cloud, engineers make spending decisions every day. FinOps gives
+      cost visibility (for example per Namespace or team) and drives actions like
+      right-sizing requests and using autoscaling.
+    docs:
+      - https://www.finops.org/introduction/what-is-finops/
+    glossary: [finops]
+
+  - id: kcna-arch-016
+    difficulty: 2
+    type: single
+    question: >-
+      Which of these is an example of a cloud native open standard that lets components be swapped?
+    options:
+      - { id: a, text: "The Container Network Interface (CNI)" }
+      - { id: b, text: "A vendor's private VM disk image format" }
+      - { id: c, text: "A company's internal deployment wiki" }
+      - { id: d, text: "A cloud provider's proprietary load balancer API" }
+    answer: [a]
+    explanation: |
+      Standards such as CNI (networking), CSI (storage), CRI (runtimes) and OCI
+      (images) define clear interfaces, so you can choose and replace
+      implementations without changing Kubernetes.
+    docs:
+      - https://www.cni.dev/
+    glossary: [cni, csi, cri, oci]
+
+  - id: kcna-arch-017
+    difficulty: 3
+    type: single
+    question: >-
+      What does it mean to treat servers as "cattle, not pets"?
+    options:
+      - { id: a, text: "Servers get names and are carefully repaired when something breaks" }
+      - { id: b, text: "Every server is configured by hand to fit its specific workload" }
+      - { id: c, text: "Servers are identical and replaceable; you replace one instead of fixing it" }
+      - { id: d, text: "Servers should never be updated, to avoid unplanned downtime" }
+    answer: [c]
+    explanation: |
+      This idea is the base of immutable infrastructure. Instead of patching a
+      running machine or container, you build a new version and replace the old
+      one, which keeps environments consistent.
+    docs:
+      - https://github.com/cncf/toc/blob/main/DEFINITION.md
+    glossary: []
+
+  - id: kcna-arch-018
+    difficulty: 3
+    type: multiple
+    question: >-
+      Which TWO statements about Prometheus are true?
+    options:
+      - { id: a, text: "It stores data as time series identified by a metric name and labels" }
+      - { id: b, text: "It uses PromQL to query data" }
+      - { id: c, text: "It is designed mainly to store full request traces" }
+      - { id: d, text: "It requires every application to send logs over syslog" }
+    answer: [a, b]
+    explanation: |
+      Prometheus is a metrics system. Each time series is a metric name plus
+      key-value labels, and PromQL lets you select and aggregate them. Tracing is
+      handled by tools like Jaeger, and logs by tools like Loki or Elasticsearch.
+    docs:
+      - https://prometheus.io/docs/concepts/data_model/
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/
+    glossary: [prometheus, metrics]

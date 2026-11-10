@@ -21,6 +21,14 @@ def main() -> int:
         for d in exam.domains:
             print(f"  {d.name:<40} {len(lib.questions_for(exam.id, d.id)):>3}  (weight {d.weight}%)")
     print(f"glossary: {len(lib.glossary)} terms")
+    # Warn (not fail) when the right answer stands out by length.
+    for q in lib.questions.values():
+        if q.type != "single":
+            continue
+        right = next(o for o in q.options if o.id == q.answer[0])
+        longest_wrong = max(len(o.text) for o in q.options if o.id != right.id)
+        if len(right.text) > 1.6 * longest_wrong and len(right.text) > 25:
+            print(f"warning: {q.id}: correct option is much longer than the others")
     print("OK")
     return 0
 

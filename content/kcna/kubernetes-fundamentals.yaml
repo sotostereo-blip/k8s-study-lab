@@ -5,10 +5,10 @@ questions:
     type: single
     question: What is the smallest deployable unit of computing that you can create and manage in Kubernetes?
     options:
-      - { id: a, text: A container }
-      - { id: b, text: A Pod }
-      - { id: c, text: A Node }
-      - { id: d, text: A Deployment }
+      - { id: a, text: "A container" }
+      - { id: b, text: "A Pod" }
+      - { id: c, text: "A Node" }
+      - { id: d, text: "A Deployment" }
     answer: [b]
     explanation: |
       A Pod is the smallest deployable unit. It wraps one or more containers
@@ -23,10 +23,10 @@ questions:
     type: single
     question: Which control plane component stores the desired and current state of the whole cluster?
     options:
-      - { id: a, text: kube-apiserver }
-      - { id: b, text: kube-scheduler }
-      - { id: c, text: etcd }
-      - { id: d, text: kubelet }
+      - { id: a, text: "kube-apiserver" }
+      - { id: b, text: "kube-scheduler" }
+      - { id: c, text: "etcd" }
+      - { id: d, text: "kubelet" }
     answer: [c]
     explanation: |
       etcd is a consistent, highly available key-value store that holds all
@@ -41,10 +41,10 @@ questions:
     type: single
     question: A new Pod has been created but has no node assigned yet. Which component is responsible for choosing a node for it?
     options:
-      - { id: a, text: kube-controller-manager }
-      - { id: b, text: kube-scheduler }
-      - { id: c, text: kube-proxy }
-      - { id: d, text: kubelet }
+      - { id: a, text: "kube-controller-manager" }
+      - { id: b, text: "kube-scheduler" }
+      - { id: c, text: "kube-proxy" }
+      - { id: d, text: "kubelet" }
     answer: [b]
     explanation: |
       The kube-scheduler watches for Pods without a node and selects the best
@@ -60,10 +60,10 @@ questions:
     type: single
     question: Which Service type exposes an application on a static port on every node's IP address?
     options:
-      - { id: a, text: ClusterIP }
-      - { id: b, text: NodePort }
-      - { id: c, text: ExternalName }
-      - { id: d, text: Headless }
+      - { id: a, text: "ClusterIP" }
+      - { id: b, text: "NodePort" }
+      - { id: c, text: "ExternalName" }
+      - { id: d, text: "Headless" }
     answer: [b]
     explanation: |
       A NodePort Service opens the same port (by default in the range
@@ -79,10 +79,10 @@ questions:
     type: single
     question: Which statement about Kubernetes Secrets is true in a default cluster configuration?
     options:
-      - { id: a, text: Secret values are encrypted with AES before they are stored in etcd. }
-      - { id: b, text: Secret values are base64-encoded and stored unencrypted in etcd unless encryption at rest is configured. }
-      - { id: c, text: Secrets can only be mounted as files, never used as environment variables. }
-      - { id: d, text: Secrets are stored on each node's disk and never in etcd. }
+      - { id: a, text: "Secret values are encrypted with AES before they are stored in etcd." }
+      - { id: b, text: "Secret values are only base64-encoded in etcd unless encryption at rest is set." }
+      - { id: c, text: "Secrets can only be mounted as files and never used as environment variables." }
+      - { id: d, text: "Secrets are stored on each node's local disk and never in etcd." }
     answer: [b]
     explanation: |
       Base64 is an encoding, not encryption. By default Secret data is stored
@@ -98,11 +98,11 @@ questions:
     type: multiple
     question: Which TWO of the following are workload resources that create and manage Pods for you?
     options:
-      - { id: a, text: Deployment }
-      - { id: b, text: Service }
-      - { id: c, text: StatefulSet }
-      - { id: d, text: ConfigMap }
-      - { id: e, text: Ingress }
+      - { id: a, text: "Deployment" }
+      - { id: b, text: "Service" }
+      - { id: c, text: "StatefulSet" }
+      - { id: d, text: "ConfigMap" }
+      - { id: e, text: "Ingress" }
     answer: [a, c]
     explanation: |
       Deployments and StatefulSets are workload resources: they keep a desired
@@ -112,3 +112,1153 @@ questions:
     docs:
       - https://kubernetes.io/docs/concepts/workloads/
     glossary: [deployment, statefulset, service, configmap, ingress]
+
+  - id: kcna-fund-007
+    difficulty: 1
+    type: single
+    question: >-
+      What is the main purpose of a Namespace in Kubernetes?
+    options:
+      - { id: a, text: "To divide cluster resources between teams and scope object names" }
+      - { id: b, text: "To isolate all network traffic between groups of Pods" }
+      - { id: c, text: "To group nodes into availability zones for high availability" }
+      - { id: d, text: "To store container images that belong to one project" }
+    answer: [a]
+    explanation: |
+      Namespaces give a scope for names and a way to divide a cluster between
+      teams or environments. You can attach ResourceQuotas and RBAC rules to a
+      Namespace. They do not isolate network traffic by themselves; you need
+      NetworkPolicies for that.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+    glossary: [namespace, network-policy]
+
+  - id: kcna-fund-008
+    difficulty: 1
+    type: single
+    question: >-
+      A Service needs to find the Pods it should send traffic to. Which mechanism does it use?
+    options:
+      - { id: a, text: "A list of Pod names written in the Service spec" }
+      - { id: b, text: "The IP addresses of the nodes that run the Pods" }
+      - { id: c, text: "A label selector that matches labels on the Pods" }
+      - { id: d, text: "Annotations on the Namespace that point to the Pods" }
+    answer: [c]
+    explanation: |
+      Services, Deployments and many other objects use label selectors. Any Pod
+      whose labels match the selector becomes a backend of the Service. This
+      loose coupling lets Pods come and go without changing the Service.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    glossary: [service, label, selector]
+
+  - id: kcna-fund-009
+    difficulty: 1
+    type: single
+    question: >-
+      What is the key difference between labels and annotations?
+    options:
+      - { id: a, text: "Labels are set only by the control plane; annotations are set by users" }
+      - { id: b, text: "Labels are used to select objects; annotations hold other metadata" }
+      - { id: c, text: "Annotations are encrypted in etcd; labels are stored in plain text" }
+      - { id: d, text: "Annotations are used by Services to find Pods; labels are only notes" }
+    answer: [b]
+    explanation: |
+      Labels identify objects and are used by selectors. Annotations store extra
+      information for tools and people, such as a build version or a contact
+      email. You cannot select objects by annotation.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    glossary: [label, annotation, selector]
+
+  - id: kcna-fund-010
+    difficulty: 1
+    type: single
+    question: >-
+      In a Kubernetes object, what is the difference between the spec and the status fields?
+    options:
+      - { id: a, text: "spec is written by the kubelet; status is written by the user" }
+      - { id: b, text: "spec stores the history of changes; status stores the latest change" }
+      - { id: c, text: "Both describe the desired state, for different API versions" }
+      - { id: d, text: "spec is the desired state; status is the current observed state" }
+    answer: [d]
+    explanation: |
+      You declare what you want in spec. Kubernetes components observe the real
+      world and update status. Controllers work to make the status match the spec.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/
+    glossary: [controller, reconciliation]
+
+  - id: kcna-fund-011
+    difficulty: 2
+    type: single
+    question: >-
+      Which apiVersion is used for a Deployment manifest?
+    options:
+      - { id: a, text: "apps/v1" }
+      - { id: b, text: "v1" }
+      - { id: c, text: "batch/v1" }
+      - { id: d, text: "extensions/v1" }
+    answer: [a]
+    explanation: |
+      Deployments, ReplicaSets, StatefulSets and DaemonSets belong to the apps
+      API group, version v1. Core objects such as Pods, Services and ConfigMaps
+      use just v1. Jobs and CronJobs use batch/v1.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/kubernetes-api/
+    glossary: [deployment, manifest]
+
+  - id: kcna-fund-012
+    difficulty: 1
+    type: single
+    question: >-
+      Which kubectl command shows the documentation of a resource field, for example the fields of a Pod spec?
+    options:
+      - { id: a, text: "kubectl describe pod" }
+      - { id: b, text: "kubectl explain pod.spec" }
+      - { id: c, text: "kubectl get pod -o yaml" }
+      - { id: d, text: "kubectl api-resources" }
+    answer: [b]
+    explanation: |
+      kubectl explain prints the schema and description of any field, straight
+      from the API server. It is very useful during exams when you do not
+      remember a field name. kubectl api-resources lists resource types, and
+      describe shows the state of a live object.
+    docs:
+      - https://kubernetes.io/docs/reference/kubectl/generated/kubectl_explain/
+    glossary: [kubectl]
+
+  - id: kcna-fund-013
+    difficulty: 2
+    type: single
+    question: >-
+      What is the difference between managing objects with kubectl create and with kubectl apply?
+    options:
+      - { id: a, text: "create works only with YAML files; apply works only with JSON files" }
+      - { id: b, text: "apply always deletes the object and creates it again from the file" }
+      - { id: c, text: "create is imperative and fails if the object exists; apply is declarative" }
+      - { id: d, text: "create is for Pods only; apply is for every other kind of object" }
+    answer: [c]
+    explanation: |
+      create is an imperative command: it creates an object and returns an error
+      if it already exists. apply is declarative: you keep the desired state in
+      files and apply them again and again; Kubernetes calculates the changes.
+      Declarative management is the base of GitOps.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
+    glossary: [kubectl, gitops]
+
+  - id: kcna-fund-014
+    difficulty: 2
+    type: single
+    question: >-
+      What does a controller do in Kubernetes?
+    options:
+      - { id: a, text: "It stores the desired state of the cluster in a key-value database" }
+      - { id: b, text: "It watches the cluster and acts to move current state toward desired state" }
+      - { id: c, text: "It checks the identity of users and ServiceAccounts for each request" }
+      - { id: d, text: "It chooses the node where each new Pod will run" }
+    answer: [b]
+    explanation: |
+      A controller is a non-terminating loop. It watches objects through the API
+      server, compares desired and current state, and acts to reduce the
+      difference. For example, the ReplicaSet controller creates Pods when there
+      are fewer than requested.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/controller/
+    glossary: [controller, reconciliation]
+
+  - id: kcna-fund-015
+    difficulty: 2
+    type: single
+    question: >-
+      Which component runs the built-in controllers, such as the Node, Job and EndpointSlice controllers?
+    options:
+      - { id: a, text: "kubelet" }
+      - { id: b, text: "kube-proxy" }
+      - { id: c, text: "kube-apiserver" }
+      - { id: d, text: "kube-controller-manager" }
+    answer: [d]
+    explanation: |
+      The kube-controller-manager is a single binary that runs many built-in
+      controllers. Controllers that talk to a cloud provider API run in the
+      separate cloud-controller-manager.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/components/
+    glossary: [kube-controller-manager, controller, control-plane]
+
+  - id: kcna-fund-016
+    difficulty: 2
+    type: single
+    question: >-
+      Which component links the cluster to a cloud provider's API, for example to create a load balancer for a Service of type LoadBalancer?
+    options:
+      - { id: a, text: "cloud-controller-manager" }
+      - { id: b, text: "kube-controller-manager" }
+      - { id: c, text: "kube-scheduler" }
+      - { id: d, text: "kubelet" }
+    answer: [a]
+    explanation: |
+      The cloud-controller-manager embeds cloud-specific logic: managing node
+      lifecycle with the provider, routes, and load balancers. Separating it
+      lets cloud providers release features independently from Kubernetes.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/cloud-controller/
+    glossary: [cloud-controller-manager, service]
+
+  - id: kcna-fund-017
+    difficulty: 2
+    type: single
+    question: >-
+      What is the role of kube-proxy on each node?
+    options:
+      - { id: a, text: "It forwards kubectl commands from users to the API server" }
+      - { id: b, text: "It decides which node each new Pod should be placed on" }
+      - { id: c, text: "It programs network rules so Service traffic reaches Pods" }
+      - { id: d, text: "It gives each new Pod an IP address from the Pod network" }
+    answer: [c]
+    explanation: |
+      kube-proxy watches Services and EndpointSlices and programs rules (for
+      example with iptables, IPVS or nftables) so that a Service's virtual IP
+      forwards to a backend Pod. Pod IP addresses are assigned by the CNI plugin.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/
+    glossary: [kube-proxy, service, cni]
+
+  - id: kcna-fund-018
+    difficulty: 1
+    type: single
+    question: >-
+      A Deployment manages Pods indirectly. Which object does it create to keep the right number of Pod replicas?
+    options:
+      - { id: a, text: "A StatefulSet" }
+      - { id: b, text: "A ReplicaSet" }
+      - { id: c, text: "A DaemonSet" }
+      - { id: d, text: "A Job" }
+    answer: [b]
+    explanation: |
+      A Deployment owns one or more ReplicaSets, and each ReplicaSet owns Pods.
+      When you change the Pod template, the Deployment creates a new ReplicaSet
+      and gradually scales the old one down.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+    glossary: [deployment, replicaset, replica]
+
+  - id: kcna-fund-019
+    difficulty: 2
+    type: single
+    question: >-
+      What is the default update strategy of a Deployment?
+    options:
+      - { id: a, text: "Recreate: delete all old Pods, then create the new ones" }
+      - { id: b, text: "Blue-green: run both versions and switch the Service selector" }
+      - { id: c, text: "Canary: send a small share of traffic to the new version first" }
+      - { id: d, text: "RollingUpdate: replace Pods gradually, using maxSurge and maxUnavailable" }
+    answer: [d]
+    explanation: |
+      The default is RollingUpdate, with maxSurge and maxUnavailable both set to
+      25%. Recreate is the other built-in strategy and causes downtime. Blue-green
+      and canary are patterns you build with extra tools or objects.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+    glossary: [deployment, rolling-update]
+
+  - id: kcna-fund-020
+    difficulty: 1
+    type: single
+    question: >-
+      A new version of a Deployment is failing. Which command returns it to the previous revision?
+    options:
+      - { id: a, text: "kubectl rollout undo deployment/web" }
+      - { id: b, text: "kubectl delete deployment web --previous" }
+      - { id: c, text: "kubectl restore deployment web" }
+      - { id: d, text: "kubectl rollback web" }
+    answer: [a]
+    explanation: |
+      kubectl rollout undo rolls back to the previous revision (or to a specific
+      one with --to-revision). kubectl rollout history lists the revisions and
+      kubectl rollout status follows a rollout in progress.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment
+    glossary: [rollback, deployment]
+
+  - id: kcna-fund-021
+    difficulty: 1
+    type: single
+    question: >-
+      You need to run a database migration once and make sure it finishes successfully. Which resource fits best?
+    options:
+      - { id: a, text: "Deployment" }
+      - { id: b, text: "DaemonSet" }
+      - { id: c, text: "Job" }
+      - { id: d, text: "Service" }
+    answer: [c]
+    explanation: |
+      A Job creates Pods and retries them until a given number complete
+      successfully. A Deployment is for long-running processes and would restart
+      the container after it exits.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/job/
+    glossary: [job]
+
+  - id: kcna-fund-022
+    difficulty: 1
+    type: single
+    question: >-
+      Which resource runs a Job on a repeating schedule, such as every night at 02:00?
+    options:
+      - { id: a, text: "ScheduledJob" }
+      - { id: b, text: "CronJob" }
+      - { id: c, text: "TimerSet" }
+      - { id: d, text: "A Deployment with a schedule field" }
+    answer: [b]
+    explanation: |
+      A CronJob creates a Job on a schedule written in standard cron format,
+      for example "0 2 * * *". Each run is a normal Job.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+    glossary: [cronjob, job]
+
+  - id: kcna-fund-023
+    difficulty: 2
+    type: single
+    question: >-
+      What is true about init containers?
+    options:
+      - { id: a, text: "They run in parallel with the app containers for the whole Pod lifetime" }
+      - { id: b, text: "They run only when the Pod is deleted, to clean up resources" }
+      - { id: c, text: "They must use the same image as the app container in the Pod" }
+      - { id: d, text: "They run to completion one by one before the app containers start" }
+    answer: [d]
+    explanation: |
+      Init containers run in order, and each must finish successfully before the
+      next one starts. They are useful for setup tasks, such as waiting for a
+      dependency or preparing files, and can use a different image with tools
+      you do not want in the app image.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+    glossary: [init-container]
+
+  - id: kcna-fund-024
+    difficulty: 2
+    type: single
+    question: >-
+      Two containers run in the same Pod. How can one reach a port opened by the other?
+    options:
+      - { id: a, text: "Through localhost, because they share the Pod's network namespace" }
+      - { id: b, text: "Only through a ClusterIP Service that selects the Pod" }
+      - { id: c, text: "Only through the node IP and a NodePort" }
+      - { id: d, text: "Through a shared emptyDir volume, because networking is separate" }
+    answer: [a]
+    explanation: |
+      All containers in a Pod share one IP address and port space, so they talk
+      to each other through localhost. This is why two containers in the same
+      Pod cannot listen on the same port.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers
+    glossary: [pod, container]
+
+  - id: kcna-fund-025
+    difficulty: 2
+    type: single
+    question: >-
+      What is a typical use of a sidecar container?
+    options:
+      - { id: a, text: "To replace the kubelet on nodes that run special workloads" }
+      - { id: b, text: "To add a helper, such as a log shipper or proxy, next to the main app" }
+      - { id: c, text: "To run a second copy of the app as a backup in the same Pod" }
+      - { id: d, text: "To prepare files and then exit before the main app starts" }
+    answer: [b]
+    explanation: |
+      A sidecar runs in the same Pod as the main application and extends it
+      without changing its code: shipping logs, proxying traffic, refreshing
+      certificates. Kubernetes has native sidecar support through init containers
+      with restartPolicy set to Always.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+    glossary: [sidecar, service-mesh]
+
+  - id: kcna-fund-026
+    difficulty: 1
+    type: single
+    question: >-
+      A Pod is in the Pending phase. What does that usually mean?
+    options:
+      - { id: a, text: "All containers in the Pod finished successfully and will not restart" }
+      - { id: b, text: "The Pod is accepted but not yet scheduled or its images are still pulling" }
+      - { id: c, text: "The node that ran the Pod stopped reporting to the control plane" }
+      - { id: d, text: "The Pod is running, but its readiness probe has not passed yet" }
+    answer: [b]
+    explanation: |
+      Pending means the Pod exists but one or more containers are not running
+      yet. Common causes are no node with enough resources, an unbound volume,
+      or a slow image pull. kubectl describe pod shows the events that explain why.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
+    glossary: [pod, kubectl]
+
+  - id: kcna-fund-027
+    difficulty: 2
+    type: single
+    question: >-
+      What does the scheduler use to decide if a Pod fits on a node in terms of CPU and memory?
+    options:
+      - { id: a, text: "The container limits" }
+      - { id: b, text: "The real current usage of the node" }
+      - { id: c, text: "The container requests" }
+      - { id: d, text: "The image size" }
+    answer: [c]
+    explanation: |
+      The scheduler adds up the requests of the Pods on a node and checks that the
+      new Pod's requests fit in the node's allocatable capacity. Limits are
+      enforced at runtime by the kubelet and the container runtime, not used for
+      placement.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+    glossary: [request, limit, kube-scheduler]
+
+  - id: kcna-fund-028
+    difficulty: 2
+    type: single
+    question: >-
+      A container uses more memory than its memory limit. What happens?
+    options:
+      - { id: a, text: "The container is throttled but keeps running normally" }
+      - { id: b, text: "The scheduler moves the Pod to a node with more memory" }
+      - { id: c, text: "Nothing; memory limits are only a hint for the scheduler" }
+      - { id: d, text: "The container can be killed with the reason OOMKilled" }
+    answer: [d]
+    explanation: |
+      Memory cannot be throttled, so a container that goes over its memory limit
+      is killed by the kernel's out-of-memory killer and restarted according to
+      the restart policy. CPU is different: going over the CPU limit only slows
+      the container down.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-limits-are-run
+    glossary: [limit, container]
+
+  - id: kcna-fund-029
+    difficulty: 3
+    type: single
+    question: >-
+      Every container in a Pod sets CPU and memory requests equal to its limits. Which QoS class does the Pod get?
+    options:
+      - { id: a, text: "Guaranteed" }
+      - { id: b, text: "Burstable" }
+      - { id: c, text: "BestEffort" }
+      - { id: d, text: "Critical" }
+    answer: [a]
+    explanation: |
+      Guaranteed requires CPU and memory requests equal to limits for every
+      container. Pods with some requests or limits are Burstable, and Pods with
+      none are BestEffort. Under node pressure, BestEffort Pods are evicted first
+      and Guaranteed Pods last.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/
+    glossary: [qos, request, limit]
+
+  - id: kcna-fund-030
+    difficulty: 3
+    type: single
+    question: >-
+      Which object limits the total CPU, memory, or number of objects that all workloads in a Namespace can use together?
+    options:
+      - { id: a, text: "LimitRange" }
+      - { id: b, text: "PodDisruptionBudget" }
+      - { id: c, text: "ResourceQuota" }
+      - { id: d, text: "PriorityClass" }
+    answer: [c]
+    explanation: |
+      A ResourceQuota sets aggregate limits per Namespace, such as total
+      requests.cpu or the maximum number of Pods. A LimitRange sets default and
+      min/max values for individual containers or Pods.
+    docs:
+      - https://kubernetes.io/docs/concepts/policy/resource-quotas/
+    glossary: [namespace, request]
+
+  - id: kcna-fund-031
+    difficulty: 2
+    type: single
+    question: >-
+      A node has a taint with the effect NoSchedule. Which Pods can be scheduled on it?
+    options:
+      - { id: a, text: "No Pods at all" }
+      - { id: b, text: "Only Pods that have a matching toleration" }
+      - { id: c, text: "Only Pods in the kube-system Namespace" }
+      - { id: d, text: "Any Pod, but with lower priority" }
+    answer: [b]
+    explanation: |
+      Taints repel Pods; tolerations allow a Pod to be placed on a tainted node.
+      A toleration does not force the Pod onto that node, it only allows it. To
+      attract Pods to nodes, use node affinity or a nodeSelector.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    glossary: [taint, toleration, node]
+
+  - id: kcna-fund-032
+    difficulty: 2
+    type: single
+    question: >-
+      You want a Pod to run only on nodes that have the label disktype=ssd. What is the simplest way?
+    options:
+      - { id: a, text: "Add a toleration for disktype=ssd to the Pod" }
+      - { id: b, text: "Create a Service with the selector disktype=ssd" }
+      - { id: c, text: "Add the label disktype=ssd to the Pod's Namespace" }
+      - { id: d, text: "Add a nodeSelector with disktype: ssd to the Pod" }
+    answer: [d]
+    explanation: |
+      nodeSelector is the simplest form of node selection: the Pod is placed only
+      on nodes with all the listed labels. Node affinity offers more expressive
+      rules, including preferred (soft) rules.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    glossary: [label, node, affinity]
+
+  - id: kcna-fund-033
+    difficulty: 3
+    type: single
+    question: >-
+      You want the replicas of a Deployment to run on different nodes, so one node failure does not take them all down. What should you use?
+    options:
+      - { id: a, text: "Pod anti-affinity" }
+      - { id: b, text: "A NoExecute taint" }
+      - { id: c, text: "A ResourceQuota" }
+      - { id: d, text: "A headless Service" }
+    answer: [a]
+    explanation: |
+      Pod anti-affinity tells the scheduler to avoid placing a Pod near Pods with
+      certain labels, for example on the same node (topologyKey
+      kubernetes.io/hostname). Topology spread constraints are another way to
+      spread replicas.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+    glossary: [affinity, replica]
+
+  - id: kcna-fund-034
+    difficulty: 1
+    type: single
+    question: >-
+      If you do not set a type in a Service manifest, which type does Kubernetes use?
+    options:
+      - { id: a, text: "NodePort" }
+      - { id: b, text: "LoadBalancer" }
+      - { id: c, text: "ClusterIP" }
+      - { id: d, text: "ExternalName" }
+    answer: [c]
+    explanation: |
+      ClusterIP is the default. It gives the Service a virtual IP that is
+      reachable only from inside the cluster.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/service/
+    glossary: [service]
+
+  - id: kcna-fund-035
+    difficulty: 2
+    type: single
+    question: >-
+      What is the fully qualified DNS name of a Service named api in the Namespace shop, with the default cluster domain?
+    options:
+      - { id: a, text: "shop.api.cluster.local" }
+      - { id: b, text: "api.shop.svc.cluster.local" }
+      - { id: c, text: "api.svc.shop.local" }
+      - { id: d, text: "svc.api.shop.cluster" }
+    answer: [b]
+    explanation: |
+      The pattern is <service>.<namespace>.svc.<cluster-domain>, and the default
+      cluster domain is cluster.local. Inside the same Namespace, the short name
+      api is enough.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+    glossary: [service, namespace, coredns]
+
+  - id: kcna-fund-036
+    difficulty: 3
+    type: single
+    question: >-
+      A Service has clusterIP set to None. What happens when a client resolves its DNS name?
+    options:
+      - { id: a, text: "DNS returns no answer, because there is no virtual IP" }
+      - { id: b, text: "DNS returns the IP addresses of the nodes that run the Pods" }
+      - { id: c, text: "DNS returns the virtual IP assigned by kube-proxy" }
+      - { id: d, text: "DNS returns the IP addresses of the selected Pods directly" }
+    answer: [d]
+    explanation: |
+      This is a headless Service. There is no virtual IP and no load balancing by
+      kube-proxy; DNS returns the Pod IPs. StatefulSets use headless Services to
+      give each Pod a stable DNS name.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
+    glossary: [headless-service, statefulset, coredns]
+
+  - id: kcna-fund-037
+    difficulty: 2
+    type: single
+    question: >-
+      Which Service type creates a DNS CNAME record that points to an external hostname, without any proxying?
+    options:
+      - { id: a, text: "ExternalName" }
+      - { id: b, text: "NodePort" }
+      - { id: c, text: "LoadBalancer" }
+      - { id: d, text: "ClusterIP" }
+    answer: [a]
+    explanation: |
+      An ExternalName Service maps a name inside the cluster to an external DNS
+      name, such as db.example.com. It has no selector and no virtual IP.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/service/#externalname
+    glossary: [service, coredns]
+
+  - id: kcna-fund-038
+    difficulty: 2
+    type: single
+    question: >-
+      You create an Ingress object, but nothing happens and no traffic is routed. What is the most likely reason?
+    options:
+      - { id: a, text: "Ingress objects only work with NodePort Services" }
+      - { id: b, text: "There is no Ingress controller running in the cluster" }
+      - { id: c, text: "Ingress requires a StatefulSet" }
+      - { id: d, text: "The kubelet must be restarted after creating an Ingress" }
+    answer: [b]
+    explanation: |
+      An Ingress is only a set of rules. An Ingress controller (for example one
+      based on NGINX, Traefik or HAProxy) must be installed to read those rules
+      and actually route traffic. Kubernetes does not ship one by default.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
+    glossary: [ingress, controller]
+
+  - id: kcna-fund-039
+    difficulty: 2
+    type: single
+    question: >-
+      What is the Gateway API?
+    options:
+      - { id: a, text: "The REST API that the kube-apiserver exposes to kubectl" }
+      - { id: b, text: "A component that replaces kube-proxy on every node" }
+      - { id: c, text: "Role-oriented routing APIs: GatewayClass, Gateway, HTTPRoute" }
+      - { id: d, text: "A managed cloud service that routes traffic into clusters" }
+    answer: [c]
+    explanation: |
+      Gateway API is the more expressive successor of Ingress. It separates
+      responsibilities: infrastructure providers define GatewayClasses, cluster
+      operators create Gateways, and application developers attach Routes.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/gateway/
+    glossary: [gateway-api, ingress]
+
+  - id: kcna-fund-040
+    difficulty: 3
+    type: single
+    question: >-
+      Which objects hold the list of network endpoints (Pod IPs and ports) that back a Service?
+    options:
+      - { id: a, text: "ConfigMaps" }
+      - { id: b, text: "NetworkPolicies" }
+      - { id: c, text: "Ingresses" }
+      - { id: d, text: "EndpointSlices" }
+    answer: [d]
+    explanation: |
+      The EndpointSlice controller creates EndpointSlices for each Service with a
+      selector. kube-proxy and other components read them to know where to send
+      traffic. They replace the older Endpoints API and scale better.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/
+    glossary: [endpointslice, service, kube-proxy]
+
+  - id: kcna-fund-041
+    difficulty: 2
+    type: single
+    question: >-
+      By default, with no NetworkPolicy in a Namespace, which traffic is allowed to its Pods?
+    options:
+      - { id: a, text: "All traffic from any Pod in the cluster" }
+      - { id: b, text: "Only traffic from the same Namespace" }
+      - { id: c, text: "No traffic at all" }
+      - { id: d, text: "Only traffic from the control plane" }
+    answer: [a]
+    explanation: |
+      Pods are non-isolated by default: they accept traffic from any source. Once
+      a NetworkPolicy selects a Pod, only the traffic allowed by policies is
+      accepted. The CNI plugin must support NetworkPolicy for it to be enforced.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [network-policy, cni]
+
+  - id: kcna-fund-042
+    difficulty: 2
+    type: single
+    question: >-
+      What happens to the data in an emptyDir volume?
+    options:
+      - { id: a, text: "It is kept on the node forever, even after the Pod is deleted" }
+      - { id: b, text: "It is copied to etcd so the Pod can get it back on another node" }
+      - { id: c, text: "It survives container restarts but is deleted when the Pod leaves the node" }
+      - { id: d, text: "It is deleted every time one of the Pod's containers restarts" }
+    answer: [c]
+    explanation: |
+      An emptyDir is created when the Pod is assigned to a node and lives as long
+      as the Pod runs there. It is shared by the containers of the Pod and is
+      good for scratch space or caches, not for permanent data.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+    glossary: [volume]
+
+  - id: kcna-fund-043
+    difficulty: 2
+    type: single
+    question: >-
+      What is the relationship between a PersistentVolume (PV) and a PersistentVolumeClaim (PVC)?
+    options:
+      - { id: a, text: "A PV is a request for storage; a PVC is the actual disk" }
+      - { id: b, text: "A PV is storage in the cluster; a PVC is a request that binds to a PV" }
+      - { id: c, text: "They are the same object; PVC is the newer API version" }
+      - { id: d, text: "A PVC is cluster-wide storage; a PV belongs to one Namespace" }
+    answer: [b]
+    explanation: |
+      Administrators or a provisioner create PVs. Developers create PVCs that ask
+      for a size and access mode. Kubernetes binds the PVC to a suitable PV, and
+      Pods mount the PVC by name.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+    glossary: [persistent-volume, pvc]
+
+  - id: kcna-fund-044
+    difficulty: 2
+    type: single
+    question: >-
+      What makes dynamic provisioning of volumes possible?
+    options:
+      - { id: a, text: "A StorageClass with a provisioner, referenced by PVCs" }
+      - { id: b, text: "A DaemonSet that creates hostPath volumes on every node" }
+      - { id: c, text: "A ConfigMap that lists the disk sizes for each Namespace" }
+      - { id: d, text: "The kube-scheduler, which creates disks when Pods start" }
+    answer: [a]
+    explanation: |
+      When a PVC references a StorageClass, its provisioner (often a CSI driver)
+      creates a new PV automatically. Administrators no longer need to create PVs
+      by hand.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/storage-classes/
+    glossary: [storage-class, pvc, csi]
+
+  - id: kcna-fund-045
+    difficulty: 3
+    type: single
+    question: >-
+      Which access mode lets a volume be mounted as read-write by a single node?
+    options:
+      - { id: a, text: "ReadOnlyMany" }
+      - { id: b, text: "ReadWriteMany" }
+      - { id: c, text: "ReadWriteNode" }
+      - { id: d, text: "ReadWriteOnce" }
+    answer: [d]
+    explanation: |
+      ReadWriteOnce (RWO) allows read-write by one node, and several Pods on that
+      node can still use it. ReadWriteOncePod restricts it to a single Pod.
+      ReadOnlyMany and ReadWriteMany allow many nodes.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+    glossary: [persistent-volume]
+
+  - id: kcna-fund-046
+    difficulty: 3
+    type: single
+    question: >-
+      A PersistentVolume has the reclaim policy Retain. What happens when its claim is deleted?
+    options:
+      - { id: a, text: "The PV and its data are deleted immediately" }
+      - { id: b, text: "The data is erased and the PV is offered to a new claim" }
+      - { id: c, text: "The PV keeps its data and an administrator must reclaim it" }
+      - { id: d, text: "The PVC is recreated automatically with the same name" }
+    answer: [c]
+    explanation: |
+      Retain keeps the volume and data so an administrator can recover them.
+      Delete removes the PV and the underlying storage. Dynamically provisioned
+      volumes usually default to Delete.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
+    glossary: [persistent-volume, pvc]
+
+  - id: kcna-fund-047
+    difficulty: 3
+    type: single
+    question: >-
+      A Pod reads a ConfigMap value through an environment variable. You change the ConfigMap. What does the running container see?
+    options:
+      - { id: a, text: "The new value, because the kubelet updates env vars in place" }
+      - { id: b, text: "The old value, because env vars are set when the container starts" }
+      - { id: c, text: "An empty value until the ConfigMap is synced again" }
+      - { id: d, text: "The container is restarted automatically with the new value" }
+    answer: [b]
+    explanation: |
+      Environment variables are read only at container start, so you must
+      restart the Pod. A ConfigMap mounted as a volume (without subPath) is
+      updated in the container eventually.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/configmap/
+    glossary: [configmap]
+
+  - id: kcna-fund-048
+    difficulty: 2
+    type: single
+    question: >-
+      What is the difference between a Role and a ClusterRole in RBAC?
+    options:
+      - { id: a, text: "A Role works in one Namespace; a ClusterRole can cover the whole cluster" }
+      - { id: b, text: "A Role is for human users; a ClusterRole is only for ServiceAccounts" }
+      - { id: c, text: "A Role allows actions; a ClusterRole can only deny actions" }
+      - { id: d, text: "A Role needs a RoleBinding; a ClusterRole works without any binding" }
+    answer: [a]
+    explanation: |
+      Roles are namespaced. ClusterRoles are not, so they can cover cluster-scoped
+      resources such as nodes. A RoleBinding can reference a ClusterRole to grant
+      its permissions inside a single Namespace. RBAC rules only add permissions.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [rbac, namespace]
+
+  - id: kcna-fund-049
+    difficulty: 2
+    type: single
+    question: >-
+      Which object connects a Role to a user, group or ServiceAccount?
+    options:
+      - { id: a, text: "RoleAssignment" }
+      - { id: b, text: "ServiceAccountToken" }
+      - { id: c, text: "NetworkPolicy" }
+      - { id: d, text: "RoleBinding" }
+    answer: [d]
+    explanation: |
+      A RoleBinding grants the permissions of a Role (or ClusterRole) to subjects
+      in a Namespace. A ClusterRoleBinding grants a ClusterRole across the whole
+      cluster.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding
+    glossary: [rbac, service-account]
+
+  - id: kcna-fund-050
+    difficulty: 2
+    type: single
+    question: >-
+      What identity does a process running inside a Pod use when it calls the Kubernetes API?
+    options:
+      - { id: a, text: "The identity of the node's administrator" }
+      - { id: b, text: "The kubelet's certificate" }
+      - { id: c, text: "A ServiceAccount" }
+      - { id: d, text: "No identity; Pods cannot call the API" }
+    answer: [c]
+    explanation: |
+      ServiceAccounts are identities for workloads. Every Namespace has a default
+      ServiceAccount, and Pods receive a short-lived token for it. You grant
+      permissions to a ServiceAccount with RBAC.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/service-accounts/
+    glossary: [service-account, rbac]
+
+  - id: kcna-fund-051
+    difficulty: 3
+    type: single
+    question: >-
+      In which order does the API server process a request to create an object?
+    options:
+      - { id: a, text: "Admission control, authentication, authorization, then storage in etcd" }
+      - { id: b, text: "Authentication, authorization, admission control, then storage in etcd" }
+      - { id: c, text: "Authorization, authentication, admission control, then storage in etcd" }
+      - { id: d, text: "Storage in etcd, then authentication and authorization in the background" }
+    answer: [b]
+    explanation: |
+      First the API server checks who you are (authentication), then whether you
+      may do this (authorization, for example RBAC), then admission controllers
+      can modify (mutating) or reject (validating) the request. Only then is the
+      object persisted.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/controlling-access/
+    glossary: [admission-controller, rbac, etcd]
+
+  - id: kcna-fund-052
+    difficulty: 3
+    type: single
+    question: >-
+      Which are the three policy levels of the Pod Security Standards?
+    options:
+      - { id: a, text: "Low, Medium and High" }
+      - { id: b, text: "Open, Default and Locked" }
+      - { id: c, text: "Privileged, Baseline and Restricted" }
+      - { id: d, text: "Permissive, Standard and Hardened" }
+    answer: [c]
+    explanation: |
+      Privileged is unrestricted. Baseline blocks known privilege escalations.
+      Restricted follows current hardening best practices. The built-in Pod
+      Security Admission controller enforces them through Namespace labels.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [pod-security, admission-controller]
+
+  - id: kcna-fund-053
+    difficulty: 2
+    type: single
+    question: >-
+      Where do you set options such as runAsNonRoot or readOnlyRootFilesystem for a container?
+    options:
+      - { id: a, text: "In the securityContext of the Pod or container" }
+      - { id: b, text: "In a ConfigMap mounted into the container" }
+      - { id: c, text: "In the PodSecurity labels of the Namespace" }
+      - { id: d, text: "In the user section of the kubeconfig file" }
+    answer: [a]
+    explanation: |
+      securityContext defines privilege and access settings: user and group IDs,
+      Linux capabilities, privilege escalation, read-only root filesystem and
+      more. It can be set at Pod level and overridden per container.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    glossary: [security-context]
+
+  - id: kcna-fund-054
+    difficulty: 3
+    type: single
+    question: >-
+      What is a static Pod?
+    options:
+      - { id: a, text: "A Pod with a fixed name and storage, created by a StatefulSet" }
+      - { id: b, text: "A Pod that cannot be restarted or rescheduled by any controller" }
+      - { id: c, text: "A Pod pinned to one node with a nodeSelector" }
+      - { id: d, text: "A Pod run by the kubelet from a file on the node, without the API server" }
+    answer: [d]
+    explanation: |
+      The kubelet watches a directory (often /etc/kubernetes/manifests) and runs
+      the Pods defined there. kubeadm uses static Pods to run the control plane
+      components. The API server shows a read-only mirror Pod for each one.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
+    glossary: [static-pod, kubelet]
+
+  - id: kcna-fund-055
+    difficulty: 3
+    type: single
+    question: >-
+      Why do production etcd clusters usually have an odd number of members, such as 3 or 5?
+    options:
+      - { id: a, text: "etcd refuses to start when the number of members is even" }
+      - { id: b, text: "etcd needs a majority, and an even member adds no fault tolerance" }
+      - { id: c, text: "Odd numbers let etcd split data evenly across availability zones" }
+      - { id: d, text: "The leader must be the middle member, which needs an odd count" }
+    answer: [b]
+    explanation: |
+      etcd uses the Raft consensus algorithm and needs a majority of members. A
+      3-member cluster survives 1 failure, and a 4-member cluster also survives
+      only 1. A 5-member cluster survives 2.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+    glossary: [etcd]
+
+  - id: kcna-fund-056
+    difficulty: 1
+    type: single
+    question: >-
+      A container keeps crashing and restarting. Which command shows the logs of the previous, crashed instance?
+    options:
+      - { id: a, text: "kubectl logs mypod --previous" }
+      - { id: b, text: "kubectl describe logs mypod" }
+      - { id: c, text: "kubectl get logs mypod" }
+      - { id: d, text: "kubectl events mypod --crash" }
+    answer: [a]
+    explanation: |
+      kubectl logs --previous (or -p) prints the logs of the last terminated
+      container. Use -c to pick a container in a multi-container Pod.
+    docs:
+      - https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/
+    glossary: [kubectl]
+
+  - id: kcna-fund-057
+    difficulty: 1
+    type: single
+    question: >-
+      Which command gives a detailed view of a Pod, including its recent events such as scheduling failures or image pull errors?
+    options:
+      - { id: a, text: "kubectl top pod" }
+      - { id: b, text: "kubectl explain pod" }
+      - { id: c, text: "kubectl describe pod" }
+      - { id: d, text: "kubectl api-versions" }
+    answer: [c]
+    explanation: |
+      kubectl describe shows the object's configuration, status, conditions and
+      related events. It is usually the first command to run when a Pod is not
+      starting.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+    glossary: [kubectl]
+
+  - id: kcna-fund-058
+    difficulty: 2
+    type: single
+    question: >-
+      You delete a Deployment. What happens to its ReplicaSets and Pods by default?
+    options:
+      - { id: a, text: "They keep running, because ReplicaSets have no owner" }
+      - { id: b, text: "They are moved to the default Namespace and keep running" }
+      - { id: c, text: "Only the ReplicaSets are deleted; the Pods keep running" }
+      - { id: d, text: "They are deleted too, by cascading garbage collection" }
+    answer: [d]
+    explanation: |
+      Dependent objects have ownerReferences that point to their owner. When the
+      owner is deleted, the garbage collector removes the dependents (cascading
+      deletion). You can choose orphan deletion to keep them.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/garbage-collection/
+    glossary: [deployment, replicaset]
+
+  - id: kcna-fund-059
+    difficulty: 2
+    type: single
+    question: >-
+      What does a kubeconfig file contain?
+    options:
+      - { id: a, text: "Clusters, users and contexts that kubectl uses to connect" }
+      - { id: b, text: "The list of all Pods and nodes in the cluster" }
+      - { id: c, text: "The RBAC Roles that the API server applies to each user" }
+      - { id: d, text: "The kubelet settings for every node in the cluster" }
+    answer: [a]
+    explanation: |
+      A kubeconfig file (by default ~/.kube/config) defines clusters, user
+      credentials and contexts. A context joins a cluster, a user and an optional
+      default Namespace. kubectl config use-context switches between them.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+    glossary: [kubeconfig, kubectl]
+
+  - id: kcna-fund-060
+    difficulty: 2
+    type: single
+    question: >-
+      What is a CustomResourceDefinition (CRD) used for?
+    options:
+      - { id: a, text: "To patch the API server code with a new feature" }
+      - { id: b, text: "To add a new resource type to the Kubernetes API" }
+      - { id: c, text: "To define the base image used by custom containers" }
+      - { id: d, text: "To create human users with custom permissions" }
+    answer: [b]
+    explanation: |
+      A CRD registers a new kind (for example Certificate or Database) that you can
+      manage with kubectl like built-in objects. A custom controller usually
+      watches these objects and acts on them.
+    docs:
+      - https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
+    glossary: [crd, controller]
+
+  - id: kcna-fund-061
+    difficulty: 2
+    type: single
+    question: >-
+      What is a Kubernetes Operator?
+    options:
+      - { id: a, text: "A person who has cluster-admin rights and runs kubectl" }
+      - { id: b, text: "A special node type that runs only system workloads" }
+      - { id: c, text: "Custom resources plus a controller that automate running an app" }
+      - { id: d, text: "A built-in controller that upgrades the Kubernetes version" }
+    answer: [c]
+    explanation: |
+      Operators encode the knowledge of a human operator in software. For
+      example, a database Operator can create clusters, handle failover and run
+      backups when you create or change a custom resource.
+    docs:
+      - https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
+    glossary: [operator, crd, controller]
+
+  - id: kcna-fund-062
+    difficulty: 2
+    type: single
+    question: >-
+      Which component runs on every worker node? Choose the most complete answer.
+    options:
+      - { id: a, text: "etcd, kube-apiserver and a container runtime" }
+      - { id: b, text: "kube-scheduler and kube-controller-manager" }
+      - { id: c, text: "cloud-controller-manager and CoreDNS only" }
+      - { id: d, text: "kubelet, a container runtime and kube-proxy" }
+    answer: [d]
+    explanation: |
+      Worker nodes run the kubelet, a container runtime such as containerd, and
+      normally kube-proxy (some network plugins replace it). etcd, the API
+      server, the scheduler and the controller managers are control plane
+      components.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/components/
+    glossary: [kubelet, container-runtime, kube-proxy, node]
+
+  - id: kcna-fund-063
+    difficulty: 3
+    type: single
+    question: >-
+      Why can you run several kube-apiserver instances at the same time for high availability?
+    options:
+      - { id: a, text: "Because the API server is stateless; all state is in etcd" }
+      - { id: b, text: "Because each instance has its own copy of the data" }
+      - { id: c, text: "Because only one instance accepts requests at a time" }
+      - { id: d, text: "You cannot; only one API server is allowed" }
+    answer: [a]
+    explanation: |
+      The API server keeps no state of its own, so you can put several instances
+      behind a load balancer. The scheduler and controller manager also run in
+      several copies, but use leader election so only one is active.
+    docs:
+      - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/
+    glossary: [kube-apiserver, etcd]
+
+  - id: kcna-fund-064
+    difficulty: 2
+    type: single
+    question: >-
+      Which tool is the official way to bootstrap a minimum viable Kubernetes cluster on existing machines?
+    options:
+      - { id: a, text: "Helm" }
+      - { id: b, text: "kubeadm" }
+      - { id: c, text: "kubectl" }
+      - { id: d, text: "Kustomize" }
+    answer: [b]
+    explanation: |
+      kubeadm init sets up a control plane node and kubeadm join adds nodes. It
+      focuses on bootstrapping, not on provisioning machines or installing
+      add-ons such as a CNI plugin.
+    docs:
+      - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/
+    glossary: [control-plane]
+
+  - id: kcna-fund-065
+    difficulty: 2
+    type: multiple
+    question: >-
+      Which TWO of the following resources are cluster-scoped, meaning they do not belong to any Namespace?
+    options:
+      - { id: a, text: "Node" }
+      - { id: b, text: "Pod" }
+      - { id: c, text: "PersistentVolume" }
+      - { id: d, text: "PersistentVolumeClaim" }
+      - { id: e, text: "Deployment" }
+    answer: [a, c]
+    explanation: |
+      Nodes, PersistentVolumes, Namespaces themselves, ClusterRoles and
+      StorageClasses are cluster-scoped. Pods, PVCs and Deployments live in a
+      Namespace. kubectl api-resources --namespaced=false lists cluster-scoped
+      types.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#not-all-objects-are-in-a-namespace
+    glossary: [namespace, persistent-volume, pvc, node]
+
+  - id: kcna-fund-066
+    difficulty: 3
+    type: multiple
+    question: >-
+      Which TWO statements about a Pod's restartPolicy are true?
+    options:
+      - { id: a, text: "The default restartPolicy for a Pod is Always" }
+      - { id: b, text: "restartPolicy moves Pods to a new node after a failure" }
+      - { id: c, text: "Pods created by a Job must use OnFailure or Never" }
+      - { id: d, text: "restartPolicy is set on the Service" }
+    answer: [a, c]
+    explanation: |
+      restartPolicy can be Always (default), OnFailure or Never, and the kubelet
+      applies it to containers on the same node. Jobs run to completion, so their
+      Pod template must use OnFailure or Never. Rescheduling to another node is
+      done by controllers, which create new Pods.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+    glossary: [job, kubelet]

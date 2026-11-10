@@ -21,8 +21,8 @@ questions:
     type: single                    # single | multiple
     question: What is the smallest deployable unit ...?
     options:                        # 2 to 6 options, ids a..f
-      - { id: a, text: A container }
-      - { id: b, text: A Pod }
+      - { id: a, text: "A container" }   # always quote: commas break flow style
+      - { id: b, text: "A Pod" }
     answer: [b]                     # list; exactly 1 id for single, 2+ for multiple
     explanation: |                  # why the answer is right (and others wrong)
       ...
@@ -38,4 +38,7 @@ questions:
    from the public curriculum and documentation.
 2. Write in clear, simple English. The project is also for practising English.
 3. Every question needs an explanation and at least one official docs link.
-4. Run `python scripts/validate_content.py` before opening a pull request.
+4. Keep options similar in length and make wrong options plausible (real
+   concepts used in the wrong place). The validator warns when the right answer
+   is much longer than every distractor.
+5. Run `python scripts/validate_content.py` before opening a pull request.

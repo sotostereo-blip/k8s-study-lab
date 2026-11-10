@@ -5,10 +5,10 @@ questions:
     type: single
     question: Which interface allows the kubelet to work with different container runtimes such as containerd or CRI-O?
     options:
-      - { id: a, text: Container Network Interface (CNI) }
-      - { id: b, text: Container Storage Interface (CSI) }
-      - { id: c, text: Container Runtime Interface (CRI) }
-      - { id: d, text: Open Container Initiative (OCI) }
+      - { id: a, text: "Container Network Interface (CNI)" }
+      - { id: b, text: "Container Storage Interface (CSI)" }
+      - { id: c, text: "Container Runtime Interface (CRI)" }
+      - { id: d, text: "Open Container Initiative (OCI)" }
     answer: [c]
     explanation: |
       The CRI is a gRPC API between the kubelet and the container runtime.
@@ -23,10 +23,10 @@ questions:
     type: single
     question: A container's liveness probe fails repeatedly. What does Kubernetes do?
     options:
-      - { id: a, text: It removes the Pod from the Service endpoints but keeps the container running. }
-      - { id: b, text: The kubelet restarts the container according to the Pod's restart policy. }
-      - { id: c, text: The scheduler moves the Pod to a different node. }
-      - { id: d, text: Nothing; liveness probes only write events to the log. }
+      - { id: a, text: "It removes the Pod from the Service endpoints but keeps the container running." }
+      - { id: b, text: "The kubelet restarts the container according to the Pod's restart policy." }
+      - { id: c, text: "The scheduler moves the Pod to a different node." }
+      - { id: d, text: "Nothing; liveness probes only write events to the log." }
     answer: [b]
     explanation: |
       When a liveness probe fails past its failure threshold, the kubelet kills
@@ -41,10 +41,10 @@ questions:
     type: single
     question: You want exactly one copy of a log-collection agent running on every node in the cluster, including nodes added later. Which resource fits best?
     options:
-      - { id: a, text: Deployment with replicas equal to the number of nodes }
-      - { id: b, text: DaemonSet }
-      - { id: c, text: StatefulSet }
-      - { id: d, text: CronJob }
+      - { id: a, text: "Deployment with replicas equal to the number of nodes" }
+      - { id: b, text: "DaemonSet" }
+      - { id: c, text: "StatefulSet" }
+      - { id: d, text: "CronJob" }
     answer: [b]
     explanation: |
       A DaemonSet ensures that all (or selected) nodes run one copy of a Pod.
@@ -54,3 +54,741 @@ questions:
     docs:
       - https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
     glossary: [daemonset, node]
+
+  - id: kcna-orch-004
+    difficulty: 1
+    type: single
+    question: >-
+      What is a main difference between containers and virtual machines?
+    options:
+      - { id: a, text: "Containers share the host kernel; each virtual machine runs its own kernel" }
+      - { id: b, text: "Containers need a hypervisor; virtual machines run directly on the kernel" }
+      - { id: c, text: "Virtual machines start faster because they do not load an operating system" }
+      - { id: d, text: "Containers include a full guest operating system; VMs do not" }
+    answer: [a]
+    explanation: |
+      Containers are isolated processes on a shared kernel, so they are light and
+      start in seconds. Virtual machines emulate hardware and run a full guest
+      OS, which gives stronger isolation but uses more resources.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/
+    glossary: [container]
+
+  - id: kcna-orch-005
+    difficulty: 2
+    type: single
+    question: >-
+      Which Linux kernel features make container isolation and resource limits possible?
+    options:
+      - { id: a, text: "Swap space for isolation and huge pages for resource limits" }
+      - { id: b, text: "Namespaces for isolation and cgroups for resource limits" }
+      - { id: c, text: "systemd units for isolation and SELinux for resource limits" }
+      - { id: d, text: "chroot for isolation and the kubelet for resource limits" }
+    answer: [b]
+    explanation: |
+      Linux namespaces give a process its own view of PIDs, network, mounts and
+      more. Control groups (cgroups) limit and account CPU, memory and I/O.
+      Kubernetes requests and limits are enforced through cgroups.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/cgroups/
+    glossary: [container, cgroups]
+
+  - id: kcna-orch-006
+    difficulty: 1
+    type: single
+    question: >-
+      What is a container image?
+    options:
+      - { id: a, text: "A running process with its own filesystem and network namespace" }
+      - { id: b, text: "A snapshot of a running container's memory, used for live migration" }
+      - { id: c, text: "A read-only, layered package of an app and its dependencies" }
+      - { id: d, text: "A virtual disk that contains a full guest operating system" }
+    answer: [c]
+    explanation: |
+      An image bundles the application, libraries and configuration in stacked
+      layers. Layers are shared and cached, which saves space and speeds up
+      downloads. A container is a running instance of an image.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/
+    glossary: [image, container]
+
+  - id: kcna-orch-007
+    difficulty: 2
+    type: single
+    question: >-
+      Why is it safer to reference an image by digest (for example nginx@sha256:...) than by a tag such as nginx:1.27?
+    options:
+      - { id: a, text: "Digests are cached on nodes, while tags are downloaded every time" }
+      - { id: b, text: "Tags are deprecated in Kubernetes and will be removed in a future release" }
+      - { id: c, text: "Digests let the kubelet pull the image without registry credentials" }
+      - { id: d, text: "A digest always points to the same content; a tag can be moved" }
+    answer: [d]
+    explanation: |
+      Tags are mutable labels. Someone can push a new image with the same tag.
+      A digest is a hash of the content, so you always get exactly the same
+      image, which improves reproducibility and security.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/#image-names
+    glossary: [image, digest]
+
+  - id: kcna-orch-008
+    difficulty: 3
+    type: single
+    question: >-
+      A container uses the image myapp:latest and no imagePullPolicy is set. Which policy does Kubernetes apply?
+    options:
+      - { id: a, text: "Always" }
+      - { id: b, text: "IfNotPresent" }
+      - { id: c, text: "Never" }
+      - { id: d, text: "OnFailure" }
+    answer: [a]
+    explanation: |
+      If the tag is :latest or missing, the default is Always. For any other tag
+      the default is IfNotPresent. Using :latest in production is discouraged
+      because you cannot tell which version is running.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
+    glossary: [image]
+
+  - id: kcna-orch-009
+    difficulty: 1
+    type: single
+    question: >-
+      Where are container images usually stored so that nodes can pull them?
+    options:
+      - { id: a, text: "In etcd, next to the Deployment objects that use them" }
+      - { id: b, text: "In a container registry, such as Harbor or a cloud registry" }
+      - { id: c, text: "In a ConfigMap that every node mounts at startup" }
+      - { id: d, text: "On the control plane disk, shared to nodes over NFS" }
+    answer: [b]
+    explanation: |
+      A registry stores and serves images. For private registries, Pods use
+      imagePullSecrets to authenticate. Harbor is a CNCF project that provides a
+      registry with scanning and signing.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/
+    glossary: [registry, image]
+
+  - id: kcna-orch-010
+    difficulty: 2
+    type: single
+    question: >-
+      What does the Open Container Initiative (OCI) define?
+    options:
+      - { id: a, text: "The Kubernetes API and the schemas of its objects" }
+      - { id: b, text: "The rules for CNCF project maturity and graduation" }
+      - { id: c, text: "Open standards for container images and runtimes" }
+      - { id: d, text: "The networking interface that CNI plugins implement" }
+    answer: [c]
+    explanation: |
+      The OCI publishes the image, runtime and distribution specifications. Thanks
+      to them, an image built with one tool can run with any compliant runtime.
+    docs:
+      - https://opencontainers.org/
+    glossary: [oci, image]
+
+  - id: kcna-orch-011
+    difficulty: 3
+    type: single
+    question: >-
+      What is runc?
+    options:
+      - { id: a, text: "A Kubernetes controller that restarts crashed containers" }
+      - { id: b, text: "A container registry for storing images inside the cluster" }
+      - { id: c, text: "A CNI plugin that gives each Pod an IP address" }
+      - { id: d, text: "A low-level OCI runtime used by containerd and CRI-O" }
+    answer: [d]
+    explanation: |
+      High-level runtimes such as containerd pull images and manage container
+      lifecycle; they call a low-level runtime, often runc, to actually set up
+      namespaces and cgroups and start the process.
+    docs:
+      - https://github.com/opencontainers/runc
+    glossary: [runc, container-runtime, oci]
+
+  - id: kcna-orch-012
+    difficulty: 3
+    type: single
+    question: >-
+      Which runtimes add stronger isolation than standard containers by using a lightweight VM or a user-space kernel?
+    options:
+      - { id: a, text: "Kata Containers and gVisor" }
+      - { id: b, text: "Helm and Kustomize" }
+      - { id: c, text: "CoreDNS and etcd" }
+      - { id: d, text: "Prometheus and Grafana" }
+    answer: [a]
+    explanation: |
+      Kata Containers runs each Pod in a lightweight VM, and gVisor intercepts
+      system calls with a user-space kernel. In Kubernetes you select such a
+      runtime per Pod with a RuntimeClass.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/runtime-class/
+    glossary: [container-runtime]
+
+  - id: kcna-orch-013
+    difficulty: 2
+    type: single
+    question: >-
+      Since Kubernetes v1.24, what changed about Docker Engine as a container runtime?
+    options:
+      - { id: a, text: "Images built with Docker stopped working and must be rebuilt" }
+      - { id: b, text: "The dockershim was removed; CRI runtimes run Docker-built images fine" }
+      - { id: c, text: "Docker Engine became the default runtime for all distributions" }
+      - { id: d, text: "The kubelet started building images directly from Dockerfiles" }
+    answer: [b]
+    explanation: |
+      Docker Engine does not implement the CRI, so Kubernetes had a shim for it.
+      The shim was removed in v1.24. Images follow the OCI format, so images
+      built with Docker run on any CRI runtime.
+    docs:
+      - https://kubernetes.io/blog/2022/02/17/dockershim-faq/
+    glossary: [cri, container-runtime, oci]
+
+  - id: kcna-orch-014
+    difficulty: 2
+    type: single
+    question: >-
+      What is the benefit of a multi-stage Dockerfile build?
+    options:
+      - { id: a, text: "It runs several containers from one image at the same time" }
+      - { id: b, text: "It builds images for several CPU architectures in one step" }
+      - { id: c, text: "It keeps build tools out of the final image, making it smaller" }
+      - { id: d, text: "It signs and encrypts each layer of the image" }
+    answer: [c]
+    explanation: |
+      You compile in a stage that has compilers and tools, then copy only the
+      result into a minimal final stage, for example a distroless or scratch
+      image.
+    docs:
+      - https://docs.docker.com/build/building/multi-stage/
+    glossary: [image]
+
+  - id: kcna-orch-015
+    difficulty: 2
+    type: single
+    question: >-
+      What is the responsibility of a CNI plugin in a Kubernetes cluster?
+    options:
+      - { id: a, text: "Storing Secrets and mounting them into Pods" }
+      - { id: b, text: "Choosing the node where each Pod will run" }
+      - { id: c, text: "Pulling images from the registry for the kubelet" }
+      - { id: d, text: "Setting up Pod networking, such as giving each Pod an IP" }
+    answer: [d]
+    explanation: |
+      The Container Network Interface defines how plugins configure networking
+      for Pods. Examples include Calico, Cilium and Flannel. Many CNI plugins also
+      enforce NetworkPolicies.
+    docs:
+      - https://kubernetes.io/docs/concepts/cluster-administration/networking/
+    glossary: [cni, pod]
+
+  - id: kcna-orch-016
+    difficulty: 2
+    type: single
+    question: >-
+      Which statement describes the Kubernetes network model?
+    options:
+      - { id: a, text: "Every Pod has its own IP and can reach all other Pods without NAT" }
+      - { id: b, text: "Pods share the node IP and are told apart by port numbers" }
+      - { id: c, text: "Pods can only reach Pods on the same node without a Service" }
+      - { id: d, text: "All Pod-to-Pod traffic must go through an Ingress controller" }
+    answer: [a]
+    explanation: |
+      The model is a flat network: each Pod has a unique cluster-wide IP and can
+      reach any other Pod directly. The CNI plugin implements this model.
+      NetworkPolicies can then restrict traffic.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/
+    glossary: [pod, cni]
+
+  - id: kcna-orch-017
+    difficulty: 2
+    type: single
+    question: >-
+      What does the Container Storage Interface (CSI) provide?
+    options:
+      - { id: a, text: "A standard for storage drivers that live outside Kubernetes code" }
+      - { id: b, text: "A database that stores the container logs of each node" }
+      - { id: c, text: "A cache that keeps image layers close to the nodes for speed" }
+      - { id: d, text: "An encryption layer for Secrets that are stored in etcd" }
+    answer: [a]
+    explanation: |
+      Before CSI, storage plugins lived inside the Kubernetes code base ("in-tree").
+      CSI drivers are developed and released independently and are used through
+      StorageClasses and PVCs.
+    docs:
+      - https://kubernetes-csi.github.io/docs/
+    glossary: [csi, storage-class]
+
+  - id: kcna-orch-018
+    difficulty: 2
+    type: single
+    question: >-
+      What is a service mesh?
+    options:
+      - { id: a, text: "A Service type that load balances traffic between several clusters" }
+      - { id: b, text: "A layer of proxies that manages traffic and security between services" }
+      - { id: c, text: "A physical network design where every node connects to every switch" }
+      - { id: d, text: "A cluster setup with several control planes that share one etcd" }
+    answer: [b]
+    explanation: |
+      A service mesh (for example Istio or Linkerd) has a data plane of proxies,
+      often sidecars, and a control plane that configures them. It gives
+      security, traffic control and observability between services.
+    docs:
+      - https://linkerd.io/what-is-a-service-mesh/
+    glossary: [service-mesh, mtls, sidecar]
+
+  - id: kcna-orch-019
+    difficulty: 2
+    type: single
+    question: >-
+      What does mutual TLS (mTLS) add compared with regular TLS between two services?
+    options:
+      - { id: a, text: "The connection is compressed, so it is faster than regular TLS" }
+      - { id: b, text: "The traffic is encrypted twice, once by each side" }
+      - { id: c, text: "Both client and server present certificates and verify each other" }
+      - { id: d, text: "No certificates are needed, because both sides share a password" }
+    answer: [c]
+    explanation: |
+      In regular TLS only the server proves its identity. In mTLS both sides do,
+      so each service knows exactly who is calling. Service meshes can issue and
+      rotate these certificates automatically.
+    docs:
+      - https://istio.io/latest/docs/concepts/security/
+    glossary: [mtls, service-mesh]
+
+  - id: kcna-orch-020
+    difficulty: 1
+    type: single
+    question: >-
+      A container's readiness probe fails. What happens?
+    options:
+      - { id: a, text: "The kubelet restarts the container after the failure threshold" }
+      - { id: b, text: "The node is cordoned so no new Pods are placed on it" }
+      - { id: c, text: "The Pod is deleted and its controller creates a new one" }
+      - { id: d, text: "The Pod is removed from Service endpoints until the probe passes" }
+    answer: [d]
+    explanation: |
+      Readiness tells Kubernetes whether the Pod can accept traffic. A failing
+      readiness probe does not restart anything; that is the job of the liveness
+      probe.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+    glossary: [probe, endpointslice]
+
+  - id: kcna-orch-021
+    difficulty: 2
+    type: single
+    question: >-
+      An application needs several minutes to start. Which probe prevents the liveness probe from killing it during startup?
+    options:
+      - { id: a, text: "A startup probe" }
+      - { id: b, text: "A readiness probe" }
+      - { id: c, text: "A preStop hook" }
+      - { id: d, text: "An init container" }
+    answer: [a]
+    explanation: |
+      While a startup probe is defined and has not succeeded, liveness and
+      readiness checks are disabled. Once it succeeds, the other probes take
+      over.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+    glossary: [probe]
+
+  - id: kcna-orch-022
+    difficulty: 1
+    type: single
+    question: >-
+      A node fails and its Pods were managed by a Deployment. What does Kubernetes do?
+    options:
+      - { id: a, text: "Nothing until an administrator restarts the node" }
+      - { id: b, text: "The controllers create replacement Pods that are scheduled on healthy nodes" }
+      - { id: c, text: "It moves the running containers with their memory to another node" }
+      - { id: d, text: "It deletes the Deployment" }
+    answer: [b]
+    explanation: |
+      This is self-healing. After the node is marked unreachable and its Pods are
+      evicted, the ReplicaSet sees fewer Pods than desired and creates new ones.
+      Containers are not live-migrated; new Pods start from the image.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/
+    glossary: [deployment, replicaset, node]
+
+  - id: kcna-orch-023
+    difficulty: 3
+    type: single
+    question: >-
+      What does a PodDisruptionBudget (PDB) protect against?
+    options:
+      - { id: a, text: "Node hardware failures that stop all Pods on a machine" }
+      - { id: b, text: "Containers killed because they go over their memory limit" }
+      - { id: c, text: "Network partitions between two or more availability zones" }
+      - { id: d, text: "Voluntary disruptions, such as a drain, taking down too many Pods" }
+    answer: [d]
+    explanation: |
+      A PDB sets minAvailable or maxUnavailable for a set of Pods. Eviction-based
+      operations such as kubectl drain respect it. It cannot prevent involuntary
+      disruptions like a node crash.
+    docs:
+      - https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+    glossary: [pdb, drain]
+
+  - id: kcna-orch-024
+    difficulty: 2
+    type: single
+    question: >-
+      What is the difference between kubectl cordon and kubectl drain?
+    options:
+      - { id: a, text: "cordon only blocks new Pods; drain also evicts the Pods already there" }
+      - { id: b, text: "cordon deletes the node object; drain reboots the machine" }
+      - { id: c, text: "cordon evicts Pods; drain only marks the node unschedulable" }
+      - { id: d, text: "drain only works on control plane nodes; cordon on workers" }
+    answer: [a]
+    explanation: |
+      Before maintenance you usually drain a node, which cordons it and safely
+      evicts Pods (respecting PDBs). When you finish, kubectl uncordon makes it
+      schedulable again.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/
+    glossary: [cordon, drain, node]
+
+  - id: kcna-orch-025
+    difficulty: 3
+    type: single
+    question: >-
+      A node is running out of memory. What can the kubelet do to protect the node?
+    options:
+      - { id: a, text: "Ask the scheduler to move running containers to another node" }
+      - { id: b, text: "Increase the memory limits of all containers on the node" }
+      - { id: c, text: "Evict Pods, starting with those using more than they requested" }
+      - { id: d, text: "Delete the node object so the cloud provider replaces it" }
+    answer: [c]
+    explanation: |
+      Node-pressure eviction lets the kubelet reclaim resources. It ranks Pods
+      by usage compared with requests and by priority, so BestEffort and
+      Burstable Pods that exceed requests go first.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/
+    glossary: [eviction, qos, kubelet]
+
+  - id: kcna-orch-026
+    difficulty: 3
+    type: single
+    question: >-
+      A high-priority Pod cannot be scheduled because the cluster is full. What can Kubernetes do?
+    options:
+      - { id: a, text: "Give the node more CPU from the cloud provider" }
+      - { id: b, text: "Preempt (evict) lower-priority Pods to make room" }
+      - { id: c, text: "Run the Pod on a control plane node instead" }
+      - { id: d, text: "Nothing; priority only changes the order of logs" }
+    answer: [b]
+    explanation: |
+      PriorityClasses give Pods a priority. When a Pod cannot fit, the scheduler
+      may preempt lower-priority Pods on a node so the important Pod can run.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    glossary: [kube-scheduler, eviction]
+
+  - id: kcna-orch-027
+    difficulty: 2
+    type: single
+    question: >-
+      Pods stay Pending because no node has enough free resources. Which component can add nodes automatically?
+    options:
+      - { id: a, text: "The Horizontal Pod Autoscaler (HPA)" }
+      - { id: b, text: "The Vertical Pod Autoscaler (VPA)" }
+      - { id: c, text: "The kube-scheduler with preemption" }
+      - { id: d, text: "A node autoscaler, like Karpenter" }
+    answer: [d]
+    explanation: |
+      Node autoscalers watch for unschedulable Pods and ask the infrastructure
+      provider for more nodes. They also remove underused nodes. The HPA and VPA
+      change Pods, not nodes.
+    docs:
+      - https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/
+    glossary: [cluster-autoscaler, node]
+
+  - id: kcna-orch-028
+    difficulty: 2
+    type: single
+    question: >-
+      What does the Vertical Pod Autoscaler (VPA) adjust?
+    options:
+      - { id: a, text: "The CPU and memory requests of containers, based on usage" }
+      - { id: b, text: "The number of replicas of a Deployment, based on CPU" }
+      - { id: c, text: "The number of nodes in the cluster, based on Pending Pods" }
+      - { id: d, text: "The size of the PersistentVolumes used by the Pods" }
+    answer: [a]
+    explanation: |
+      VPA recommends or applies right-sized requests. It is a separate project,
+      not built into Kubernetes. Using VPA and HPA on the same CPU or memory
+      metric is not recommended because they work against each other.
+    docs:
+      - https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+    glossary: [vpa, request]
+
+  - id: kcna-orch-029
+    difficulty: 3
+    type: single
+    question: >-
+      You want to scale a workload based on the length of a message queue, including scaling to zero when the queue is empty. Which CNCF project is designed for this?
+    options:
+      - { id: a, text: "CoreDNS" }
+      - { id: b, text: "etcd" }
+      - { id: c, text: "KEDA" }
+      - { id: d, text: "Harbor" }
+    answer: [c]
+    explanation: |
+      KEDA (Kubernetes Event-driven Autoscaling) reads event sources such as
+      queues or streams and drives the HPA, adding the ability to scale to and
+      from zero.
+    docs:
+      - https://keda.sh/docs/
+    glossary: [keda, hpa]
+
+  - id: kcna-orch-030
+    difficulty: 2
+    type: single
+    question: >-
+      For the CPU utilization target of a Horizontal Pod Autoscaler to work, what must the containers have?
+    options:
+      - { id: a, text: "CPU limits, because the HPA measures usage against the limit" }
+      - { id: b, text: "A readiness probe, because the HPA only counts ready Pods" }
+      - { id: c, text: "A ServiceAccount allowed to read the Metrics API" }
+      - { id: d, text: "CPU requests, because utilization is a percentage of the request" }
+    answer: [d]
+    explanation: |
+      The HPA compares current usage with the request. It also needs a metrics
+      source, normally metrics-server, to read CPU and memory usage.
+    docs:
+      - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+    glossary: [hpa, request]
+
+  - id: kcna-orch-031
+    difficulty: 1
+    type: single
+    question: >-
+      Which practice improves container security?
+    options:
+      - { id: a, text: "Running the application as a non-root user" }
+      - { id: b, text: "Using privileged containers by default" }
+      - { id: c, text: "Storing passwords in the image" }
+      - { id: d, text: "Always using the latest tag" }
+    answer: [a]
+    explanation: |
+      Running as non-root limits damage if the application is compromised. Other
+      good practices are minimal base images, a read-only root filesystem,
+      dropping Linux capabilities and scanning images for vulnerabilities.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [security-context, pod-security]
+
+  - id: kcna-orch-032
+    difficulty: 2
+    type: single
+    question: >-
+      Why is image vulnerability scanning part of a secure container workflow?
+    options:
+      - { id: a, text: "It removes unused layers, which makes each image smaller" }
+      - { id: b, text: "It finds known vulnerabilities in the image's packages" }
+      - { id: c, text: "It replaces RBAC by blocking users who push unsafe images" }
+      - { id: d, text: "It signs the image so that nodes can pull it faster" }
+    answer: [b]
+    explanation: |
+      Scanners compare the packages in each layer against vulnerability databases.
+      Running them in CI and in the registry helps stop vulnerable images from
+      reaching production.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/security-checklist/
+    glossary: [image, registry]
+
+  - id: kcna-orch-033
+    difficulty: 1
+    type: single
+    question: >-
+      What is the main job of a container orchestrator like Kubernetes?
+    options:
+      - { id: a, text: "Writing and compiling application code for different platforms" }
+      - { id: b, text: "Building container images and storing them in a registry" }
+      - { id: c, text: "Automating deployment, scaling, networking and healing of containers" }
+      - { id: d, text: "Replacing the host operating system with a container kernel" }
+    answer: [c]
+    explanation: |
+      An orchestrator decides where containers run, restarts them when they
+      fail, connects them through the network, and scales them. Without it, you
+      would manage containers on each machine by hand.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/
+    glossary: [container]
+
+  - id: kcna-orch-034
+    difficulty: 2
+    type: single
+    question: >-
+      What does the scheduler do after filtering out the nodes that cannot run a Pod?
+    options:
+      - { id: a, text: "It picks a random feasible node to spread the load" }
+      - { id: b, text: "It picks the node with the most free memory, without other checks" }
+      - { id: c, text: "It sends the list to the kubelet, which chooses a node" }
+      - { id: d, text: "It scores the remaining nodes and binds the Pod to the best one" }
+    answer: [d]
+    explanation: |
+      Scheduling has two main steps: filtering (which nodes are feasible) and
+      scoring (which feasible node is best, for example to spread Pods or use
+      resources efficiently). The result is a binding written to the API server.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+    glossary: [kube-scheduler]
+
+  - id: kcna-orch-035
+    difficulty: 2
+    type: single
+    question: >-
+      Which tool lets you run a local Kubernetes cluster using Docker containers as nodes, often for testing and CI?
+    options:
+      - { id: a, text: "kind" }
+      - { id: b, text: "Helm" }
+      - { id: c, text: "Prometheus" }
+      - { id: d, text: "Envoy" }
+    answer: [a]
+    explanation: |
+      kind (Kubernetes IN Docker) runs each node as a container. minikube and
+      k3d are other common options for local clusters.
+    docs:
+      - https://kind.sigs.k8s.io/
+    glossary: [node]
+
+  - id: kcna-orch-036
+    difficulty: 2
+    type: single
+    question: >-
+      In a service mesh, what usually forms the data plane?
+    options:
+      - { id: a, text: "The etcd cluster that stores the mesh configuration" }
+      - { id: b, text: "Proxies, such as Envoy, that handle the actual traffic" }
+      - { id: c, text: "The mesh controller that issues certificates" }
+      - { id: d, text: "The Kubernetes Services that the mesh replaces" }
+    answer: [b]
+    explanation: |
+      The data plane proxies intercept requests between services. The control
+      plane configures them and issues certificates. Some meshes now offer
+      sidecarless modes with per-node proxies.
+    docs:
+      - https://istio.io/latest/docs/ops/deployment/architecture/
+    glossary: [service-mesh, sidecar]
+
+  - id: kcna-orch-037
+    difficulty: 2
+    type: single
+    question: >-
+      What happens to files written inside a container's own filesystem (not a volume) when the container restarts?
+    options:
+      - { id: a, text: "They are kept, because the writable layer is saved on restart" }
+      - { id: b, text: "They are copied to etcd and restored when the container starts" }
+      - { id: c, text: "They are lost, because the container starts again from the image" }
+      - { id: d, text: "They are moved to a PersistentVolume created automatically" }
+    answer: [c]
+    explanation: |
+      The writable container layer is ephemeral. To keep data across restarts,
+      use a volume: emptyDir for the Pod's lifetime, or a PersistentVolumeClaim
+      for data that must survive the Pod.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/volumes/
+    glossary: [volume, pvc]
+
+  - id: kcna-orch-038
+    difficulty: 3
+    type: single
+    question: >-
+      Which projects are examples of CNI plugins?
+    options:
+      - { id: a, text: "Fluentd and Fluent Bit" }
+      - { id: b, text: "Argo CD and Flux" }
+      - { id: c, text: "Jaeger and Zipkin" }
+      - { id: d, text: "Calico, Cilium and Flannel" }
+    answer: [d]
+    explanation: |
+      Calico, Cilium and Flannel implement Pod networking. Fluentd and Fluent Bit
+      collect logs, Argo CD and Flux do GitOps, and Jaeger and Zipkin are tracing
+      systems.
+    docs:
+      - https://kubernetes.io/docs/concepts/cluster-administration/addons/
+    glossary: [cni]
+
+  - id: kcna-orch-039
+    difficulty: 2
+    type: single
+    question: >-
+      What is a RuntimeClass used for?
+    options:
+      - { id: a, text: "To choose the container runtime configuration a Pod uses" }
+      - { id: b, text: "To choose the Kubernetes version a Pod is compatible with" }
+      - { id: c, text: "To set the default CPU and memory limits in a Namespace" }
+      - { id: d, text: "To set the programming language runtime inside an image" }
+    answer: [a]
+    explanation: |
+      A Pod sets runtimeClassName to choose a runtime handler configured on the
+      nodes, such as gVisor or Kata Containers for workloads that need more
+      isolation.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/runtime-class/
+    glossary: [container-runtime]
+
+  - id: kcna-orch-040
+    difficulty: 3
+    type: single
+    question: >-
+      Which feature lets Kubernetes enforce what images can be deployed, for example only signed images from a trusted registry?
+    options:
+      - { id: a, text: "kube-proxy rules that block traffic from unknown registries" }
+      - { id: b, text: "Admission control, with a policy engine such as Gatekeeper or Kyverno" }
+      - { id: c, text: "Liveness probes that check the image signature at startup" }
+      - { id: d, text: "EndpointSlices that only list Pods with approved images" }
+    answer: [b]
+    explanation: |
+      Validating admission webhooks and policies can reject Pods that break your
+      rules. Policy engines like Gatekeeper and Kyverno let you write these rules
+      as Kubernetes objects.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+    glossary: [admission-controller, registry]
+
+  - id: kcna-orch-041
+    difficulty: 2
+    type: multiple
+    question: >-
+      Which TWO of the following are high-level container runtimes that implement the CRI?
+    options:
+      - { id: a, text: "containerd" }
+      - { id: b, text: "CRI-O" }
+      - { id: c, text: "Docker Hub" }
+      - { id: d, text: "Kustomize" }
+      - { id: e, text: "CoreDNS" }
+    answer: [a, b]
+    explanation: |
+      containerd and CRI-O both talk to the kubelet through the CRI and use a
+      low-level runtime such as runc. Docker Hub is a registry, Kustomize manages
+      manifests and CoreDNS is the cluster DNS server.
+    docs:
+      - https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+    glossary: [cri, container-runtime]
+
+  - id: kcna-orch-042
+    difficulty: 2
+    type: multiple
+    question: >-
+      Which TWO probe types can stop traffic or restart a container? Choose the probe that removes the Pod from load balancing and the probe that triggers a restart.
+    options:
+      - { id: a, text: "Readiness probe" }
+      - { id: b, text: "Liveness probe" }
+      - { id: c, text: "Network probe" }
+      - { id: d, text: "Storage probe" }
+    answer: [a, b]
+    explanation: |
+      A failing readiness probe removes the Pod from Service endpoints. A failing
+      liveness probe makes the kubelet restart the container. The third type, the
+      startup probe, delays the other checks until the app has started.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+    glossary: [probe]

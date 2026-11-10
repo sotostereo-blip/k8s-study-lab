@@ -6,7 +6,8 @@
 - [x] Mock exam weighted by official domains, timer, per-domain report
 - [x] Glossary with clickable terms and on-demand Spanish
 - [x] Dashboard: accuracy per domain, due reviews, Spanish usage
-- [ ] Grow the bank to ~150 original questions (target per domain: 66 / 42 / 24 / 18)
+- [x] Grow the bank to 150 original questions (66 / 42 / 24 / 18 per domain)
+- [ ] Second review pass of all questions against current docs
 - [ ] Reading-speed indicator per question (words per minute)
 
 ## Phase 2 — Hands-on labs (CKA first)

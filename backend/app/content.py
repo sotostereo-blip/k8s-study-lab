@@ -5,15 +5,17 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Option(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-f]$")
     text: str
 
 
 class Question(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-z0-9]+-[a-z]+-\d{3}$")
     domain: str = ""
     difficulty: int = Field(ge=1, le=3)
@@ -64,6 +66,7 @@ class Exam(BaseModel):
 
 
 class Term(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: str
     term: str
     match: list[str] = []

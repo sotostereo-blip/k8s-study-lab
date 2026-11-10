@@ -5,10 +5,10 @@ questions:
     type: single
     question: In a GitOps workflow, what is treated as the single source of truth for the desired state of the system?
     options:
-      - { id: a, text: The live state of the cluster }
-      - { id: b, text: A Git repository }
-      - { id: c, text: The CI server's build logs }
-      - { id: d, text: The container registry }
+      - { id: a, text: "The live state of the cluster" }
+      - { id: b, text: "A Git repository" }
+      - { id: c, text: "The CI server's build logs" }
+      - { id: d, text: "The container registry" }
     answer: [b]
     explanation: |
       In GitOps, the desired state is declared in a Git repository. An agent
@@ -24,10 +24,10 @@ questions:
     type: single
     question: What is the main purpose of Helm in the Kubernetes ecosystem?
     options:
-      - { id: a, text: To build container images from a Dockerfile }
-      - { id: b, text: To package, version and install Kubernetes applications as charts }
-      - { id: c, text: To provide a service mesh between microservices }
-      - { id: d, text: To store metrics from the cluster }
+      - { id: a, text: "To build container images from a Dockerfile" }
+      - { id: b, text: "To package and install Kubernetes apps as charts" }
+      - { id: c, text: "To provide a service mesh between microservices" }
+      - { id: d, text: "To store metrics from the cluster" }
     answer: [b]
     explanation: |
       Helm is a package manager for Kubernetes. A chart is a versioned package
@@ -36,3 +36,417 @@ questions:
     docs:
       - https://helm.sh/docs/intro/using_helm/
     glossary: [helm, manifest]
+
+  - id: kcna-deliv-003
+    difficulty: 1
+    type: single
+    question: >-
+      What is the main goal of Continuous Integration (CI)?
+    options:
+      - { id: a, text: "To deploy every commit to production without any human approval" }
+      - { id: b, text: "To merge small changes often and build and test each one automatically" }
+      - { id: c, text: "To monitor production systems and alert the team when errors increase" }
+      - { id: d, text: "To keep a separate long-lived branch for every developer" }
+    answer: [b]
+    explanation: |
+      In CI, developers integrate small changes frequently, and a pipeline builds
+      and tests each change. In cloud native projects the pipeline usually also
+      builds and pushes a container image.
+    docs:
+      - https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment
+    glossary: [ci-cd]
+
+  - id: kcna-deliv-004
+    difficulty: 2
+    type: single
+    question: >-
+      What is the difference between Continuous Delivery and Continuous Deployment?
+    options:
+      - { id: a, text: "Continuous Delivery runs tests; Continuous Deployment skips them to go faster" }
+      - { id: b, text: "Continuous Delivery is for containers; Continuous Deployment is for virtual machines" }
+      - { id: c, text: "In Delivery a person approves the production release; in Deployment it is automatic" }
+      - { id: d, text: "Continuous Deployment builds images; Continuous Delivery only runs tests" }
+    answer: [c]
+    explanation: |
+      Both keep the software always releasable. The difference is the last step:
+      a manual approval (delivery) or a fully automatic release (deployment).
+    docs:
+      - https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment
+    glossary: [ci-cd]
+
+  - id: kcna-deliv-005
+    difficulty: 2
+    type: single
+    question: >-
+      Which are the four OpenGitOps principles?
+    options:
+      - { id: a, text: "Declarative, Versioned and Immutable, Pulled, Reconciled" }
+      - { id: b, text: "Automated, Observable, Secure and Scalable" }
+      - { id: c, text: "Build, Test, Release and Monitor in a pipeline" }
+      - { id: d, text: "Imperative, Versioned, Pushed and Approved" }
+    answer: [a]
+    explanation: |
+      The desired state is declared, stored in a versioned and immutable way (for
+      example in Git), pulled automatically by software agents, and continuously
+      reconciled with the real system.
+    docs:
+      - https://opengitops.dev/
+    glossary: [gitops, reconciliation]
+
+  - id: kcna-deliv-006
+    difficulty: 2
+    type: single
+    question: >-
+      In a pull-based GitOps setup, who applies changes to the cluster?
+    options:
+      - { id: a, text: "The CI pipeline, which runs kubectl apply with cluster admin credentials" }
+      - { id: b, text: "A developer who runs kubectl apply after the pull request is merged" }
+      - { id: c, text: "The container registry, which pushes new images to every node" }
+      - { id: d, text: "An agent inside the cluster that pulls the desired state from Git" }
+    answer: [d]
+    explanation: |
+      Agents like Argo CD or Flux run in the cluster and pull changes. The CI
+      system does not need cluster credentials, which reduces risk, and the agent
+      can detect and correct drift.
+    docs:
+      - https://opengitops.dev/
+    glossary: [gitops]
+
+  - id: kcna-deliv-007
+    difficulty: 1
+    type: single
+    question: >-
+      Which two projects are well-known GitOps tools in the CNCF?
+    options:
+      - { id: a, text: "Prometheus and Thanos" }
+      - { id: b, text: "Argo CD and Flux" }
+      - { id: c, text: "Envoy and Linkerd" }
+      - { id: d, text: "containerd and CRI-O" }
+    answer: [b]
+    explanation: |
+      Argo (including Argo CD) and Flux are both graduated CNCF projects focused
+      on continuous delivery with GitOps.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/
+      - https://fluxcd.io/flux/
+    glossary: [gitops]
+
+  - id: kcna-deliv-008
+    difficulty: 2
+    type: single
+    question: >-
+      Someone changes a Deployment directly with kubectl, so the cluster no longer matches Git. What is this called, and what does a GitOps agent do?
+    options:
+      - { id: a, text: "Drift; the agent detects it and can restore the state in Git" }
+      - { id: b, text: "A rollback; the agent restores the last image from the registry" }
+      - { id: c, text: "A canary; the agent sends a small share of traffic to the change" }
+      - { id: d, text: "A merge conflict; the agent stops syncing until Git is fixed" }
+    answer: [a]
+    explanation: |
+      Drift is any difference between the desired state in Git and the live
+      state. Because GitOps agents reconcile continuously, they report or revert
+      manual changes. The right way to change the cluster is a commit.
+    docs:
+      - https://opengitops.dev/
+    glossary: [gitops, reconciliation]
+
+  - id: kcna-deliv-009
+    difficulty: 2
+    type: single
+    question: >-
+      How do you usually customize a Helm chart for a specific environment?
+    options:
+      - { id: a, text: "By copying the chart and editing its templates for each environment" }
+      - { id: b, text: "By building a separate container image for each environment" }
+      - { id: c, text: "By passing a values file or --set flags that override default values" }
+      - { id: d, text: "By creating a new Namespace with the chart name for each environment" }
+    answer: [c]
+    explanation: |
+      Charts expose settings in values.yaml. You override them with -f
+      my-values.yaml or --set key=value when you install or upgrade a release.
+    docs:
+      - https://helm.sh/docs/chart_template_guide/values_files/
+    glossary: [helm]
+
+  - id: kcna-deliv-010
+    difficulty: 2
+    type: single
+    question: >-
+      A Helm upgrade broke your application. Which command returns the release to an earlier revision?
+    options:
+      - { id: a, text: "helm undo <release> --last" }
+      - { id: b, text: "helm revert <release> --previous" }
+      - { id: c, text: "helm upgrade <release> --restore" }
+      - { id: d, text: "helm rollback <release> <revision>" }
+    answer: [d]
+    explanation: |
+      Helm keeps a history of each release. helm history shows the revisions and
+      helm rollback returns to one of them.
+    docs:
+      - https://helm.sh/docs/helm/helm_rollback/
+    glossary: [helm, rollback]
+
+  - id: kcna-deliv-011
+    difficulty: 2
+    type: single
+    question: >-
+      How does Kustomize customize Kubernetes manifests?
+    options:
+      - { id: a, text: "With a base of plain YAML and overlays that patch it, without templates" }
+      - { id: b, text: "With Go templates that are rendered using a values.yaml file" }
+      - { id: c, text: "With a server-side controller that rewrites objects in etcd" }
+      - { id: d, text: "With a scripting language that generates JSON at deploy time" }
+    answer: [a]
+    explanation: |
+      Kustomize applies patches and transformations to plain manifests. It is
+      built into kubectl: kubectl apply -k <directory>. Helm, in contrast, uses
+      templates.
+    docs:
+      - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+    glossary: [kustomize, manifest]
+
+  - id: kcna-deliv-012
+    difficulty: 2
+    type: single
+    question: >-
+      In a canary deployment, how is a new version released?
+    options:
+      - { id: a, text: "All users are switched to the new version at the same moment" }
+      - { id: b, text: "A small share of traffic goes to the new version first, then it grows" }
+      - { id: c, text: "The old Pods are deleted first, then the new Pods are created" }
+      - { id: d, text: "The new version runs in a test cluster until a manager approves it" }
+    answer: [b]
+    explanation: |
+      A canary limits the impact of a bad release. If errors increase, traffic
+      goes back to the stable version. Tools such as Argo Rollouts and Flagger
+      automate this.
+    docs:
+      - https://argo-rollouts.readthedocs.io/en/stable/
+    glossary: [canary]
+
+  - id: kcna-deliv-013
+    difficulty: 2
+    type: single
+    question: >-
+      What describes a blue-green deployment?
+    options:
+      - { id: a, text: "Pods are replaced one by one, using maxSurge and maxUnavailable" }
+      - { id: b, text: "A small percentage of users gets the new version, then the share grows" }
+      - { id: c, text: "Two full environments run; traffic switches from old to new all at once" }
+      - { id: d, text: "Each new feature is turned on per user with a feature flag" }
+    answer: [c]
+    explanation: |
+      Blue-green gives instant cutover and rollback, at the cost of running two
+      full copies for a while. In Kubernetes you can switch a Service selector
+      from the blue Pods to the green Pods.
+    docs:
+      - https://argo-rollouts.readthedocs.io/en/stable/features/bluegreen/
+    glossary: [blue-green]
+
+  - id: kcna-deliv-014
+    difficulty: 1
+    type: single
+    question: >-
+      What is Infrastructure as Code (IaC)?
+    options:
+      - { id: a, text: "Writing application code that runs directly on the servers" }
+      - { id: b, text: "Documenting every server's configuration in a shared wiki page" }
+      - { id: c, text: "Running all workloads on bare-metal servers instead of the cloud" }
+      - { id: d, text: "Managing infrastructure with versioned files instead of manual changes" }
+    answer: [d]
+    explanation: |
+      IaC tools (for example Terraform, OpenTofu or Crossplane) let you review,
+      version and repeat infrastructure changes. Kubernetes manifests in Git are
+      also a form of IaC.
+    docs:
+      - https://opengitops.dev/
+    glossary: [iac]
+
+  - id: kcna-deliv-015
+    difficulty: 2
+    type: single
+    question: >-
+      Why should a new release use a new image tag instead of overwriting an existing tag?
+    options:
+      - { id: a, text: "A tag then maps to one exact build, so rollbacks are reliable" }
+      - { id: b, text: "Kubernetes refuses to pull an image tag it has pulled before" }
+      - { id: c, text: "A new tag makes the registry compress the image and pull it faster" }
+      - { id: d, text: "Overwriting a tag automatically restarts all Pods that use it" }
+    answer: [a]
+    explanation: |
+      If a tag always means the same content, you know exactly what runs where,
+      and rolling back to the previous tag gives you the previous code. A common
+      practice is to tag images with a version or the Git commit SHA.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/overview/#container-images
+    glossary: [image]
+
+  - id: kcna-deliv-016
+    difficulty: 3
+    type: single
+    question: >-
+      You use GitOps but must not store Secrets in plain text in Git. Which approach helps?
+    options:
+      - { id: a, text: "Encode the Secret with base64 before committing, so it is not readable" }
+      - { id: b, text: "Commit an encrypted Secret (Sealed Secrets, SOPS) or sync it from a vault" }
+      - { id: c, text: "Store the values in a ConfigMap, which is hidden from kubectl get" }
+      - { id: d, text: "Add the values to the container image at build time and keep Git clean" }
+    answer: [b]
+    explanation: |
+      Base64 is not encryption. Sealed Secrets and SOPS keep encrypted data in
+      Git. External Secrets Operator keeps only a reference in Git and reads the
+      value from a vault or cloud secret manager.
+    docs:
+      - https://external-secrets.io/
+      - https://github.com/bitnami-labs/sealed-secrets
+    glossary: [secret, gitops]
+
+  - id: kcna-deliv-017
+    difficulty: 2
+    type: single
+    question: >-
+      What is the purpose of a feature flag?
+    options:
+      - { id: a, text: "To mark a container as privileged when it needs host access" }
+      - { id: b, text: "To label Pods so a Service can select a specific version" }
+      - { id: c, text: "To turn functionality on or off at runtime without a new deployment" }
+      - { id: d, text: "To enable alpha Kubernetes APIs on the API server" }
+    answer: [c]
+    explanation: |
+      Feature flags separate deploying code from releasing features. You can
+      enable a feature for some users, test it, and turn it off fast. OpenFeature
+      is a CNCF project that standardizes the feature flag API.
+    docs:
+      - https://openfeature.dev/
+    glossary: []
+
+  - id: kcna-deliv-018
+    difficulty: 2
+    type: single
+    question: >-
+      What is a Helm chart repository?
+    options:
+      - { id: a, text: "A Git repository that must contain exactly one chart and its source code" }
+      - { id: b, text: "A place to store and share packaged charts, over HTTP or an OCI registry" }
+      - { id: c, text: "A Kubernetes Namespace where Helm installs all releases" }
+      - { id: d, text: "The Secret where Helm keeps the history of each release" }
+    answer: [b]
+    explanation: |
+      You add repositories with helm repo add and search them with helm search.
+      Modern Helm can also push and pull charts as OCI artifacts in container
+      registries.
+    docs:
+      - https://helm.sh/docs/topics/chart_repository/
+    glossary: [helm, registry]
+
+  - id: kcna-deliv-019
+    difficulty: 3
+    type: single
+    question: >-
+      What is "progressive delivery"?
+    options:
+      - { id: a, text: "Exposing a release to more users step by step, with automatic rollback" }
+      - { id: b, text: "Deploying all services in a fixed order, one per day, to reduce risk" }
+      - { id: c, text: "Building container images in several stages so each stage is tested" }
+      - { id: d, text: "Adding nodes to the cluster gradually as more users start to arrive" }
+    answer: [a]
+    explanation: |
+      Progressive delivery extends continuous delivery with controlled exposure.
+      Metrics decide whether to continue or roll back. Argo Rollouts and Flagger
+      are common tools.
+    docs:
+      - https://argo-rollouts.readthedocs.io/en/stable/
+    glossary: [canary, blue-green]
+
+  - id: kcna-deliv-020
+    difficulty: 2
+    type: single
+    question: >-
+      What usually happens at the end of a CI pipeline for a containerized application?
+    options:
+      - { id: a, text: "The pipeline runs kubectl delete on the old Deployment and recreates it" }
+      - { id: b, text: "The source code is copied to every node so the kubelet can build it" }
+      - { id: c, text: "The pipeline takes a backup of etcd before the new version starts" }
+      - { id: d, text: "A tested image is pushed to a registry and the manifests get the new tag" }
+    answer: [d]
+    explanation: |
+      The pipeline builds, tests, scans and pushes an image. In GitOps, it then
+      commits the new tag to the configuration repository, and the in-cluster
+      agent deploys it.
+    docs:
+      - https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment
+    glossary: [ci-cd, registry, gitops]
+
+  - id: kcna-deliv-021
+    difficulty: 2
+    type: single
+    question: >-
+      Why is declarative configuration preferred over imperative commands for delivering applications?
+    options:
+      - { id: a, text: "Declarative files are compiled, so they run faster than kubectl commands" }
+      - { id: b, text: "The desired state lives in files you can review, version and re-apply" }
+      - { id: c, text: "kubectl no longer supports imperative commands such as create or scale" }
+      - { id: d, text: "Declarative configuration does not need the API server or etcd" }
+    answer: [b]
+    explanation: |
+      With declarative configuration you describe what you want, not how to get
+      there. This makes changes repeatable and auditable, and it is a GitOps
+      principle.
+    docs:
+      - https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
+    glossary: [manifest, gitops]
+
+  - id: kcna-deliv-022
+    difficulty: 3
+    type: single
+    question: >-
+      In Argo CD, what is an Application?
+    options:
+      - { id: a, text: "A container image that Argo CD builds from a Git repository" }
+      - { id: b, text: "A Helm repository that Argo CD watches for new chart versions" }
+      - { id: c, text: "A custom resource that maps a Git source to a cluster and Namespace" }
+      - { id: d, text: "A Kubernetes Service that exposes the Argo CD web user interface" }
+    answer: [c]
+    explanation: |
+      Argo CD uses its own CRDs. An Application describes what to deploy and
+      where. Argo CD shows whether it is Synced and Healthy and can sync it
+      automatically.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/core_concepts/
+    glossary: [crd, gitops]
+
+  - id: kcna-deliv-023
+    difficulty: 1
+    type: single
+    question: >-
+      Which tool is often called "the package manager for Kubernetes"?
+    options:
+      - { id: a, text: "Helm" }
+      - { id: b, text: "kubeadm" }
+      - { id: c, text: "Flux" }
+      - { id: d, text: "Kustomize" }
+    answer: [a]
+    explanation: |
+      Helm packages applications as charts with versions and dependencies, much
+      like apt or npm do for other software.
+    docs:
+      - https://helm.sh/
+    glossary: [helm]
+
+  - id: kcna-deliv-024
+    difficulty: 2
+    type: multiple
+    question: >-
+      Which TWO are benefits of storing deployment configuration in Git for GitOps?
+    options:
+      - { id: a, text: "A full audit history of who changed what and when" }
+      - { id: b, text: "Easy rollback by reverting a commit" }
+      - { id: c, text: "No need for tests" }
+      - { id: d, text: "Containers run faster" }
+    answer: [a, b]
+    explanation: |
+      Git gives history, review through pull requests and simple rollback. It
+      does not replace testing or change runtime performance.
+    docs:
+      - https://opengitops.dev/
+    glossary: [gitops]
