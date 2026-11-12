@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-Study environment for Cloud Engineer / DevOps certifications: KCNA, KCSA, CKA, CKAD, CKS and
-HashiCorp Terraform Associate. Owner studies in
+Study environment for Cloud Engineer / DevOps certifications: KCNA, KCSA, CKA, CKAD, CKS,
+HashiCorp Terraform Associate, LFCS, Docker DCA, GitHub Actions GH-200, Argo CAPA, Prometheus PCA,
+AWS SAA-C03, plus DevOps job interview practice in English. Owner studies in
 Spanish but all study content must be in **simple, clear English**.
 
 ## Commands
@@ -25,5 +26,8 @@ Spanish but all study content must be in **simple, clear English**.
 - Certifications offered: `content/certifications.yaml` (multiple-choice `exam` and/or lab `track`).
 - Lab tasks: `content/<track>/tasks/<id>.yaml` (format in `docs/CONTENT_FORMAT.md`), environments in
   `labs/envs/`. Checks inspect real cluster state; verify new tasks on a real lab (fail before, pass after).
+- Interview questions: `content/interviews/<category>.yaml` (key points + spoken model answer).
+- Glossary terms for common words in one area ("workflow", "bucket") set `certs:` so they are
+  only highlighted in that certification.
 - AI features must stay optional: the app must work with no API key.
 - Run the validator and tests before finishing any change.

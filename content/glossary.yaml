@@ -15,6 +15,7 @@ terms:
   - id: node
     term: Node
     match: [node, nodes]
+    certs: [kcna, kcsa, cka, ckad, cks, capa]
     definition: A machine (virtual or physical) that runs Pods. It has a kubelet and a container runtime.
     es: Máquina (virtual o física) que ejecuta Pods.
   - id: control-plane
@@ -55,6 +56,7 @@ terms:
   - id: service
     term: Service
     match: [Service, Services]
+    certs: [kcna, kcsa, cka, ckad, cks, capa]
     definition: A stable network address and name for a set of Pods, with load balancing between them.
     es: Dirección y nombre de red estables para un grupo de Pods, con balanceo de carga.
   - id: ingress
@@ -90,6 +92,7 @@ terms:
   - id: secret
     term: Secret
     match: [Secret, Secrets]
+    certs: [kcna, kcsa, cka, ckad, cks, capa]
     definition: Stores small amounts of sensitive data, such as passwords or tokens.
     es: Guarda pequeñas cantidades de datos sensibles, como contraseñas o tokens.
   - id: rbac
@@ -155,7 +158,7 @@ terms:
   - { id: replicaset, term: ReplicaSet, match: [ReplicaSet, ReplicaSets], definition: "Keeps a stable number of identical Pods running. Deployments manage ReplicaSets for you.", es: "Mantiene un número estable de Pods idénticos; los Deployments lo gestionan." }
   - { id: rolling-update, term: Rolling update, match: [RollingUpdate, rolling update, rollout], definition: "Replacing Pods gradually with a new version so the application stays available.", es: "Reemplazo gradual de Pods por una nueva versión sin cortar el servicio." }
   - { id: rollback, term: Rollback, match: [rollback, roll back, rolls back], definition: "Returning an application to a previous version.", es: "Volver una aplicación a una versión anterior." }
-  - { id: job, term: Job, match: [Job, Jobs], definition: "Runs one or more Pods until a task completes successfully.", es: "Ejecuta Pods hasta que una tarea termina con éxito." }
+  - { id: job, term: Job, match: [Job, Jobs], definition: "Runs one or more Pods until a task completes successfully.", es: "Ejecuta Pods hasta que una tarea termina con éxito.", certs: [kcna, kcsa, cka, ckad, cks, capa] }
   - { id: cronjob, term: CronJob, match: [CronJob, CronJobs], definition: "Creates Jobs on a repeating schedule written in cron format.", es: "Crea Jobs según un horario periódico en formato cron." }
   - { id: init-container, term: Init container, match: [init container, init containers], definition: "A container that runs to completion before the app containers of a Pod start.", es: "Contenedor que se ejecuta y termina antes de que arranquen los contenedores de la app." }
   - { id: sidecar, term: Sidecar, match: [sidecar, sidecars], definition: "A helper container that runs next to the main container in the same Pod.", es: "Contenedor auxiliar que corre junto al principal en el mismo Pod." }

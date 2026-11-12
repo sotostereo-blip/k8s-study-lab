@@ -11,6 +11,13 @@ A local study environment for **Cloud Engineer / DevOps certifications**, built 
 | **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
 | **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
 | **Terraform Associate (004)** — HashiCorp | 152 questions | 17 tasks (Terraform + LocalStack) |
+| **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 30 tasks + mock exam (Ubuntu servers with systemd) |
+| **DCA** — Docker Certified Associate | 120 questions | 23 tasks + mock exam (Docker Engine, Swarm, registry) |
+| **GH-200** — GitHub Actions | 100 questions | 18 tasks + mock exam (Gitea Actions, GitHub compatible) |
+| **CAPA** — Certified Argo Project Associate | 100 questions | 14 tasks + mock exam (Argo CD, Rollouts, Workflows) |
+| **PCA** — Prometheus Certified Associate | 100 questions | 19 tasks + mock exam (Prometheus, Alertmanager, exporters) |
+| **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
+| **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |
 
 Choose the certification in the selector at the top of the page.
 
@@ -18,12 +25,19 @@ Choose the certification in the selector at the top of the page.
   When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
 - **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
 - **Hands-on labs**: choose a task and a real environment starts in Docker with a terminal
-  **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, or with API audit
-  logging for CKS) or Terraform 1.12 with LocalStack, a free local AWS emulator. Solve it,
+  **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, with API audit
+  logging for CKS, or with Argo CD), Ubuntu servers with systemd, a Docker Engine, Gitea with
+  Actions, a Prometheus stack, or Terraform / the AWS CLI with LocalStack, a free local AWS emulator. Solve it,
   press *Check my work*, and the app inspects the real state. Every task was verified on a real
   environment (fails before, passes after the solution). See [labs/README.md](labs/README.md).
-- **Lab mock exams** (CKA, CKAD, CKS): 5, 10 or 15 tasks in one cluster with one countdown,
+- **Lab mock exams** (CKA, CKAD, CKS, LFCS, DCA, GH-200, CAPA, PCA, AWS): 5, 10 or 15 tasks in one lab environment with one countdown,
   graded at the end with partial credit, plus a full review with solutions.
+- **Job interviews in English** (DevOps / Cloud Engineer): hear the question, answer aloud
+  (speech to text in Chrome, or type), tick the key points you covered, listen to a model
+  answer and the likely follow-ups. Timed **mock interviews** open with a behavioral (STAR)
+  question and mix topics; the app tracks your speaking pace (words per minute) and filler
+  words. A **Phrases** tab has spoken English for interviews (buying time, trade-offs,
+  admitting you don't know…).
 - **Built-in English support**, everywhere (questions, labs and mock exams):
   - technical terms (blue, dashed) and everyday exam words such as *ensure*, *by default*
     or *eventually* (amber, dotted) are clickable: simple English definition, example,

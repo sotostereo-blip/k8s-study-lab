@@ -31,7 +31,19 @@
 - [x] Labs on Kubernetes 1.37 (same version as the CKA/CKAD/CKS curriculum)
 - [ ] CKS topics that need a real node: AppArmor, Falco, kube-bench, API server flags
 - [ ] Terraform labs for `depends_on` / `create_before_destroy` (need plan-JSON checks)
-- [ ] Later: AWS (Cloud Practitioner / SAA), Prometheus (PCA), Argo CD (CAPA), GitHub Actions
+- [x] Platform: any lab environment (Linux, Docker, Gitea, Prometheus…), per-environment ready check,
+      mock exams without Kubernetes, glossary terms scoped to certifications
+- [x] DevOps job interviews in English: 135 questions in 11 categories, self-check key points,
+      spoken model answers, speech to text, timed mock interviews, interview phrases
+- [x] LFCS: 80 concept questions + 30 labs on Ubuntu servers with systemd + mock exam
+- [x] Docker DCA: 120 questions + 23 labs (Docker in Docker, Swarm, registry) + mock exam
+- [x] GitHub Actions GH-200: 100 questions + labs on Gitea Actions + mock exam
+- [x] Argo CAPA: 100 questions + 14 labs (Argo CD, Rollouts, Workflows) + mock exam
+- [x] Prometheus PCA: 100 questions + 19 labs (Prometheus, Alertmanager, exporters) + mock exam
+- [x] AWS SAA-C03: 150 questions + 12 AWS CLI labs on LocalStack + mock exam
+- [ ] LFCS storage labs with LVM and swap (need a VM; loop devices are shared in Docker Desktop)
+- [ ] Argo Events labs (EventBus), Grafana dashboard labs
+- [ ] Later: Ansible (RHCE), HashiCorp Vault Associate
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`

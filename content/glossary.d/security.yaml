@@ -268,6 +268,7 @@ terms:
   - Roles
   - ClusterRole
   - ClusterRoles
+  certs: [kcna, kcsa, cka, ckad, cks, capa]
   definition: RBAC object with a list of allowed verbs on resources. A Role is namespaced; a ClusterRole is cluster-wide.
   es: Objeto RBAC con permisos; Role es de un Namespace y ClusterRole de todo el clúster.
 - id: role-binding
