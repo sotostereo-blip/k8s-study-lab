@@ -162,6 +162,24 @@ class LabTrack(BaseModel):
     intro: str | None = None                # "Choosing a lab starts <intro> with a terminal in your browser"
 
 
+class OfficialExam(BaseModel):
+    """Facts about the real exam, from the official page (content/certifications.yaml `official`)."""
+    model_config = ConfigDict(extra="forbid")
+    provider: str                       # who runs the exam
+    format: str                         # multiple choice, performance-based…
+    questions: str                      # "65 questions"; say when the number is not official
+    minutes: int = Field(gt=0)
+    passing: str = ""                   # passing score, and whether it is official
+    cost: str                           # price of the exam alone, in USD
+    includes: list[str] = []            # free retake, simulator sessions…
+    prerequisites: str = "None"         # certification you must hold first
+    valid: str                          # how long the certification lasts
+    renewal: str = ""                   # how to keep it
+    notes: list[str] = []
+    url: str = Field(pattern=r"^https://")
+    checked: str = Field(pattern=r"^\d{4}-\d{2}$")   # month the facts were checked
+
+
 class Certification(BaseModel):
     """What the app offers for one certification (content/certifications.yaml)."""
     model_config = ConfigDict(extra="forbid")
@@ -173,6 +191,7 @@ class Certification(BaseModel):
     track: str | None = None   # hands-on lab track id (content/<id>/labs.yaml)
     interview: bool = False    # interview practice (content/interviews/)
     description: str = ""
+    official: OfficialExam | None = None   # the real exam: questions, time, cost, validity
 
 
 class InterviewCategory(BaseModel):

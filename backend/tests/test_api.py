@@ -325,6 +325,18 @@ def test_certifications_resolve(client):
             assert data["tasks"] and all(t["id"].startswith(c["track"] + "-") for t in data["tasks"])
 
 
+def test_certifications_have_real_exam_facts(client):
+    certs = client.get("/api/certifications").json()
+    for c in certs:
+        if c["interview"]:
+            assert c["official"] is None
+            continue
+        o = c["official"]
+        assert o and o["minutes"] > 0 and o["cost"] and o["valid"] and o["url"].startswith("https://")
+    cks = next(c for c in certs if c["id"] == "cks")
+    assert "CKA" in cks["official"]["prerequisites"]
+
+
 def test_terraform_track_has_no_mock_and_starts_without_kubernetes(tmp_path):
     class TerraformDocker(FakeDocker):
         scripts: list = []

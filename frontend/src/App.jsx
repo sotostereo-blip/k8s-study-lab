@@ -17,6 +17,7 @@ function tabsFor(cert) {
       { id: 'mock-interview', label: 'Mock interview' },
       { id: 'phrases', label: 'Phrases' },
     ] : []),
+    ...(cert?.official ? [{ id: 'real-exam', label: 'Real exam' }] : []),
     { id: 'english', label: 'English' },
     { id: 'glossary', label: 'Glossary' },
   ]
@@ -85,6 +86,7 @@ export default function App() {
         {cert?.interview && current === 'interview' && <InterviewPractice />}
         {cert?.interview && current === 'mock-interview' && <MockInterview />}
         {cert?.interview && current === 'phrases' && <Phrases />}
+        {cert?.official && current === 'real-exam' && <RealExam cert={cert} />}
       </main>
     </div>
     </EnglishContext.Provider>
@@ -183,6 +185,10 @@ function Dashboard({ exam, cert, onGo }) {
       <h1>{exam.name}</h1>
       <p className="sub">{exam.exam_questions} questions · {exam.exam_minutes} minutes · pass with {exam.passing_score}%</p>
       {exam.facts_note && <p className="facts-note">ℹ️ {exam.facts_note}</p>}
+      {cert?.official && (
+        <p className="sub">Real exam: {cert.official.cost} · valid {cert.official.valid} ·{' '}
+          <button className="link" onClick={() => onGo('real-exam')}>all the facts</button></p>
+      )}
       <div className="tiles">
         <div className="tile"><b>{due}</b><span>questions due for review</span></div>
         <div className="tile"><b>{stats.exams[0]?.score ?? '—'}{stats.exams[0] ? '%' : ''}</b><span>last mock exam</span></div>
@@ -206,6 +212,42 @@ function Dashboard({ exam, cert, onGo }) {
         {cert?.track && <button onClick={() => onGo('labs')}>Hands-on labs</button>}
         <button onClick={() => onGo('english')}>Practise exam English</button>
       </div>
+    </section>
+  )
+}
+
+/* ---------- Real exam facts ---------- */
+
+function RealExam({ cert }) {
+  const o = cert.official
+  const hours = o.minutes >= 60 ? ` (${+(o.minutes / 60).toFixed(1)} h)` : ''
+  const rows = [
+    ['Provider', o.provider],
+    ['Format', o.format],
+    ['Questions', o.questions],
+    ['Time', `${o.minutes} minutes${hours}`],
+    ['Passing score', o.passing || 'Not published'],
+    ['Cost', o.cost],
+    ['Prerequisites', o.prerequisites],
+    ['Valid for', o.valid],
+    ['Renewal', o.renewal],
+  ].filter(([, v]) => v)
+  return (
+    <section className="real-exam">
+      <h1>{cert.name}</h1>
+      <p className="sub">The real exam, as described on the official page.</p>
+      <div className="tiles">
+        <div className="tile"><b>{o.minutes}</b><span>minutes</span></div>
+        <div className="tile"><b>{/^USD [\d.]+/.exec(o.cost)?.[0] || 'Varies'}</b><span>exam price</span></div>
+        <div className="tile"><b>{o.valid.split(' (')[0]}</b><span>certification is valid</span></div>
+      </div>
+      <table>
+        <tbody>{rows.map(([k, v]) => <tr key={k}><th>{k}</th><td><EnglishText text={v} /></td></tr>)}</tbody>
+      </table>
+      {o.includes.length > 0 && (<><h2>What you get when you pay</h2><ul>{o.includes.map((x) => <li key={x}><EnglishText text={x} /></li>)}</ul></>)}
+      {o.notes.length > 0 && (<><h2>Good to know</h2><ul>{o.notes.map((x) => <li key={x}><EnglishText text={x} /></li>)}</ul></>)}
+      <p className="facts-note">ℹ️ Checked in {o.checked}. Prices, rules and question counts change: check the{' '}
+        <a href={o.url} target="_blank" rel="noreferrer">official page</a> before you pay or book.</p>
     </section>
   )
 }

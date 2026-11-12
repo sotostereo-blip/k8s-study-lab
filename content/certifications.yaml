@@ -1,6 +1,7 @@
 # The certifications the app offers, in the order shown in the selector.
 # exam  = multiple-choice question bank (content/<exam>/exam.yaml)
 # track = hands-on labs (content/<track>/labs.yaml)
+# official = facts about the real exam, checked against the official page (month in `checked`)
 certifications:
   - id: kcna
     name: Kubernetes and Cloud Native Associate
@@ -8,30 +9,121 @@ certifications:
     area: Kubernetes
     exam: kcna
     description: Multiple choice. Kubernetes and cloud native basics.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Multiple choice, online with a proctor
+      questions: About 60 questions (the number is not on the official page)
+      minutes: 90
+      passing: 75% (reported by candidates, not on the official page)
+      cost: USD 250
+      includes:
+        - One free retake
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/kubernetes-cloud-native-associate/
   - id: kcsa
     name: Kubernetes and Cloud Native Security Associate
     short: KCSA
     area: Kubernetes
     exam: kcsa
     description: Multiple choice. Security of Kubernetes and the cloud native platform.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Multiple choice, online with a proctor
+      questions: About 60 questions (the number is not on the official page)
+      minutes: 90
+      passing: 75% (reported by candidates, not on the official page)
+      cost: USD 250
+      includes:
+        - One free retake
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/kubernetes-and-cloud-native-security-associate-kcsa/
   - id: cka
     name: Certified Kubernetes Administrator
     short: CKA
     area: Kubernetes
     track: cka
     description: Hands-on. Run and fix a real cluster from the command line.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Performance-based. You solve tasks on real clusters from the command line, online with a proctor
+      questions: 15-20 tasks (reported by candidates; the official page gives no number)
+      minutes: 120
+      passing: 66% (official, Linux Foundation FAQ)
+      cost: USD 445
+      includes:
+        - One free retake
+        - Two killer.sh simulator sessions (36 hours each)
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years (certifications earned before April 1, 2024 were valid for 3 years)
+      renewal: Pass the same exam again before your certification expires. If you pass the CKS (on or after June 18, 2026), your CKA is extended to the same date.
+      notes:
+        - You can open the official Kubernetes documentation during the exam.
+        - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/
   - id: ckad
     name: Certified Kubernetes Application Developer
     short: CKAD
     area: Kubernetes
     track: ckad
     description: Hands-on. Build, deploy, configure and debug applications on Kubernetes.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Performance-based. You solve tasks on real clusters from the command line, online with a proctor
+      questions: 15-20 tasks (reported by candidates; the official page gives no number)
+      minutes: 120
+      passing: 66% (official, Linux Foundation FAQ)
+      cost: USD 445
+      includes:
+        - One free retake
+        - Two killer.sh simulator sessions (36 hours each)
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years (certifications earned before April 1, 2024 were valid for 3 years)
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - You can open the official Kubernetes documentation during the exam.
+        - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/certified-kubernetes-application-developer-ckad/
   - id: cks
     name: Certified Kubernetes Security Specialist
     short: CKS
     area: Kubernetes
     track: cks
     description: Hands-on. Secure a cluster and its workloads (requires a passed CKA for the real exam).
+    official:
+      provider: Linux Foundation / CNCF
+      format: Performance-based. You solve tasks on real clusters from the command line, online with a proctor
+      questions: 15-20 tasks (reported by candidates; the official page gives no number)
+      minutes: 120
+      passing: 67% (official, Linux Foundation FAQ)
+      cost: USD 445
+      includes:
+        - One free retake
+        - Two killer.sh simulator sessions (36 hours each)
+        - 12 months to schedule the exam after you buy it
+      prerequisites: You must pass the CKA before you can take the CKS
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - You can open the official Kubernetes documentation and some tool docs during the exam.
+        - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/
   - id: terraform
     name: HashiCorp Certified Terraform Associate (004)
     short: Terraform
@@ -39,6 +131,22 @@ certifications:
     exam: terraform
     track: terraform
     description: Multiple choice exam, plus hands-on labs with Terraform and a local AWS emulator.
+    official:
+      provider: HashiCorp
+      format: Multiple choice and multiple answer, online with a proctor
+      questions: About 57 questions (reported by candidates; HashiCorp does not publish the number)
+      minutes: 60
+      passing: Not published (candidates report about 70%)
+      cost: USD 70.50, plus local taxes
+      includes:
+        - No free retake. If you fail, you pay again.
+      prerequisites: None (HashiCorp recommends basic terminal skills and some Terraform experience)
+      valid: 2 years
+      renewal: Pass the current Associate exam in the last 6 months before it expires, or pass the Terraform Professional exam (USD 200).
+      notes:
+        - Version 004 covers Terraform 1.12. Version 003 was retired in January 2026.
+      checked: "2026-11"
+      url: https://developer.hashicorp.com/certifications/infrastructure-automation
   - id: lfcs
     name: Linux Foundation Certified System Administrator
     short: LFCS
@@ -46,6 +154,24 @@ certifications:
     exam: lfcs
     track: lfcs
     description: Hands-on Linux administration on Ubuntu servers with systemd (labs and mock exam), plus a concept question bank.
+    official:
+      provider: Linux Foundation
+      format: Performance-based. You solve tasks on real Linux servers from the command line, online with a proctor
+      questions: About 17-20 tasks (reported by candidates; the official page gives no number)
+      minutes: 120
+      passing: 67% (reported by candidates, not on the official page)
+      cost: USD 445
+      includes:
+        - One free retake
+        - Two killer.sh simulator sessions (36 hours each)
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - The exam runs on Ubuntu.
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/linux-foundation-certified-sysadmin-lfcs/
   - id: dca
     name: Docker Certified Associate
     short: DCA
@@ -53,6 +179,22 @@ certifications:
     exam: dca
     track: dca
     description: Multiple choice exam (Mirantis), plus hands-on labs on a real Docker Engine with Swarm, Compose and a local registry.
+    official:
+      provider: Mirantis
+      format: Multiple choice, online with a proctor
+      questions: 55 questions (13 multiple choice and 42 DOMC, which show the options one at a time)
+      minutes: 90
+      passing: Not published
+      cost: USD 199 (or EUR 200)
+      includes:
+        - No free retake. You wait 14 days and pay again.
+      prerequisites: None (Mirantis recommends 6 to 12 months of Docker experience)
+      valid: 2 years
+      renewal: Pass the exam again.
+      notes:
+        - In DOMC questions you answer yes or no to each option and cannot go back.
+      checked: "2026-11"
+      url: https://training.mirantis.com/certification/dca-certification-exam/
   - id: gha
     name: GitHub Actions (GH-200)
     short: GH-200
@@ -60,6 +202,22 @@ certifications:
     exam: gha
     track: gha
     description: Multiple choice (Microsoft/GitHub), plus hands-on labs on Gitea Actions, which runs the same workflow syntax.
+    official:
+      provider: Microsoft / GitHub (Pearson VUE)
+      format: Multiple choice and interactive questions, online with a proctor or at a test center
+      questions: About 60-75 questions (not published officially)
+      minutes: 100
+      passing: 700 out of 1000 (Microsoft scaled score)
+      cost: Depends on the country (about USD 99 in the United States)
+      includes:
+        - No free retake. You can retake it 24 hours after the first attempt.
+      prerequisites: None
+      valid: 2 years
+      renewal: GitHub certifications are moving to the Microsoft renewal process. Check the official page before your certification expires.
+      notes:
+        - The exam was updated in January 2026. Old study guides may show different domains.
+      checked: "2026-11"
+      url: https://learn.microsoft.com/en-us/credentials/certifications/github-actions/
   - id: capa
     name: Certified Argo Project Associate
     short: CAPA
@@ -67,6 +225,21 @@ certifications:
     exam: capa
     track: capa
     description: Multiple choice. Argo Workflows, Argo CD, Argo Rollouts and Argo Events, plus hands-on labs on a cluster with Argo and a Git server.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Multiple choice, online with a proctor
+      questions: About 60 questions (the number is not on the official page)
+      minutes: 90
+      passing: 75% (reported by candidates, not on the official page)
+      cost: USD 250
+      includes:
+        - One free retake
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/certified-argo-project-associate-capa/
   - id: pca
     name: Prometheus Certified Associate
     short: PCA
@@ -74,6 +247,21 @@ certifications:
     exam: pca
     track: pca
     description: Multiple choice. PromQL, scraping, instrumentation, alerting and observability concepts, plus hands-on labs on a real Prometheus stack.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Multiple choice, online with a proctor
+      questions: About 60 questions (the number is not on the official page)
+      minutes: 90
+      passing: 75% (reported by candidates, not on the official page)
+      cost: USD 250
+      includes:
+        - One free retake
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/prometheus-certified-associate/
   - id: saa
     name: AWS Certified Solutions Architect - Associate (SAA-C03)
     short: AWS SAA
@@ -81,6 +269,23 @@ certifications:
     exam: saa
     track: saa
     description: Multiple choice scenario questions, plus hands-on AWS CLI labs on LocalStack (a free local AWS emulator).
+    official:
+      provider: Amazon Web Services (Pearson VUE)
+      format: Multiple choice and multiple answer, online with a proctor or at a test center
+      questions: 65 questions (50 count for your score, 15 are unscored test questions)
+      minutes: 130
+      passing: 720 out of 1000 (official scaled score)
+      cost: USD 150
+      includes:
+        - No free retake. You wait 14 days and pay again.
+        - After you pass, you get a 50% discount voucher for your next AWS exam.
+      prerequisites: None (AWS recommends at least 1 year of hands-on experience with AWS)
+      valid: 3 years
+      renewal: Pass the current SAA exam again, or pass the Solutions Architect - Professional exam.
+      notes:
+        - Non-native English speakers can ask for 30 extra minutes (ESL +30) before booking.
+      checked: "2026-11"
+      url: https://aws.amazon.com/certification/certified-solutions-architect-associate/
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

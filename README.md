@@ -19,6 +19,27 @@ A local study environment for **Cloud Engineer / DevOps certifications**, built 
 | **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
 | **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |
 
+### The real exams (checked November 2026)
+
+| Exam | Questions | Time | Price (USD) | Prerequisite | Valid |
+|---|---|---|---|---|---|
+| KCNA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| KCSA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| CKA | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| CKAD | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| CKS | 15-20 hands-on tasks | 2 h | 445, 1 free retake | passed CKA | 2 years |
+| Terraform Associate (004) | ~57 multiple choice | 1 h | 70.50 + tax, no retake | — | 2 years |
+| LFCS | ~17-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| DCA | 55 (13 MC + 42 DOMC) | 90 min | 199, no retake | — | 2 years |
+| GH-200 | ~60-75 multiple choice | 100 min | by country (~99 in the US) | — | 2 years |
+| CAPA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| PCA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| AWS SAA-C03 | 65 multiple choice | 130 min | 150, no retake | — | 3 years |
+
+"~" means the provider does not publish the number. More detail (passing score, renewal, what the price
+includes, official link) is in the **Real exam** tab of each certification and in `content/certifications.yaml`.
+Prices change: check the official page before you pay.
+
 Choose the certification in the selector at the top of the page.
 
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.

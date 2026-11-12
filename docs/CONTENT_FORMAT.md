@@ -24,6 +24,28 @@ content/
 
 A folder can have both (`content/terraform/` has the question bank and the labs).
 
+## Real exam facts (`certifications.yaml` → `official`)
+
+Shown in the **Real exam** tab. Write what the official page says; when a number is not published
+(question count, passing score), say so in the text.
+
+```yaml
+    official:
+      provider: Linux Foundation / CNCF
+      format: Multiple choice, online with a proctor
+      questions: About 60 questions (the number is not on the official page)
+      minutes: 90
+      passing: 75% (reported by candidates, not on the official page)
+      cost: USD 250                       # exam alone; tiles show "USD <n>" or "Varies"
+      includes: [One free retake]         # what the price includes
+      prerequisites: None                 # e.g. "You must pass the CKA before you can take the CKS"
+      valid: 2 years
+      renewal: Pass the same exam again before your certification expires.
+      notes: []
+      checked: "2026-11"                  # month the facts were checked
+      url: https://training.linuxfoundation.org/...
+```
+
 ## Glossary terms
 
 ```yaml

@@ -241,3 +241,9 @@ textarea.answer { width: 100%; font: inherit; color: inherit; background: var(--
 .phrases li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .phrases li > span { flex: 1; }
 .phrases .es { color: var(--muted); font-size: 14px; }
+
+/* real exam facts */
+.real-exam table th { text-align: left; white-space: nowrap; width: 1%; padding-right: 20px; vertical-align: top; }
+.real-exam h2 { font-size: 16px; margin: 20px 0 6px; }
+.real-exam ul { margin: 0 0 12px; padding-left: 20px; line-height: 1.6; }
+@media (max-width: 600px) { .real-exam table th { white-space: normal; } }
