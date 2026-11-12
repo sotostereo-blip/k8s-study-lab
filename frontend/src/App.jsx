@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
+import Labs from './Labs.jsx'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'practice', label: 'Practice' },
   { id: 'exam', label: 'Exam mode' },
+  { id: 'labs', label: 'Labs (CKA)' },
   { id: 'glossary', label: 'Glossary' },
 ]
 
@@ -23,19 +25,20 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <div className="brand"><span className="prompt">$</span> k8s-study-lab <span className="tag">KCNA</span></div>
+        <div className="brand"><span className="prompt">$</span> k8s-study-lab <span className="tag">{tab === 'labs' ? 'CKA' : 'KCNA'}</span></div>
         <nav>
           {TABS.map((t) => (
             <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
           ))}
         </nav>
       </header>
-      <main>
+      <main className={tab === 'labs' ? 'wide' : ''}>
         {error && <p className="error">Cannot reach the API: {error}. Is the backend running on port 8000?</p>}
         {exam && tab === 'dashboard' && <Dashboard exam={exam} onGo={setTab} />}
         {exam && tab === 'practice' && <Practice exam={exam} glossary={glossary} />}
         {exam && tab === 'exam' && <ExamMode exam={exam} glossary={glossary} />}
         {tab === 'glossary' && <GlossaryPage glossary={glossary} />}
+        {tab === 'labs' && <Labs />}
       </main>
     </div>
   )

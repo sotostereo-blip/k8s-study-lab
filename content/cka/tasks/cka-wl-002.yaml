@@ -1,0 +1,31 @@
+id: cka-wl-002
+title: Rolling update and scaling
+domain: workloads-scheduling
+difficulty: 2
+minutes: 7
+environment: single-node
+setup: |
+  kubectl create deployment api --image=nginx:1.26-alpine --replicas=2
+  kubectl rollout status deployment api --timeout=180s
+task: |
+  A Deployment called `api` runs in the `default` namespace with image `nginx:1.26-alpine`.
+
+  1. Update the image to `nginx:1.27-alpine` with a rolling update.
+  2. Scale the Deployment to `4` replicas.
+  3. Save the rollout history of `api` to the file `/root/api-history.txt`.
+checks:
+  - name: Deployment `api` uses image nginx:1.27-alpine
+    run: '[ "$(kubectl get deploy api -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+  - name: 4 replicas are ready
+    run: '[ "$(kubectl get deploy api -o jsonpath="{.status.readyReplicas}")" = 4 ]'
+  - name: Rollout history has at least 2 revisions
+    run: '[ "$(kubectl rollout history deploy/api | grep -cE "^[0-9]+")" -ge 2 ]'
+  - name: /root/api-history.txt contains the rollout history
+    run: grep -q REVISION /root/api-history.txt
+solution: |
+  kubectl set image deployment/api nginx=nginx:1.27-alpine
+  kubectl rollout status deployment api
+  kubectl scale deployment api --replicas=4
+  kubectl rollout history deployment api > /root/api-history.txt
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment

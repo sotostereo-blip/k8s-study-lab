@@ -9,6 +9,8 @@ services:
       - ./backend/app:/app/app      # live reload while developing
       - ./content:/content:ro       # study content (questions, glossary)
       - ./data:/data                # your progress (SQLite), not committed
+      - ./labs:/labs:ro             # hands-on lab environments (k3s + web terminal)
+      - /var/run/docker.sock:/var/run/docker.sock   # lets the backend start/stop labs
   frontend:
     build: ./frontend
     ports: ["5173:5173"]

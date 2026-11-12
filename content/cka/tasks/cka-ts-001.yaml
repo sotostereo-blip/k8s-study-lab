@@ -1,0 +1,25 @@
+id: cka-ts-001
+title: Fix a Deployment that does not start
+domain: troubleshooting
+difficulty: 1
+minutes: 5
+environment: single-node
+setup: |
+  kubectl create deployment broken-web --image=nginx:1.27-alpinee --replicas=2
+task: |
+  The Deployment `broken-web` in `default` should run 2 nginx Pods
+  (`nginx:1.27-alpine`), but its Pods do not start.
+
+  Find the problem and fix it. Both replicas must be ready.
+checks:
+  - name: Deployment `broken-web` has 2 ready replicas
+    run: '[ "$(kubectl get deploy broken-web -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: It uses image nginx:1.27-alpine
+    run: '[ "$(kubectl get deploy broken-web -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+solution: |
+  kubectl get pods                      # STATUS: ErrImagePull / ImagePullBackOff
+  kubectl describe pod -l app=broken-web | grep -A5 Events
+  # the image tag has a typo: nginx:1.27-alpinee
+  kubectl set image deployment/broken-web nginx=nginx:1.27-alpine
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/

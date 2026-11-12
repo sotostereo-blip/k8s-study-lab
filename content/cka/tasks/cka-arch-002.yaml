@@ -1,0 +1,33 @@
+id: cka-arch-002
+title: RBAC for a ServiceAccount
+domain: cluster-architecture
+difficulty: 2
+minutes: 8
+environment: single-node
+task: |
+  1. Create a namespace called `ci`.
+  2. In `ci`, create a ServiceAccount called `deployer`.
+  3. Create a Role called `deploy-manager` in `ci` that allows the verbs
+     `get`, `list`, `create` and `update` on `deployments`.
+  4. Bind the Role to the ServiceAccount with a RoleBinding called `deployer-binding`.
+
+  The ServiceAccount must **not** be able to delete Deployments.
+checks:
+  - name: deployer can create deployments in ci
+    run: '[ "$(kubectl auth can-i create deployments -n ci --as=system:serviceaccount:ci:deployer)" = yes ]'
+  - name: deployer can list deployments in ci
+    run: '[ "$(kubectl auth can-i list deployments -n ci --as=system:serviceaccount:ci:deployer)" = yes ]'
+  - name: deployer cannot delete deployments in ci
+    run: '[ "$(kubectl auth can-i delete deployments -n ci --as=system:serviceaccount:ci:deployer)" = no ]'
+  - name: deployer cannot create deployments in default
+    run: '[ "$(kubectl auth can-i create deployments -n default --as=system:serviceaccount:ci:deployer)" = no ]'
+  - name: RoleBinding `deployer-binding` exists
+    run: kubectl -n ci get rolebinding deployer-binding
+solution: |
+  kubectl create namespace ci
+  kubectl -n ci create serviceaccount deployer
+  kubectl -n ci create role deploy-manager --verb=get,list,create,update --resource=deployments
+  kubectl -n ci create rolebinding deployer-binding --role=deploy-manager --serviceaccount=ci:deployer
+  kubectl auth can-i delete deployments -n ci --as=system:serviceaccount:ci:deployer
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/

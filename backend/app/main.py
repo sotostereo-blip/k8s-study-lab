@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from . import srs
 from .content import Library, Question, load_library
 from .db import Database
+from .labs import LabManager, Runner, subprocess_runner
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,11 +73,14 @@ def pick_exam_questions(lib: Library, exam_id: str, n: int) -> list[Question]:
     return chosen
 
 
-def create_app(content_dir: Path | None = None, db_path: Path | None = None) -> FastAPI:
+def create_app(content_dir: Path | None = None, db_path: Path | None = None,
+               labs_dir: Path | None = None, lab_runner: Runner = subprocess_runner) -> FastAPI:
     content_dir = content_dir or Path(os.getenv("CONTENT_DIR", ROOT / "content"))
     db_path = db_path or Path(os.getenv("DB_PATH", ROOT / "data" / "progress.db"))
+    labs_dir = labs_dir or Path(os.getenv("LABS_DIR", ROOT / "labs"))
     lib = load_library(content_dir)
     db = Database(db_path)
+    labs = LabManager(labs_dir, lab_runner)
 
     app = FastAPI(title="K8s Study Lab", version="0.1.0")
     app.add_middleware(
@@ -254,6 +258,66 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None) -> 
                 **{r["kind"]: r["n"] for r in eng},
             },
         }
+
+    # ---------- hands-on labs ----------
+
+    def get_task(task_id: str):
+        if task_id not in lib.tasks:
+            raise HTTPException(404, f"Unknown lab '{task_id}'")
+        return lib.tasks[task_id]
+
+    @app.get("/api/labs")
+    def labs_list():
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT task_id, MAX(passed) AS solved, COUNT(*) AS tries, "
+                "MIN(CASE WHEN passed THEN seconds END) AS best_seconds FROM lab_attempts GROUP BY task_id"
+            ).fetchall()
+        progress = {r["task_id"]: dict(r) for r in rows}
+        return {
+            "tracks": [t.model_dump() for t in lib.tracks.values()],
+            "tasks": [
+                t.public() | {"progress": progress.get(t.id)}
+                for t in sorted(lib.tasks.values(), key=lambda t: t.id)
+            ],
+            "lab": labs.status(),
+        }
+
+    @app.get("/api/labs/status")
+    def labs_status():
+        return labs.status()
+
+    @app.post("/api/labs/{task_id}/start")
+    def labs_start(task_id: str):
+        task = get_task(task_id)
+        track = lib.tracks[task.id.split("-")[0]]
+        return labs.start(task, track.environments[task.environment].nodes)
+
+    @app.post("/api/labs/stop")
+    def labs_stop():
+        return labs.stop()
+
+    @app.post("/api/labs/{task_id}/check")
+    def labs_check(task_id: str):
+        task = get_task(task_id)
+        try:
+            results = labs.check(task)
+        except RuntimeError as e:
+            raise HTTPException(409, str(e))
+        passed = sum(r["passed"] for r in results)
+        solved = passed == len(results)
+        seconds = labs.status()["elapsed_seconds"]
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO lab_attempts (task_id, passed, checks_passed, checks_total, seconds) VALUES (?,?,?,?,?)",
+                (task.id, int(solved), passed, len(results), seconds),
+            )
+        return {"solved": solved, "passed": passed, "total": len(results), "seconds": seconds, "checks": results}
+
+    @app.get("/api/labs/{task_id}/solution")
+    def labs_solution(task_id: str):
+        task = get_task(task_id)
+        return {"solution": task.solution, "docs": task.docs}
 
     return app
 

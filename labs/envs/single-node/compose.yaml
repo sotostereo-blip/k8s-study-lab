@@ -1,0 +1,22 @@
+# One-node k3s cluster + browser terminal. Started by the backend; do not run by hand
+# unless you are debugging: docker compose -p k8slab -f labs/envs/single-node/compose.yaml up -d
+services:
+  server:
+    image: rancher/k3s:v1.31.4-k3s1
+    hostname: controlplane
+    command: server --disable=traefik --tls-san=server --node-name=controlplane
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_TOKEN: study-lab
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      K3S_KUBECONFIG_MODE: "644"
+    volumes: [kubeconfig:/output]
+  toolbox:
+    build: ../../toolbox
+    image: k8s-study-lab/toolbox:1
+    depends_on: [server]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: [kubeconfig:/output:ro]
+volumes:
+  kubeconfig:

@@ -1,0 +1,30 @@
+id: cka-net-002
+title: NodePort Service
+domain: services-networking
+difficulty: 1
+minutes: 5
+environment: single-node
+setup: |
+  kubectl create deployment store --image=nginx:1.27-alpine --replicas=2
+  kubectl rollout status deployment store --timeout=180s
+task: |
+  Expose the Deployment `store` outside the cluster.
+
+  Create a Service called `store-np` of type `NodePort`:
+  - port: `80`, target port: `80`
+  - node port: `30080`
+
+  Test it from this terminal: `curl http://server:30080`
+  (`server` is the host name of the controlplane node).
+checks:
+  - name: Service `store-np` is NodePort 80 -> 80 on node port 30080
+    run: '[ "$(kubectl get svc store-np -o jsonpath="{.spec.type}/{.spec.ports[0].port}/{.spec.ports[0].targetPort}/{.spec.ports[0].nodePort}")" = NodePort/80/80/30080 ]'
+  - name: nginx answers on http://server:30080
+    run: curl -s -m 5 http://server:30080 | grep -qi nginx
+solution: |
+  kubectl expose deployment store --name=store-np --type=NodePort --port=80 --target-port=80 $do > svc.yaml
+  # edit svc.yaml: under ports add  nodePort: 30080
+  kubectl apply -f svc.yaml
+  curl http://server:30080
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport

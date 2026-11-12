@@ -107,3 +107,57 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .glossary div { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
 .glossary dt { font-weight: 600; }
 .glossary dd { margin: 2px 0 0; }
+
+/* ---------- Labs ---------- */
+main.wide { max-width: 1440px; }
+.banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; }
+.banner button { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--accent); cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.chips button { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 4px 12px; font-size: 14px; cursor: pointer; color: var(--muted); }
+.chips button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.lab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.lab-card { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px 16px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.lab-card:hover { border-color: var(--accent); }
+.lab-card.solved { border-left: 4px solid var(--ok); }
+.lab-card strong { font-size: 17px; }
+.lab-domain { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.lab-meta { display: flex; gap: 12px; color: var(--muted); font-size: 13px; }
+.lab-meta .env { font-family: var(--mono); }
+.lab-progress { font-size: 13px; color: var(--muted); }
+.lab-card.solved .lab-progress { color: var(--ok); font-weight: 600; }
+
+.lab-view { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; }
+.lab-side h1 { font-size: 22px; margin-top: 4px; }
+.lab-side h2 { font-size: 16px; margin: 20px 0 8px; }
+.lab-side .meta { margin-top: 12px; }
+.lab-side .timer { margin: 4px 0 8px; }
+.lab-side .timer small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.task-text { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px 16px; }
+.task-text ol, .task-text ul { padding-left: 22px; }
+.task-text li.sub { list-style: disc; margin-left: 18px; }
+code { font-family: var(--mono); font-size: .88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+.checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.checks li { display: flex; gap: 10px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.checks .mark { font-family: var(--mono); color: var(--muted); }
+.checks .pass { border-color: var(--ok); background: var(--ok-soft); }
+.checks .pass .mark { color: var(--ok); }
+.checks .fail { border-color: var(--ko); background: var(--ko-soft); }
+.checks .fail .mark { color: var(--ko); }
+.checks .out { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-all; background: none; padding: 0; color: var(--muted); }
+.solution { width: 100%; }
+.solution pre, .term-wait pre { background: #0d1117; color: #c9d1d9; padding: 12px; border-radius: 8px; overflow-x: auto; font: 13px/1.5 var(--mono); }
+.lab-terminal { position: sticky; top: 72px; }
+.lab-terminal iframe { width: 100%; height: calc(100vh - 140px); min-height: 420px; border: 1px solid var(--border); border-radius: 0 0 10px 10px; background: #000; display: block; }
+.term-bar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border); border-bottom: 0; border-radius: 10px 10px 0 0; padding: 6px 12px; }
+.term-wait { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-height: 300px; }
+.term-wait pre { min-height: 160px; white-space: pre-wrap; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) {
+  .lab-view { grid-template-columns: 1fr; }
+  .lab-terminal { position: static; }
+  .lab-terminal iframe { height: 70vh; }
+}

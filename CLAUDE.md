@@ -9,6 +9,7 @@ Spanish but all study content must be in **simple, clear English**.
 - Run backend: `cd backend && uvicorn app.main:app --reload`
 - Run frontend: `cd frontend && npm run dev` (proxies `/api` to :8000)
 - Everything: `docker compose up --build`
+- Debug a lab by hand: `docker compose -p k8slab -f labs/envs/single-node/compose.yaml up -d --build`
 
 ## Conventions
 - Content lives in `content/` as YAML; never hardcode questions in code.
@@ -18,5 +19,7 @@ Spanish but all study content must be in **simple, clear English**.
 - Every question: explanation + at least one official docs link + glossary ids.
   Add new glossary terms to `content/glossary.yaml` (English definition + `es`).
 - Backend: FastAPI app factory `create_app()` in `backend/app/main.py`; SQLite via `app/db.py`.
+- Lab tasks: `content/cka/tasks/<id>.yaml` (format in `docs/CONTENT_FORMAT.md`), environments in
+  `labs/envs/`. Checks inspect real cluster state; verify new tasks on a real lab (fail before, pass after).
 - AI features must stay optional: the app must work with no API key.
 - Run the validator and tests before finishing any change.

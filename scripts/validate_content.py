@@ -21,6 +21,15 @@ def main() -> int:
         for d in exam.domains:
             print(f"  {d.name:<40} {len(lib.questions_for(exam.id, d.id)):>3}  (weight {d.weight}%)")
     print(f"glossary: {len(lib.glossary)} terms")
+    for track in lib.tracks.values():
+        tasks = [t for t in lib.tasks.values() if t.id.startswith(f"{track.id}-")]
+        print(f"{track.id} labs: {len(tasks)} tasks")
+        for d in track.domains:
+            print(f"  {d.name:<52} {sum(t.domain == d.id for t in tasks):>3}  (weight {d.weight}%)")
+        for t in tasks:
+            if not (ROOT / "labs" / "envs" / t.environment / "compose.yaml").exists():
+                print(f"error: {t.id}: labs/envs/{t.environment}/compose.yaml not found")
+                return 1
     # Warn (not fail) when the right answer stands out by length.
     for q in lib.questions.values():
         if q.type != "single":

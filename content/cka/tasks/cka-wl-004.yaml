@@ -1,0 +1,29 @@
+id: cka-wl-004
+title: CronJob and a manual Job
+domain: workloads-scheduling
+difficulty: 1
+minutes: 6
+environment: single-node
+task: |
+  1. Create a CronJob called `backup` in the `default` namespace:
+     - schedule: every 5 minutes (`*/5 * * * *`)
+     - image: `busybox:1.36`
+     - command: `echo backup done`
+     - keep only the last `2` successful Jobs
+  2. Run the CronJob once now by creating a Job called `backup-now` from it.
+     The Job must complete.
+checks:
+  - name: CronJob `backup` runs every 5 minutes
+    run: '[ "$(kubectl get cronjob backup -o jsonpath="{.spec.schedule}")" = "*/5 * * * *" ]'
+  - name: CronJob keeps 2 successful Jobs
+    run: '[ "$(kubectl get cronjob backup -o jsonpath="{.spec.successfulJobsHistoryLimit}")" = 2 ]'
+  - name: Job `backup-now` completed
+    run: '[ "$(kubectl get job backup-now -o jsonpath="{.status.succeeded}")" = 1 ]'
+  - name: Job `backup-now` printed "backup done"
+    run: kubectl logs job/backup-now | grep -q "backup done"
+solution: |
+  kubectl create cronjob backup --image=busybox:1.36 --schedule="*/5 * * * *" -- echo backup done
+  kubectl patch cronjob backup -p '{"spec":{"successfulJobsHistoryLimit":2}}'
+  kubectl create job backup-now --from=cronjob/backup
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/

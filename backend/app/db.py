@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS english_events (
     ref TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS lab_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    passed INTEGER NOT NULL,          -- 1 if every check passed
+    checks_passed INTEGER NOT NULL,
+    checks_total INTEGER NOT NULL,
+    seconds INTEGER,                  -- time since the lab was ready
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

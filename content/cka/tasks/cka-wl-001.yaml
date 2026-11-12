@@ -1,0 +1,27 @@
+id: cka-wl-001
+title: Create a Deployment
+domain: workloads-scheduling
+difficulty: 1
+minutes: 5
+environment: single-node
+task: |
+  Create a namespace called `shop`.
+
+  In the `shop` namespace, create a Deployment called `web`:
+  - image: `nginx:1.27-alpine`
+  - replicas: `3`
+
+  All 3 Pods must be ready.
+checks:
+  - name: Namespace `shop` exists
+    run: kubectl get namespace shop
+  - name: Deployment `web` uses image nginx:1.27-alpine
+    run: '[ "$(kubectl -n shop get deploy web -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+  - name: 3 replicas are ready
+    run: '[ "$(kubectl -n shop get deploy web -o jsonpath="{.status.readyReplicas}")" = 3 ]'
+solution: |
+  kubectl create namespace shop
+  kubectl -n shop create deployment web --image=nginx:1.27-alpine --replicas=3
+  kubectl -n shop rollout status deployment web
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/

@@ -1,0 +1,55 @@
+id: cka-net-003
+title: NetworkPolicy to protect a database
+domain: services-networking
+difficulty: 3
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace secure
+  kubectl -n secure create deployment db --image=nginx:1.27-alpine
+  kubectl -n secure expose deployment db --port=80
+  kubectl -n secure run api --image=busybox:1.36 --labels=app=api -- sleep 3600
+  kubectl -n secure run other --image=busybox:1.36 --labels=app=other -- sleep 3600
+  kubectl -n secure rollout status deployment db --timeout=180s
+  kubectl -n secure wait --for=condition=Ready pod/api pod/other --timeout=180s
+task: |
+  In the namespace `secure` there are:
+  - a Deployment `db` (label `app=db`) with a Service `db` on port 80
+  - a Pod `api` (label `app=api`)
+  - a Pod `other` (label `app=other`)
+
+  Create a NetworkPolicy called `db-allow-api` in `secure` so that Pods with
+  `app=db` accept incoming traffic **only** from Pods with `app=api` on TCP port `80`.
+  Traffic from any other Pod to `db` must be blocked.
+
+  Test: `kubectl -n secure exec api -- wget -qO- -T 3 http://db`
+checks:
+  - name: NetworkPolicy `db-allow-api` selects app=db
+    run: '[ "$(kubectl -n secure get netpol db-allow-api -o jsonpath="{.spec.podSelector.matchLabels.app}")" = db ]'
+  - name: Pod `api` can reach db
+    run: kubectl -n secure exec api -- wget -qO- -T 4 http://db | grep -qi nginx
+  - name: Pod `other` cannot reach db
+    run: '! kubectl -n secure exec other -- wget -qO- -T 4 http://db'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: db-allow-api
+    namespace: secure
+  spec:
+    podSelector:
+      matchLabels:
+        app: db
+    policyTypes: [Ingress]
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: api
+      ports:
+      - protocol: TCP
+        port: 80
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/

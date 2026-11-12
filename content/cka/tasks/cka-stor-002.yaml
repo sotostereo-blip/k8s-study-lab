@@ -1,0 +1,46 @@
+id: cka-stor-002
+title: Static PersistentVolume and claim
+domain: storage
+difficulty: 2
+minutes: 8
+environment: single-node
+task: |
+  1. Create a PersistentVolume called `logs-pv`:
+     - capacity: `512Mi`
+     - access mode: `ReadWriteOnce`
+     - StorageClass name: `manual`
+     - hostPath: `/mnt/logs`
+  2. Create a PersistentVolumeClaim called `logs-pvc` in `default` that asks for
+     `256Mi` with StorageClass `manual`. It must bind to `logs-pv`.
+checks:
+  - name: PV `logs-pv` is 512Mi, manual, hostPath /mnt/logs
+    run: '[ "$(kubectl get pv logs-pv -o jsonpath="{.spec.capacity.storage}/{.spec.storageClassName}/{.spec.hostPath.path}")" = 512Mi/manual//mnt/logs ]'
+  - name: PVC `logs-pvc` is Bound to logs-pv
+    run: '[ "$(kubectl get pvc logs-pvc -o jsonpath="{.status.phase}/{.spec.volumeName}")" = Bound/logs-pv ]'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: logs-pv
+  spec:
+    capacity:
+      storage: 512Mi
+    accessModes: [ReadWriteOnce]
+    storageClassName: manual
+    hostPath:
+      path: /mnt/logs
+  ---
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: logs-pvc
+  spec:
+    accessModes: [ReadWriteOnce]
+    storageClassName: manual
+    resources:
+      requests:
+        storage: 256Mi
+  YAML
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/

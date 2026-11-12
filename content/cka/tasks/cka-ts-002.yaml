@@ -1,0 +1,30 @@
+id: cka-ts-002
+title: Service without endpoints
+domain: troubleshooting
+difficulty: 2
+minutes: 7
+environment: single-node
+setup: |
+  kubectl create deployment frontend --image=nginx:1.27-alpine --replicas=2
+  kubectl create service clusterip frontend-svc --tcp=80:80
+  kubectl patch service frontend-svc -p '{"spec":{"selector":{"app":"front-end"}}}'
+  kubectl rollout status deployment frontend --timeout=180s
+task: |
+  Users say that `http://frontend-svc` does not answer, but the Pods of the
+  Deployment `frontend` are running.
+
+  Find the problem and fix the **Service**. Do not change the Deployment.
+checks:
+  - name: Deployment `frontend` still selects app=frontend
+    run: '[ "$(kubectl get deploy frontend -o jsonpath="{.spec.selector.matchLabels.app}")" = frontend ]'
+  - name: Service `frontend-svc` has endpoints
+    run: '[ -n "$(kubectl get endpoints frontend-svc -o jsonpath="{.subsets[*].addresses[*].ip}")" ]'
+  - name: A Pod can open http://frontend-svc
+    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://frontend-svc | grep -qi nginx
+solution: |
+  kubectl get endpoints frontend-svc          # <none>
+  kubectl get svc frontend-svc -o wide        # SELECTOR app=front-end
+  kubectl get pods --show-labels              # app=frontend
+  kubectl patch svc frontend-svc -p '{"spec":{"selector":{"app":"frontend"}}}'
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/

@@ -1,0 +1,27 @@
+id: cka-arch-001
+title: Drain a node for maintenance
+domain: cluster-architecture
+difficulty: 2
+minutes: 6
+environment: two-node
+setup: |
+  kubectl create deployment shop --image=nginx:1.27-alpine --replicas=4
+  kubectl rollout status deployment shop --timeout=180s
+task: |
+  The node `node01` needs maintenance.
+
+  1. Mark `node01` as unschedulable and evict all its Pods (ignore DaemonSets).
+  2. The Deployment `shop` must still have `4` ready replicas, all on other nodes.
+checks:
+  - name: node01 is unschedulable
+    run: '[ "$(kubectl get node node01 -o jsonpath="{.spec.unschedulable}")" = true ]'
+  - name: No `shop` Pods run on node01
+    run: '[ -z "$(kubectl get pods -l app=shop --field-selector spec.nodeName=node01 -o name)" ]'
+  - name: Deployment `shop` has 4 ready replicas
+    run: '[ "$(kubectl get deploy shop -o jsonpath="{.status.readyReplicas}")" = 4 ]'
+solution: |
+  kubectl drain node01 --ignore-daemonsets --delete-emptydir-data
+  kubectl get pods -o wide
+  # after maintenance you would run: kubectl uncordon node01
+docs:
+  - https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/

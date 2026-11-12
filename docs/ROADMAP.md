@@ -11,10 +11,13 @@
 - [ ] Reading-speed indicator per question (words per minute)
 
 ## Phase 2 — Hands-on labs (CKA first)
-- [ ] `labs/kind-config.yaml` and backend endpoints to create/reset a kind cluster
-- [ ] Task format: `content/cka/tasks/<id>/{task.md, setup.sh, check.py}`
-- [ ] 10–15 CKA tasks with checkers that inspect real cluster state
-- [ ] Web terminal (xterm.js) and exam-style timer
+- [x] Lab environments with Docker Compose: k3s 1-node and 2-node + toolbox (`labs/`)
+- [x] Backend endpoints to start, reset, stop and check a lab
+- [x] Task format: `content/cka/tasks/<id>.yaml` (task, setup, checks, solution)
+- [x] 17 CKA tasks with checkers that inspect real cluster state
+- [x] Web terminal in the browser (ttyd) and exam-style timer
+- [ ] More tasks: Ingress / Gateway API, Helm, Kustomize, kubeadm upgrade, etcd backup
+- [ ] Multi-task mock exam (several tasks, one timer, weighted score)
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [ ] "Why?" button after a wrong answer, explained in simple English

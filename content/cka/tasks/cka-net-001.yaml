@@ -1,0 +1,29 @@
+id: cka-net-001
+title: Expose a Deployment with a ClusterIP Service
+domain: services-networking
+difficulty: 1
+minutes: 6
+environment: single-node
+setup: |
+  kubectl create deployment hello --image=nginx:1.27-alpine --replicas=2
+  kubectl rollout status deployment hello --timeout=180s
+task: |
+  A Deployment called `hello` runs nginx on port `80`.
+
+  Create a Service called `hello-svc` of type `ClusterIP`:
+  - Service port: `8080`
+  - target port on the Pods: `80`
+
+  Other Pods in the cluster must reach nginx at `http://hello-svc:8080`.
+checks:
+  - name: Service `hello-svc` is ClusterIP on port 8080 -> 80
+    run: '[ "$(kubectl get svc hello-svc -o jsonpath="{.spec.type}/{.spec.ports[0].port}/{.spec.ports[0].targetPort}")" = ClusterIP/8080/80 ]'
+  - name: The Service has 2 endpoints
+    run: '[ "$(kubectl get endpoints hello-svc -o jsonpath="{.subsets[*].addresses[*].ip}" | wc -w)" -eq 2 ]'
+  - name: A Pod can open http://hello-svc:8080
+    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://hello-svc:8080 | grep -qi nginx
+solution: |
+  kubectl expose deployment hello --name=hello-svc --type=ClusterIP --port=8080 --target-port=80
+  kubectl run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- http://hello-svc:8080
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/service/

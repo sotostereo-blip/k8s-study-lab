@@ -21,4 +21,10 @@ export const api = {
   examStart: (body) => request('/exam/start', { method: 'POST', body }),
   examSubmit: (id, answers) => request(`/exam/${id}/submit`, { method: 'POST', body: { answers } }),
   englishEvent: (kind, ref) => request('/english/event', { method: 'POST', body: { kind, ref } }),
+  labs: () => request('/labs'),
+  labStatus: () => request('/labs/status'),
+  labStart: (id) => request(`/labs/${id}/start`, { method: 'POST' }),
+  labStop: () => request('/labs/stop', { method: 'POST' }),
+  labCheck: (id) => request(`/labs/${id}/check`, { method: 'POST' }),
+  labSolution: (id) => request(`/labs/${id}/solution`),
 }

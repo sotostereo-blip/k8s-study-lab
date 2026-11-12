@@ -1,0 +1,41 @@
+id: cka-ts-004
+title: Pod in CrashLoopBackOff
+domain: troubleshooting
+difficulty: 2
+minutes: 7
+environment: single-node
+setup: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: worker
+  spec:
+    replicas: 1
+    selector:
+      matchLabels: { app: worker }
+    template:
+      metadata:
+        labels: { app: worker }
+      spec:
+        containers:
+        - name: worker
+          image: busybox:1.36
+          command: ["sh", "-c", "if [ -z \"$DB_HOST\" ]; then echo 'error: DB_HOST is not set'; exit 1; fi; echo connected to $DB_HOST; sleep 3600"]
+  YAML
+task: |
+  The Deployment `worker` keeps restarting (`CrashLoopBackOff`).
+
+  Read the logs to find the cause and fix the Deployment. The database host is
+  `db.internal`. The Deployment must have 1 ready replica.
+checks:
+  - name: Deployment `worker` has 1 ready replica
+    run: '[ "$(kubectl get deploy worker -o jsonpath="{.status.readyReplicas}")" = 1 ]'
+  - name: DB_HOST is db.internal
+    run: kubectl logs deploy/worker | grep -q "connected to db.internal"
+solution: |
+  kubectl get pods
+  kubectl logs deploy/worker          # error: DB_HOST is not set
+  kubectl set env deployment/worker DB_HOST=db.internal
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/

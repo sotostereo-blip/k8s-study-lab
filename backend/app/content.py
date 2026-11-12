@@ -74,10 +74,55 @@ class Term(BaseModel):
     es: str
 
 
+class Check(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    run: str  # bash, run in the lab terminal container; exit code 0 = pass
+
+
+class LabTask(BaseModel):
+    """A hands-on task solved in a real cluster (content/<exam>/tasks/<id>.yaml)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^[a-z0-9]+-[a-z]+-\d{3}$")
+    title: str
+    domain: str
+    difficulty: int = Field(ge=1, le=3)
+    minutes: int = Field(ge=1, le=60)
+    environment: str
+    task: str
+    setup: str = ""
+    checks: list[Check] = Field(min_length=1)
+    solution: str
+    docs: list[str] = Field(min_length=1)
+
+    def public(self) -> dict:
+        """Everything except the checker scripts (solution is shown on demand)."""
+        return self.model_dump(exclude={"checks", "setup", "solution"}) | {
+            "checks": [c.name for c in self.checks]
+        }
+
+
+class LabEnvironment(BaseModel):
+    name: str
+    nodes: int = Field(ge=1)
+
+
+class LabTrack(BaseModel):
+    """Lab metadata for one exam (content/<exam>/labs.yaml)."""
+    id: str
+    name: str
+    exam_minutes: int
+    passing_score: int
+    domains: list[Domain]
+    environments: dict[str, LabEnvironment]
+
+
 class Library(BaseModel):
     exams: dict[str, Exam]
     questions: dict[str, Question]
     glossary: dict[str, Term]
+    tracks: dict[str, LabTrack] = {}
+    tasks: dict[str, LabTask] = {}
 
     def questions_for(self, exam_id: str, domain: str | None = None) -> list[Question]:
         prefix = f"{exam_id}-"
@@ -133,6 +178,35 @@ def load_library(content_dir: Path) -> Library:
                         errors.append(f"{qfile}: {q.id} references unknown glossary term '{g}'")
                 questions[q.id] = q
 
+    tracks: dict[str, LabTrack] = {}
+    tasks: dict[str, LabTask] = {}
+    for track_file in sorted(content_dir.glob("*/labs.yaml")):
+        try:
+            track = LabTrack(**_read(track_file))
+        except Exception as e:
+            errors.append(f"{track_file}: {e}")
+            continue
+        tracks[track.id] = track
+        domain_ids = {d.id for d in track.domains}
+        for tfile in sorted((track_file.parent / "tasks").glob("*.yaml")):
+            raw = _read(tfile)
+            try:
+                t = LabTask(**raw)
+            except Exception as e:
+                errors.append(f"{tfile}: {raw.get('id', '?')}: {e}")
+                continue
+            if tfile.stem != t.id:
+                errors.append(f"{tfile}: file name must be {t.id}.yaml")
+            if not t.id.startswith(f"{track.id}-"):
+                errors.append(f"{tfile}: {t.id} must start with '{track.id}-'")
+            if t.domain not in domain_ids:
+                errors.append(f"{tfile}: unknown domain '{t.domain}'")
+            if t.environment not in track.environments:
+                errors.append(f"{tfile}: unknown environment '{t.environment}'")
+            if t.id in tasks:
+                errors.append(f"{tfile}: duplicate task id {t.id}")
+            tasks[t.id] = t
+
     if errors:
         raise ValueError("\n".join(errors))
-    return Library(exams=exams, questions=questions, glossary=glossary)
+    return Library(exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks)

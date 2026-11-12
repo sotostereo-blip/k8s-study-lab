@@ -11,6 +11,12 @@ Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
   definition. The Spanish translation is available on demand, and the dashboard tracks how
   often you needed it, so you can watch that number go down.
 
+**Hands-on labs (CKA)**: choose a task and a real Kubernetes cluster (k3s) starts in
+Docker, with a terminal **inside the browser**. Solve it with `kubectl`, press
+*Check my work* and the app inspects the real cluster state. 17 tasks across the five
+CKA domains (troubleshooting, cluster architecture, networking, workloads, storage),
+on 1-node or 2-node clusters, with an exam-style timer and solutions. See [labs/README.md](labs/README.md).
+
 Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).
 
 ## Quick start
@@ -42,8 +48,8 @@ npm run dev
 ```
 backend/     FastAPI API, SQLite progress, spaced repetition
 frontend/    React (Vite) UI
-content/     Questions and glossary as YAML  ← contributions welcome
-labs/        (phase 2) kind cluster configs for hands-on CKA/CKAD tasks
+content/     Questions, glossary and lab tasks as YAML  ← contributions welcome
+labs/        Docker Compose lab environments (k3s cluster + web terminal)
 scripts/     validate_content.py
 docs/        CONTENT_FORMAT.md, ROADMAP.md
 ```

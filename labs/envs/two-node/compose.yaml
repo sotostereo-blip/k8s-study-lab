@@ -1,0 +1,32 @@
+# Two-node k3s cluster (controlplane + node01) + browser terminal.
+# Used by tasks about scheduling, cordon/drain and node labels.
+services:
+  server:
+    image: rancher/k3s:v1.31.4-k3s1
+    hostname: controlplane
+    command: server --disable=traefik --tls-san=server --node-name=controlplane
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_TOKEN: study-lab
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      K3S_KUBECONFIG_MODE: "644"
+    volumes: [kubeconfig:/output]
+  node01:
+    image: rancher/k3s:v1.31.4-k3s1
+    hostname: node01
+    command: agent --node-name=node01
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_URL: https://server:6443
+      K3S_TOKEN: study-lab
+    depends_on: [server]
+  toolbox:
+    build: ../../toolbox
+    image: k8s-study-lab/toolbox:1
+    depends_on: [server]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: [kubeconfig:/output:ro]
+volumes:
+  kubeconfig:

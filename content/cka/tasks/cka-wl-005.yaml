@@ -1,0 +1,27 @@
+id: cka-wl-005
+title: Schedule a Pod on a labeled node
+domain: workloads-scheduling
+difficulty: 2
+minutes: 6
+environment: two-node
+task: |
+  1. Add the label `disk=ssd` to the node `node01`.
+  2. Create a Pod called `fast-app` with image `nginx:1.27-alpine`.
+     It must only run on nodes that have the label `disk=ssd`
+     (use `nodeSelector` or node affinity).
+checks:
+  - name: node01 has label disk=ssd
+    run: '[ "$(kubectl get node node01 -o jsonpath="{.metadata.labels.disk}")" = ssd ]'
+  - name: Pod `fast-app` selects nodes with disk=ssd
+    run: kubectl get pod fast-app -o json | jq -e '.spec.nodeSelector.disk == "ssd" or (.spec.affinity.nodeAffinity | tostring | contains("disk"))'
+  - name: Pod `fast-app` is running on node01
+    run: '[ "$(kubectl get pod fast-app -o jsonpath="{.status.phase}/{.spec.nodeName}")" = Running/node01 ]'
+solution: |
+  kubectl label node node01 disk=ssd
+  kubectl run fast-app --image=nginx:1.27-alpine $do > pod.yaml
+  # add under spec:
+  #   nodeSelector:
+  #     disk: ssd
+  kubectl apply -f pod.yaml
+docs:
+  - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/

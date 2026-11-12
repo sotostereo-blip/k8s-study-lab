@@ -1,0 +1,15 @@
+# Hands-on labs for the CKA (Certified Kubernetes Administrator).
+# Domains and weights follow the public CKA curriculum. Each task lives in tasks/<id>.yaml.
+id: cka
+name: Certified Kubernetes Administrator
+exam_minutes: 120
+passing_score: 66
+domains:
+  - { id: troubleshooting, name: Troubleshooting, weight: 30 }
+  - { id: cluster-architecture, name: "Cluster Architecture, Installation & Configuration", weight: 25 }
+  - { id: services-networking, name: Services & Networking, weight: 20 }
+  - { id: workloads-scheduling, name: Workloads & Scheduling, weight: 15 }
+  - { id: storage, name: Storage, weight: 10 }
+environments:
+  single-node: { name: "1 node (controlplane)", nodes: 1 }
+  two-node: { name: "2 nodes (controlplane + node01)", nodes: 2 }

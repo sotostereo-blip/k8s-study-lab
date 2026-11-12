@@ -1,0 +1,13 @@
+# Same shortcuts many people set up at the start of the CKA exam.
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+source <(kubectl completion bash)
+alias k=kubectl
+complete -o default -F __start_kubectl k
+export do="--dry-run=client -o yaml"
+export now="--force --grace-period=0"
+export EDITOR=vim
+PS1='\[\e[34m\]lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Kubernetes lab ready. Try: kubectl get nodes
+Shortcuts: k=kubectl, $do = --dry-run=client -o yaml, $now = --force --grace-period=0
+MSG
