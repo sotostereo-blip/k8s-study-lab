@@ -1,0 +1,68 @@
+id: terraform-flow-003
+title: Fix a configuration that fails validate and fmt
+domain: workflow
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  mkdir -p /root/fix-config && cd /root/fix-config
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  variable "bucket_name" {
+  type    = string
+      default = "tfflow-fixed-config"
+  }
+
+  resource "aws_s3_bucket" "site" {
+          bucket = var.bucket
+    tags = {
+  Name = "site"
+    }
+  }
+
+  resource "aws_s3_bucket_versioning" "site" {
+    bucket = aws_s3_bucket.site.id
+    enabled = true
+    versioning_configuration {
+      status = "Enabled"
+    }
+  }
+  TF
+  terraform init -input=false >/dev/null
+task: |
+  A colleague wrote `/root/fix-config/main.tf` but never tested it.
+
+  1. Run `terraform validate`. Fix every error it reports.
+     Do **not** change the bucket name: it must stay `tfflow-fixed-config`, and versioning must be enabled.
+  2. Make `terraform fmt -check` pass (it must return exit code 0).
+  3. Apply the configuration.
+checks:
+  - name: '`terraform validate` passes'
+    run: terraform -chdir=/root/fix-config validate -no-color >/dev/null
+  - name: '`terraform fmt -check` passes'
+    run: terraform -chdir=/root/fix-config fmt -check >/dev/null
+  - name: The bucket `tfflow-fixed-config` exists
+    run: aws s3api head-bucket --bucket tfflow-fixed-config
+  - name: Versioning is `Enabled` on the bucket
+    run: '[ "$(aws s3api get-bucket-versioning --bucket tfflow-fixed-config --query Status --output text)" = Enabled ]'
+solution: |
+  cd /root/fix-config
+  terraform validate
+  # Error 1: "Reference to undeclared input variable" -> the variable is called bucket_name:
+  #   bucket = var.bucket_name
+  # Error 2: "Unsupported argument" -> aws_s3_bucket_versioning has no "enabled" argument.
+  #   Delete the line "enabled = true" (versioning_configuration already sets status = "Enabled").
+  vim main.tf
+  terraform validate          # "Success! The configuration is valid."
+  terraform fmt               # rewrites the file in the canonical style (fmt -diff shows the changes)
+  terraform fmt -check        # exit code 0 = already formatted
+  terraform apply
+auto_solution: |
+  cd /root/fix-config
+  sed -i 's/var\.bucket$/var.bucket_name/; /enabled = true/d' main.tf
+  terraform fmt
+  terraform validate
+  terraform apply -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/validate
+  - https://developer.hashicorp.com/terraform/cli/commands/fmt

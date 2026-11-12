@@ -1,0 +1,68 @@
+id: terraform-config-005
+title: Mark a secret output as sensitive
+domain: configuration
+difficulty: 2
+minutes: 7
+environment: terraform
+setup: |
+  mkdir -p /root/ci-credentials && cd /root/ci-credentials
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_iam_user" "ci" {
+    name = "tfcfg-ci-deployer"
+  }
+
+  resource "aws_iam_access_key" "ci" {
+    user = aws_iam_user.ci.name
+  }
+
+  output "access_key_id" {
+    value = aws_iam_access_key.ci.id
+  }
+
+  output "secret_access_key" {
+    value = aws_iam_access_key.ci.secret
+  }
+  TF
+  terraform init -input=false >/dev/null
+task: |
+  The CI pipeline needs an IAM user with an access key. The configuration is in `/root/ci-credentials`,
+  but `terraform plan` fails with an error about sensitive values.
+
+  1. Read the error and fix it. Keep **both** outputs: the pipeline reads them.
+     The access key id is not secret: keep `access_key_id` as a normal output.
+  2. Apply.
+  3. Look at `terraform output`. Then find a way to print only the secret value.
+
+  Remember: sensitive values are hidden in the CLI output, but they are still stored
+  in plain text in the state file. Protect the state.
+checks:
+  - name: The state has the user and the access key
+    run: '[ "$(terraform -chdir=/root/ci-credentials state list | grep -cE "^aws_iam_(user\.ci|access_key\.ci)$")" = 2 ]'
+  - name: Output `secret_access_key` is sensitive and not empty
+    run: terraform -chdir=/root/ci-credentials output -json | jq -e '.secret_access_key.sensitive == true and (.secret_access_key.value | length > 0)' >/dev/null
+  - name: Output `access_key_id` is not sensitive and matches the key of user `tfcfg-ci-deployer`
+    run: |
+      o="$(terraform -chdir=/root/ci-credentials output -json)"
+      echo "$o" | jq -e '.access_key_id.sensitive == false' >/dev/null &&
+      [ "$(echo "$o" | jq -r .access_key_id.value)" = "$(aws iam list-access-keys --user-name tfcfg-ci-deployer --query 'AccessKeyMetadata[0].AccessKeyId' --output text)" ]
+solution: |
+  cd /root/ci-credentials
+  terraform plan
+  # Error: Output refers to sensitive values -> the secret attribute is sensitive in the provider.
+  # Add "sensitive = true" to the secret output:
+  #   output "secret_access_key" {
+  #     value     = aws_iam_access_key.ci.secret
+  #     sensitive = true
+  #   }
+  vim main.tf
+  terraform apply
+  terraform output                          # secret_access_key = <sensitive>
+  terraform output -raw secret_access_key   # prints the value (-json prints it too)
+auto_solution: |
+  cd /root/ci-credentials
+  sed -i 's/^  value = aws_iam_access_key.ci.secret$/  value     = aws_iam_access_key.ci.secret\n  sensitive = true/' main.tf
+  terraform apply -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/language/block/output
+  - https://developer.hashicorp.com/terraform/language/manage-sensitive-data

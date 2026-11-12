@@ -1,0 +1,311 @@
+domain: iac
+questions:
+  - id: terraform-iac-001
+    difficulty: 1
+    type: single
+    question: "Which statement best describes Infrastructure as Code (IaC)?"
+    options:
+      - id: a
+        text: "Managing infrastructure with machine-readable files instead of manual steps"
+      - id: b
+        text: "Writing application code that runs directly on bare-metal servers"
+        why: "Running code on bare metal is about where an application runs. IaC is about defining the infrastructure itself in files."
+      - id: c
+        text: "Using a cloud web console with saved templates for each resource"
+        why: "Clicking in a web console is a manual process, even with templates. IaC keeps the definition in code that tools can read and apply."
+      - id: d
+        text: "Recording every manual change in a shared wiki page after it is made"
+        why: "Writing documentation after a manual change does not make the change repeatable. With IaC the code itself is what creates the infrastructure."
+    answer: [a]
+    explanation: |
+      Infrastructure as Code means you describe servers, networks, and other
+      infrastructure in configuration files. A tool such as Terraform reads
+      those files and creates or changes the real infrastructure, so the files
+      become the source of truth instead of manual clicks.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro
+    glossary: [iac, tf-hcl]
+
+  - id: terraform-iac-002
+    difficulty: 1
+    type: single
+    question: "Terraform configuration is called declarative. What does that mean?"
+    options:
+      - id: a
+        text: "You list every API call in the exact order Terraform must run it"
+        why: "Listing each step in order is the imperative approach, like a shell script. Terraform works out the steps by itself."
+      - id: b
+        text: "You describe the end result and Terraform works out the steps"
+      - id: c
+        text: "You declare variables first and Terraform asks for every value"
+        why: "Input variables are one feature of Terraform, but they are not what 'declarative' means. Declarative is about describing the desired end result."
+      - id: d
+        text: "You declare resources in one file per cloud provider you use"
+        why: "Terraform does not require one file per provider. It loads all .tf files in a directory together, and the meaning of declarative is unrelated to files."
+    answer: [b]
+    explanation: |
+      In a declarative language you describe the desired state, for example
+      "three virtual machines in this network". Terraform compares that with
+      the real infrastructure and decides which create, update, or delete
+      actions are needed, and in which order.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro
+    glossary: [tf-declarative, tf-hcl]
+
+  - id: terraform-iac-003
+    difficulty: 2
+    type: single
+    question: "You run `terraform apply` on a configuration, it succeeds, and you run `terraform apply` again without changing anything. Nothing changed outside Terraform either. What should happen?"
+    options:
+      - id: a
+        text: "Terraform creates a second copy of every resource in the configuration"
+        why: "Terraform tracks what it created in its state, so it does not create duplicates. A second copy would only appear if the configuration asked for one."
+      - id: b
+        text: "Terraform destroys all resources and creates them again from scratch"
+        why: "Terraform replaces a resource only when a change requires it. With no changes, there is nothing to replace."
+      - id: c
+        text: "Terraform reports that no changes are needed for the infrastructure"
+      - id: d
+        text: "Terraform fails because the resources in the state already exist"
+        why: "Resources that already exist in state are the normal case. Terraform compares them with the configuration and does not fail for that reason."
+    answer: [c]
+    explanation: |
+      Terraform is idempotent: applying the same configuration again gives the
+      same result. It compares the configuration, the state, and the real
+      infrastructure, finds no difference, and reports "No changes".
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+    glossary: [tf-idempotent, tf-state]
+
+  - id: terraform-iac-004
+    difficulty: 1
+    type: single
+    question: "Which language do you normally use to write Terraform configuration files with the `.tf` extension?"
+    options:
+      - id: a
+        text: "YAML, the same format used by Kubernetes manifests"
+        why: "YAML is used by Kubernetes and many CI tools, but Terraform does not read .tf files as YAML."
+      - id: b
+        text: "HCL, the HashiCorp Configuration Language"
+      - id: c
+        text: "Python, run directly by the Terraform CLI"
+        why: "Terraform core does not run Python files. The normal language for .tf files is HCL."
+      - id: d
+        text: "Bash, with one script for each resource you create"
+        why: "Bash scripts are imperative and are not a Terraform configuration format. Terraform reads HCL (or JSON) files."
+    answer: [b]
+    explanation: |
+      Terraform configuration is written in HCL, a human-friendly language made
+      by HashiCorp. Terraform can also read a JSON variant in files ending with
+      `.tf.json`, which is useful when another program generates the configuration.
+    docs:
+      - https://developer.hashicorp.com/terraform/language
+    glossary: [tf-hcl]
+
+  - id: terraform-iac-005
+    difficulty: 1
+    type: multiple
+    question: "Which TWO are real advantages of managing infrastructure as code? (Select 2)"
+    options:
+      - id: a
+        text: "Changes can be reviewed in pull requests before they are applied"
+      - id: b
+        text: "Cloud providers stop charging for resources defined in code"
+        why: "Cloud costs depend on what you run, not on how you created it. IaC can help you see and control costs, but it does not remove them."
+      - id: c
+        text: "The same configuration can build identical environments again"
+      - id: d
+        text: "Credentials are no longer needed to call the cloud APIs"
+        why: "Terraform still needs valid credentials to call each provider's API. IaC changes how you describe infrastructure, not how you authenticate."
+      - id: e
+        text: "Infrastructure can never fail once it is written in code"
+        why: "Code can still contain mistakes, and cloud services can still fail. IaC makes failures easier to repeat and fix, not impossible."
+    answer: [a, c]
+    explanation: |
+      Because the infrastructure is described in files, you can keep them in
+      version control, review changes in pull requests, and reuse the same code
+      to create consistent dev, test, and production environments. IaC does not
+      remove costs, credentials, or the chance of errors.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro
+    glossary: [iac]
+
+  - id: terraform-iac-006
+    difficulty: 2
+    type: single
+    question: "A team often finds that their test and production networks behave differently because engineers changed settings by hand. How does adopting Terraform help most with this problem?"
+    options:
+      - id: a
+        text: "It locks the cloud console so no engineer can log in again"
+        why: "Terraform does not control access to the cloud console. Access rules are set in the cloud provider's identity system."
+      - id: b
+        text: "Both environments come from the same reviewed code and plans show drift"
+      - id: c
+        text: "It copies the production network into test once every night"
+        why: "Terraform does not copy live environments on a schedule. It creates each environment from configuration."
+      - id: d
+        text: "It converts the manual changes into code automatically each day"
+        why: "Terraform does not watch the console and write code for you. You write the configuration, and plans show differences from it."
+    answer: [b]
+    explanation: |
+      When environments are built from the same configuration, they stay
+      consistent. If someone changes a resource by hand, the next plan shows the
+      difference (configuration drift), so the team can fix it or update the
+      code on purpose.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/use-cases
+    glossary: [iac, tf-drift, tf-plan]
+
+  - id: terraform-iac-007
+    difficulty: 2
+    type: single
+    question: "Why is it a good practice to keep Terraform configuration files in a version control system such as Git?"
+    options:
+      - id: a
+        text: "Terraform cannot read configuration files outside a Git repository"
+        why: "Terraform reads .tf files from any directory. Git is a good practice, not a technical requirement."
+      - id: b
+        text: "Git stores the Terraform state and locks it during each apply"
+        why: "Git is not a state backend and cannot lock state. Committing state files to Git is a bad practice because they may hold secrets."
+      - id: c
+        text: "It gives a history of who changed what and allows easy rollback"
+      - id: d
+        text: "Git checks the HCL syntax before every commit you make to it"
+        why: "Git does not understand HCL. Syntax checks come from `terraform validate` or `terraform fmt`, often run in CI."
+    answer: [c]
+    explanation: |
+      Version control gives you a full history of changes, code review through
+      pull requests, and the option to go back to a known good version. It is
+      the base for team workflows and CI/CD pipelines that run Terraform.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+    glossary: [iac, ci-cd]
+
+  - id: terraform-iac-008
+    difficulty: 3
+    type: single
+    question: "Which statement about Terraform compared with configuration management tools such as Ansible or Chef is most accurate?"
+    options:
+      - id: a
+        text: "Terraform focuses on provisioning infrastructure through provider APIs"
+      - id: b
+        text: "Terraform installs an agent on every server to keep packages updated"
+        why: "Terraform is agentless; it calls provider APIs from where you run it. Installing agents to manage packages is typical of tools like Chef or Puppet."
+      - id: c
+        text: "Terraform can only manage software that is already inside a server"
+        why: "It is the opposite: Terraform's main job is creating the infrastructure itself, such as networks, VMs, and databases."
+      - id: d
+        text: "Terraform replaces images, so it never works with other tools"
+        why: "Terraform often works together with other tools, for example Packer for images or Ansible for software inside servers."
+    answer: [a]
+    explanation: |
+      Terraform is mainly a provisioning tool: it creates, changes, and deletes
+      infrastructure by calling provider APIs, and it does not need an agent on
+      the servers. Configuration management tools mainly install and configure
+      software inside existing machines. Many teams use both together.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/use-cases
+    glossary: [tf-provider]
+
+  - id: terraform-iac-009
+    difficulty: 1
+    type: single
+    question: "What lets one Terraform configuration manage resources in AWS, Azure, and Google Cloud at the same time?"
+    options:
+      - id: a
+        text: "A separate Terraform installation for each cloud you want to manage"
+        why: "One Terraform installation is enough. It loads one provider plugin for each platform the configuration uses."
+      - id: b
+        text: "A built-in cloud translator inside Terraform core for each API"
+        why: "Terraform core has no built-in cloud APIs. All platform-specific logic lives in provider plugins."
+      - id: c
+        text: "Provider plugins, one for each platform, used in one configuration"
+      - id: d
+        text: "A common resource type that works the same way on every cloud"
+        why: "Terraform has no universal resource type. Each provider has its own resource types, such as aws_instance or google_compute_instance."
+    answer: [c]
+    explanation: |
+      Terraform core is cloud-agnostic. Providers are plugins that know how to
+      talk to each platform's API. A single configuration can declare several
+      providers, so you use one language and one workflow for many clouds.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers
+    glossary: [tf-provider, tf-multi-cloud]
+
+  - id: terraform-iac-010
+    difficulty: 2
+    type: single
+    question: "A company runs VMware vSphere in its own data center and also uses AWS. They want one tool and one workflow for both. Why is Terraform a good fit for this hybrid cloud setup?"
+    options:
+      - id: a
+        text: "Terraform moves all on-premises servers to AWS automatically"
+        why: "Terraform does not migrate servers by itself. It manages each platform through its provider, wherever the platform runs."
+      - id: b
+        text: "Terraform can only manage AWS, so vSphere must use a different tool"
+        why: "Terraform is not limited to one cloud. There is a vSphere provider, so both platforms can be managed in Terraform."
+      - id: c
+        text: "Terraform needs both platforms to share the same network first"
+        why: "Terraform does not need the platforms to share a network. It only needs to reach each provider's API from where it runs."
+      - id: d
+        text: "Providers exist for both platforms, so one workflow can manage them"
+    answer: [d]
+    explanation: |
+      Hybrid cloud mixes on-premises and public cloud infrastructure. Because
+      Terraform uses providers for both (for example vSphere and AWS), the team
+      can use the same HCL, the same plan and apply workflow, and even pass
+      values between resources on both platforms.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/use-cases
+    glossary: [tf-provider, tf-hybrid-cloud]
+
+  - id: terraform-iac-011
+    difficulty: 2
+    type: multiple
+    question: "Terraform is called service-agnostic. Which TWO of these could Terraform manage through providers, besides cloud virtual machines? (Select 2)"
+    options:
+      - id: a
+        text: "GitHub repositories and team memberships"
+      - id: b
+        text: "Monitoring dashboards and alerts in Datadog"
+      - id: c
+        text: "Memory pages inside a running Linux process"
+        why: "Process memory is managed by the operating system, not by an API that a Terraform provider can call."
+      - id: d
+        text: "The CPU instructions run by a compiled program"
+        why: "CPU instructions are not infrastructure and have no management API. Terraform manages resources exposed through APIs."
+    answer: [a, b]
+    explanation: |
+      Any service with an API can have a Terraform provider. Besides clouds,
+      there are providers for SaaS tools such as GitHub, Datadog, PagerDuty, and
+      for platforms such as Kubernetes. This lets one workflow manage the
+      whole stack, not just servers.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers
+      - https://developer.hashicorp.com/terraform/intro/use-cases
+    glossary: [tf-provider]
+
+  - id: terraform-iac-012
+    difficulty: 3
+    type: single
+    question: "In one configuration, an AWS load balancer is created and a Cloudflare DNS record uses its address: `value = aws_lb.web.dns_name`. How does Terraform decide the order between the two providers?"
+    options:
+      - id: a
+        text: "It runs all AWS resources first because AWS is listed first"
+        why: "Terraform does not order resources by provider or by position in the files. It uses references between resources."
+      - id: b
+        text: "The reference creates a dependency in one graph for all providers"
+      - id: c
+        text: "You must run two separate applies, one per provider, by hand"
+        why: "One apply is enough. Terraform builds a single dependency graph that covers resources from every provider."
+      - id: d
+        text: "It creates both at the same time, and then fixes the DNS value"
+        why: "Terraform does not create a resource and fix it later. It waits for the load balancer because the DNS record needs its value."
+    answer: [b]
+    explanation: |
+      Terraform builds one dependency graph for the whole configuration, no
+      matter which provider each resource uses. The reference to
+      `aws_lb.web.dns_name` is an implicit dependency, so Terraform creates the
+      load balancer first and then the DNS record.
+    docs:
+      - https://developer.hashicorp.com/terraform/internals/graph
+    glossary: [tf-dependency-graph, tf-provider, tf-multi-cloud]

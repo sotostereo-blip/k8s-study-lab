@@ -1,0 +1,90 @@
+id: terraform-config-001
+title: Input variable with validation, tfvars and an output
+domain: configuration
+difficulty: 2
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/env-vars && cd /root/env-vars
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "app" {
+    bucket = "tfcfg-app-dev"
+  }
+  TF
+task: |
+  The bucket name in `/root/env-vars/main.tf` is hard-coded. Make it depend on the environment.
+
+  1. Declare an input variable `environment` of type `string`, **with no default**.
+     Add a `validation` block: only `dev`, `stage` and `prod` are allowed.
+  2. Name the bucket `tfcfg-app-<environment>` using the variable.
+  3. Create the file `terraform.tfvars` that sets `environment` to `stage`.
+  4. Add an output `bucket_name` with the name of the bucket.
+  5. Apply. Then check that `terraform plan -var environment=test` fails with your validation error.
+checks:
+  - name: The bucket `tfcfg-app-stage` exists
+    run: aws s3api head-bucket --bucket tfcfg-app-stage
+  - name: Output `bucket_name` is `tfcfg-app-stage`
+    run: '[ "$(terraform -chdir=/root/env-vars output -raw bucket_name)" = tfcfg-app-stage ]'
+  - name: '`terraform plan -input=false` shows no changes (the value comes from terraform.tfvars)'
+    run: terraform -chdir=/root/env-vars plan -input=false -detailed-exitcode >/dev/null
+  - name: The value `test` is rejected by a validation rule
+    run: |
+      out="$(terraform -chdir=/root/env-vars plan -input=false -no-color -var environment=test 2>&1)"
+      echo "$out" | grep -q 'Invalid value for variable'
+  - name: The value `prod` is accepted
+    run: terraform -chdir=/root/env-vars validate >/dev/null && terraform -chdir=/root/env-vars plan -input=false -no-color -var environment=prod >/dev/null
+solution: |
+  cd /root/env-vars
+  cat > variables.tf <<'TF'
+  variable "environment" {
+    type        = string
+    description = "Deployment environment"
+
+    validation {
+      condition     = contains(["dev", "stage", "prod"], var.environment)
+      error_message = "The environment must be dev, stage or prod."
+    }
+  }
+  TF
+  # main.tf: use the variable in the name (string interpolation)
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "app" {
+    bucket = "tfcfg-app-${var.environment}"
+  }
+
+  output "bucket_name" {
+    value = aws_s3_bucket.app.bucket
+  }
+  TF
+  echo 'environment = "stage"' > terraform.tfvars   # loaded automatically
+  terraform init
+  terraform apply
+  terraform plan -var environment=test   # Error: Invalid value for variable
+  # Precedence (last wins): default < terraform.tfvars < *.auto.tfvars < -var / -var-file.
+docs:
+  - https://developer.hashicorp.com/terraform/language/values/variables
+  - https://developer.hashicorp.com/terraform/language/values/outputs
+auto_solution: |
+  cd /root/env-vars
+  cat > variables.tf <<'TF'
+  variable "environment" {
+    type = string
+    validation {
+      condition     = contains(["dev", "stage", "prod"], var.environment)
+      error_message = "The environment must be dev, stage or prod."
+    }
+  }
+  TF
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "app" {
+    bucket = "tfcfg-app-${var.environment}"
+  }
+
+  output "bucket_name" {
+    value = aws_s3_bucket.app.bucket
+  }
+  TF
+  echo 'environment = "stage"' > terraform.tfvars
+  terraform init -input=false
+  terraform apply -auto-approve -input=false

@@ -1,0 +1,80 @@
+id: terraform-config-004
+title: Read an existing bucket with a data source
+domain: configuration
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  aws s3api create-bucket --bucket tfcfg-shared-artifacts >/dev/null
+  aws s3api put-bucket-tagging --bucket tfcfg-shared-artifacts --tagging 'TagSet=[{Key=Team,Value=platform}]'
+  mkdir -p /root/shared-data && cd /root/shared-data
+  cp /opt/lab/aws-provider.tf .
+  touch main.tf
+task: |
+  The platform team created the bucket `tfcfg-shared-artifacts` by hand. It is **not** yours:
+  Terraform must not manage (or ever delete) it. You only need to put a file in it.
+
+  In `/root/shared-data`:
+
+  1. Read the bucket with a **data source** (`data "aws_s3_bucket"`).
+  2. Create an `aws_s3_object` with key `releases/app-v1.txt` and the content `app v1`
+     in that bucket. Use the data source to get the bucket name.
+  3. Add an output `shared_bucket_arn` with the ARN of the bucket, taken from the data source.
+  4. Apply.
+checks:
+  - name: The object `releases/app-v1.txt` has the text `app v1`
+    run: '[ "$(aws s3 cp s3://tfcfg-shared-artifacts/releases/app-v1.txt -)" = "app v1" ]'
+  - name: The state has a `data.aws_s3_bucket` data source
+    run: terraform -chdir=/root/shared-data state list | grep -q '^data\.aws_s3_bucket\.'
+  - name: Output `shared_bucket_arn` is `arn:aws:s3:::tfcfg-shared-artifacts`
+    run: '[ "$(terraform -chdir=/root/shared-data output -raw shared_bucket_arn)" = "arn:aws:s3:::tfcfg-shared-artifacts" ]'
+  - name: Terraform does not manage any aws_s3_bucket resource here
+    run: |
+      terraform -chdir=/root/shared-data show -json | jq -e '[.values.root_module.resources[]? | select(.mode == "managed" and .type == "aws_s3_bucket")] | length == 0' >/dev/null
+    guard: true
+  - name: The shared bucket still has its tag Team=platform
+    run: aws s3api get-bucket-tagging --bucket tfcfg-shared-artifacts | jq -e '.TagSet | from_entries | .Team == "platform"' >/dev/null
+    guard: true
+solution: |
+  cd /root/shared-data
+  cat > main.tf <<'TF'
+  # A data source only READS. Terraform never creates, changes or destroys it.
+  data "aws_s3_bucket" "shared" {
+    bucket = "tfcfg-shared-artifacts"
+  }
+
+  resource "aws_s3_object" "release" {
+    bucket  = data.aws_s3_bucket.shared.id     # data.<TYPE>.<NAME>.<ATTRIBUTE>
+    key     = "releases/app-v1.txt"
+    content = "app v1"
+  }
+
+  output "shared_bucket_arn" {
+    value = data.aws_s3_bucket.shared.arn
+  }
+  TF
+  terraform init
+  terraform apply
+  terraform state list        # data.aws_s3_bucket.shared  +  aws_s3_object.release
+docs:
+  - https://developer.hashicorp.com/terraform/language/data-sources
+  - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/s3_bucket
+auto_solution: |
+  cd /root/shared-data
+  cat > main.tf <<'TF'
+  data "aws_s3_bucket" "shared" {
+    bucket = "tfcfg-shared-artifacts"
+  }
+
+  resource "aws_s3_object" "release" {
+    bucket  = data.aws_s3_bucket.shared.id
+    key     = "releases/app-v1.txt"
+    content = "app v1"
+  }
+
+  output "shared_bucket_arn" {
+    value = data.aws_s3_bucket.shared.arn
+  }
+  TF
+  terraform init -input=false
+  terraform apply -auto-approve -input=false

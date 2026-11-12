@@ -1,0 +1,23 @@
+# HashiCorp Certified: Terraform Associate (004) - tests Terraform 1.12.
+# Objectives from https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-review-004
+# (8 objectives, 37 sub-objectives). HashiCorp does NOT publish weights, the number of
+# questions or the passing score: weights below follow the number of sub-objectives.
+id: terraform
+name: HashiCorp Certified Terraform Associate (004)
+format: multiple-choice
+exam_minutes: 60
+exam_questions: 57
+passing_score: 70
+facts_note: >-
+  Official: 1 hour, multiple choice, Terraform 1.12, includes HCP Terraform. Not published by
+  HashiCorp: number of questions, passing score and weights. 57 questions and 70% are commonly
+  reported values; domain weights here follow the number of official sub-objectives.
+domains:
+  - { id: iac, name: "Infrastructure as Code (IaC) with Terraform", weight: 8 }
+  - { id: fundamentals, name: "Terraform fundamentals", weight: 11 }
+  - { id: workflow, name: "Core Terraform workflow", weight: 19 }
+  - { id: configuration, name: "Terraform configuration", weight: 21 }
+  - { id: modules, name: "Terraform modules", weight: 11 }
+  - { id: state, name: "Terraform state management", weight: 11 }
+  - { id: maintain, name: "Maintain infrastructure with Terraform", weight: 8 }
+  - { id: hcp, name: "HCP Terraform", weight: 11 }

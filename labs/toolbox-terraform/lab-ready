@@ -1,0 +1,4 @@
+#!/bin/bash
+# Exit 0 when LocalStack answers and S3 works.
+curl -sf http://localstack:4566/_localstack/health | jq -e '.services.s3 == "running" or .services.s3 == "available"' >/dev/null \
+  && aws s3api list-buckets >/dev/null 2>&1

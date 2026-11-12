@@ -1,0 +1,838 @@
+domain: configuration
+questions:
+  # 4a - resource and data blocks
+  - id: terraform-config-001
+    difficulty: 1
+    type: single
+    question: "What is the main job of a `data` block in a Terraform configuration?"
+    options:
+      - id: a
+        text: "It creates a new infrastructure object and tracks it in state."
+        why: "That is what a `resource` block does. Terraform creates, updates and destroys objects declared with `resource`."
+      - id: b
+        text: "It reads information about an object that Terraform does not manage."
+      - id: c
+        text: "It brings an existing object under Terraform management."
+        why: "Bringing an existing object under management is done with an `import` block or `terraform import`, not with a data source."
+      - id: d
+        text: "It stores intermediate values so you can reuse an expression."
+        why: "Reusable named expressions are local values, declared in a `locals` block."
+    answer: [b]
+    explanation: |
+      A data source lets Terraform fetch information from a provider, for example the
+      latest machine image or an existing network, and use it in the configuration.
+      Terraform only reads the object; it never creates, changes or destroys it.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/data-sources
+    glossary: [tf-data-source, tf-resource]
+
+  - id: terraform-config-002
+    difficulty: 1
+    type: single
+    question: |
+      You declared `data "aws_ami" "ubuntu" { ... }`. Which expression returns the ID of the image it found?
+    options:
+      - id: a
+        text: "`aws_ami.ubuntu.id`"
+        why: "Without the `data.` prefix, Terraform looks for a managed resource of type `aws_ami` named `ubuntu`, which does not exist here."
+      - id: b
+        text: "`data.ubuntu.id`"
+        why: "A data source reference needs both the type and the name: `data.<TYPE>.<NAME>`. The type `aws_ami` is missing."
+      - id: c
+        text: "`data.aws_ami.ubuntu.id`"
+      - id: d
+        text: "`var.aws_ami.ubuntu.id`"
+        why: "`var.` is only for input variables. Data sources are always referenced with the `data.` prefix."
+    answer: [c]
+    explanation: |
+      Data sources are referenced as `data.<TYPE>.<NAME>.<ATTRIBUTE>`. Managed resources use
+      `<TYPE>.<NAME>.<ATTRIBUTE>` without a prefix, so the `data.` prefix is what tells
+      Terraform you mean the data source.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/references
+      - https://developer.hashicorp.com/terraform/language/data-sources
+    glossary: [tf-data-source]
+
+  - id: terraform-config-003
+    difficulty: 2
+    type: single
+    question: "A network team owns a VPC that is managed outside your configuration. You need its ID, found by its `Name` tag, and Terraform must never change or delete it. What should you write?"
+    options:
+      - id: a
+        text: "A `resource` block for the VPC with `prevent_destroy = true`"
+        why: "A `resource` block would make Terraform try to create and manage a VPC. `prevent_destroy` only blocks deletion; it does not stop Terraform from managing it."
+      - id: b
+        text: "A `module` block whose `source` points at the VPC"
+        why: "A module `source` points to configuration code (a folder, registry or Git), not to an existing cloud object."
+      - id: c
+        text: "A `moved` block that maps the VPC into your state"
+        why: "A `moved` block renames or relocates objects already in your state. It cannot look up objects owned by another team."
+      - id: d
+        text: "A `data` block that filters VPCs by the `Name` tag"
+    answer: [d]
+    explanation: |
+      A data source can search for an existing object, for example by tag, and expose its
+      attributes such as `id`. Because it is read-only, Terraform will never modify or
+      destroy the VPC, which stays under the other team's control.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/data-sources
+    glossary: [tf-data-source, tf-resource]
+
+  - id: terraform-config-004
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements about `resource` and `data` blocks are true? (Choose two.)"
+    options:
+      - id: a
+        text: "Running `terraform destroy` does not delete objects that were only read by data sources."
+      - id: b
+        text: "Data sources cannot use meta-arguments such as `count` or `for_each`."
+        why: "Data sources support `count`, `for_each`, `depends_on` and `provider`, like resources do."
+      - id: c
+        text: "In one module, the type and name of each resource must be unique together."
+      - id: d
+        text: "Data sources are only read during apply, never during plan."
+        why: "Terraform normally reads data sources during plan. It waits until apply only when the arguments depend on values not yet known."
+      - id: e
+        text: "A resource block can create objects but cannot update them later."
+        why: "Terraform updates managed resources in place when possible, or replaces them when an argument cannot be changed in place."
+    answer: [a, c]
+    explanation: |
+      Terraform manages the full lifecycle (create, update, destroy) only for `resource`
+      blocks. Data sources are read-only, so destroying the configuration leaves those
+      objects untouched. The pair `<TYPE>.<NAME>` is the address of a resource and must be
+      unique inside a module.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/resources
+      - https://developer.hashicorp.com/terraform/language/data-sources
+    glossary: [tf-resource, tf-data-source, tf-count, tf-for-each]
+
+  # 4b - references
+  - id: terraform-config-005
+    difficulty: 1
+    type: single
+    question: "In the expression `aws_instance.web.public_ip`, what is `web`?"
+    options:
+      - id: a
+        text: "The resource type defined by the provider"
+        why: "The resource type is `aws_instance`, the first part. It comes from the AWS provider."
+      - id: b
+        text: "The local name of the resource block"
+      - id: c
+        text: "The attribute that the expression returns"
+        why: "The attribute is the last part, `public_ip`. It is a value that the provider exports."
+      - id: d
+        text: "The name of the module that owns the resource"
+        why: "Module paths start with `module.`, for example `module.app.`. There is no module in this address."
+    answer: [b]
+    explanation: |
+      A managed resource reference has the form `<RESOURCE TYPE>.<NAME>.<ATTRIBUTE>`.
+      Here `aws_instance` is the type, `web` is the local name you chose in the
+      `resource "aws_instance" "web"` block, and `public_ip` is the attribute.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/references
+    glossary: [tf-resource]
+
+  - id: terraform-config-006
+    difficulty: 2
+    type: single
+    question: "The resource `aws_instance.web` uses `count = 3`. Which expression returns a list with the IDs of all three instances?"
+    options:
+      - id: a
+        text: "`aws_instance.web.id`"
+        why: "With `count`, the resource is a list of instances. You must pick one with an index or use a splat expression."
+      - id: b
+        text: "`aws_instance.web[3].id`"
+        why: "Indexes start at 0, so the valid indexes are 0, 1 and 2. Index 3 is out of range, and it would return one ID, not a list."
+      - id: c
+        text: "`aws_instance.web[*].id`"
+      - id: d
+        text: "`aws_instance.web[count.index].id`"
+        why: "`count.index` exists only inside the block that sets `count`. It returns one element, not all of them."
+    answer: [c]
+    explanation: |
+      When a resource uses `count`, Terraform creates a list of instances addressed
+      as `aws_instance.web[0]`, `[1]` and so on. The splat expression `[*]` collects one
+      attribute from every element into a list.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/splat
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/count
+    glossary: [tf-count, tf-splat]
+
+  - id: terraform-config-007
+    difficulty: 2
+    type: single
+    question: |
+      A bucket resource is declared with `for_each = toset(["dev", "prod"])`. Which expression returns the ARN of the "prod" bucket?
+    options:
+      - id: a
+        text: "`aws_s3_bucket.logs[1].arn`"
+        why: "Resources with `for_each` are a map of instances, so you select them by key, not by a numeric index."
+      - id: b
+        text: "`aws_s3_bucket.logs[\"prod\"].arn`"
+      - id: c
+        text: "`aws_s3_bucket.logs.prod.arn`"
+        why: "Instance keys go in square brackets with quotes. Dot syntax would look for an attribute called `prod`."
+      - id: d
+        text: "`each.value.arn`"
+        why: "`each.key` and `each.value` exist only inside the block that sets `for_each`, and `each.value` is the input element, not the bucket."
+    answer: [b]
+    explanation: |
+      A resource with `for_each` produces one instance per key. You reference an instance
+      as `<TYPE>.<NAME>[<KEY>]`, here `aws_s3_bucket.logs["prod"]`. Keys stay stable even
+      when you add or remove other elements, which is a key advantage over `count`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/for_each
+      - https://developer.hashicorp.com/terraform/language/expressions/references
+    glossary: [tf-for-each]
+
+  - id: terraform-config-008
+    difficulty: 2
+    type: single
+    question: "In a plan, the line `id = (known after apply)` appears for a new virtual machine. What does it mean?"
+    options:
+      - id: a
+        text: "The attribute is sensitive, so Terraform hides its value."
+        why: "Sensitive values are shown as `(sensitive value)`. `(known after apply)` is about values that do not exist yet."
+      - id: b
+        text: "The provider will set the value only when the object is created."
+      - id: c
+        text: "The value comes from an input variable that has no default."
+        why: "A variable without a default must get a value before planning; Terraform asks for it or fails. It never shows as known after apply."
+      - id: d
+        text: "Terraform failed to read the attribute and will retry later."
+        why: "This is not an error. It is the normal way Terraform marks computed attributes that the remote API will assign."
+    answer: [b]
+    explanation: |
+      Some attributes, such as IDs or IP addresses, are computed by the remote system when
+      the object is created. During plan Terraform shows them as `(known after apply)`.
+      Any resource that references them will also get the value only during apply.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/references
+    glossary: [tf-resource]
+
+  # 4c - variables and outputs
+  - id: terraform-config-009
+    difficulty: 1
+    type: single
+    question: "You declared `variable \"region\" {}`. How do you use its value inside a resource argument?"
+    options:
+      - id: a
+        text: "`variable.region`"
+        why: "The block keyword is `variable`, but references use the short prefix `var.`."
+      - id: b
+        text: "`input.region`"
+        why: "Terraform has no `input.` prefix. Input variables are always referenced as `var.<NAME>`."
+      - id: c
+        text: "`local.region`"
+        why: "`local.` refers to local values defined in a `locals` block, not to input variables."
+      - id: d
+        text: "`var.region`"
+    answer: [d]
+    explanation: |
+      Input variables are declared with a `variable` block and referenced with
+      `var.<NAME>`. Their values can come from defaults, `.tfvars` files, `-var` options
+      or `TF_VAR_` environment variables.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-variable]
+
+  - id: terraform-config-010
+    difficulty: 2
+    type: single
+    question: |
+      The variable `region` gets three values: `terraform.tfvars` sets "us-east-1", the environment has `TF_VAR_region=eu-west-1`, and you run `terraform plan -var="region=ap-south-1"`. Which value does Terraform use?
+    options:
+      - id: a
+        text: "\"ap-south-1\", because `-var` on the command line wins"
+      - id: b
+        text: "\"eu-west-1\", because environment variables win"
+        why: "`TF_VAR_` environment variables have the lowest precedence of these sources. Any `.tfvars` file or `-var` option overrides them."
+      - id: c
+        text: "\"us-east-1\", because `terraform.tfvars` wins"
+        why: "`terraform.tfvars` overrides environment variables, but `-var` and `-var-file` options on the command line override it."
+      - id: d
+        text: "None; Terraform fails with a conflicting value error"
+        why: "Terraform does not fail. It applies a fixed precedence order and the later source wins."
+    answer: [a]
+    explanation: |
+      Terraform loads variable values in this order, and later sources win: environment
+      variables, `terraform.tfvars`, `terraform.tfvars.json`, `*.auto.tfvars` files, and
+      finally `-var` and `-var-file` options in the order you give them.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-variable, tf-tfvars]
+
+  - id: terraform-config-011
+    difficulty: 2
+    type: single
+    question: "An `output` block in the root module returns `var.db_password`, and that variable is marked `sensitive = true`. The output block does not set `sensitive`. What happens?"
+    options:
+      - id: a
+        text: "Terraform prints the password in clear text after apply."
+        why: "Terraform does not silently reveal sensitive values. It stops instead and asks you to mark the output as sensitive."
+      - id: b
+        text: "Terraform encrypts the output value in the state file."
+        why: "Terraform does not encrypt values in state. Protecting state is the job of the backend and access controls."
+      - id: c
+        text: "Terraform returns an error until you mark the output as sensitive."
+      - id: d
+        text: "Terraform skips that output and shows a warning."
+        why: "Terraform does not skip outputs. It reports an error so you must decide explicitly to set `sensitive = true`."
+    answer: [c]
+    explanation: |
+      Outputs that refer to sensitive values must also set `sensitive = true`, otherwise
+      Terraform raises an error during planning. With the flag set, the CLI shows
+      `<sensitive>`, but the value is still stored in the state file.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/output
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
+    glossary: [tf-output, tf-sensitive]
+
+  - id: terraform-config-012
+    difficulty: 3
+    type: single
+    question: |
+      A child module declares the variable `tier` with `type = string`, `default = "standard"` and `nullable = false`. The calling module block sets `tier = null`. What value does `var.tier` have inside the module?
+    options:
+      - id: a
+        text: "`null`, because the caller set it explicitly"
+        why: "That would happen with `nullable = true`, the default setting. With `nullable = false`, null is not accepted as the final value."
+      - id: b
+        text: "An empty string, because the type is `string`"
+        why: "Terraform does not convert null to an empty string. The default value is used instead."
+      - id: c
+        text: "Terraform fails because null is not allowed"
+        why: "It would fail only if the variable had no default. Here a default exists, so Terraform uses it."
+      - id: d
+        text: "\"standard\", the default value"
+    answer: [d]
+    explanation: |
+      When `nullable = false` and the variable has a default, Terraform uses the default
+      if a module call passes `null`. If there were no default, passing null would be an
+      error. The default `nullable = true` lets null through as a valid value.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-variable, tf-module]
+
+  # 4d - complex types
+  - id: terraform-config-013
+    difficulty: 1
+    type: single
+    question: "Which type is an unordered collection of unique values that all have the same type?"
+    options:
+      - id: a
+        text: "`list(string)`"
+        why: "A list is ordered, uses numeric indexes and can contain duplicate values."
+      - id: b
+        text: "`set(string)`"
+      - id: c
+        text: "`map(string)`"
+        why: "A map stores values under string keys. Its values do not have to be unique."
+      - id: d
+        text: "`tuple([string])`"
+        why: "A tuple is an ordered sequence with a fixed length, where each position has its own type."
+    answer: [b]
+    explanation: |
+      A `set` holds unique values of one type with no order and no index. It is common
+      with `for_each`, which accepts a set of strings or a map. Lists and tuples keep
+      order; maps and objects use keys.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/type-constraints
+    glossary: [tf-type-constraint]
+
+  - id: terraform-config-014
+    difficulty: 2
+    type: single
+    question: |
+      A variable has `type = object({ name = string, port = optional(number, 8080) })`. The caller passes `{ name = "api" }`. What is `var.app.port`?
+    options:
+      - id: a
+        text: "`8080`"
+      - id: b
+        text: "`null`"
+        why: "`optional(number)` without a default would give null. Here the second argument sets the default 8080."
+      - id: c
+        text: "`0`"
+        why: "Terraform has no zero values for missing attributes. It uses the default given in `optional()` or null."
+      - id: d
+        text: "An error, because `port` is missing"
+        why: "Marking the attribute with `optional()` allows the caller to leave it out, so there is no error."
+    answer: [a]
+    explanation: |
+      `optional(<TYPE>, <DEFAULT>)` marks an object attribute as not required. When the
+      caller leaves it out, Terraform fills in the default, or null if no default is given.
+      Without `optional()`, every attribute of an object type is required.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/type-constraints
+    glossary: [tf-type-constraint, tf-variable]
+
+  - id: terraform-config-015
+    difficulty: 2
+    type: single
+    question: "A variable must hold exactly three values in order: a string, a number and a bool. Each value must keep its own type. Which type constraint fits?"
+    options:
+      - id: a
+        text: "`list(string)`"
+        why: "A list has one element type. Terraform would convert the number and the bool to strings, so they would not keep their own types."
+      - id: b
+        text: "`object({ s = string, n = number, b = bool })`"
+        why: "An object uses named attributes, not positions. A sequence like [\"a\", 1, true] has no attribute names, so it does not match."
+      - id: c
+        text: "`tuple([string, number, bool])`"
+      - id: d
+        text: "`list(any)`"
+        why: "With `any`, Terraform still picks one element type for the whole list, here string, so the number and bool lose their types."
+    answer: [c]
+    explanation: |
+      A tuple is a structural type: a fixed-length sequence where each position has its
+      own type. Lists, sets and maps are collection types where all elements share a single
+      type, and Terraform converts values to that type when it can.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/type-constraints
+    glossary: [tf-type-constraint]
+
+  - id: terraform-config-016
+    difficulty: 2
+    type: single
+    question: |
+      A variable has `type = list(number)`. A `.tfvars` file sets `ports = ["80", "443"]` (strings). What happens?
+    options:
+      - id: a
+        text: "Terraform fails because strings are not numbers."
+        why: "Terraform converts values automatically when the conversion is possible. Strings like \"80\" can become numbers, so there is no error."
+      - id: b
+        text: "The values stay strings inside the module."
+        why: "The type constraint wins. After conversion, `var.ports` is a list of numbers."
+      - id: c
+        text: "Terraform converts the values to the numbers 80 and 443."
+      - id: d
+        text: "Terraform turns the list into a set of strings."
+        why: "Terraform never changes the collection kind against the constraint. It converts elements to match `list(number)`."
+    answer: [c]
+    explanation: |
+      Terraform performs automatic type conversion. A string that contains a valid number
+      converts to a number, and numbers and bools convert to strings. If a value cannot be
+      converted, such as "abc" to a number, Terraform returns an error.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/type-constraints
+    glossary: [tf-type-constraint, tf-tfvars]
+
+  # 4e - expressions and functions
+  - id: terraform-config-017
+    difficulty: 1
+    type: single
+    question: "What is the result of `[for s in [\"web\", \"db\"] : upper(s)]`?"
+    options:
+      - id: a
+        text: "`[\"WEB\", \"DB\"]`"
+      - id: b
+        text: "`{\"web\" = \"WEB\", \"db\" = \"DB\"}`"
+        why: "Square brackets produce a list. A map result needs curly braces and the `=>` symbol, like `{for s in ... : s => upper(s)}`."
+      - id: c
+        text: "`\"WEB DB\"`"
+        why: "A `for` expression does not join elements into one string. You would need `join(\" \", ...)` for that."
+      - id: d
+        text: "`[\"web\", \"db\"]`"
+        why: "The expression after the colon is applied to every element, so `upper()` changes each value."
+    answer: [a]
+    explanation: |
+      A `for` expression transforms each element of a collection. Square brackets build a
+      list (or tuple), and curly braces with `=>` build a map (or object). You can also add
+      an `if` clause to filter elements.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/for
+    glossary: [tf-for-expression]
+
+  - id: terraform-config-018
+    difficulty: 2
+    type: single
+    question: |
+      Given `locals { replicas = var.env == "prod" ? 3 : 1 }` and `var.env = "dev"`, what is `local.replicas`?
+    options:
+      - id: a
+        text: "`3`"
+        why: "3 is returned only when the condition `var.env == \"prod\"` is true. Here env is \"dev\"."
+      - id: b
+        text: "`1`"
+      - id: c
+        text: "`\"dev\"`"
+        why: "A conditional returns one of its two result values (3 or 1), never the value being compared."
+      - id: d
+        text: "An error, because locals cannot contain conditions"
+        why: "Local values can hold any expression, including conditionals, function calls and references."
+    answer: [b]
+    explanation: |
+      The conditional expression `condition ? true_value : false_value` returns the second
+      value when the condition is false. Local values give a name to an expression so you
+      can reuse it as `local.<NAME>` in the same module.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/conditionals
+      - https://developer.hashicorp.com/terraform/language/values
+    glossary: [tf-local-value]
+
+  - id: terraform-config-019
+    difficulty: 2
+    type: single
+    question: "A security group needs one `ingress` nested block for each port in `var.ports`. Which feature generates those nested blocks?"
+    options:
+      - id: a
+        text: "The `count` meta-argument on the resource"
+        why: "`count` creates several whole resource instances. It cannot repeat a nested block inside one resource."
+      - id: b
+        text: "A `for_each` argument inside each `ingress` block"
+        why: "`for_each` is a meta-argument for resources and modules. Nested blocks repeat through a `dynamic` block, which uses `for_each` inside it."
+      - id: c
+        text: "A `dynamic \"ingress\"` block with a `content` block"
+      - id: d
+        text: "A splat expression such as `var.ports[*]`"
+        why: "A splat expression collects attributes from a list into a new list. It returns a value and cannot generate nested blocks."
+    answer: [c]
+    explanation: |
+      A `dynamic` block iterates over a collection with `for_each` and produces one nested
+      block per element, using the `content` block as a template. Use it for repeated
+      nested blocks, but keep it simple, because overuse makes code hard to read.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/dynamic-blocks
+    glossary: [tf-dynamic-block, tf-for-each]
+
+  - id: terraform-config-020
+    difficulty: 2
+    type: single
+    question: "What does `lookup({ dev = \"t3.micro\", prod = \"m5.large\" }, \"test\", \"t3.small\")` return?"
+    options:
+      - id: a
+        text: "`\"t3.micro\"`"
+        why: "`lookup` does not fall back to the first element. It returns the third argument when the key is missing."
+      - id: b
+        text: "`null`"
+        why: "`lookup` returns null only if you pass null as the default. Here the default is \"t3.small\"."
+      - id: c
+        text: "An error, because the key \"test\" is missing"
+        why: "With a third argument, `lookup` returns that default instead of failing on a missing key."
+      - id: d
+        text: "`\"t3.small\"`"
+    answer: [d]
+    explanation: |
+      `lookup(map, key, default)` returns the value for the key, or the default when the
+      key does not exist. Terraform only has built-in functions (plus provider-defined
+      functions); you cannot write your own functions in HCL.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/functions/lookup
+      - https://developer.hashicorp.com/terraform/language/functions
+    glossary: []
+
+  # 4f - dependencies
+  - id: terraform-config-021
+    difficulty: 1
+    type: single
+    question: "A subnet sets `vpc_id = aws_vpc.main.id`. How does Terraform know it must create the VPC first?"
+    options:
+      - id: a
+        text: "The VPC block is written above the subnet in the file."
+        why: "The order of blocks in files does not matter. Terraform builds a dependency graph from references."
+      - id: b
+        text: "The reference creates an implicit dependency."
+      - id: c
+        text: "You must add `depends_on = [aws_vpc.main]`."
+        why: "`depends_on` is only for hidden dependencies. Here the reference already tells Terraform the order."
+      - id: d
+        text: "Terraform always creates network resources first."
+        why: "Terraform has no built-in priority by resource category. Order comes only from the dependency graph."
+    answer: [b]
+    explanation: |
+      When one resource refers to another resource's attribute, Terraform adds an implicit
+      dependency to its graph and creates the referenced object first. Resources with no
+      dependency between them can be created in parallel.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on
+      - https://developer.hashicorp.com/terraform/language/expressions/references
+    glossary: [tf-implicit-dependency, tf-depends-on]
+
+  - id: terraform-config-022
+    difficulty: 2
+    type: single
+    question: "A VM runs a startup script that needs an IAM policy attachment to exist first. The VM block does not reference the policy attachment anywhere. What is the right fix?"
+    options:
+      - id: a
+        text: "Add `lifecycle { create_before_destroy = true }` to the VM."
+        why: "`create_before_destroy` changes the order of replacement for one resource. It does not make the VM wait for another resource."
+      - id: b
+        text: "Move the policy attachment block above the VM block."
+        why: "Terraform ignores the order of blocks in files. It only follows references and `depends_on`."
+      - id: c
+        text: "Add `depends_on` with the policy attachment to the VM."
+      - id: d
+        text: "Run `terraform apply` twice so the second run fixes it."
+        why: "Running apply twice hides the problem instead of fixing it. The dependency should be declared in code."
+    answer: [c]
+    explanation: |
+      `depends_on` declares a hidden dependency that Terraform cannot see from references.
+      Use it as a last resort and add a comment explaining why, because it can make plans
+      more conservative. Prefer a direct reference when one is possible.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on
+    glossary: [tf-depends-on]
+
+  - id: terraform-config-023
+    difficulty: 2
+    type: single
+    question: "Changing the image of a VM that serves live traffic forces Terraform to replace it, and the old VM is deleted before the new one exists. Which setting reverses that order?"
+    options:
+      - id: a
+        text: "`lifecycle { create_before_destroy = true }`"
+      - id: b
+        text: "`lifecycle { prevent_destroy = true }`"
+        why: "`prevent_destroy` makes Terraform reject any plan that would destroy the object. It blocks the replacement instead of reordering it."
+      - id: c
+        text: "`lifecycle { ignore_changes = [image] }`"
+        why: "`ignore_changes` makes Terraform ignore changes to the image, so no replacement happens at all. That hides the change you wanted."
+      - id: d
+        text: "`depends_on = [self]`"
+        why: "A resource cannot depend on itself. `depends_on` lists other resources or modules."
+    answer: [a]
+    explanation: |
+      By default, when an argument cannot be updated in place, Terraform destroys the old
+      object and then creates the new one. With `create_before_destroy = true`, it creates
+      the replacement first and destroys the old object afterwards, which can reduce downtime.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle
+    glossary: [tf-lifecycle]
+
+  - id: terraform-config-024
+    difficulty: 3
+    type: multiple
+    question: "Which TWO statements about the `lifecycle` meta-argument are true? (Choose two.)"
+    options:
+      - id: a
+        text: "`prevent_destroy = true` makes Terraform reject plans that would destroy the object."
+      - id: b
+        text: "`depends_on` must be written inside the `lifecycle` block."
+        why: "`depends_on` is a separate meta-argument written directly in the resource block, not inside `lifecycle`."
+      - id: c
+        text: "`ignore_changes` lists attributes whose changes Terraform will not try to undo."
+      - id: d
+        text: "You can set `prevent_destroy = var.protect` to switch it per environment."
+        why: "Lifecycle settings are used to build the dependency graph, so only literal values are allowed, not variables."
+      - id: e
+        text: "`create_before_destroy` is enabled by default for all resources."
+        why: "The default is destroy-then-create. You must enable `create_before_destroy` yourself."
+    answer: [a, c]
+    explanation: |
+      The `lifecycle` block supports `create_before_destroy`, `prevent_destroy`,
+      `ignore_changes`, `replace_triggered_by`, and custom conditions. Its settings must be
+      literal values because Terraform processes them before it evaluates expressions.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle
+    glossary: [tf-lifecycle, tf-depends-on]
+
+  # 4g - custom conditions
+  - id: terraform-config-025
+    difficulty: 1
+    type: single
+    question: |
+      The variable `env` has a `validation` block with `condition = contains(["dev", "prod"], var.env)` and an `error_message`. You pass `env = "test"`. What happens?
+    options:
+      - id: a
+        text: "Terraform shows a warning and continues with \"test\"."
+        why: "Only `check` blocks report warnings and continue. A failed variable validation is an error."
+      - id: b
+        text: "Terraform replaces \"test\" with the default value."
+        why: "Terraform never changes an invalid value on its own. It stops so you can fix the input."
+      - id: c
+        text: "Terraform skips the resources that use `var.env`."
+        why: "Validation does not filter resources. If the condition is false, the whole operation fails."
+      - id: d
+        text: "Terraform stops with an error that shows the message."
+    answer: [d]
+    explanation: |
+      A `validation` block inside a `variable` checks the value before Terraform uses it.
+      If `condition` is false, Terraform reports an error with your `error_message` and does
+      not continue. This gives users clear feedback on bad input.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/validate
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-custom-condition, tf-variable]
+
+  - id: terraform-config-026
+    difficulty: 2
+    type: single
+    question: "You want to confirm, right after Terraform creates a VM, that the provider assigned it a private IP. The check should use `self.private_ip`. Which block fits?"
+    options:
+      - id: a
+        text: "A `precondition` in the VM's `lifecycle` block"
+        why: "A precondition runs before Terraform creates or changes the object, so the new attributes are not known yet and `self` is not available."
+      - id: b
+        text: "A `postcondition` in the VM's `lifecycle` block"
+      - id: c
+        text: "A `validation` block in the VM resource"
+        why: "`validation` blocks belong to input variables, not to resources."
+      - id: d
+        text: "A `check` block with a scoped data source"
+        why: "A `check` block reports warnings and cannot use `self`. It is meant for overall health checks, not for one resource's result."
+    answer: [b]
+    explanation: |
+      A postcondition is evaluated after Terraform applies or reads an object, and it can
+      use `self` to refer to that object's attributes. If it fails, Terraform stops and
+      dependent resources are not changed. Preconditions run before the change.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/validate
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle
+    glossary: [tf-custom-condition, tf-lifecycle]
+
+  - id: terraform-config-027
+    difficulty: 2
+    type: single
+    question: "After every apply, you want Terraform to test that a website endpoint returns HTTP 200. A failure should be reported but must not stop the run. What should you use?"
+    options:
+      - id: a
+        text: "A `check` block with an `assert`"
+      - id: b
+        text: "A `postcondition` on the web server resource"
+        why: "A failed postcondition is an error that stops Terraform. It does not fit a check that should only report problems."
+      - id: c
+        text: "A `validation` block on an input variable"
+        why: "Variable validation only checks input values, and a failure stops the run with an error."
+      - id: d
+        text: "A `depends_on` from the output to the server"
+        why: "`depends_on` only controls ordering. It does not test anything about the infrastructure."
+    answer: [a]
+    explanation: |
+      `check` blocks run at the end of plan and apply. When an `assert` fails, Terraform
+      shows a warning but keeps going. A check can contain a scoped data source, for example
+      an HTTP request, that only exists inside that check.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/validate
+    glossary: [tf-check-block, tf-custom-condition]
+
+  - id: terraform-config-028
+    difficulty: 3
+    type: multiple
+    question: "Where can you write a `precondition` block? (Choose two.)"
+    options:
+      - id: a
+        text: "Inside the `lifecycle` block of a resource"
+      - id: b
+        text: "Inside a `variable` block"
+        why: "Input variables use `validation` blocks to check their values, not `precondition`."
+      - id: c
+        text: "Inside an `output` block"
+      - id: d
+        text: "Inside a `provider` block"
+        why: "Provider blocks configure plugins and do not accept custom conditions."
+      - id: e
+        text: "Inside the `terraform` block"
+        why: "The `terraform` block holds settings such as `required_providers` and the backend. It does not accept custom conditions."
+    answer: [a, c]
+    explanation: |
+      Preconditions can be written in the `lifecycle` block of a resource or data source,
+      and directly in an `output` block. Variables use `validation`, and `check` blocks use
+      `assert`. All of these are custom conditions with a `condition` and an `error_message`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/validate
+    glossary: [tf-custom-condition, tf-output, tf-lifecycle]
+
+  # 4h - sensitive data and Vault
+  - id: terraform-config-029
+    difficulty: 1
+    type: single
+    question: "What does `sensitive = true` on an input variable do?"
+    options:
+      - id: a
+        text: "It encrypts the value inside the state file."
+        why: "Terraform does not encrypt individual values in state. Use a backend with encryption and access control to protect state."
+      - id: b
+        text: "It keeps the value out of the state file."
+        why: "Sensitive values are still saved in state in plain text. Only ephemeral values and write-only arguments stay out of state."
+      - id: c
+        text: "It hides the value in CLI output, but state still has it."
+      - id: d
+        text: "It makes Terraform read the value from Vault."
+        why: "The flag does not connect to any secret store. Reading from Vault requires the Vault provider."
+    answer: [c]
+    explanation: |
+      Marking a variable or output as sensitive redacts it in plan and apply output, and
+      the mark follows the value into expressions that use it. The value is still written to
+      the state file, so you must treat state as sensitive data and store it securely.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-sensitive, tf-state]
+
+  - id: terraform-config-030
+    difficulty: 2
+    type: single
+    question: "Your team stores a static database password in a `.tfvars` file in Git. Security asks for short-lived credentials that no one keeps in files. What is the best approach?"
+    options:
+      - id: a
+        text: "Add `sensitive = true` and keep the `.tfvars` file in Git."
+        why: "Sensitive only hides the value in output. The password would still be static, in Git and in state."
+      - id: b
+        text: "Move the password into the variable's `default`."
+        why: "A default is part of the code, so the secret would still be stored in the repository."
+      - id: c
+        text: "Put the password in an output so the pipeline can read it."
+        why: "Outputs expose values to more people and tools. That makes the secret easier to leak, not safer."
+      - id: d
+        text: "Get dynamic credentials from Vault with the Vault provider."
+    answer: [d]
+    explanation: |
+      HashiCorp Vault can generate dynamic secrets, such as database credentials with a
+      short lease. Terraform reads them through the Vault provider at run time, so no static
+      secret lives in files. In Terraform 1.10 and later, ephemeral resources can do this
+      without saving the secret in plan or state.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
+      - https://registry.terraform.io/providers/hashicorp/vault/latest/docs
+    glossary: [tf-vault, tf-ephemeral, tf-tfvars]
+
+  - id: terraform-config-031
+    difficulty: 3
+    type: single
+    question: "Terraform 1.10 added `ephemeral` resources. Compared with a data source that reads the same secret from Vault, what is the key difference?"
+    options:
+      - id: a
+        text: "The ephemeral resource creates a new secret inside Vault."
+        why: "Ephemeral resources read or open temporary values. They are not managed objects that Terraform creates and tracks."
+      - id: b
+        text: "Its value is never saved in the plan or state files."
+      - id: c
+        text: "Data source results are never saved in state either."
+        why: "Data source results are saved in state, so a secret read with a data source ends up in the state file."
+      - id: d
+        text: "Ephemeral resources only work in HCP Terraform."
+        why: "Ephemeral resources are a Terraform language feature. They work with the Terraform CLI and with HCP Terraform."
+    answer: [b]
+    explanation: |
+      An `ephemeral` block reads a value for one Terraform run and never persists it to plan
+      or state. You can only use its values in ephemeral contexts, such as provider
+      configuration, write-only arguments, ephemeral variables and outputs, or local values.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
+    glossary: [tf-ephemeral, tf-vault, tf-data-source]
+
+  - id: terraform-config-032
+    difficulty: 3
+    type: single
+    question: "A database resource offers a write-only argument `password_wo` (Terraform 1.11 and later). Which statement about it is true?"
+    options:
+      - id: a
+        text: "Terraform sends it to the provider but never stores it."
+      - id: b
+        text: "Terraform stores it in state but hides it in the output."
+        why: "That describes a sensitive value. Write-only arguments are not saved in plan or state at all."
+      - id: c
+        text: "It only accepts literal strings, not ephemeral values."
+        why: "It is the opposite: write-only arguments are one of the few places that accept ephemeral values."
+      - id: d
+        text: "Terraform compares it on each plan to detect drift."
+        why: "Terraform cannot compare a value it never stores. Providers usually offer a version argument to trigger an update."
+    answer: [a]
+    explanation: |
+      Write-only arguments accept any value, including ephemeral ones, and Terraform passes
+      them to the provider without saving them in plan or state. Because Terraform cannot
+      see changes, you change a companion argument, such as `password_wo_version`, to send
+      a new value.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
+    glossary: [tf-write-only, tf-ephemeral]

@@ -1,0 +1,445 @@
+domain: fundamentals
+questions:
+  - id: terraform-fund-001
+    difficulty: 1
+    type: single
+    question: "Where do you declare which providers a module needs, including their source addresses and version constraints?"
+    options:
+      - id: a
+        text: "In a `required_providers` block inside the `terraform` block"
+      - id: b
+        text: "In the `.terraform.lock.hcl` file, edited by hand before init"
+        why: "The lock file records the versions that init selected. Terraform writes it; you should not edit it by hand to declare requirements."
+      - id: c
+        text: "In a `backend` block inside the `terraform` block"
+        why: "The backend block sets where Terraform stores state. It does not list provider sources or versions."
+      - id: d
+        text: "In a `variable` block named `providers` in variables.tf"
+        why: "Input variables hold values for the configuration. Terraform does not read provider requirements from a variable."
+    answer: [a]
+    explanation: |
+      Each module declares its providers in `terraform { required_providers { ... } }`.
+      Each entry has a local name, a `source` address such as `hashicorp/aws`,
+      and usually a `version` constraint. `terraform init` uses this to find and
+      install the right plugins.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers/requirements
+    glossary: [tf-required-providers, tf-provider, tf-version-constraint]
+
+  - id: terraform-fund-002
+    difficulty: 2
+    type: single
+    question: "A configuration has `version = \"~> 5.40.0\"` for the AWS provider. Which provider version is allowed?"
+    options:
+      - id: a
+        text: "5.41.0"
+        why: "With three parts, `~>` only lets the last part change. 5.41.0 changes the middle part, so it is outside the constraint."
+      - id: b
+        text: "5.40.7"
+      - id: c
+        text: "6.0.0"
+        why: "A new major version is outside the constraint. `~> 5.40.0` means at least 5.40.0 and less than 5.41.0."
+      - id: d
+        text: "5.39.9"
+        why: "5.39.9 is lower than the minimum 5.40.0, so it is not allowed."
+    answer: [b]
+    explanation: |
+      The pessimistic constraint operator `~>` allows only the right-most
+      version part to grow. `~> 5.40.0` means `>= 5.40.0, < 5.41.0`, so only
+      patch releases such as 5.40.7 are allowed. `~> 5.40` would allow any 5.x
+      from 5.40 up.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/expressions/version-constraints
+    glossary: [tf-version-constraint, tf-provider]
+
+  - id: terraform-fund-003
+    difficulty: 2
+    type: single
+    question: "A teammate committed `.terraform.lock.hcl` to Git. What is the main purpose of this file?"
+    options:
+      - id: a
+        text: "It stops two people from running apply at the same time"
+        why: "That is state locking, which the backend does during operations. The dependency lock file has nothing to do with concurrent runs."
+      - id: b
+        text: "It stores the IDs of the real resources Terraform created"
+        why: "Resource IDs are stored in the Terraform state file, not in the dependency lock file."
+      - id: c
+        text: "It records the exact provider versions and hashes selected"
+      - id: d
+        text: "It locks the versions of all child modules from the registry"
+        why: "The lock file only tracks providers. Module versions are not recorded in it, so you pin them with the version argument in the module block."
+    answer: [c]
+    explanation: |
+      The dependency lock file records which provider versions `terraform init`
+      selected and their checksums. When it is committed, everyone and every CI
+      run use the same provider versions. It does not track modules and is not
+      related to state locking.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/files/dependency-lock
+    glossary: [tf-lock-file, tf-provider]
+
+  - id: terraform-fund-004
+    difficulty: 2
+    type: single
+    question: "Your lock file pins the AWS provider at 5.40.0. You change the constraint to allow newer versions and want Terraform to pick the newest version allowed. Which command do you run?"
+    options:
+      - id: a
+        text: "`terraform apply -refresh-only`"
+        why: "Refresh-only mode updates state to match real infrastructure. It does not install or upgrade providers."
+      - id: b
+        text: "`terraform validate -upgrade`"
+        why: "`terraform validate` has no -upgrade option. It only checks the configuration; it never installs providers."
+      - id: c
+        text: "`terraform init -upgrade`"
+      - id: d
+        text: "`terraform fmt -recursive`"
+        why: "`terraform fmt` only rewrites files into the standard style. It does not touch provider versions."
+    answer: [c]
+    explanation: |
+      By default, `terraform init` reuses the versions already in the lock file.
+      With `-upgrade`, it ignores those selections, installs the newest versions
+      that match the constraints, and updates `.terraform.lock.hcl`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+      - https://developer.hashicorp.com/terraform/language/files/dependency-lock
+    glossary: [tf-lock-file, tf-provider, tf-version-constraint]
+
+  - id: terraform-fund-005
+    difficulty: 1
+    type: single
+    question: "In `required_providers`, you write `source = \"hashicorp/aws\"`. Where will `terraform init` download this provider from by default?"
+    options:
+      - id: a
+        text: "From the public Terraform Registry at registry.terraform.io"
+      - id: b
+        text: "From the AWS website, using your AWS account credentials"
+        why: "Providers are not downloaded with cloud credentials. Credentials are only used later, when the provider calls the AWS API."
+      - id: c
+        text: "From GitHub, using the latest commit on the main branch"
+        why: "Terraform installs released provider versions from a registry. It does not build providers from a Git branch."
+      - id: d
+        text: "From your HCP Terraform organization's private registry"
+        why: "A private registry is used only if the source address includes its hostname. A short address like hashicorp/aws uses the public registry."
+    answer: [a]
+    explanation: |
+      A source address has the form `[hostname/]namespace/type`. If you leave
+      out the hostname, Terraform uses `registry.terraform.io`, so
+      `hashicorp/aws` means `registry.terraform.io/hashicorp/aws`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers/requirements
+    glossary: [tf-registry, tf-provider]
+
+  - id: terraform-fund-006
+    difficulty: 1
+    type: single
+    question: "What is a Terraform provider?"
+    options:
+      - id: a
+        text: "A company that sells hosting for Terraform state files"
+        why: "Storing state is the job of a backend, such as HCP Terraform or an S3 bucket. A provider is a plugin, not a hosting company."
+      - id: b
+        text: "A plugin that lets Terraform talk to the API of a platform"
+      - id: c
+        text: "A reusable group of resources that you call with a module block"
+        why: "That describes a module. A module can use providers, but it is not a provider."
+      - id: d
+        text: "A built-in Terraform command that creates cloud accounts"
+        why: "Providers are separate plugins, not commands. They manage resources through APIs; they do not create cloud accounts for you."
+    answer: [b]
+    explanation: |
+      Providers are plugins that Terraform loads to work with a specific
+      platform or service API. Each provider adds resource types and data
+      sources, such as `aws_instance` or `azurerm_resource_group`. Without
+      providers, Terraform cannot manage any infrastructure.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers
+    glossary: [tf-provider, tf-resource, tf-data-source]
+
+  - id: terraform-fund-007
+    difficulty: 2
+    type: single
+    question: "How are Terraform providers released and versioned compared with the Terraform CLI itself?"
+    options:
+      - id: a
+        text: "They are built into the Terraform binary and share its version"
+        why: "Providers are not built into the CLI. They are separate binaries that init downloads."
+      - id: b
+        text: "They are released only when a new major Terraform version is out"
+        why: "Providers have their own release schedule. A provider can publish many versions between Terraform releases."
+      - id: c
+        text: "They are separate plugins, each with its own release cycle"
+      - id: d
+        text: "They are scripts that Terraform downloads again on every plan"
+        why: "Providers are compiled binaries, installed once by init into the working directory. They are not downloaded on every plan."
+    answer: [c]
+    explanation: |
+      Terraform core and providers are separate programs. Each provider has its
+      own version numbers and release cycle, which is why you set provider
+      version constraints separately from the `required_version` for Terraform.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers
+    glossary: [tf-provider, tf-version-constraint]
+
+  - id: terraform-fund-008
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements describe how Terraform uses providers? (Select 2)"
+    options:
+      - id: a
+        text: "Each resource type, such as `aws_s3_bucket`, comes from a provider"
+      - id: b
+        text: "Terraform core calls cloud APIs directly; providers only store data"
+        why: "It is the other way round: providers make the API calls. Terraform core builds the graph and asks providers to act."
+      - id: c
+        text: "A provider block can hold settings such as a region or an endpoint"
+      - id: d
+        text: "Providers are required only by `terraform destroy`, not by plan"
+        why: "Plan, apply, and destroy all need providers, because they read and change real objects through provider APIs."
+      - id: e
+        text: "A configuration can use only one provider at a time"
+        why: "A configuration can use many providers together, for example AWS, Kubernetes, and Datadog."
+    answer: [a, c]
+    explanation: |
+      Providers define the resource types and data sources you can use, and the
+      prefix of a type name (like `aws_`) usually shows its provider. A
+      `provider` block configures the provider, for example with a region.
+      Terraform core asks providers to read, create, update, and delete objects.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers
+      - https://developer.hashicorp.com/terraform/language/providers/configuration
+    glossary: [tf-provider, tf-resource]
+
+  - id: terraform-fund-009
+    difficulty: 2
+    type: single
+    question: "After `terraform init`, where are the provider plugins for the working directory stored by default?"
+    options:
+      - id: a
+        text: "Inside the `terraform.tfstate` file as encoded binary data"
+        why: "The state file records resources and which provider manages them, but it does not hold the plugin binaries."
+      - id: b
+        text: "In the `.terraform/providers` directory of the working directory"
+      - id: c
+        text: "In the `.terraform.lock.hcl` file next to the configuration"
+        why: "The lock file stores versions and checksums only. The binaries themselves are installed in the .terraform directory."
+      - id: d
+        text: "In the system PATH, next to the `terraform` binary itself"
+        why: "Terraform does not install providers next to its own binary. It uses the .terraform directory, or a plugin cache if you set one up."
+    answer: [b]
+    explanation: |
+      `terraform init` downloads providers into `.terraform/providers` inside
+      the working directory. This folder should not be committed to Git. You
+      can set a shared plugin cache directory in the CLI configuration to avoid
+      downloading the same provider many times.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+      - https://developer.hashicorp.com/terraform/cli/config/config-file
+    glossary: [tf-provider, tf-working-directory]
+
+  - id: terraform-fund-010
+    difficulty: 2
+    type: single
+    question: "You need AWS resources in two regions in one configuration. You add `provider \"aws\" { region = \"us-east-1\" }` and `provider \"aws\" { alias = \"west\"  region = \"us-west-2\" }`. How does a resource use the second configuration?"
+    options:
+      - id: a
+        text: "Set `region = \"west\"` in the resource block"
+        why: "region is a provider setting, and 'west' is the alias name, not a region. The resource must point to the aliased provider."
+      - id: b
+        text: "Set `provider = aws.west` in the resource block"
+      - id: c
+        text: "Set `alias = \"west\"` in the resource block"
+        why: "alias is only valid in a provider block. A resource chooses a provider with the provider meta-argument."
+      - id: d
+        text: "Set `depends_on = [aws.west]` in the resource block"
+        why: "depends_on only changes the order of operations. It does not choose which provider configuration a resource uses."
+    answer: [b]
+    explanation: |
+      A provider block without `alias` is the default configuration for that
+      provider. To use an extra configuration, the resource sets the `provider`
+      meta-argument to `<name>.<alias>`, here `aws.west`. The value is a
+      reference, not a quoted string.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers/configuration
+    glossary: [tf-provider-alias, tf-provider, tf-resource]
+
+  - id: terraform-fund-011
+    difficulty: 2
+    type: single
+    question: "A configuration has two `provider \"azurerm\"` blocks and neither has an `alias` argument. What happens?"
+    options:
+      - id: a
+        text: "Terraform merges the two blocks into one configuration"
+        why: "Terraform does not merge provider blocks. Each extra block must have a unique alias."
+      - id: b
+        text: "Terraform uses the block that appears last in the files"
+        why: "Order in the files does not decide this. Two default configurations for one provider are simply not allowed."
+      - id: c
+        text: "Terraform reports an error about a duplicate provider configuration"
+      - id: d
+        text: "Terraform creates every resource twice, once per block"
+        why: "Terraform never duplicates resources because of provider blocks. Each resource uses exactly one provider configuration."
+    answer: [c]
+    explanation: |
+      Each provider can have only one default (non-aliased) configuration per
+      module. Every additional `provider` block for the same provider needs a
+      unique `alias`, otherwise Terraform fails with a duplicate provider
+      configuration error.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers/configuration
+    glossary: [tf-provider, tf-provider-alias]
+
+  - id: terraform-fund-012
+    difficulty: 3
+    type: single
+    question: "A child module creates resources with the default `aws` provider. In the root module you want it to use the provider configuration `aws.west`. What do you add to the `module` block?"
+    options:
+      - id: a
+        text: "`provider = aws.west`"
+        why: "A module block takes a providers map, not the single provider argument used in resource blocks."
+      - id: b
+        text: "`source = aws.west`"
+        why: "source tells Terraform where to find the module code. It cannot point to a provider configuration."
+      - id: c
+        text: "`providers = { aws = aws.west }`"
+      - id: d
+        text: "`alias = \"west\"`"
+        why: "alias belongs in a provider block to name an extra configuration. It does not pass a provider into a module."
+    answer: [c]
+    explanation: |
+      The `providers` meta-argument in a `module` block maps provider names
+      inside the child module to configurations in the parent. Here the child's
+      default `aws` provider becomes the parent's `aws.west` configuration.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/develop/providers
+      - https://developer.hashicorp.com/terraform/language/providers/configuration
+    glossary: [tf-provider-alias, tf-module, tf-provider]
+
+  - id: terraform-fund-013
+    difficulty: 1
+    type: multiple
+    question: "A platform team wants one configuration that creates an AWS EKS cluster and then deploys a Helm chart into it. Which TWO statements are true? (Select 2)"
+    options:
+      - id: a
+        text: "Both `aws` and `helm` must appear in `required_providers`"
+      - id: b
+        text: "Terraform allows only one provider per configuration"
+        why: "Terraform has no such limit. Using several providers in one configuration is common and fully supported."
+      - id: c
+        text: "One `terraform init` installs every provider the configuration needs"
+      - id: d
+        text: "Each provider needs its own separate Terraform state file"
+        why: "One state file can hold resources from many providers. State is per configuration (and workspace), not per provider."
+    answer: [a, c]
+    explanation: |
+      You declare every provider the configuration needs in `required_providers`
+      and configure each one with its own `provider` block. A single
+      `terraform init` installs all of them, and one state file tracks
+      resources from all providers.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/providers/requirements
+    glossary: [tf-required-providers, tf-provider, tf-state]
+
+  - id: terraform-fund-014
+    difficulty: 1
+    type: single
+    question: "What is one main purpose of Terraform state?"
+    options:
+      - id: a
+        text: "To map resources in the configuration to real objects"
+      - id: b
+        text: "To store the HCL source code of every module you use"
+        why: "Source code lives in .tf files and in the module cache. State stores data about real objects, not the code."
+      - id: c
+        text: "To keep the downloaded provider binaries between runs"
+        why: "Provider binaries are kept in the .terraform directory or a plugin cache, not in the state."
+      - id: d
+        text: "To log every command that each user ran on the project"
+        why: "State is not an audit log. It holds the current known data about managed objects."
+    answer: [a]
+    explanation: |
+      Terraform state records which real object (for example an instance ID)
+      belongs to each resource in your configuration. It also stores metadata
+      such as dependencies and attribute values, so Terraform can plan changes
+      and delete things in the right order.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state/purpose
+    glossary: [tf-state, tf-resource]
+
+  - id: terraform-fund-015
+    difficulty: 1
+    type: single
+    question: "You run `terraform apply` in a new directory with no `backend` block. Where does Terraform save the state?"
+    options:
+      - id: a
+        text: "In HCP Terraform, linked to your user account"
+        why: "HCP Terraform stores state only if you configure a cloud block or a remote backend. Without one, state stays local."
+      - id: b
+        text: "In a file named `terraform.tfstate` in the working directory"
+      - id: c
+        text: "In the `.terraform.lock.hcl` file, next to the providers"
+        why: "The lock file is only for provider versions and hashes. State is saved in its own file."
+      - id: d
+        text: "In memory only, so it is lost when the command ends"
+        why: "Terraform always saves state after an apply. Without a backend block it writes a local file."
+    answer: [b]
+    explanation: |
+      By default Terraform uses the `local` backend and writes state to
+      `terraform.tfstate` in the working directory, keeping the previous version
+      in `terraform.tfstate.backup`. For teams, a remote backend is better
+      because it shares and locks the state.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state
+      - https://developer.hashicorp.com/terraform/language/backend
+    glossary: [tf-state, tf-backend, tf-working-directory]
+
+  - id: terraform-fund-016
+    difficulty: 2
+    type: single
+    question: "A database resource has a password argument. Why should you protect the Terraform state file carefully?"
+    options:
+      - id: a
+        text: "State can contain sensitive values such as passwords in plain text"
+      - id: b
+        text: "State is always encrypted, but the key is stored next to it"
+        why: "Local state is not encrypted at all. Some remote backends encrypt state at rest, but the values are still readable to anyone with access."
+      - id: c
+        text: "State holds your cloud credentials for every provider you use"
+        why: "Provider credentials normally come from environment variables or other sources and are not saved in state. The risk is resource values."
+      - id: d
+        text: "Anyone who reads the state can run apply without credentials"
+        why: "Reading state does not give API access. Apply still needs valid provider credentials."
+    answer: [a]
+    explanation: |
+      Terraform stores resource attributes in state, and that can include
+      secrets like database passwords, even when they are marked sensitive in
+      the output. Use a remote backend with encryption and access control, and
+      never commit state files to Git.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state/sensitive-data
+    glossary: [tf-state, tf-backend]
+
+  - id: terraform-fund-017
+    difficulty: 3
+    type: single
+    question: "Two engineers run `terraform apply` at the same moment against the same remote backend that supports locking. What happens?"
+    options:
+      - id: a
+        text: "Both applies run, and the last one to finish overwrites the state"
+        why: "That would corrupt state, which is exactly what locking prevents. Only one write operation can hold the lock."
+      - id: b
+        text: "Terraform merges both sets of changes into one combined state"
+        why: "Terraform never merges concurrent state changes. It uses a lock so that only one operation writes at a time."
+      - id: c
+        text: "One gets the state lock; the other fails or waits for it"
+      - id: d
+        text: "Both are rejected until someone runs `terraform force-unlock`"
+        why: "force-unlock is only for removing a stuck lock by hand. In the normal case, the first run simply gets the lock."
+    answer: [c]
+    explanation: |
+      When a backend supports state locking, Terraform locks the state for
+      every operation that could write it. The second run cannot get the lock,
+      so it fails with a lock error, or waits if you set `-lock-timeout`. This
+      protects the state from corruption.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state/locking
+    glossary: [tf-state-locking, tf-state, tf-backend]

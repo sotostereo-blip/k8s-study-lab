@@ -1,0 +1,12 @@
+# Terraform lab: LocalStack (free local AWS emulator) + a terminal with terraform and the AWS CLI.
+services:
+  localstack:
+    image: localstack/localstack:4.9.2
+    environment:
+      SERVICES: s3,iam,sts,dynamodb,sqs,ec2
+      EAGER_SERVICE_LOADING: "1"
+  toolbox:
+    build: ../../toolbox-terraform
+    image: k8s-study-lab/toolbox-terraform:1
+    depends_on: [localstack]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]

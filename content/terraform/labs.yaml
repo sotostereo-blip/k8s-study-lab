@@ -1,0 +1,15 @@
+# Hands-on Terraform labs. The exam is multiple choice, but these tasks build the skills
+# behind it with real terraform commands against LocalStack (a free local AWS emulator).
+id: terraform
+name: HashiCorp Terraform Associate
+exam_minutes: 60
+passing_score: 70
+domains:
+  - { id: workflow, name: "Core Terraform workflow", weight: 25 }
+  - { id: configuration, name: "Terraform configuration", weight: 30 }
+  - { id: modules, name: "Terraform modules", weight: 15 }
+  - { id: state, name: "Terraform state management", weight: 20 }
+  - { id: maintain, name: "Maintain infrastructure with Terraform", weight: 10 }
+environments:
+  terraform: { name: "Terraform 1.12 + LocalStack (AWS emulator)", nodes: 0 }
+mock: false   # the real exam is multiple choice; use Exam mode for timed practice

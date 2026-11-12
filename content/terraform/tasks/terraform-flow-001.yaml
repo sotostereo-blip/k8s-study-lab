@@ -1,0 +1,49 @@
+id: terraform-flow-001
+title: Your first init, plan and apply
+domain: workflow
+difficulty: 1
+minutes: 5
+environment: terraform
+setup: |
+  mkdir -p /root/first-apply && cd /root/first-apply
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "notes" {
+    bucket = "tfflow-first-notes"
+
+    tags = {
+      Purpose = "first-apply"
+    }
+  }
+  TF
+task: |
+  The directory `/root/first-apply` has a small Terraform configuration:
+  `aws-provider.tf` (the AWS provider, pointed at LocalStack) and `main.tf` (one S3 bucket).
+
+  1. Initialize the working directory.
+  2. Look at the execution plan. How many resources will Terraform add?
+  3. Apply the configuration, so the bucket `tfflow-first-notes` exists.
+
+  When you finish, a new `terraform plan` must show **no changes**.
+checks:
+  - name: The state of /root/first-apply has `aws_s3_bucket.notes`
+    run: terraform -chdir=/root/first-apply state list | grep -qx 'aws_s3_bucket.notes'
+  - name: The bucket `tfflow-first-notes` exists in AWS
+    run: aws s3api head-bucket --bucket tfflow-first-notes
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/first-apply plan -input=false -detailed-exitcode >/dev/null
+solution: |
+  cd /root/first-apply
+  terraform init            # downloads the providers into .terraform/ and creates the lock file
+  terraform plan            # shows "Plan: 1 to add, 0 to change, 0 to destroy."
+  terraform apply           # shows the plan again; type "yes" to confirm
+  aws s3 ls                 # the bucket is there
+  terraform plan            # "No changes. Your infrastructure matches the configuration."
+auto_solution: |
+  cd /root/first-apply
+  terraform init -input=false
+  terraform apply -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/init
+  - https://developer.hashicorp.com/terraform/cli/commands/plan
+  - https://developer.hashicorp.com/terraform/cli/commands/apply

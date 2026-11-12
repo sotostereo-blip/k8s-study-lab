@@ -1,0 +1,57 @@
+id: terraform-flow-004
+title: Destroy everything a project created
+domain: workflow
+difficulty: 1
+minutes: 5
+environment: terraform
+setup: |
+  mkdir -p /root/teardown && cd /root/teardown
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "tmp" {
+    bucket = "tfflow-teardown-tmp"
+  }
+
+  resource "aws_s3_object" "data" {
+    bucket  = aws_s3_bucket.tmp.id
+    key     = "data.csv"
+    content = "id,name\n1,test\n"
+  }
+
+  resource "aws_iam_user" "bot" {
+    name = "tfflow-teardown-bot"
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+task: |
+  The test project in `/root/teardown` is finished. Remove **all** the infrastructure it
+  created: the bucket `tfflow-teardown-tmp`, its object and the IAM user `tfflow-teardown-bot`.
+
+  Use Terraform, not the AWS CLI. Before you confirm, read the plan: which resource is
+  destroyed first, and why?
+
+  Keep the configuration files: you may want to create the project again later.
+checks:
+  - name: The state of /root/teardown is empty
+    run: '[ -z "$(terraform -chdir=/root/teardown state list)" ] && [ -f /root/teardown/terraform.tfstate ]'
+  - name: The bucket `tfflow-teardown-tmp` does not exist
+    run: '! aws s3api head-bucket --bucket tfflow-teardown-tmp 2>/dev/null'
+  - name: The IAM user `tfflow-teardown-bot` does not exist
+    run: '! aws iam get-user --user-name tfflow-teardown-bot >/dev/null 2>&1'
+  - name: The configuration file main.tf is still there
+    run: grep -q tfflow-teardown-tmp /root/teardown/main.tf
+    guard: true
+solution: |
+  cd /root/teardown
+  terraform plan -destroy      # preview only: "Plan: 0 to add, 0 to change, 3 to destroy."
+  terraform destroy            # type "yes"
+  # The object is destroyed before the bucket, because the object depends on the bucket
+  # (it uses aws_s3_bucket.tmp.id). Terraform destroys in the reverse order of creation.
+  terraform state list         # empty
+auto_solution: |
+  cd /root/teardown
+  terraform destroy -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/destroy
+  - https://developer.hashicorp.com/terraform/cli/commands/plan

@@ -1,0 +1,77 @@
+id: terraform-maint-001
+title: Import a bucket that was created by hand
+domain: maintain
+difficulty: 3
+minutes: 12
+environment: terraform
+setup: |
+  aws s3api create-bucket --bucket tfmaint-old-media >/dev/null
+  aws s3api put-bucket-tagging --bucket tfmaint-old-media --tagging 'TagSet=[{Key=Owner,Value=marketing}]'
+  aws s3api put-object --bucket tfmaint-old-media --key logo.png --body /etc/hostname >/dev/null
+  mkdir -p /root/import-bucket && cd /root/import-bucket
+  cp /opt/lab/aws-provider.tf .
+  touch main.tf
+task: |
+  Years ago someone created the bucket `tfmaint-old-media` by hand in the AWS console.
+  It has the tag `Owner = marketing` and real files. Now it must be managed by Terraform.
+
+  In `/root/import-bucket`:
+
+  1. Write a resource `aws_s3_bucket` called `media` that describes this bucket.
+  2. **Import** the existing bucket into the state. Use an `import` block
+     (or the `terraform import` command).
+  3. Make the configuration match the real bucket: after the import, `terraform plan`
+     must show **no changes** (check the tags!).
+
+  The bucket must not be destroyed or recreated.
+checks:
+  - name: The state has a managed `aws_s3_bucket` for `tfmaint-old-media`
+    run: terraform -chdir=/root/import-bucket show -json | jq -e '[.values.root_module.resources[]? | select(.type == "aws_s3_bucket" and .mode == "managed" and .values.bucket == "tfmaint-old-media")] | length == 1' >/dev/null
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/import-bucket plan -input=false -detailed-exitcode >/dev/null
+  - name: The file `logo.png` is still in the bucket
+    run: aws s3api head-object --bucket tfmaint-old-media --key logo.png >/dev/null
+    guard: true
+solution: |
+  cd /root/import-bucket
+  cat > main.tf <<'TF'
+  import {
+    to = aws_s3_bucket.media
+    id = "tfmaint-old-media"         # for S3 buckets, the import ID is the bucket name
+  }
+
+  resource "aws_s3_bucket" "media" {
+    bucket = "tfmaint-old-media"
+    tags = {
+      Owner = "marketing"            # without this tag, the plan wants to remove it
+    }
+  }
+  TF
+  terraform init
+  terraform plan          # Plan: 1 to import, 0 to add, 0 to change, 0 to destroy.
+  terraform apply
+  terraform plan          # No changes.
+  # Tip: with only the import block (no resource block), Terraform can write the code for you:
+  #   terraform plan -generate-config-out=generated.tf
+  # Old way (no plan, writes the state at once):  terraform import aws_s3_bucket.media tfmaint-old-media
+auto_solution: |
+  cd /root/import-bucket
+  cat > main.tf <<'TF'
+  import {
+    to = aws_s3_bucket.media
+    id = "tfmaint-old-media"
+  }
+
+  resource "aws_s3_bucket" "media" {
+    bucket = "tfmaint-old-media"
+    tags = {
+      Owner = "marketing"
+    }
+  }
+  TF
+  terraform init -input=false
+  terraform apply -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/language/import
+  - https://developer.hashicorp.com/terraform/language/import/generating-configuration
+  - https://developer.hashicorp.com/terraform/cli/commands/import

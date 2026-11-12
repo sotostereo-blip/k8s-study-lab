@@ -1,0 +1,485 @@
+# Terraform glossary (HashiCorp Terraform Associate). Shown when you click a highlighted term.
+terms:
+- id: tf-provider
+  term: Terraform provider
+  match:
+  - provider
+  - providers
+  - Terraform provider
+  - Terraform providers
+  definition: A plugin that lets Terraform manage resources through the API of one platform or service, such as AWS or GitHub.
+  es: Plugin que permite a Terraform gestionar recursos a través de la API de una plataforma o servicio.
+- id: tf-state
+  term: Terraform state
+  match:
+  - Terraform state
+  - state file
+  - state files
+  definition: The data Terraform keeps to map resources in the configuration to real objects and their attributes.
+  es: Datos que guarda Terraform para relacionar los recursos de la configuración con los objetos reales.
+- id: tf-plan
+  term: Execution plan
+  match:
+  - execution plan
+  - execution plans
+  definition: The list of create, update, and delete actions Terraform proposes to make real infrastructure match the code.
+  es: Plan de ejecución; lista de acciones que Terraform propone para que la infraestructura coincida con el código.
+- id: tf-saved-plan
+  term: Saved plan
+  match:
+  - saved plan
+  - saved plans
+  - plan file
+  definition: A plan written to a file with `terraform plan -out`, which `terraform apply` can run exactly, without a new
+    prompt.
+  es: Plan guardado en un archivo con `plan -out` que `apply` ejecuta tal cual.
+- id: tf-lock-file
+  term: Dependency lock file
+  match:
+  - dependency lock file
+  - lock file
+  definition: The .terraform.lock.hcl file that records the exact provider versions and checksums chosen by init.
+  es: Archivo .terraform.lock.hcl que fija las versiones exactas y hashes de los providers.
+- id: tf-hcl
+  term: HCL
+  match:
+  - HCL
+  definition: HashiCorp Configuration Language, the human-friendly language used to write Terraform configuration.
+  es: Lenguaje de configuración de HashiCorp con el que se escribe Terraform.
+- id: tf-resource
+  term: Resource block
+  match:
+  - resource block
+  - resource blocks
+  definition: A block that describes one infrastructure object, such as a VM or a bucket, that Terraform creates and manages.
+  es: Bloque que describe un objeto de infraestructura que Terraform crea y gestiona.
+- id: tf-data-source
+  term: Data source
+  match:
+  - data source
+  - data sources
+  definition: A block that reads information from a provider or elsewhere without creating or managing that object.
+  es: Fuente de datos; lee información existente sin crear ni gestionar el objeto.
+- id: tf-backend
+  term: Backend
+  match:
+  - backend
+  - backends
+  definition: The setting that defines where Terraform stores its state, such as a local file, S3, or HCP Terraform.
+  es: Configuración que define dónde guarda Terraform su estado (archivo local, S3, HCP Terraform...).
+- id: tf-state-locking
+  term: State locking
+  match:
+  - state locking
+  - state lock
+  definition: A backend feature that stops two Terraform operations from writing the same state at the same time.
+  es: Bloqueo del estado; evita que dos operaciones escriban el mismo estado a la vez.
+- id: tf-module
+  term: Terraform module
+  match:
+  - module
+  - modules
+  - child module
+  - root module
+  definition: A folder of Terraform files used as a unit. The root module calls child modules with module blocks.
+  es: Conjunto de archivos de Terraform usado como unidad reutilizable.
+- id: tf-registry
+  term: Terraform Registry
+  match:
+  - Terraform Registry
+  definition: The public catalog at registry.terraform.io where providers and modules are published.
+  es: Catálogo público donde se publican providers y módulos de Terraform.
+- id: tf-required-providers
+  term: required_providers
+  match:
+  - required_providers
+  definition: A block inside the terraform block that lists each provider's source address and version constraint.
+  es: Bloque que declara la dirección de origen y la versión de cada provider.
+- id: tf-provider-alias
+  term: Provider alias
+  match:
+  - provider alias
+  - provider aliases
+  definition: A name for an extra configuration of the same provider, for example a second region, used as aws.west.
+  es: Alias de provider; nombre para una configuración adicional del mismo provider.
+- id: tf-version-constraint
+  term: Version constraint
+  match:
+  - version constraint
+  - version constraints
+  definition: A rule such as ">= 1.2" or "~> 5.0" that limits which versions of a provider or module are allowed.
+  es: Restricción de versión; regla que limita qué versiones se permiten.
+- id: tf-dependency-graph
+  term: Dependency graph
+  match:
+  - dependency graph
+  definition: The graph Terraform builds from references to decide the order of operations and what can run in parallel.
+  es: Grafo de dependencias que decide el orden de las operaciones.
+- id: tf-working-directory
+  term: Working directory
+  match:
+  - working directory
+  definition: The folder with the .tf files where you run Terraform commands. init prepares it in a .terraform folder.
+  es: Directorio de trabajo con los archivos .tf donde se ejecutan los comandos.
+- id: tf-hcp-terraform
+  term: HCP Terraform
+  match:
+  - HCP Terraform
+  definition: HashiCorp's hosted service that runs Terraform, stores state, and adds team features. It was called Terraform
+    Cloud.
+  es: Servicio gestionado de HashiCorp para ejecutar Terraform en equipo (antes Terraform Cloud).
+- id: tf-idempotent
+  term: Idempotent
+  match:
+  - idempotent
+  - idempotency
+  definition: Gives the same result when run many times. Applying unchanged Terraform code again makes no changes.
+  es: Idempotente; repetir la operación da el mismo resultado.
+- id: tf-declarative
+  term: Declarative
+  match:
+  - declarative
+  definition: Describing the end result you want, and letting the tool decide the steps to reach it.
+  es: Declarativo; se describe el resultado deseado y la herramienta decide los pasos.
+- id: tf-refresh-only
+  term: Refresh-only mode
+  match:
+  - refresh-only mode
+  - refresh-only
+  definition: A plan or apply mode that only updates state to match real objects, without changing any infrastructure.
+  es: Modo que solo actualiza el estado para que coincida con la realidad, sin cambiar infraestructura.
+- id: tf-drift
+  term: Configuration drift
+  match:
+  - configuration drift
+  definition: When real infrastructure no longer matches the code or state, often because of manual changes.
+  es: Deriva de configuración; la infraestructura real ya no coincide con el código.
+- id: tf-variable
+  term: Input variable
+  match:
+  - input variable
+  - input variables
+  definition: A parameter of a module, declared with a variable block and used as var.name.
+  es: Variable de entrada; parámetro de un módulo que se usa como var.nombre.
+- id: tf-multi-cloud
+  term: Multi-cloud
+  match:
+  - multi-cloud
+  definition: Using more than one cloud provider, such as AWS and Azure, for your infrastructure.
+  es: Uso de más de un proveedor de nube.
+- id: tf-hybrid-cloud
+  term: Hybrid cloud
+  match:
+  - hybrid cloud
+  definition: A mix of on-premises infrastructure, such as your own data center, and public cloud services.
+  es: Nube híbrida; mezcla de infraestructura propia y nube pública.
+- id: tf-output
+  term: Output value
+  match:
+  - output value
+  - output values
+  - output block
+  - output blocks
+  definition: A value a module exposes to its caller, or that the root module prints after apply.
+  es: Valor que un módulo expone a quien lo llama, o que el módulo raíz muestra tras el apply.
+- id: tf-local-value
+  term: Local value
+  match:
+  - local value
+  - local values
+  - locals block
+  definition: A named expression inside one module, declared in a locals block and read as local.<name>.
+  es: Expresión con nombre dentro de un módulo, declarada en locals y leída como local.<nombre>.
+- id: tf-tfvars
+  term: Variable definitions file (.tfvars)
+  match:
+  - tfvars
+  - terraform.tfvars
+  - .tfvars
+  definition: A file that sets values for root module input variables, such as terraform.tfvars.
+  es: Archivo que asigna valores a las variables de entrada del módulo raíz, como terraform.tfvars.
+- id: tf-type-constraint
+  term: Type constraint
+  match:
+  - type constraint
+  - type constraints
+  definition: The allowed type of a variable, such as string, list(number) or object({...}).
+  es: El tipo permitido de una variable, como string, list(number) u object({...}).
+- id: tf-count
+  term: count
+  match:
+  - count meta-argument
+  - count.index
+  definition: A meta-argument that creates a given number of instances, addressed by index from 0.
+  es: Meta-argumento que crea un número dado de instancias, con índice desde 0.
+- id: tf-for-each
+  term: for_each
+  match:
+  - for_each
+  - each.key
+  - each.value
+  definition: A meta-argument that creates one instance for each element of a map or set of strings.
+  es: Meta-argumento que crea una instancia por cada elemento de un map o set de strings.
+- id: tf-splat
+  term: Splat expression
+  match:
+  - splat expression
+  - splat expressions
+  - splat
+  definition: The [*] syntax that collects one attribute from every element of a list.
+  es: La sintaxis [*] que recoge un atributo de cada elemento de una lista.
+- id: tf-for-expression
+  term: for expression
+  match:
+  - for expression
+  - for expressions
+  definition: An expression that builds a new list or map by transforming each element of a collection.
+  es: Expresión que crea una lista o map nuevo transformando cada elemento de una colección.
+- id: tf-dynamic-block
+  term: Dynamic block
+  match:
+  - dynamic block
+  - dynamic blocks
+  definition: A block that generates repeated nested blocks from a collection, using a content template.
+  es: Bloque que genera bloques anidados repetidos a partir de una colección, con una plantilla content.
+- id: tf-implicit-dependency
+  term: Implicit dependency
+  match:
+  - implicit dependency
+  - implicit dependencies
+  definition: An order Terraform infers when one block refers to another block's attributes.
+  es: Orden que Terraform deduce cuando un bloque hace referencia a atributos de otro.
+- id: tf-depends-on
+  term: depends_on
+  match:
+  - depends_on
+  definition: A meta-argument that declares a hidden dependency Terraform cannot see from references.
+  es: Meta-argumento que declara una dependencia oculta que Terraform no ve en las referencias.
+- id: tf-lifecycle
+  term: lifecycle block
+  match:
+  - lifecycle block
+  - create_before_destroy
+  - prevent_destroy
+  - ignore_changes
+  definition: A nested block that changes how Terraform creates, replaces or destroys a resource.
+  es: Bloque anidado que cambia cómo Terraform crea, reemplaza o destruye un recurso.
+- id: tf-custom-condition
+  term: Custom condition
+  match:
+  - custom condition
+  - custom conditions
+  - precondition
+  - preconditions
+  - postcondition
+  - postconditions
+  definition: 'A rule with a condition and error message: variable validation, precondition or postcondition.'
+  es: 'Regla con condición y mensaje de error: validación de variable, precondición o postcondición.'
+- id: tf-check-block
+  term: check block
+  match:
+  - check block
+  - check blocks
+  definition: A block with assertions that Terraform tests after plan and apply, reporting warnings only.
+  es: Bloque con aserciones que Terraform evalúa tras plan y apply; solo genera avisos.
+- id: tf-sensitive
+  term: Sensitive value
+  match:
+  - sensitive value
+  - sensitive values
+  - sensitive variable
+  - sensitive output
+  definition: 'A value marked sensitive = true: hidden in CLI output but still stored in state.'
+  es: 'Valor marcado sensitive = true: oculto en la salida del CLI pero guardado en el state.'
+- id: tf-ephemeral
+  term: Ephemeral value
+  match:
+  - ephemeral resource
+  - ephemeral resources
+  - ephemeral value
+  - ephemeral values
+  definition: A value that exists only during one Terraform run and is never saved in plan or state.
+  es: Valor que solo existe durante una ejecución de Terraform y nunca se guarda en plan ni state.
+- id: tf-write-only
+  term: Write-only argument
+  match:
+  - write-only argument
+  - write-only arguments
+  definition: A resource argument Terraform sends to the provider but never stores in plan or state.
+  es: Argumento de recurso que Terraform envía al proveedor pero nunca guarda en plan ni state.
+- id: tf-vault
+  term: HashiCorp Vault
+  match:
+  - Vault
+  - HashiCorp Vault
+  definition: HashiCorp's tool for storing secrets and creating short-lived, dynamic credentials.
+  es: Herramienta de HashiCorp para guardar secretos y crear credenciales dinámicas de corta duración.
+- id: tf-module-source
+  term: Module source
+  match:
+  - module source
+  - source address
+  - source addresses
+  definition: 'Where Terraform gets module code: a local path, a registry, Git, HTTP and more.'
+  es: 'De dónde obtiene Terraform el código del módulo: ruta local, registry, Git, HTTP, etc.'
+- id: tf-local-backend
+  term: Local backend
+  match:
+  - local backend
+  definition: The default backend. It keeps state in a file on the local disk, usually terraform.tfstate.
+  es: Backend local; guarda el estado en un archivo del disco local (por defecto terraform.tfstate).
+- id: tf-partial-configuration
+  term: Partial configuration
+  match:
+  - partial configuration
+  definition: Leaving some backend arguments out of the code and passing them at init time, for example with -backend-config.
+  es: Configuración parcial; omitir argumentos del backend en el código y pasarlos al ejecutar init.
+- id: tf-moved-block
+  term: moved block
+  match:
+  - moved block
+  - moved blocks
+  definition: A block that tells Terraform an object changed its address, so it updates state instead of recreating it.
+  es: Bloque moved; indica que un objeto cambió de dirección para actualizar el estado sin recrearlo.
+- id: tf-removed-block
+  term: removed block
+  match:
+  - removed block
+  - removed blocks
+  definition: A block that tells Terraform to stop managing an object, with the option to keep the real object.
+  es: Bloque removed; indica a Terraform que deje de gestionar un objeto, pudiendo conservarlo.
+- id: tf-resource-address
+  term: Resource address
+  match:
+  - resource address
+  - resource addresses
+  definition: The name that identifies a resource in state, such as aws_instance.web or module.app.aws_instance.web.
+  es: Dirección del recurso; nombre que lo identifica en el estado, como aws_instance.web.
+- id: tf-import
+  term: Import
+  match:
+  - terraform import
+  definition: Bringing an existing, manually created object under Terraform management by recording it in state.
+  es: Importar; poner bajo gestión de Terraform un objeto que ya existe, registrándolo en el estado.
+- id: tf-import-block
+  term: import block
+  match:
+  - import block
+  - import blocks
+  definition: A block that imports an existing object to a resource address during a normal plan and apply.
+  es: Bloque import; importa un objeto existente durante el plan y apply normales.
+- id: tf-tf-log
+  term: TF_LOG
+  match:
+  - TF_LOG
+  definition: Environment variable that turns on detailed logs. Levels are TRACE, DEBUG, INFO, WARN and ERROR.
+  es: Variable de entorno que activa los logs detallados de Terraform.
+- id: tf-hcp-workspace
+  term: HCP Terraform workspace
+  match:
+  - HCP Terraform workspace
+  - HCP Terraform workspaces
+  definition: A unit in HCP Terraform with its own configuration, state, variables, runs and permissions.
+  es: Workspace de HCP Terraform; unidad con su propia configuración, estado, variables, ejecuciones y permisos.
+- id: tf-cli-workspace
+  term: CLI workspace
+  match:
+  - CLI workspace
+  - CLI workspaces
+  definition: An extra state for the same configuration and backend, managed with the terraform workspace command.
+  es: Workspace de la CLI; otro estado para la misma configuración y backend.
+- id: tf-hcp-project
+  term: HCP Terraform project
+  match:
+  - HCP Terraform project
+  - HCP Terraform projects
+  definition: A container that groups workspaces in an organization, so teams and settings can be given to the whole group.
+  es: Proyecto de HCP Terraform; agrupa workspaces para dar permisos y ajustes a todo el grupo.
+- id: tf-vcs-workflow
+  term: VCS-driven workflow
+  match:
+  - VCS-driven workflow
+  definition: An HCP Terraform workflow where commits and pull requests in a connected repository start runs.
+  es: Flujo basado en VCS; los commits y pull requests del repositorio conectado inician ejecuciones.
+- id: tf-speculative-plan
+  term: Speculative plan
+  match:
+  - speculative plan
+  - speculative plans
+  definition: A plan-only run in HCP Terraform that shows changes, for example for a pull request, but can never be applied.
+  es: Plan especulativo; solo muestra cambios y nunca se puede aplicar.
+- id: tf-remote-operations
+  term: Remote operations
+  match:
+  - remote operations
+  - remote execution
+  definition: Running plan and apply on HCP Terraform workers instead of on your own machine.
+  es: Operaciones remotas; plan y apply se ejecutan en HCP Terraform, no en tu máquina.
+- id: tf-cloud-block
+  term: cloud block
+  match:
+  - cloud block
+  definition: A block inside the terraform block that connects a configuration to HCP Terraform workspaces.
+  es: Bloque cloud; conecta la configuración con workspaces de HCP Terraform.
+- id: tf-api-token
+  term: API token
+  match:
+  - API token
+  - API tokens
+  definition: A secret string that lets the CLI or a tool authenticate to HCP Terraform, for example after terraform login.
+  es: Token de API; cadena secreta para autenticarse en HCP Terraform.
+- id: tf-sentinel
+  term: Sentinel
+  match:
+  - Sentinel
+  definition: HashiCorp's policy-as-code language. HCP Terraform uses it to check runs against rules before apply.
+  es: Lenguaje de políticas como código de HashiCorp; valida las ejecuciones antes del apply.
+- id: tf-opa
+  term: OPA (Open Policy Agent)
+  match:
+  - OPA
+  - Open Policy Agent
+  definition: An open source policy engine. HCP Terraform can run its Rego policies to check runs, like Sentinel.
+  es: Motor de políticas de código abierto; HCP Terraform puede usar sus políticas Rego.
+- id: tf-policy-set
+  term: Policy set
+  match:
+  - policy set
+  - policy sets
+  definition: A group of policies in HCP Terraform applied to the whole organization, to projects or to chosen workspaces.
+  es: Conjunto de políticas que se aplica a la organización, a proyectos o a workspaces.
+- id: tf-health-assessment
+  term: Health assessment
+  match:
+  - health assessment
+  - health assessments
+  - drift detection
+  definition: Background checks in HCP Terraform for drift and for custom conditions that no longer pass.
+  es: Evaluación de salud; comprueba en segundo plano la deriva y las condiciones personalizadas.
+- id: tf-explorer
+  term: Explorer
+  match:
+  - explorer
+  definition: An HCP Terraform view to query workspaces, modules, providers and versions across an organization.
+  es: Vista de HCP Terraform para consultar workspaces, módulos, providers y versiones de la organización.
+- id: tf-change-request
+  term: Change request
+  match:
+  - change request
+  - change requests
+  definition: An action item that administrators record on an HCP Terraform workspace to ask its team to change something.
+  es: Solicitud de cambio; tarea que un administrador deja en un workspace para su equipo.
+- id: tf-variable-set
+  term: Variable set
+  match:
+  - variable set
+  - variable sets
+  definition: A group of variables in HCP Terraform that you can reuse in many workspaces or projects.
+  es: Conjunto de variables reutilizable en muchos workspaces o proyectos de HCP Terraform.
+- id: tf-run-trigger
+  term: Run trigger
+  match:
+  - run trigger
+  - run triggers
+  definition: A link that queues a run in one HCP Terraform workspace after another workspace applies successfully.
+  es: Disparador de ejecución; lanza una ejecución en un workspace cuando otro aplica con éxito.

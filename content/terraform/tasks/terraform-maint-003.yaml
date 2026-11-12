@@ -1,0 +1,67 @@
+id: terraform-maint-003
+title: Inspect state and outputs, and turn on debug logs
+domain: maintain
+difficulty: 2
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/inspect-state && cd /root/inspect-state
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "logs" {
+    bucket = "tfmaint-inspect-logs"
+  }
+
+  resource "aws_iam_user" "auditor" {
+    name = "tfmaint-auditor"
+    path = "/security/"
+  }
+
+  resource "aws_iam_user" "builder" {
+    name = "tfmaint-builder"
+  }
+
+  output "bucket_name" {
+    value = aws_s3_bucket.logs.bucket
+  }
+
+  output "user_names" {
+    value = [aws_iam_user.auditor.name, aws_iam_user.builder.name]
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+task: |
+  The project in `/root/inspect-state` is already applied. Answer some questions with Terraform
+  commands (not by reading `terraform.tfstate` by hand). Save the answers in `/root/inspect-state`:
+
+  1. `resources.txt`: the address of every resource in the state, one per line.
+  2. `auditor-arn.txt`: only the ARN of the resource `aws_iam_user.auditor` (one line, nothing else).
+  3. `outputs.json`: all the root module outputs in JSON format.
+  4. `debug.log`: the log of a `terraform plan` run with the log level `DEBUG`.
+     Use environment variables, so the log goes to this file and not to the screen.
+checks:
+  - name: '`resources.txt` has the same addresses as `terraform state list`'
+    run: diff <(sort /root/inspect-state/resources.txt | sed '/^$/d') <(terraform -chdir=/root/inspect-state state list | sort) >/dev/null
+  - name: '`auditor-arn.txt` has the ARN of `tfmaint-auditor`'
+    run: '[ "$(tr -d " \n" < /root/inspect-state/auditor-arn.txt)" = "$(aws iam get-user --user-name tfmaint-auditor --query User.Arn --output text)" ]'
+  - name: '`outputs.json` is the JSON of the outputs'
+    run: jq -e '.bucket_name.value == "tfmaint-inspect-logs" and (.user_names.value | length == 2)' /root/inspect-state/outputs.json >/dev/null
+  - name: '`debug.log` has DEBUG log lines'
+    run: grep -q '\[DEBUG\]' /root/inspect-state/debug.log
+solution: |
+  cd /root/inspect-state
+  terraform state list > resources.txt
+  terraform state show aws_iam_user.auditor          # shows all attributes, arn among them
+  terraform show -json | jq -r '.values.root_module.resources[] | select(.address == "aws_iam_user.auditor") | .values.arn' > auditor-arn.txt
+  # also possible:  terraform state show aws_iam_user.auditor | grep ' arn ' | cut -d'"' -f2
+  #             or: echo 'aws_iam_user.auditor.arn' | terraform console | tr -d '"'
+  terraform output -json > outputs.json
+  TF_LOG=DEBUG TF_LOG_PATH=debug.log terraform plan
+  # TF_LOG levels: TRACE (most detail), DEBUG, INFO, WARN, ERROR.
+  # TF_LOG_CORE / TF_LOG_PROVIDER set the level only for Terraform core or only for providers.
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/state/list
+  - https://developer.hashicorp.com/terraform/cli/commands/state/show
+  - https://developer.hashicorp.com/terraform/cli/commands/output
+  - https://developer.hashicorp.com/terraform/internals/debugging

@@ -1,0 +1,445 @@
+domain: modules
+questions:
+  # 5a - module sources
+  - id: terraform-mod-001
+    difficulty: 1
+    type: single
+    question: "A module block sets `source = \"./modules/network\"`. What kind of source is this?"
+    options:
+      - id: a
+        text: "A module from the public Terraform Registry"
+        why: "Registry sources use the format `<NAMESPACE>/<NAME>/<PROVIDER>` with no leading `./`."
+      - id: b
+        text: "A Git repository cloned during `terraform init`"
+        why: "Git sources use a `git::` prefix or a known host such as `github.com/...`. A path starting with `./` is local."
+      - id: c
+        text: "A local path to a folder in the same codebase"
+      - id: d
+        text: "A module stored in an HCP Terraform workspace"
+        why: "Workspaces hold state and runs, not module code. Private modules in HCP Terraform use a registry address."
+    answer: [c]
+    explanation: |
+      A source that starts with `./` or `../` is a local path. Terraform uses the files
+      directly from that folder and does not download them, so local modules do not need
+      a version. They are a good way to split one large configuration into parts.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+    glossary: [tf-module, tf-module-source]
+
+  - id: terraform-mod-002
+    difficulty: 2
+    type: single
+    question: "Which `source` value points to a module in the public Terraform Registry?"
+    options:
+      - id: a
+        text: "`\"terraform-aws-modules/vpc/aws\"`"
+      - id: b
+        text: "`\"../shared/vpc\"`"
+        why: "A path that starts with `../` is a local folder, not a registry module."
+      - id: c
+        text: "`\"git::https://example.com/vpc.git\"`"
+        why: "The `git::` prefix tells Terraform to clone a Git repository. It does not use the registry."
+      - id: d
+        text: "`\"https://example.com/vpc-module.zip\"`"
+        why: "An HTTPS URL to an archive is an HTTP source. Terraform downloads the file directly, without the registry."
+    answer: [a]
+    explanation: |
+      Public registry modules use the address `<NAMESPACE>/<NAME>/<PROVIDER>`, for example
+      `terraform-aws-modules/vpc/aws`. Private registries add a hostname in front, such as
+      `app.terraform.io/<ORG>/<NAME>/<PROVIDER>` for HCP Terraform.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/registry/modules/use
+    glossary: [tf-module-source, tf-registry]
+
+  - id: terraform-mod-003
+    difficulty: 2
+    type: single
+    question: "A module comes from `git::https://example.com/network.git`. How do you pin it to the Git tag `v1.4.0`?"
+    options:
+      - id: a
+        text: "Add `version = \"1.4.0\"` to the module block."
+        why: "The `version` argument only works for modules from a registry. Terraform rejects it for a Git source."
+      - id: b
+        text: "Append `?ref=v1.4.0` to the source URL."
+      - id: c
+        text: "Append `#v1.4.0` to the source URL."
+        why: "Terraform does not read a `#` fragment as a Git reference. The supported query argument is `ref`."
+      - id: d
+        text: "Pin it in `.terraform.lock.hcl`."
+        why: "The dependency lock file records provider versions only. It does not lock module versions."
+    answer: [b]
+    explanation: |
+      For Git sources, the `ref` argument selects a branch, tag or commit, for example
+      `git::https://example.com/network.git?ref=v1.4.0`. Pinning to a tag or commit keeps
+      every run on the same module code.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+    glossary: [tf-module-source]
+
+  - id: terraform-mod-004
+    difficulty: 2
+    type: single
+    question: "You add a new `module` block that uses a registry source. `terraform plan` fails, saying the module is not installed. Which command fixes this?"
+    options:
+      - id: a
+        text: "`terraform validate`"
+        why: "`validate` checks syntax and internal consistency. It also needs modules to be installed first and does not download anything."
+      - id: b
+        text: "`terraform fmt`"
+        why: "`fmt` only rewrites files into the standard style. It never downloads modules."
+      - id: c
+        text: "`terraform apply -refresh-only`"
+        why: "A refresh-only run updates state to match real infrastructure. It does not install modules."
+      - id: d
+        text: "`terraform init`"
+    answer: [d]
+    explanation: |
+      `terraform init` installs the modules used by the configuration into the
+      `.terraform/modules` folder, together with providers and backend setup. Run it again
+      every time you add a module or change its source or version.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module
+    glossary: [tf-module, tf-registry]
+
+  - id: terraform-mod-005
+    difficulty: 3
+    type: single
+    question: "What does `//modules/vpc` mean in `git::https://example.com/infra.git//modules/vpc?ref=v2.0.0`?"
+    options:
+      - id: a
+        text: "A typo; Terraform will fail on the double slash."
+        why: "The double slash is valid syntax. Terraform uses it on purpose to separate the package from a subfolder."
+      - id: b
+        text: "A second repository that Terraform also clones."
+        why: "Terraform clones only one repository. The part after `//` is a path inside it."
+      - id: c
+        text: "A subfolder inside the repository that holds the module."
+      - id: d
+        text: "The name that Terraform gives to the module in state."
+        why: "The module name in state comes from the label of the `module` block, not from the source address."
+    answer: [c]
+    explanation: |
+      In a source address, `//` separates the package to download (the repository) from
+      a subdirectory inside it. Terraform downloads the whole repository at the given ref
+      and then uses only the module in `modules/vpc`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+    glossary: [tf-module-source]
+
+  # 5b - variable scope
+  - id: terraform-mod-006
+    difficulty: 1
+    type: single
+    question: "The root module has `var.region`. A child module also needs the region. What must you do?"
+    options:
+      - id: a
+        text: "Nothing; child modules can read every root variable."
+        why: "Each module has its own scope. A child cannot see the variables of its parent."
+      - id: b
+        text: "Declare `region` in the child and pass it in the module block."
+      - id: c
+        text: "Use `parent.var.region` inside the child module."
+        why: "Terraform has no `parent.` reference. Values reach a child module only as input arguments."
+      - id: d
+        text: "Set `TF_VAR_region` so every module reads it."
+        why: "`TF_VAR_` environment variables only set root module variables. Child modules still need the value passed in."
+    answer: [b]
+    explanation: |
+      Input variables are scoped to the module that declares them. To give a child module
+      a value, declare a `variable` in the child and set it as an argument in the `module`
+      block, for example `region = var.region`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/module
+      - https://developer.hashicorp.com/terraform/language/block/variable
+    glossary: [tf-variable, tf-module]
+
+  - id: terraform-mod-007
+    difficulty: 2
+    type: single
+    question: "A child module `app` creates `aws_instance.server`. The root module needs the instance ID. What is the correct approach?"
+    options:
+      - id: a
+        text: "Reference `module.app.aws_instance.server.id` in the root."
+        why: "Resources inside a child module are hidden from the caller. Only the module's outputs can be referenced."
+      - id: b
+        text: "Use a data source in the root to read the child state."
+        why: "Root and child modules share the same state. A data source is not needed; the child should expose an output."
+      - id: c
+        text: "Make the instance ID an input variable of the child module."
+        why: "Input variables send values into a module. The ID is created inside the module, so it must come out as an output."
+      - id: d
+        text: "Add an output in the child and reference `module.app.<name>`."
+    answer: [d]
+    explanation: |
+      A module is a closed box: callers see only its input variables and output values.
+      Declare `output "instance_id" { value = aws_instance.server.id }` in the child, then
+      use `module.app.instance_id` in the root module.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/output
+      - https://developer.hashicorp.com/terraform/language/block/module
+    glossary: [tf-output, tf-module]
+
+  - id: terraform-mod-008
+    difficulty: 2
+    type: single
+    question: "The root module and a child module both define `locals { name = \"...\" }` with different values. What happens?"
+    options:
+      - id: a
+        text: "Each module uses its own `local.name`."
+      - id: b
+        text: "Terraform fails because of a duplicate local value."
+        why: "Local values are unique only within one module. Two modules can use the same name without a conflict."
+      - id: c
+        text: "The child module uses the root value."
+        why: "Values do not leak between modules. The child sees only its own locals, variables and resources."
+      - id: d
+        text: "The root module uses the child value."
+        why: "The root can only read a child's outputs. It never sees the child's local values."
+    answer: [a]
+    explanation: |
+      Every module has its own namespace for local values, variables and resources.
+      Names only need to be unique inside one module, so the same local name in two
+      modules causes no conflict.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/values
+    glossary: [tf-local-value, tf-module]
+
+  - id: terraform-mod-009
+    difficulty: 2
+    type: single
+    question: "A child module declares `variable \"vpc_id\"` with no default. The `module` block does not set `vpc_id`. What happens when you run `terraform plan`?"
+    options:
+      - id: a
+        text: "Terraform asks you to type a value at the prompt."
+        why: "Terraform prompts only for root module variables. For a child module, a missing required argument is an error."
+      - id: b
+        text: "Terraform reports a missing required argument."
+      - id: c
+        text: "The variable is set to null and the plan goes on."
+        why: "Null is used only when the variable has `default = null`. With no default, the argument is required."
+      - id: d
+        text: "Terraform reuses a root variable called `vpc_id`."
+        why: "Values never pass to a child module by matching names. They must be set in the module block."
+    answer: [b]
+    explanation: |
+      A variable with no default is required. In a child module, the caller must set it
+      as an argument of the `module` block; otherwise Terraform fails with a missing
+      argument error. Only root module variables can be supplied by prompts, files or
+      environment variables.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/variable
+      - https://developer.hashicorp.com/terraform/language/block/module
+    glossary: [tf-variable, tf-module]
+
+  # 5c - use modules
+  - id: terraform-mod-010
+    difficulty: 1
+    type: single
+    question: "The module `network` declares `output \"vpc_id\"`. How do you use that value in the calling module?"
+    options:
+      - id: a
+        text: "`module.network.output.vpc_id`"
+        why: "There is no `output.` part in the reference. The output name follows the module name directly."
+      - id: b
+        text: "`output.network.vpc_id`"
+        why: "Outputs are not referenced with an `output.` prefix. Module outputs always start with `module.`."
+      - id: c
+        text: "`module.network.vpc_id`"
+      - id: d
+        text: "`var.network.vpc_id`"
+        why: "`var.` refers to the current module's input variables, not to another module's outputs."
+    answer: [c]
+    explanation: |
+      Child module outputs are referenced as `module.<MODULE NAME>.<OUTPUT NAME>`. This
+      is the only way a caller can read values from inside a module.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/module
+      - https://developer.hashicorp.com/terraform/language/block/output
+    glossary: [tf-output, tf-module]
+
+  - id: terraform-mod-011
+    difficulty: 2
+    type: single
+    question: |
+      You call a module with `for_each = toset(["logs", "backups"])`. It has an output `arn`. Which expression returns the ARN of the "logs" instance?
+    options:
+      - id: a
+        text: "`module.bucket[0].arn`"
+        why: "`for_each` creates instances keyed by string, so you select one with its key, not with a number."
+      - id: b
+        text: "`module.bucket.logs.arn`"
+        why: "Instance keys go in square brackets with quotes, like `[\"logs\"]`. Dot syntax looks for an output named `logs`."
+      - id: c
+        text: "`module.bucket.arn[\"logs\"]`"
+        why: "The key selects the module instance first, then you read its output. The order here is reversed."
+      - id: d
+        text: "`module.bucket[\"logs\"].arn`"
+    answer: [d]
+    explanation: |
+      Module blocks support `count` and `for_each`, like resources. With `for_each`, each
+      instance is addressed as `module.<NAME>[<KEY>]`, so the output is
+      `module.bucket["logs"].arn`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/module
+      - https://developer.hashicorp.com/terraform/language/meta-arguments/for_each
+    glossary: [tf-for-each, tf-module]
+
+  - id: terraform-mod-012
+    difficulty: 2
+    type: multiple
+    question: "In a `module` block, which TWO arguments are handled by Terraform itself and are NOT input variables of the module? (Choose two.)"
+    options:
+      - id: a
+        text: "`source`"
+      - id: b
+        text: "`instance_count`"
+        why: "This is an ordinary name that the module would declare as an input variable. It is not the `count` meta-argument."
+      - id: c
+        text: "`providers`"
+      - id: d
+        text: "`tags`"
+        why: "`tags` is a common input variable that a module author declares. Terraform does not treat it specially."
+      - id: e
+        text: "`name`"
+        why: "`name` is an input variable only if the module declares it. Terraform gives it no special meaning."
+    answer: [a, c]
+    explanation: |
+      Module blocks accept `source`, `version` and the meta-arguments `count`, `for_each`,
+      `providers` and `depends_on`. Every other argument sets an input variable that the
+      child module must declare.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/module
+    glossary: [tf-module, tf-module-source]
+
+  - id: terraform-mod-013
+    difficulty: 3
+    type: single
+    question: "In the root module, `module \"app\"` sets `subnet_ids = module.network.private_subnet_ids`. What does this do?"
+    options:
+      - id: a
+        text: "It fails, because modules cannot pass values to each other."
+        why: "Passing one module's outputs into another module's inputs is the normal way to compose modules."
+      - id: b
+        text: "It passes the subnets and makes `app` depend on them."
+      - id: c
+        text: "It needs `depends_on = [module.network]` to work."
+        why: "The reference already creates an implicit dependency. `depends_on` is not needed here."
+      - id: d
+        text: "It only works if both modules use the same source."
+        why: "The two modules can come from any sources. Only the output and input types need to be compatible."
+    answer: [b]
+    explanation: |
+      Module composition connects small modules in the root module by wiring outputs into
+      inputs. The reference creates an implicit dependency, so Terraform waits for the
+      subnets in `network` before it changes the resources in `app` that use them.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/develop/composition
+    glossary: [tf-module, tf-implicit-dependency]
+
+  # 5d - module versions
+  - id: terraform-mod-014
+    difficulty: 1
+    type: single
+    question: "A registry module block has no `version` argument. Which version does `terraform init` install?"
+    options:
+      - id: a
+        text: "The latest available version"
+      - id: b
+        text: "The oldest version, for stability"
+        why: "Terraform does not pick the oldest release. Without a constraint it chooses the newest version."
+      - id: c
+        text: "None; `version` is required"
+        why: "`version` is optional, but HashiCorp recommends setting it so upgrades happen only when you choose."
+      - id: d
+        text: "The version in the lock file"
+        why: "`.terraform.lock.hcl` only records provider versions, never module versions."
+    answer: [a]
+    explanation: |
+      Without a version constraint, Terraform installs the newest version of a registry
+      module. A new release could then change your infrastructure without warning, so
+      setting `version` is a best practice, especially in production.
+    docs:
+      - https://developer.hashicorp.com/terraform/registry/modules/use
+      - https://developer.hashicorp.com/terraform/language/block/module
+    glossary: [tf-registry, tf-version-constraint]
+
+  - id: terraform-mod-015
+    difficulty: 2
+    type: multiple
+    question: "For which TWO module sources can you use the `version` argument? (Choose two.)"
+    options:
+      - id: a
+        text: "`\"hashicorp/consul/aws\"`"
+      - id: b
+        text: "`\"./modules/consul\"`"
+        why: "Local paths are read directly from disk, so there is nothing to version. Terraform rejects `version` here."
+      - id: c
+        text: "`\"app.terraform.io/acme/consul/aws\"`"
+      - id: d
+        text: "`\"git::https://example.com/consul.git\"`"
+        why: "Git sources do not support `version`. Use `?ref=` with a tag or commit instead."
+      - id: e
+        text: "`\"github.com/acme/terraform-consul\"`"
+        why: "This is a GitHub source, which Terraform clones with Git. Git sources use `?ref=`, not `version`."
+    answer: [a, c]
+    explanation: |
+      The `version` argument works only for modules installed from a module registry: the
+      public Terraform Registry or a private registry such as HCP Terraform. Other source
+      types have their own ways to choose a revision, or none at all.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/registry/modules/use
+    glossary: [tf-registry, tf-module-source, tf-version-constraint]
+
+  - id: terraform-mod-016
+    difficulty: 2
+    type: single
+    question: "You raised a registry module constraint, and you want Terraform to download the newest version that matches it, replacing the copy in `.terraform/modules`. Which command do you run?"
+    options:
+      - id: a
+        text: "`terraform providers lock`"
+        why: "This command updates provider checksums in the lock file. It does not touch modules."
+      - id: b
+        text: "`terraform init -upgrade`"
+      - id: c
+        text: "`terraform validate`"
+        why: "`validate` only checks the configuration. It never downloads or upgrades modules."
+      - id: d
+        text: "`terraform plan -refresh=true`"
+        why: "Refresh reads the real state of resources. It does not change installed module versions."
+    answer: [b]
+    explanation: |
+      `terraform init -upgrade` tells Terraform to check for the newest module and provider
+      versions allowed by your constraints and install them. Without `-upgrade`, init keeps
+      an already installed version that still matches.
+    docs:
+      - https://developer.hashicorp.com/terraform/registry/modules/use
+    glossary: [tf-version-constraint, tf-registry]
+
+  - id: terraform-mod-017
+    difficulty: 2
+    type: single
+    question: "A module block sets `version = \"~> 3.2.0\"`. Which versions can Terraform install?"
+    options:
+      - id: a
+        text: "Any version 3.2.0 or newer, including 4.0.0"
+        why: "That would be `>= 3.2.0`. The `~>` operator also sets an upper limit."
+      - id: b
+        text: "Only exactly 3.2.0"
+        why: "An exact pin is written `= 3.2.0` or just `3.2.0`. `~>` allows newer patch releases."
+      - id: c
+        text: "3.2.0 or newer, but older than 3.3.0"
+      - id: d
+        text: "3.2.0 or newer, but older than 4.0.0"
+        why: "That is the meaning of `~> 3.2`. With three parts, only the last number (the patch) may increase."
+    answer: [c]
+    explanation: |
+      The pessimistic constraint operator `~>` allows only the rightmost version part to
+      increase. `~> 3.2.0` means `>= 3.2.0, < 3.3.0`, so you get bug-fix releases but
+      not new minor versions.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/module
+      - https://developer.hashicorp.com/terraform/registry/modules/use
+    glossary: [tf-version-constraint]

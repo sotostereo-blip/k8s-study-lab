@@ -1,0 +1,452 @@
+domain: hcp
+questions:
+  - id: terraform-hcp-001
+    difficulty: 1
+    type: single
+    question: "An HCP Terraform workspace uses the VCS-driven workflow and is connected to the `main` branch of a GitHub repository. What happens when a developer opens a pull request against `main`?"
+    options:
+      - id: a
+        text: "HCP Terraform applies the changes at once to test them"
+        why: "Pull requests never apply changes. Applies happen only for runs on the connected branch, after a merge."
+      - id: b
+        text: "HCP Terraform runs a speculative plan for the PR"
+      - id: c
+        text: "Nothing happens until someone runs `terraform plan` locally"
+        why: "In the VCS-driven workflow, HCP Terraform reacts to repository events by itself. No local command is needed."
+      - id: d
+        text: "HCP Terraform creates a new workspace for the pull request"
+        why: "Workspaces are not created per pull request. The existing workspace runs a plan-only check for the PR."
+    answer: [b]
+    explanation: |
+      In the VCS-driven workflow, pull requests trigger speculative plans: plan
+      only runs that cannot be applied. HCP Terraform posts the result as a
+      status check on the PR. Merging to the connected branch starts a normal
+      run that can be applied.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/run/ui
+    glossary: [tf-vcs-workflow, tf-speculative-plan, tf-hcp-workspace]
+
+  - id: terraform-hcp-002
+    difficulty: 2
+    type: single
+    question: "Your configuration has a `cloud` block, and the workspace uses remote execution. You run `terraform plan` on your laptop. Where does the plan actually run?"
+    options:
+      - id: a
+        text: "On your laptop, and only the result is uploaded"
+        why: "That would be local execution mode. With remote execution, your laptop only uploads the configuration and shows the output."
+      - id: b
+        text: "In your CI system, which HCP Terraform calls"
+        why: "HCP Terraform does not call your CI system for CLI-driven runs. It runs the operation on its own workers."
+      - id: c
+        text: "On HCP Terraform workers, streaming logs to you"
+      - id: d
+        text: "Nowhere: the CLI-driven workflow only supports apply"
+        why: "The CLI-driven workflow supports both plan and apply from the local CLI."
+    answer: [c]
+    explanation: |
+      In the CLI-driven workflow, Terraform uploads the configuration to
+      HCP Terraform, which runs the plan remotely using the workspace's
+      variables and state. The output streams back to your terminal, so it
+      feels like a local run.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/run/cli
+      - https://developer.hashicorp.com/terraform/cloud-docs/run/remote-operations
+    glossary: [tf-remote-operations, tf-cloud-block]
+
+  - id: terraform-hcp-003
+    difficulty: 2
+    type: single
+    question: "Your company has its own deployment tool that builds a configuration package and must start HCP Terraform runs without a VCS connection or the Terraform CLI. Which workflow fits?"
+    options:
+      - id: a
+        text: "The VCS-driven workflow"
+        why: "The VCS-driven workflow needs a connected repository and reacts to commits. Your tool works without VCS."
+      - id: b
+        text: "The local execution mode"
+        why: "Local execution mode runs Terraform on your own machine. HCP Terraform then only stores state."
+      - id: c
+        text: "The CLI-driven workflow"
+        why: "The CLI-driven workflow starts runs with the Terraform CLI. Your tool does not use the CLI."
+      - id: d
+        text: "The API-driven workflow"
+    answer: [d]
+    explanation: |
+      In the API-driven workflow, a tool uploads a configuration version
+      through the HCP Terraform API and then creates runs. It is used for
+      custom pipelines that need full control of when and what to run.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/run/api
+    glossary: [tf-hcp-terraform]
+
+  - id: terraform-hcp-004
+    difficulty: 2
+    type: single
+    question: "A workspace is set to local execution mode. What does HCP Terraform do for this workspace?"
+    options:
+      - id: a
+        text: "It runs plans remotely but applies locally"
+        why: "Execution mode applies to the whole run. In local mode, both plan and apply run on your machine."
+      - id: b
+        text: "It only stores the state; runs happen on your machine"
+      - id: c
+        text: "It runs every operation on a self-hosted agent"
+        why: "Self-hosted agents are used with agent execution mode, not local execution mode."
+      - id: d
+        text: "It enforces Sentinel policies before each local apply"
+        why: "Policy checks are part of remote runs. In local mode, HCP Terraform does not run the plan, so it cannot check it."
+    answer: [b]
+    explanation: |
+      With local execution mode, plans and applies run on your computer or CI
+      runner, and HCP Terraform only keeps the state (with locking and
+      versions). Workspace variables are not used in local runs.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/settings
+      - https://developer.hashicorp.com/terraform/cloud-docs/run/remote-operations
+    glossary: [tf-remote-operations, tf-hcp-workspace]
+
+  - id: terraform-hcp-005
+    difficulty: 2
+    type: single
+    question: "Junior engineers should be able to start plans in the `prod-network` workspace, but must not apply them. Which workspace permission role fits best for their team?"
+    options:
+      - id: a
+        text: "Read"
+        why: "The read role can view runs and state but cannot queue plans. It gives less access than needed."
+      - id: b
+        text: "Write"
+        why: "The write role can also approve and apply runs. That is more access than the juniors should have."
+      - id: c
+        text: "Plan"
+      - id: d
+        text: "Admin"
+        why: "The admin role can change settings, permissions and delete the workspace. It is far too much access."
+    answer: [c]
+    explanation: |
+      HCP Terraform gives permissions to teams, not to single users. The fixed
+      workspace roles are read, plan, write and admin. The plan role can queue
+      plans but cannot apply them, which follows the idea of least privilege.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/permissions
+      - https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/teams
+    glossary: [tf-hcp-workspace]
+
+  - id: terraform-hcp-006
+    difficulty: 2
+    type: single
+    question: "Your platform team publishes a `vpc` module for AWS in the private registry of the organization `acme`. Which `source` value do other teams use?"
+    options:
+      - id: a
+        text: "`\"registry.terraform.io/acme/vpc/aws\"`"
+        why: "`registry.terraform.io` is the public Terraform Registry. Private modules use the HCP Terraform hostname."
+      - id: b
+        text: "`\"app.terraform.io/acme/vpc/aws\"`"
+      - id: c
+        text: "`\"git::https://app.terraform.io/acme/vpc\"`"
+        why: "The `git::` prefix is for Git repositories. Registry modules use the `HOSTNAME/ORG/NAME/PROVIDER` format."
+      - id: d
+        text: "`\"acme/vpc/aws\"`"
+        why: "Without a hostname, Terraform looks in the public registry. It would not find the private module."
+    answer: [b]
+    explanation: |
+      Modules in the HCP Terraform private registry use the source format
+      `<HOSTNAME>/<ORGANIZATION>/<MODULE NAME>/<PROVIDER>`. For HCP Terraform
+      the hostname is `app.terraform.io`. Users also need an API token, for
+      example from `terraform login`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/registry
+    glossary: [tf-registry, tf-module-source]
+
+  - id: terraform-hcp-007
+    difficulty: 2
+    type: single
+    question: "In an HCP Terraform run, when are Sentinel or OPA policies evaluated?"
+    options:
+      - id: a
+        text: "Before `terraform init`, to check the provider versions"
+        why: "Policies evaluate the planned changes, so they need a plan first. They do not run before init."
+      - id: b
+        text: "After the plan and before the apply"
+      - id: c
+        text: "After the apply, to report what was created"
+        why: "Checking after the apply would be too late to stop a bad change. Policies run before the apply."
+      - id: d
+        text: "Only when a user runs `terraform validate`"
+        why: "`terraform validate` is a local syntax check. It never runs HCP Terraform policies."
+    answer: [b]
+    explanation: |
+      HCP Terraform runs policy checks after the plan (and cost estimation)
+      and before the apply. Policies can read the plan, configuration and
+      state, so they can block changes that break company rules before they
+      happen.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement
+    glossary: [tf-sentinel, tf-opa]
+
+  - id: terraform-hcp-008
+    difficulty: 3
+    type: single
+    question: "A Sentinel policy that limits instance sizes fails during a run. The run stops, but a user with the right permission can override it and continue. Which enforcement level does the policy use?"
+    options:
+      - id: a
+        text: "advisory"
+        why: "An advisory policy only shows a warning. The run continues without anyone needing to override it."
+      - id: b
+        text: "hard-mandatory"
+        why: "A hard-mandatory failure cannot be overridden. You must fix the code or the policy."
+      - id: c
+        text: "soft-mandatory"
+      - id: d
+        text: "mandatory-review"
+        why: "There is no mandatory-review level in Sentinel. The levels are advisory, soft-mandatory and hard-mandatory."
+    answer: [c]
+    explanation: |
+      Sentinel has three enforcement levels. Advisory failures only warn.
+      Soft-mandatory failures stop the run unless an authorized user overrides
+      them. Hard-mandatory failures always stop the run.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/sentinel
+      - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement
+    glossary: [tf-sentinel, tf-policy-set]
+
+  - id: terraform-hcp-009
+    difficulty: 2
+    type: multiple
+    question: "Health assessments are enabled on a workspace. Which two problems can they detect?"
+    options:
+      - id: a
+        text: "Real infrastructure no longer matches the Terraform state"
+      - id: b
+        text: "A newer version of a provider has been released"
+        why: "Health assessments check infrastructure, not release news. Explorer can help you review provider versions instead."
+      - id: c
+        text: "A `check` block or other custom condition now fails"
+      - id: d
+        text: "A team member has too many workspace permissions"
+        why: "Health assessments do not review permissions. Team access is managed in organization and workspace settings."
+      - id: e
+        text: "The HCL code in the repository is badly formatted"
+        why: "Formatting is checked with `terraform fmt -check`. Health assessments look at real resources, not code style."
+    answer: [a, c]
+    explanation: |
+      Health assessments run in the background on a schedule. Drift detection
+      finds resource drift, where real infrastructure differs from the state.
+      Continuous validation checks that custom conditions, such as `check`
+      blocks, still pass after the apply.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/health
+    glossary: [tf-health-assessment, tf-drift, tf-check-block]
+
+  - id: terraform-hcp-010
+    difficulty: 2
+    type: multiple
+    question: "A platform team must find all workspaces that still use an old version of a shared module, and then ask each owning team to upgrade. Which two HCP Terraform features help most?"
+    options:
+      - id: a
+        text: "Explorer, to query module versions across workspaces"
+      - id: b
+        text: "Run triggers, to start runs in all those workspaces"
+        why: "Run triggers queue runs after another workspace applies. They do not find old module versions or ask teams to act."
+      - id: c
+        text: "Change requests, to leave an action item on each workspace"
+      - id: d
+        text: "Speculative plans, to show the upgrade on each workspace"
+        why: "Speculative plans preview code changes in a pull request. They do not search the organization or notify teams."
+      - id: e
+        text: "Local execution mode, to let each team test locally"
+        why: "Execution mode only decides where runs happen. It does not help you find or track outdated modules."
+    answer: [a, c]
+    explanation: |
+      Explorer lets you query data about workspaces, modules, providers and
+      Terraform versions across the organization. From explorer results,
+      administrators can create change requests, which record action items on
+      a workspace for the team that owns it.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/explorer
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/change-requests
+    glossary: [tf-explorer, tf-change-request]
+
+  - id: terraform-hcp-011
+    difficulty: 1
+    type: single
+    question: "Your organization has 200 HCP Terraform workspaces owned by six teams. What is the main purpose of HCP Terraform projects?"
+    options:
+      - id: a
+        text: "To group workspaces and manage access to the group"
+      - id: b
+        text: "To store several state files inside one workspace"
+        why: "Each HCP Terraform workspace has exactly one state. Projects group whole workspaces; they do not hold state."
+      - id: c
+        text: "To replace the `cloud` block in each configuration"
+        why: "Configurations still need the `cloud` block. It can name a project, but the project does not replace it."
+      - id: d
+        text: "To connect several VCS repositories to one workspace"
+        why: "A workspace connects to one repository. Projects do not change that; they organize workspaces."
+    answer: [a]
+    explanation: |
+      Projects are containers for workspaces in an organization. You can give a
+      team permissions on a project, and they apply to all its workspaces.
+      Variable sets and policy sets can also be scoped to a project.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/projects
+    glossary: [tf-hcp-project, tf-hcp-workspace]
+
+  - id: terraform-hcp-012
+    difficulty: 2
+    type: single
+    question: "A variable set gives `region = \"eu-west-1\"` to all workspaces in a project. One workspace also defines its own workspace variable `region = \"us-east-1\"`. The variable set is not marked as priority. Which value does that workspace use?"
+    options:
+      - id: a
+        text: "`eu-west-1`, because variable sets always take precedence"
+        why: "Only priority variable sets win over more specific values. This set is not marked as priority."
+      - id: b
+        text: "`us-east-1`, because it is set at a more specific scope"
+      - id: c
+        text: "The run fails because the same key is set twice"
+        why: "HCP Terraform does not fail on duplicate keys. It uses a fixed precedence order to choose one value."
+      - id: d
+        text: "The value of the most recently changed of the two"
+        why: "Precedence depends on the scope of each variable, not on when it was last changed."
+    answer: [b]
+    explanation: |
+      Variable sets share variables across many workspaces or projects. When
+      the same key is set in several places, the more specific scope wins, so
+      a workspace variable overrides a normal variable set. A priority variable
+      set overrides more specific values.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/variables
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/variables/managing-variables
+    glossary: [tf-variable-set, tf-hcp-workspace]
+
+  - id: terraform-hcp-013
+    difficulty: 2
+    type: single
+    question: "The `app` workspace reads outputs from the `network` workspace. After every successful apply in `network`, you want a new run to start in `app`. What should you configure?"
+    options:
+      - id: a
+        text: "A variable set that is shared by both of the workspaces"
+        why: "A variable set shares input values. It does not start runs when another workspace changes."
+      - id: b
+        text: "A `moved` block in the `app` configuration"
+        why: "A `moved` block changes resource addresses in state. It has nothing to do with starting runs."
+      - id: c
+        text: "A run trigger on `app` with `network` as its source"
+      - id: d
+        text: "A soft-mandatory policy on the `network` workspace"
+        why: "Policies check plans before apply. They do not queue runs in other workspaces."
+    answer: [c]
+    explanation: |
+      Run triggers connect workspaces. You set them on the downstream
+      workspace (`app`) and choose source workspaces (`network`). When a source
+      workspace applies successfully, HCP Terraform queues a run in the
+      downstream workspace.
+    docs:
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/settings/run-triggers
+    glossary: [tf-run-trigger, tf-hcp-workspace]
+
+  - id: terraform-hcp-014
+    difficulty: 3
+    type: single
+    question: "A teammate says: \"CLI workspaces and HCP Terraform workspaces are the same thing.\" Which statement best explains the difference?"
+    options:
+      - id: a
+        text: "CLI workspaces have separate variables and permissions; HCP ones do not"
+        why: "It is the other way round. HCP Terraform workspaces have their own variables and permissions; CLI workspaces share them."
+      - id: b
+        text: "HCP Terraform workspaces exist only for the VCS-driven workflow"
+        why: "HCP Terraform workspaces support VCS-driven, CLI-driven and API-driven workflows."
+      - id: c
+        text: "CLI workspaces share config and backend; HCP ones are full units"
+      - id: d
+        text: "They are the same, but HCP Terraform shows them in a web UI"
+        why: "They are different concepts. An HCP Terraform workspace holds much more than an alternative state."
+    answer: [c]
+    explanation: |
+      CLI workspaces (`terraform workspace new`) are alternative states for the
+      same configuration and backend. An HCP Terraform workspace is a complete
+      unit with its own configuration, variables, state, run history and
+      permissions. HashiCorp recommends separate HCP Terraform workspaces for
+      each environment.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/workspaces
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces
+    glossary: [tf-cli-workspace, tf-hcp-workspace]
+
+  - id: terraform-hcp-015
+    difficulty: 1
+    type: single
+    question: "You run `terraform login` for the first time. What does the command do?"
+    options:
+      - id: a
+        text: "It saves an HCP Terraform API token on your computer"
+      - id: b
+        text: "It creates a new HCP Terraform organization for you"
+        why: "Organizations are created in the HCP Terraform UI or API. `terraform login` only handles your token."
+      - id: c
+        text: "It writes a `cloud` block into your configuration"
+        why: "`terraform login` never edits your `.tf` files. You add the `cloud` block yourself."
+      - id: d
+        text: "It signs in to your cloud provider, such as AWS"
+        why: "Cloud provider credentials are configured for the provider. `terraform login` is for HCP Terraform or Terraform Enterprise."
+    answer: [a]
+    explanation: |
+      `terraform login` opens a browser so you can create an API token for
+      HCP Terraform (by default `app.terraform.io`). It saves the token in
+      `credentials.tfrc.json` in your user directory, so later CLI commands
+      can authenticate.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/login
+    glossary: [tf-hcp-terraform, tf-api-token]
+
+  - id: terraform-hcp-016
+    difficulty: 2
+    type: single
+    question: "A project keeps its state in a local `terraform.tfstate`. You want to move it to HCP Terraform. What is the correct process?"
+    options:
+      - id: a
+        text: "Upload the state file in the UI, then delete the local code"
+        why: "The code is still needed for runs. The supported path is the `cloud` block plus `terraform init`."
+      - id: b
+        text: "Run `terraform login`, then `terraform apply -migrate-state`"
+        why: "`-migrate-state` is an option of `terraform init`, not of `terraform apply`."
+      - id: c
+        text: "Run `terraform workspace new` with the HCP organization name"
+        why: "`terraform workspace new` creates a CLI workspace in the current backend. It does not connect to HCP Terraform."
+      - id: d
+        text: "Add a `cloud` block, then run `terraform init` and migrate"
+    answer: [d]
+    explanation: |
+      Add a `cloud` block with your organization and workspace, make sure you
+      are logged in, and run `terraform init`. Terraform detects the existing
+      local state and asks whether to migrate it to the HCP Terraform workspace.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/cloud/migrating
+      - https://developer.hashicorp.com/terraform/cloud-docs/migrate
+    glossary: [tf-cloud-block, tf-hcp-terraform]
+
+  - id: terraform-hcp-017
+    difficulty: 3
+    type: multiple
+    question: "Which two statements about the `cloud` block in Terraform 1.12 are true?"
+    options:
+      - id: a
+        text: "It goes in the `terraform` block and sets the `organization`"
+      - id: b
+        text: "You can use it together with a `backend \"s3\"` block"
+        why: "A configuration can use either a `cloud` block or a `backend` block, never both."
+      - id: c
+        text: "`workspaces { tags = [...] }` maps it to many workspaces"
+      - id: d
+        text: "It can read the organization name from `var.org`"
+        why: "Like backend blocks, the `cloud` block cannot use input variables. You can use the `TF_CLOUD_ORGANIZATION` environment variable instead."
+      - id: e
+        text: "It needs the `remote` backend to be configured as well"
+        why: "The `cloud` block replaces the older `remote` backend. You do not configure both."
+    answer: [a, c]
+    explanation: |
+      The `cloud` block is nested in the `terraform` block. It sets the
+      organization and the workspaces: `name` for one workspace, or `tags` to
+      work with every workspace that has those tags. It cannot be combined
+      with a `backend` block and cannot use variables.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/cloud/settings
+    glossary: [tf-cloud-block, tf-hcp-workspace]

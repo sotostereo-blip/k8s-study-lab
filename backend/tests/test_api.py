@@ -320,3 +320,24 @@ def test_certifications_resolve(client):
         if c["track"]:
             data = client.get(f"/api/labs?track_id={c['track']}").json()
             assert data["tasks"] and all(t["id"].startswith(c["track"] + "-") for t in data["tasks"])
+
+
+def test_terraform_track_has_no_mock_and_starts_without_kubernetes(tmp_path):
+    class TerraformDocker(FakeDocker):
+        scripts: list = []
+
+        def __call__(self, cmd, stdin, timeout):
+            self.calls.append(cmd)
+            self.scripts.append(stdin or "")
+            if stdin and "kubectl" in stdin and "grep -cw Ready" in stdin:
+                raise AssertionError("a Terraform lab must not wait for Kubernetes nodes")
+            return 0, ""
+
+    docker = TerraformDocker()
+    client = lab_client(tmp_path, docker)
+    assert client.post("/api/mock/start", json={"track_id": "terraform", "tasks": 3}).status_code == 400
+    client.post("/api/labs/terraform-flow-001/start")
+    s = wait_ready(client)
+    assert s["status"] == "ready" and s["environment"] == "terraform"
+    assert any("lab-ready" in sc for sc in docker.scripts)        # waited for LocalStack, not for nodes
+    assert any("terraform/compose.yaml" in " ".join(c) for c in docker.calls)

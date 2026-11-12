@@ -1,0 +1,121 @@
+id: terraform-mod-001
+title: Use one local module twice
+domain: modules
+difficulty: 2
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/bucket-module/modules/s3-bucket && cd /root/bucket-module
+  cp /opt/lab/aws-provider.tf .
+  cat > modules/s3-bucket/variables.tf <<'TF'
+  variable "name" {
+    description = "Name of the bucket"
+    type        = string
+  }
+
+  variable "versioning" {
+    description = "Turn on object versioning"
+    type        = bool
+    default     = false
+  }
+
+  variable "tags" {
+    type    = map(string)
+    default = {}
+  }
+  TF
+  cat > modules/s3-bucket/main.tf <<'TF'
+  resource "aws_s3_bucket" "this" {
+    bucket = var.name
+    tags   = var.tags
+  }
+
+  resource "aws_s3_bucket_versioning" "this" {
+    count  = var.versioning ? 1 : 0
+    bucket = aws_s3_bucket.this.id
+
+    versioning_configuration {
+      status = "Enabled"
+    }
+  }
+  TF
+  cat > modules/s3-bucket/outputs.tf <<'TF'
+  output "arn" {
+    value = aws_s3_bucket.this.arn
+  }
+
+  output "name" {
+    value = aws_s3_bucket.this.bucket
+  }
+  TF
+  echo '# Call the module ./modules/s3-bucket here' > main.tf
+task: |
+  `/root/bucket-module/modules/s3-bucket` is a small module that creates an S3 bucket
+  (look at its variables and outputs). Use it from the root module in `/root/bucket-module/main.tf`:
+
+  1. A module block called `logs`: bucket `tfmod-app-logs`, versioning **off**.
+  2. A module block called `media`: bucket `tfmod-app-media`, versioning **on**,
+     and the tag `Content = images`.
+  3. A root output `media_bucket_arn` with the ARN of the media bucket (use the module output).
+  4. Initialize and apply.
+checks:
+  - name: The state has `module.logs.aws_s3_bucket.this` and `module.media.aws_s3_bucket.this`
+    run: |
+      s="$(terraform -chdir=/root/bucket-module state list)"
+      echo "$s" | grep -qx 'module.logs.aws_s3_bucket.this' && echo "$s" | grep -qx 'module.media.aws_s3_bucket.this'
+  - name: Versioning is `Enabled` on `tfmod-app-media`
+    run: '[ "$(aws s3api get-bucket-versioning --bucket tfmod-app-media --query Status --output text)" = Enabled ]'
+  - name: Versioning is not enabled on `tfmod-app-logs`
+    run: aws s3api head-bucket --bucket tfmod-app-logs && [ "$(aws s3api get-bucket-versioning --bucket tfmod-app-logs --query Status --output text)" != Enabled ]
+  - name: '`tfmod-app-media` has the tag Content=images'
+    run: aws s3api get-bucket-tagging --bucket tfmod-app-media | jq -e '.TagSet | from_entries | .Content == "images"' >/dev/null
+  - name: Output `media_bucket_arn` is `arn:aws:s3:::tfmod-app-media`
+    run: '[ "$(terraform -chdir=/root/bucket-module output -raw media_bucket_arn)" = "arn:aws:s3:::tfmod-app-media" ]'
+solution: |
+  cd /root/bucket-module
+  cat > main.tf <<'TF'
+  module "logs" {
+    source = "./modules/s3-bucket"    # a local path must start with ./ or ../
+    name   = "tfmod-app-logs"         # versioning keeps its default (false)
+  }
+
+  module "media" {
+    source     = "./modules/s3-bucket"
+    name       = "tfmod-app-media"
+    versioning = true
+    tags = {
+      Content = "images"
+    }
+  }
+
+  output "media_bucket_arn" {
+    value = module.media.arn          # module.<NAME>.<OUTPUT>
+  }
+  TF
+  terraform init                      # needed after you add a module block
+  terraform apply
+  terraform state list                # module.logs.aws_s3_bucket.this, module.media...
+docs:
+  - https://developer.hashicorp.com/terraform/language/block/module
+  - https://developer.hashicorp.com/terraform/language/modules/sources#local-paths
+auto_solution: |
+  cd /root/bucket-module
+  cat > main.tf <<'TF'
+  module "logs" {
+    source = "./modules/s3-bucket"
+    name   = "tfmod-app-logs"
+  }
+
+  module "media" {
+    source     = "./modules/s3-bucket"
+    name       = "tfmod-app-media"
+    versioning = true
+    tags       = { Content = "images" }
+  }
+
+  output "media_bucket_arn" {
+    value = module.media.arn
+  }
+  TF
+  terraform init -input=false
+  terraform apply -auto-approve -input=false

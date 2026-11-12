@@ -1,0 +1,109 @@
+id: terraform-mod-002
+title: Expose values from a child module
+domain: modules
+difficulty: 2
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/reader-module/modules/iam-reader && cd /root/reader-module
+  cp /opt/lab/aws-provider.tf .
+  cat > modules/iam-reader/variables.tf <<'TF'
+  variable "user_name" {
+    type = string
+  }
+
+  variable "bucket_arn" {
+    type = string
+  }
+  TF
+  cat > modules/iam-reader/main.tf <<'TF'
+  resource "aws_iam_user" "this" {
+    name = var.user_name
+  }
+
+  resource "aws_iam_policy" "read" {
+    name = "${var.user_name}-read"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [{
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:ListBucket"]
+        Resource = [var.bucket_arn, "${var.bucket_arn}/*"]
+      }]
+    })
+  }
+
+  resource "aws_iam_user_policy_attachment" "read" {
+    user       = aws_iam_user.this.name
+    policy_arn = aws_iam_policy.read.arn
+  }
+  TF
+  cat > main.tf <<'TF'
+  module "reader" {
+    source     = "./modules/iam-reader"
+    user_name  = "tfmod-report-reader"
+    bucket_arn = "arn:aws:s3:::tfmod-reports"
+  }
+
+  output "reader_arn" {
+    value = module.reader.user_arn
+  }
+
+  output "policy_arn" {
+    value = module.reader.policy_arn
+  }
+  TF
+  terraform init -input=false >/dev/null
+task: |
+  In `/root/reader-module`, the root module calls the child module `./modules/iam-reader`
+  and wants two values from it, but `terraform plan` fails.
+
+  1. Find out why. A root module can only read what a child module **exports**.
+  2. Fix the **child module** (do not change the root `main.tf`): it must export
+     `user_arn` (the ARN of the IAM user) and `policy_arn` (the ARN of the policy).
+  3. Apply. The root outputs `reader_arn` and `policy_arn` must show the real ARNs.
+checks:
+  - name: Output `reader_arn` is the ARN of the IAM user `tfmod-report-reader`
+    run: '[ "$(terraform -chdir=/root/reader-module output -raw reader_arn)" = "$(aws iam get-user --user-name tfmod-report-reader --query User.Arn --output text)" ]'
+  - name: Output `policy_arn` is the policy attached to `tfmod-report-reader`
+    run: |
+      p="$(terraform -chdir=/root/reader-module output -raw policy_arn)"
+      [ -n "$p" ] && aws iam list-attached-user-policies --user-name tfmod-report-reader --query 'AttachedPolicies[].PolicyArn' --output text | grep -qF "$p"
+  - name: The root main.tf still reads `module.reader.user_arn`
+    run: grep -q 'module.reader.user_arn' /root/reader-module/main.tf
+    guard: true
+solution: |
+  cd /root/reader-module
+  terraform plan
+  # Error: Unsupported attribute ... module.reader is an object with no attributes
+  # The child module has no outputs. Create modules/iam-reader/outputs.tf:
+  cat > modules/iam-reader/outputs.tf <<'TF'
+  output "user_arn" {
+    description = "ARN of the IAM user"
+    value       = aws_iam_user.this.arn
+  }
+
+  output "policy_arn" {
+    description = "ARN of the read policy"
+    value       = aws_iam_policy.read.arn
+  }
+  TF
+  terraform apply
+  terraform output
+  # Child module outputs are NOT shown by "terraform output" by themselves:
+  # the root module must pass them on with its own output blocks (like reader_arn here).
+docs:
+  - https://developer.hashicorp.com/terraform/language/values/outputs
+  - https://developer.hashicorp.com/terraform/language/block/module
+auto_solution: |
+  cd /root/reader-module
+  cat > modules/iam-reader/outputs.tf <<'TF'
+  output "user_arn" {
+    value = aws_iam_user.this.arn
+  }
+
+  output "policy_arn" {
+    value = aws_iam_policy.read.arn
+  }
+  TF
+  terraform apply -auto-approve -input=false

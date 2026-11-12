@@ -1,0 +1,55 @@
+id: terraform-flow-002
+title: Save a plan and apply exactly that plan
+domain: workflow
+difficulty: 1
+minutes: 6
+environment: terraform
+setup: |
+  mkdir -p /root/saved-plan && cd /root/saved-plan
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "release" {
+    bucket = "tfflow-release-files"
+  }
+
+  resource "aws_s3_object" "notes" {
+    bucket  = aws_s3_bucket.release.id
+    key     = "release-notes.txt"
+    content = "version 1"
+  }
+  TF
+  terraform init -input=false >/dev/null
+task: |
+  In a team, you often review a plan first and apply it later. With a **saved plan file**,
+  Terraform applies exactly the reviewed changes and does not ask again.
+
+  Work in `/root/saved-plan` (already initialized):
+
+  1. Create an execution plan and save it in the file `release.tfplan`.
+  2. Show the saved plan in a human-readable way and check what it will create.
+  3. Apply **the saved plan file**.
+
+  When you finish, the bucket `tfflow-release-files` must contain the object
+  `release-notes.txt` with the text `version 1`.
+checks:
+  - name: The plan file `/root/saved-plan/release.tfplan` exists and plans `aws_s3_object.notes`
+    run: terraform -chdir=/root/saved-plan show -json release.tfplan | jq -e '[.resource_changes[] | select(.address == "aws_s3_object.notes")] | length == 1' >/dev/null
+  - name: The object `release-notes.txt` has the text `version 1`
+    run: '[ "$(aws s3 cp s3://tfflow-release-files/release-notes.txt -)" = "version 1" ]'
+  - name: The state has the bucket and the object
+    run: '[ "$(terraform -chdir=/root/saved-plan state list | grep -cE "^aws_s3_(bucket\.release|object\.notes)$")" = 2 ]'
+solution: |
+  cd /root/saved-plan
+  terraform plan -out=release.tfplan     # saves the plan in a binary file
+  terraform show release.tfplan          # read the saved plan (add -json for machine-readable output)
+  terraform apply release.tfplan         # applies exactly this plan, with no "yes" prompt
+  aws s3 cp s3://tfflow-release-files/release-notes.txt -
+  # Note: if the state changes after you save the plan, Terraform rejects the file as "stale".
+auto_solution: |
+  cd /root/saved-plan
+  terraform plan -input=false -out=release.tfplan
+  terraform apply -input=false release.tfplan
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/plan
+  - https://developer.hashicorp.com/terraform/cli/commands/apply
+  - https://developer.hashicorp.com/terraform/cli/commands/show

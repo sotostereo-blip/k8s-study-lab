@@ -1,0 +1,450 @@
+domain: state
+questions:
+  - id: terraform-state-001
+    difficulty: 1
+    type: single
+    question: "A configuration has no `backend` block and no `cloud` block. After `terraform apply`, where does Terraform store the state by default?"
+    options:
+      - id: a
+        text: "In a `terraform.tfstate` file in the current working directory"
+      - id: b
+        text: "In the `.terraform` directory, next to the downloaded providers"
+        why: "The `.terraform` directory holds providers, modules and backend settings. The default state file is written in the working directory itself."
+      - id: c
+        text: "In a hidden file in the user's home directory"
+        why: "The home directory can hold CLI configuration and credentials, but not the state of a project. State stays with the project."
+      - id: d
+        text: "In HCP Terraform, in a workspace with the same name as the folder"
+        why: "Terraform only uses HCP Terraform when you add a `cloud` block (or a `remote` backend). Without one, it never sends state anywhere."
+    answer: [a]
+    explanation: |
+      When no backend is configured, Terraform uses the local backend. It
+      writes the state to `terraform.tfstate` in the working directory and keeps
+      the previous version in `terraform.tfstate.backup`.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend/local
+      - https://developer.hashicorp.com/terraform/language/state
+    glossary: [tf-local-backend, tf-state]
+
+  - id: terraform-state-002
+    difficulty: 2
+    type: single
+    question: "You use the local backend and run `terraform workspace new staging`, then `terraform apply`. Where is the state for the `staging` workspace saved?"
+    options:
+      - id: a
+        text: "In `terraform.tfstate`, which now has one section per workspace"
+        why: "Each CLI workspace gets its own state file. Terraform never mixes the state of two workspaces in one file."
+      - id: b
+        text: "In `terraform.tfstate.d/staging/terraform.tfstate`"
+      - id: c
+        text: "In `staging.tfstate`, next to the configuration files"
+        why: "Terraform does not name state files after workspaces in the root folder. It uses a subdirectory for each non-default workspace."
+      - id: d
+        text: "In `.terraform/workspaces/staging.tfstate`"
+        why: "The `.terraform` directory only remembers which workspace is selected. The workspace state is stored under `terraform.tfstate.d`."
+    answer: [b]
+    explanation: |
+      With the local backend, the `default` workspace uses `terraform.tfstate`.
+      Every other CLI workspace stores its state in
+      `terraform.tfstate.d/<workspace name>/terraform.tfstate`. The
+      configuration is the same for all workspaces; only the state is separate.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend/local
+      - https://developer.hashicorp.com/terraform/cli/workspaces
+    glossary: [tf-local-backend, tf-cli-workspace]
+
+  - id: terraform-state-003
+    difficulty: 2
+    type: single
+    question: "Which statement about the local backend is correct?"
+    options:
+      - id: a
+        text: "It encrypts the state file with a key stored in `.terraform`"
+        why: "The local backend writes state as plain JSON. Anyone who can read the file can read secrets in it."
+      - id: b
+        text: "It cannot be selected explicitly with a `backend` block"
+        why: "You can write `backend \"local\"` with a `path` argument to choose where the file goes. It is also the default when nothing is set."
+      - id: c
+        text: "It does not support state locking of any kind"
+        why: "The local backend locks the state with operating system file locks, so two processes on the same machine cannot write it at once."
+      - id: d
+        text: "It keeps state on local disk and locks it with system APIs"
+    answer: [d]
+    explanation: |
+      The local backend keeps state on the local filesystem and uses system
+      APIs to lock it during operations. It is simple, but the file is plain
+      text and is not shared, so teams usually move to a remote backend.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend/local
+      - https://developer.hashicorp.com/terraform/language/state/sensitive-data
+    glossary: [tf-local-backend, tf-state-locking, tf-backend]
+
+  - id: terraform-state-004
+    difficulty: 1
+    type: single
+    question: "Two engineers run `terraform apply` on the same remote state at the same moment. What is the main purpose of state locking in this case?"
+    options:
+      - id: a
+        text: "It merges both sets of changes into one state file"
+        why: "Terraform does not merge state changes. Locking makes the second operation wait or fail instead."
+      - id: b
+        text: "It hides sensitive values from the second engineer"
+        why: "Locking does not control who can read values. Access control and encryption are handled by the backend and its permissions."
+      - id: c
+        text: "It blocks a second write so the state is not corrupted"
+      - id: d
+        text: "It makes Terraform plan both runs in parallel, faster"
+        why: "Locking does the opposite: it makes operations on one state happen one at a time."
+    answer: [c]
+    explanation: |
+      When a backend supports locking, Terraform takes a lock for every
+      operation that could write state. A second operation cannot get the lock,
+      so it cannot overwrite or corrupt the state while the first one runs.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state/locking
+    glossary: [tf-state-locking, tf-state]
+
+  - id: terraform-state-005
+    difficulty: 2
+    type: single
+    question: "A CI job crashed during `terraform apply`. Now every run fails with \"Error acquiring the state lock\" and shows a lock ID. You confirm that no other run is active. What should you do?"
+    options:
+      - id: a
+        text: "Run `terraform init -reconfigure` to reset the lock"
+        why: "`-reconfigure` only ignores the saved backend settings during init. It does not remove a lock that is held in the backend."
+      - id: b
+        text: "Run `terraform force-unlock` with the lock ID"
+      - id: c
+        text: "Run `terraform state rm` on the locked resource"
+        why: "`terraform state rm` removes a resource from state. The lock belongs to the whole state, not to a single resource."
+      - id: d
+        text: "Delete the state file so Terraform creates a new one"
+        why: "Deleting the state makes Terraform forget every resource it manages. The next apply would try to create them all again."
+    answer: [b]
+    explanation: |
+      `terraform force-unlock LOCK_ID` removes a lock that was not released,
+      for example after a crash. It does not change your infrastructure. Use it
+      only when you are sure no other process is still using the state.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/force-unlock
+      - https://developer.hashicorp.com/terraform/language/state/locking
+    glossary: [tf-state-locking]
+
+  - id: terraform-state-006
+    difficulty: 2
+    type: multiple
+    question: "Which two statements about Terraform state locking are true?"
+    options:
+      - id: a
+        text: "Terraform takes the lock automatically for operations that can write state"
+      - id: b
+        text: "Locking also encrypts the state while the lock is held"
+        why: "Locking and encryption are separate features. Encryption at rest depends on the backend, for example S3 server-side encryption."
+      - id: c
+        text: "Not every backend supports locking"
+      - id: d
+        text: "Teams should add `-lock=false` in CI to make pipelines faster"
+        why: "`-lock=false` turns off a safety feature. It is not recommended, because two runs could then write the same state."
+      - id: e
+        text: "A lock stays in place until someone runs `terraform force-unlock`"
+        why: "Terraform releases the lock by itself when the operation ends. `force-unlock` is only for locks left behind by a failure."
+    answer: [a, c]
+    explanation: |
+      Terraform locks state automatically for all operations that could write
+      it, and releases the lock when they finish. Locking works only if the
+      backend supports it. You can wait for a lock with `-lock-timeout`, but you
+      should not disable it.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/state/locking
+    glossary: [tf-state-locking, tf-backend]
+
+  - id: terraform-state-007
+    difficulty: 2
+    type: single
+    question: "Your team uses Terraform 1.12 with a `backend \"s3\"` block that sets `bucket`, `key`, `region` and `use_lockfile = true`. What does `use_lockfile = true` do?"
+    options:
+      - id: a
+        text: "It turns on locking with a lock object in the S3 bucket"
+      - id: b
+        text: "It creates a DynamoDB table to hold the state lock"
+        why: "DynamoDB locking uses the `dynamodb_table` argument, which is now deprecated. `use_lockfile` needs no DynamoDB table."
+      - id: c
+        text: "It writes the `.terraform.lock.hcl` file into the state bucket"
+        why: "`.terraform.lock.hcl` is the dependency lock file for provider versions. It stays in your repository and has nothing to do with state locks."
+      - id: d
+        text: "It keeps a local copy of the state in case S3 is down"
+        why: "The S3 backend does not keep a local fallback copy. The argument only controls locking."
+    answer: [a]
+    explanation: |
+      With `use_lockfile = true`, the S3 backend uses S3 itself for locking: it
+      creates a `.tflock` object next to the state object while an operation runs.
+      Locking with a DynamoDB table (`dynamodb_table`) still works but is
+      deprecated.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend/s3
+    glossary: [tf-backend, tf-state-locking]
+
+  - id: terraform-state-008
+    difficulty: 2
+    type: single
+    question: "Your `backend \"s3\"` block must not contain the bucket name and role ARN, because they differ per environment and you do not want them in Git. Which approach does Terraform support?"
+    options:
+      - id: a
+        text: "Use `var.bucket` and `var.role_arn` inside the `backend` block"
+        why: "Backend blocks cannot use input variables, locals or data sources. Terraform reads the backend before it evaluates any of them."
+      - id: b
+        text: "Leave them out and pass them with `terraform init -backend-config`"
+      - id: c
+        text: "Set them in `terraform.tfvars`, which init reads automatically"
+        why: "`terraform.tfvars` sets input variables for plan and apply. It does not set backend arguments during init."
+      - id: d
+        text: "Put them in a `locals` block in a separate `backend.tf` file"
+        why: "Local values cannot be referenced in a backend block, no matter which file they are in."
+    answer: [b]
+    explanation: |
+      This is called partial configuration. You leave some arguments out of
+      the `backend` block and give them at init time with
+      `-backend-config=FILE` or `-backend-config="KEY=VALUE"`, or with
+      environment variables that the backend supports.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-partial-configuration, tf-backend]
+
+  - id: terraform-state-009
+    difficulty: 1
+    type: single
+    question: "Where do you declare a `backend` block in a Terraform configuration?"
+    options:
+      - id: a
+        text: "Inside the `provider` block of the cloud provider"
+        why: "Provider blocks configure how Terraform talks to an API. Where state is stored is a Terraform setting, not a provider setting."
+      - id: b
+        text: "Inside each `resource` block that needs remote state"
+        why: "State belongs to the whole configuration, not to single resources. There is one backend for the root module."
+      - id: c
+        text: "Inside the top-level `terraform` block, only once"
+      - id: d
+        text: "Inside a `module` block, so each module stores its own state"
+        why: "Backends are configured only in the root module. Child modules always share the state of the root module."
+    answer: [c]
+    explanation: |
+      The `backend` block is nested in the top-level `terraform` block of the
+      root module. A configuration can have only one backend block, and it
+      cannot be used together with a `cloud` block.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/backend
+    glossary: [tf-backend]
+
+  - id: terraform-state-010
+    difficulty: 2
+    type: single
+    question: "Your project used the local backend. You add a `backend \"s3\"` block and want to keep all existing resources managed. Which command copies the current state into the new backend?"
+    options:
+      - id: a
+        text: "`terraform init -migrate-state`"
+      - id: b
+        text: "`terraform init -reconfigure`"
+        why: "`-reconfigure` starts with the new backend and ignores the old state. Terraform would no longer see the resources it already created."
+      - id: c
+        text: "`terraform apply -refresh-only`"
+        why: "Refresh-only mode updates state from real infrastructure. It does not move state between backends, and init must run first anyway."
+      - id: d
+        text: "`terraform state push` to the S3 bucket"
+        why: "`state push` is a low-level command that can overwrite remote state. The supported way to change backends is init with migration."
+    answer: [a]
+    explanation: |
+      When the backend configuration changes, you must run `terraform init`
+      again. With `-migrate-state`, Terraform copies the existing state to the
+      new backend (it asks for confirmation). After that, all operations use
+      the new backend.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+      - https://developer.hashicorp.com/terraform/language/backend
+    glossary: [tf-backend, tf-local-backend]
+
+  - id: terraform-state-011
+    difficulty: 3
+    type: single
+    question: "You changed the `key` in your S3 backend so a new, empty location is used. You do not want to copy the old state. Which `terraform init` option fits this goal?"
+    options:
+      - id: a
+        text: "`-migrate-state`, because it is needed after any backend change"
+        why: "`-migrate-state` copies the old state to the new location. Here you want the opposite: start clean without copying."
+      - id: b
+        text: "`-upgrade`, because it refreshes the backend settings"
+        why: "`-upgrade` updates providers and modules to the newest allowed versions. It does not decide what happens to state."
+      - id: c
+        text: "`-backend=false`, because it skips the old backend"
+        why: "`-backend=false` skips backend initialization completely. Terraform would keep the old saved backend settings."
+      - id: d
+        text: "`-reconfigure`, because it ignores the saved backend settings"
+    answer: [d]
+    explanation: |
+      `terraform init -reconfigure` ignores any existing backend configuration
+      saved in `.terraform` and sets up the new one without migrating state.
+      Use `-migrate-state` instead when you want to keep and copy the state.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-backend]
+
+  - id: terraform-state-012
+    difficulty: 2
+    type: single
+    question: "Someone changed the tags of an EC2 instance in the AWS console. You want Terraform state to record the real values, without changing any infrastructure. Which command should you run?"
+    options:
+      - id: a
+        text: "`terraform apply -replace=aws_instance.web`"
+        why: "`-replace` destroys and recreates the instance. That changes infrastructure, which is not what you want."
+      - id: b
+        text: "`terraform apply -refresh-only`"
+      - id: c
+        text: "`terraform plan -refresh=false`"
+        why: "`-refresh=false` skips reading real infrastructure, so Terraform would not even see the change. A plan also never writes state."
+      - id: d
+        text: "`terraform state rm aws_instance.web`"
+        why: "`state rm` makes Terraform forget the instance completely. It does not record the new tag values."
+    answer: [b]
+    explanation: |
+      Refresh-only mode reads the current settings of all managed objects and
+      proposes to update only the state. `terraform plan -refresh-only` shows
+      the resource drift; `terraform apply -refresh-only` writes it to state.
+      A normal apply would instead change the tags back to match the configuration.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+      - https://developer.hashicorp.com/terraform/cli/commands/refresh
+    glossary: [tf-refresh-only, tf-drift, tf-state]
+
+  - id: terraform-state-013
+    difficulty: 2
+    type: single
+    question: "You rename `resource \"aws_s3_bucket\" \"logs\"` to `resource \"aws_s3_bucket\" \"audit_logs\"`. How can you tell Terraform this is the same object, so it is not destroyed and created again?"
+    options:
+      - id: a
+        text: "Add a `removed` block for the old address"
+        why: "A `removed` block tells Terraform to stop managing an object. It does not link the old address to the new one."
+      - id: b
+        text: "Add `lifecycle { prevent_destroy = true }` to the bucket"
+        why: "`prevent_destroy` makes the plan fail instead of destroying. It does not tell Terraform that the resource was renamed."
+      - id: c
+        text: "Add a `moved` block from the old address to the new one"
+      - id: d
+        text: "Add an `import` block with the bucket name as the ID"
+        why: "The bucket is already in state under the old name. Importing it again does not handle the old address, which would still be destroyed."
+    answer: [c]
+    explanation: |
+      A `moved` block with `from = aws_s3_bucket.logs` and
+      `to = aws_s3_bucket.audit_logs` tells Terraform to update the address in
+      state. The plan shows the move instead of a destroy and create, and the
+      change is reviewed like any other code change.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/moved
+      - https://developer.hashicorp.com/terraform/language/state/refactor
+    glossary: [tf-moved-block, tf-resource-address, tf-lifecycle]
+
+  - id: terraform-state-014
+    difficulty: 2
+    type: single
+    question: "A database must now be managed by another team's configuration. You want to delete it from your code, but the real database must keep running. Which block should you add?"
+    options:
+      - id: a
+        text: "A `moved` block with only a `from` address"
+        why: "A `moved` block always needs both `from` and `to`. It renames objects; it does not stop managing them."
+      - id: b
+        text: "A `removed` block with `destroy = false`"
+      - id: c
+        text: "A `lifecycle { ignore_changes = all }` block"
+        why: "`ignore_changes` keeps the resource in your configuration and state. Terraform would still own it and could still destroy it."
+      - id: d
+        text: "A `check` block that tests the database is up"
+        why: "A `check` block only validates conditions and reports warnings. It does not change what Terraform manages."
+    answer: [b]
+    explanation: |
+      A `removed` block names the resource with `from` and, with
+      `lifecycle { destroy = false }`, tells Terraform to remove it from state without
+      destroying it. It is the declarative version of `terraform state rm` and
+      appears in the plan for review.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/removed
+      - https://developer.hashicorp.com/terraform/language/state/refactor
+    glossary: [tf-removed-block, tf-state, tf-lifecycle, tf-check-block]
+
+  - id: terraform-state-015
+    difficulty: 1
+    type: single
+    question: "What happens to the real cloud resource when you run `terraform state rm aws_instance.old`?"
+    options:
+      - id: a
+        text: "Terraform destroys it before removing it from state"
+        why: "`state rm` never calls the provider to delete anything. Use `terraform destroy` or remove the code if you want it deleted."
+      - id: b
+        text: "Terraform stops it and keeps it in state as stopped"
+        why: "Terraform has no stopped state for resources. The command only edits the state file."
+      - id: c
+        text: "Terraform marks it to be recreated on the next apply"
+        why: "Marking for recreation is done with `terraform apply -replace`. `state rm` makes Terraform forget the object instead."
+      - id: d
+        text: "Nothing: it keeps running, but is no longer tracked"
+    answer: [d]
+    explanation: |
+      `terraform state rm` removes the binding between a resource address and
+      the real object. The object still exists. If the resource block is still
+      in the configuration, the next plan will propose to create a new one.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/state/rm
+    glossary: [tf-state, tf-resource-address]
+
+  - id: terraform-state-016
+    difficulty: 3
+    type: single
+    question: "You maintain a shared module and move a resource into a nested module. Why is a `moved` block usually better than asking users to run `terraform state mv`?"
+    options:
+      - id: a
+        text: "Each user gets the move in a normal, reviewable plan"
+      - id: b
+        text: "`terraform state mv` cannot move resources into modules"
+        why: "`terraform state mv` can move resources into and out of modules. The problem is that every user must run it by hand."
+      - id: c
+        text: "A `moved` block also updates the real resource's cloud ID"
+        why: "A `moved` block only changes the address in state. The real object and its ID stay the same."
+      - id: d
+        text: "`terraform state mv` was removed in Terraform 1.12"
+        why: "`terraform state mv` still exists in Terraform 1.12. It is just less safe for shared code because it is a manual step."
+    answer: [a]
+    explanation: |
+      A `moved` block is part of the code, so every configuration that uses the
+      new module version gets the move during its normal plan and apply. The
+      plan shows the move before anything changes. `terraform state mv` edits
+      one state at a time and leaves no record in code.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/block/moved
+      - https://developer.hashicorp.com/terraform/cli/commands/state/mv
+    glossary: [tf-moved-block, tf-state]
+
+  - id: terraform-state-017
+    difficulty: 3
+    type: multiple
+    question: "Which two commands can change the Terraform state without creating, changing or destroying any real infrastructure?"
+    options:
+      - id: a
+        text: "`terraform state rm module.app.aws_instance.web`"
+      - id: b
+        text: "`terraform plan -refresh-only`"
+        why: "A plan never writes state, even in refresh-only mode. It only shows what would change."
+      - id: c
+        text: "`terraform apply -refresh-only`"
+      - id: d
+        text: "`terraform apply -replace=aws_instance.web`"
+        why: "`-replace` destroys and recreates the instance, so real infrastructure changes."
+      - id: e
+        text: "`terraform destroy -target=aws_instance.web`"
+        why: "This deletes the real instance. State changes only because the object is gone."
+    answer: [a, c]
+    explanation: |
+      `terraform state rm` edits state only, and `terraform apply -refresh-only`
+      updates state to match real objects without changing them. Both are
+      useful when you manage resource drift or move ownership of resources.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/state
+      - https://developer.hashicorp.com/terraform/cli/commands/refresh
+    glossary: [tf-state, tf-refresh-only, tf-drift]

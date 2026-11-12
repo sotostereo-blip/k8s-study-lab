@@ -1,0 +1,86 @@
+id: terraform-config-002
+title: Create IAM users from a map with for_each
+domain: configuration
+difficulty: 2
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/team-users && cd /root/team-users
+  cp /opt/lab/aws-provider.tf .
+  cat > variables.tf <<'TF'
+  variable "team" {
+    description = "User name => role"
+    type        = map(string)
+    default = {
+      alice = "dev"
+      bruno = "ops"
+      chen  = "dev"
+    }
+  }
+  TF
+  touch main.tf
+task: |
+  In `/root/team-users`, the variable `team` is a map of user names to roles.
+
+  1. In `main.tf`, create **one** resource block `aws_iam_user` called `member` that uses
+     `for_each` over `var.team`. Each user is called `tfcfg-<key>` (for example `tfcfg-alice`)
+     and has the tag `Role` with the value from the map.
+  2. Apply: three users are created.
+  3. `bruno` left the team. Remove him from the default map and apply again.
+     Check in the plan that **only** bruno's user is destroyed.
+
+  Think: with `count` and a list, what would happen to `chen` when you remove `bruno`?
+checks:
+  - name: The state has `aws_iam_user.member["alice"]` and `aws_iam_user.member["chen"]`
+    run: |
+      s="$(terraform -chdir=/root/team-users state list)"
+      echo "$s" | grep -qxF 'aws_iam_user.member["alice"]' && echo "$s" | grep -qxF 'aws_iam_user.member["chen"]'
+  - name: The state has exactly 2 users, and bruno's user is gone (from the state and from AWS)
+    run: |
+      [ "$(terraform -chdir=/root/team-users state list | grep -c '^aws_iam_user\.member\[')" = 2 ] &&
+      ! terraform -chdir=/root/team-users state list | grep -q bruno && ! aws iam get-user --user-name tfcfg-bruno >/dev/null 2>&1
+  - name: User `tfcfg-alice` has the tag Role=dev and `tfcfg-chen` has Role=dev
+    run: |
+      [ "$(aws iam list-user-tags --user-name tfcfg-alice --query "Tags[?Key=='Role'].Value" --output text)" = dev ] &&
+      [ "$(aws iam list-user-tags --user-name tfcfg-chen --query "Tags[?Key=='Role'].Value" --output text)" = dev ]
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/team-users plan -input=false -detailed-exitcode >/dev/null
+solution: |
+  cd /root/team-users
+  cat > main.tf <<'TF'
+  resource "aws_iam_user" "member" {
+    for_each = var.team             # a map (or a set of strings)
+
+    name = "tfcfg-${each.key}"      # each.key   = alice, bruno, chen
+    tags = {
+      Role = each.value             # each.value = dev, ops, dev
+    }
+  }
+  TF
+  terraform init
+  terraform apply                    # 3 to add
+  terraform state list               # aws_iam_user.member["alice"], ...["bruno"], ...["chen"]
+  # Edit variables.tf and delete the line: bruno = "ops"
+  vim variables.tf
+  terraform apply                    # Plan: 0 to add, 0 to change, 1 to destroy
+  # With count over a list, resources are addressed by index ([0], [1], [2]).
+  # Removing "bruno" (index 1) moves "chen" from [2] to [1], so Terraform would change or
+  # replace chen's user too. for_each uses stable keys, so only bruno is destroyed.
+auto_solution: |
+  cd /root/team-users
+  cat > main.tf <<'TF'
+  resource "aws_iam_user" "member" {
+    for_each = var.team
+    name     = "tfcfg-${each.key}"
+    tags = {
+      Role = each.value
+    }
+  }
+  TF
+  terraform init -input=false
+  terraform apply -auto-approve -input=false
+  sed -i '/bruno/d' variables.tf
+  terraform apply -auto-approve -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/language/meta-arguments/for_each
+  - https://developer.hashicorp.com/terraform/language/meta-arguments/count

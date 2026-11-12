@@ -1,0 +1,9 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+complete -C /usr/local/bin/terraform terraform
+alias tf=terraform
+export EDITOR=vim
+PS1='\[\e[35m\]tf-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Terraform lab ready (Terraform 1.12, AWS emulated by LocalStack). Try: terraform version
+Shortcut: tf=terraform. AWS CLI works too: aws s3 ls
+MSG

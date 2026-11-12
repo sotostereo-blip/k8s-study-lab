@@ -1,0 +1,56 @@
+id: terraform-maint-002
+title: Detect and fix drift
+domain: maintain
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  mkdir -p /root/drift-fix && cd /root/drift-fix
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "site" {
+    bucket = "tfmaint-drift-site"
+
+    tags = {
+      Team = "web"
+      Env  = "prod"
+    }
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+  # someone "fixes" something by hand...
+  aws s3api put-bucket-tagging --bucket tfmaint-drift-site --tagging 'TagSet=[{Key=Team,Value=web},{Key=Env,Value=test},{Key=Owner,Value=bob}]'
+task: |
+  Somebody changed the bucket `tfmaint-drift-site` by hand with the AWS CLI. Now the real
+  bucket is different from the Terraform configuration in `/root/drift-fix`: this is called **drift**.
+
+  1. Find the drift **without changing anything**: run a refresh-only plan and save its
+     output in the file `/root/drift-fix/drift.txt`.
+  2. The configuration is correct. Bring the real bucket back to the configuration
+     (tags `Team = web` and `Env = prod`, and nothing else).
+
+  Do not change `main.tf`.
+checks:
+  - name: '`/root/drift-fix/drift.txt` shows the drift (it mentions the tag Owner)'
+    run: grep -q Owner /root/drift-fix/drift.txt
+  - name: The bucket has exactly the tags Team=web and Env=prod
+    run: aws s3api get-bucket-tagging --bucket tfmaint-drift-site | jq -e '(.TagSet | from_entries) == {"Team":"web","Env":"prod"}' >/dev/null
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/drift-fix plan -input=false -detailed-exitcode >/dev/null
+  - name: main.tf still says Env = "prod"
+    run: grep -Eq 'Env *= *"prod"' /root/drift-fix/main.tf
+    guard: true
+solution: |
+  cd /root/drift-fix
+  terraform plan -refresh-only -no-color > drift.txt
+  cat drift.txt
+  # "Objects have changed outside of Terraform": Env "prod" -> "test", + Owner = "bob"
+  # A refresh-only plan only compares state with the real world. It never changes resources.
+  # (terraform apply -refresh-only would accept the drift into the state - not what we want here.)
+  terraform plan          # a normal plan proposes to change the tags back: 1 to change
+  terraform apply -auto-approve
+  aws s3api get-bucket-tagging --bucket tfmaint-drift-site
+docs:
+  - https://developer.hashicorp.com/terraform/cli/commands/plan#planning-modes
+  - https://developer.hashicorp.com/terraform/tutorials/state/resource-drift

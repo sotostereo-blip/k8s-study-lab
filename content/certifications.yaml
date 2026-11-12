@@ -14,3 +14,11 @@ certifications:
   area: Kubernetes
   track: cka
   description: Hands-on. Run and fix a real cluster from the command line.
+- id: terraform
+  name: HashiCorp Certified Terraform Associate (004)
+  short: Terraform
+  area: Infrastructure as Code
+  exam: terraform
+  track: terraform
+  description: Multiple choice exam, plus hands-on labs with Terraform and a local
+    AWS emulator.

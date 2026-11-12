@@ -1,0 +1,100 @@
+id: terraform-state-001
+title: Move local state to an S3 backend with locking
+domain: state
+difficulty: 3
+minutes: 12
+environment: terraform
+setup: |
+  aws s3api create-bucket --bucket tfstate-lab-central >/dev/null
+  mkdir -p /root/remote-state && cd /root/remote-state
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "data" {
+    bucket = "tfstate-app-data"
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+  aws s3api put-object --bucket tfstate-app-data --key important.csv --body /etc/hostname >/dev/null
+task: |
+  The project in `/root/remote-state` keeps its state in a local `terraform.tfstate` file.
+  Your team wants the state in S3, so everybody uses the same state, with locking.
+
+  1. Add a `backend "s3"` block inside a `terraform` block (for example in `backend.tf`):
+     - bucket `tfstate-lab-central` (it already exists)
+     - key `apps/data/terraform.tfstate`
+     - region `us-east-1`
+     - turn on S3 native state locking (`use_lockfile`)
+     - for LocalStack, also add these settings:
+       ```
+       endpoints                   = { s3 = "http://localstack:4566" }
+       use_path_style              = true
+       skip_credentials_validation = true
+       skip_requesting_account_id  = true
+       skip_metadata_api_check     = true
+       access_key                  = "test"
+       secret_key                  = "test"
+       ```
+  2. Re-initialize and **migrate** the existing state to the new backend.
+  3. Check that `terraform plan` shows no changes: the bucket `tfstate-app-data` must not be created again.
+checks:
+  - name: The working directory uses the `s3` backend with use_lockfile = true
+    run: jq -e '.backend.type == "s3" and .backend.config.use_lockfile == true' /root/remote-state/.terraform/terraform.tfstate >/dev/null
+  - name: The state file is at s3://tfstate-lab-central/apps/data/terraform.tfstate and has the bucket resource
+    run: aws s3 cp s3://tfstate-lab-central/apps/data/terraform.tfstate - | jq -e '[.resources[] | select(.type == "aws_s3_bucket" and .name == "data")] | length == 1' >/dev/null
+  - name: '`terraform plan` shows no changes (the state was migrated, not started empty)'
+    run: terraform -chdir=/root/remote-state plan -input=false -detailed-exitcode >/dev/null
+    guard: true
+  - name: The bucket `tfstate-app-data` still has the object `important.csv`
+    run: aws s3api head-object --bucket tfstate-app-data --key important.csv >/dev/null
+    guard: true
+solution: |
+  cd /root/remote-state
+  cat > backend.tf <<'TF'
+  terraform {
+    backend "s3" {
+      bucket       = "tfstate-lab-central"
+      key          = "apps/data/terraform.tfstate"
+      region       = "us-east-1"
+      use_lockfile = true          # creates a .tflock object next to the state while it is locked
+
+      # Only for LocalStack:
+      endpoints                   = { s3 = "http://localstack:4566" }
+      use_path_style              = true
+      skip_credentials_validation = true
+      skip_requesting_account_id  = true
+      skip_metadata_api_check     = true
+      access_key                  = "test"
+      secret_key                  = "test"
+    }
+  }
+  TF
+  terraform init -migrate-state    # answer "yes" to copy the existing state to the new backend
+  aws s3 ls s3://tfstate-lab-central/apps/data/
+  terraform plan                   # No changes.
+  # A backend block cannot use variables. Values can also come from a file:
+  #   terraform init -backend-config=backend.hcl
+auto_solution: |
+  cd /root/remote-state
+  cat > backend.tf <<'TF'
+  terraform {
+    backend "s3" {
+      bucket                      = "tfstate-lab-central"
+      key                         = "apps/data/terraform.tfstate"
+      region                      = "us-east-1"
+      use_lockfile                = true
+      endpoints                   = { s3 = "http://localstack:4566" }
+      use_path_style              = true
+      skip_credentials_validation = true
+      skip_requesting_account_id  = true
+      skip_metadata_api_check     = true
+      access_key                  = "test"
+      secret_key                  = "test"
+    }
+  }
+  TF
+  terraform init -migrate-state -force-copy -input=false
+docs:
+  - https://developer.hashicorp.com/terraform/language/backend/s3
+  - https://developer.hashicorp.com/terraform/cli/commands/init#backend-initialization
+  - https://developer.hashicorp.com/terraform/language/state/locking

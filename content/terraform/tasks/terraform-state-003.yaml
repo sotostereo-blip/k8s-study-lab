@@ -1,0 +1,70 @@
+id: terraform-state-003
+title: Stop managing a bucket without deleting it
+domain: state
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  mkdir -p /root/stop-managing && cd /root/stop-managing
+  cp /opt/lab/aws-provider.tf .
+  cat > current.tf <<'TF'
+  resource "aws_s3_bucket" "current" {
+    bucket = "tfstate-current-uploads"
+  }
+  TF
+  cat > legacy.tf <<'TF'
+  resource "aws_s3_bucket" "legacy" {
+    bucket = "tfstate-legacy-uploads"
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+task: |
+  The bucket `tfstate-legacy-uploads` (resource `aws_s3_bucket.legacy` in `/root/stop-managing/legacy.tf`)
+  moves to another team. They will manage it with their own tools.
+
+  Make Terraform **forget** this bucket: remove it from this configuration and its state,
+  but the bucket must **keep existing** in AWS.
+  The bucket `tfstate-current-uploads` must stay managed by Terraform.
+
+  Use a `removed` block or the `terraform state rm` command.
+  When you finish, `terraform plan` must show no changes.
+
+  Warning: if you only delete the resource block and run `terraform apply`, Terraform destroys the bucket!
+checks:
+  - name: The state does not have `aws_s3_bucket.legacy`
+    run: '! terraform -chdir=/root/stop-managing state list | grep -q legacy'
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/stop-managing plan -input=false -detailed-exitcode >/dev/null
+    guard: true
+  - name: The bucket `tfstate-legacy-uploads` still exists
+    run: aws s3api head-bucket --bucket tfstate-legacy-uploads
+    guard: true
+  - name: '`aws_s3_bucket.current` is still in the state'
+    run: terraform -chdir=/root/stop-managing state list | grep -qx 'aws_s3_bucket.current'
+    guard: true
+solution: |
+  cd /root/stop-managing
+  # Option A (Terraform 1.7+): replace the resource block with a removed block
+  cat > legacy.tf <<'TF'
+  removed {
+    from = aws_s3_bucket.legacy
+
+    lifecycle {
+      destroy = false     # forget it, do not destroy it
+    }
+  }
+  TF
+  terraform plan     # "will no longer be managed by Terraform" ... 0 to destroy
+  terraform apply -auto-approve
+  # After the apply you can delete the removed block (or keep it as documentation).
+
+  # Option B (instead of A): remove it from the state with the CLI, then delete the block
+  #   terraform state rm aws_s3_bucket.legacy
+  #   rm legacy.tf
+
+  terraform plan     # No changes.
+  aws s3api head-bucket --bucket tfstate-legacy-uploads   # still there
+docs:
+  - https://developer.hashicorp.com/terraform/language/block/removed
+  - https://developer.hashicorp.com/terraform/cli/commands/state/rm

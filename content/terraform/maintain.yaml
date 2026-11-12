@@ -1,0 +1,308 @@
+domain: maintain
+questions:
+  - id: terraform-maint-001
+    difficulty: 1
+    type: single
+    question: "An S3 bucket was created by hand. You add an `import` block with `to = aws_s3_bucket.assets` and `id = \"acme-assets\"`, plus a matching `resource` block. When is the bucket actually added to the state?"
+    options:
+      - id: a
+        text: "As soon as you save the file with the `import` block"
+        why: "Terraform does nothing until you run a command. Saving a file never changes state."
+      - id: b
+        text: "When you run `terraform validate`"
+        why: "`terraform validate` only checks the syntax and types of the configuration. It never reads or writes state."
+      - id: c
+        text: "When you run `terraform plan`, without any apply"
+        why: "The plan shows the import that will happen, but a plan never writes state. The import happens during apply."
+      - id: d
+        text: "When you run `terraform apply` and approve the plan"
+    answer: [d]
+    explanation: |
+      An `import` block is part of the normal plan and apply workflow. The plan
+      shows which objects will be imported, and the import is done when the
+      apply runs. After a successful apply you can keep or remove the block.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/import
+    glossary: [tf-import-block, tf-state, tf-resource]
+
+  - id: terraform-maint-002
+    difficulty: 2
+    type: single
+    question: "You must import 30 existing security groups but you have not written their `resource` blocks yet. You already wrote the `import` blocks. Which command helps you create the HCL for them?"
+    options:
+      - id: a
+        text: "`terraform import -all` to import and write every resource"
+        why: "`terraform import` has no `-all` option. It imports one resource at a time and never writes configuration."
+      - id: b
+        text: "`terraform plan -generate-config-out=generated.tf`"
+      - id: c
+        text: "`terraform show -json > generated.tf`"
+        why: "`terraform show -json` prints state or a plan as JSON. Its output is not valid HCL for resource blocks."
+      - id: d
+        text: "`terraform fmt -write=generated.tf`"
+        why: "`terraform fmt` only rewrites existing files into the standard style. It cannot create resource blocks."
+    answer: [b]
+    explanation: |
+      With `import` blocks in place, `terraform plan -generate-config-out=FILE`
+      writes HCL for every import target that has no resource block yet. The
+      file must not already exist. Review and clean the generated code before
+      you apply.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/import/generating-configuration
+    glossary: [tf-import-block]
+
+  - id: terraform-maint-003
+    difficulty: 2
+    type: single
+    question: "You want to use the `terraform import` CLI command for an existing VM. What must be true before you run it?"
+    options:
+      - id: a
+        text: "An `import` block for the VM must already exist"
+        why: "The CLI command and `import` blocks are two separate ways to import. The command does not need an `import` block."
+      - id: b
+        text: "The VM must be stopped so Terraform can read it"
+        why: "Terraform reads the object through the provider API. The VM can keep running during the import."
+      - id: c
+        text: "A `resource` block for the VM must already exist"
+      - id: d
+        text: "The state must be empty, with no other resources in it"
+        why: "Import adds one object to an existing state. Other resources in the state are not a problem."
+    answer: [c]
+    explanation: |
+      `terraform import ADDRESS ID` binds an existing object to a resource
+      address, so that address must be declared in the configuration first. The
+      command imports one object at a time, writes state right away, and does
+      not generate configuration.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/import
+    glossary: [tf-import, tf-resource-address]
+
+  - id: terraform-maint-004
+    difficulty: 2
+    type: multiple
+    question: "Which two are advantages of `import` blocks over the `terraform import` command?"
+    options:
+      - id: a
+        text: "You can review the imports in a plan before state changes"
+      - id: b
+        text: "They work without any provider being installed"
+        why: "Both ways need the provider, because Terraform must read the real object through its API."
+      - id: c
+        text: "You can import many resources in one run, as part of normal code review"
+      - id: d
+        text: "They copy the resource from one cloud account to another"
+        why: "Import never creates or copies infrastructure. It only records an existing object in state."
+      - id: e
+        text: "They skip writing the imported object to state"
+        why: "Importing means writing the object to state. Both ways end with the object in state."
+    answer: [a, c]
+    explanation: |
+      `import` blocks are code: you can commit them, review the plan, and
+      import many objects in one apply, also in CI or HCP Terraform. The
+      `terraform import` command changes state immediately, one object at a
+      time, with no plan to review.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/import
+      - https://developer.hashicorp.com/terraform/cli/commands/import
+    glossary: [tf-import-block, tf-import]
+
+  - id: terraform-maint-005
+    difficulty: 2
+    type: single
+    question: "You imported an existing load balancer. Now `terraform plan` shows changes to five of its attributes, but nobody wants it changed. What is the right next step?"
+    options:
+      - id: a
+        text: "Run `terraform import` again to overwrite the state"
+        why: "The state already matches the real object. The difference is in your configuration, so importing again does not help."
+      - id: b
+        text: "Apply the plan, because imports always show small changes"
+        why: "Applying would change the real load balancer to match your code. That is exactly what nobody wants."
+      - id: c
+        text: "Delete the state entry and create the load balancer again"
+        why: "Recreating a production load balancer causes downtime and new addresses. Fixing the code is safer."
+      - id: d
+        text: "Edit the resource block until the plan shows no changes"
+    answer: [d]
+    explanation: |
+      After an import, the state describes the real object. If the plan shows
+      changes, your configuration does not yet match reality. Update the
+      arguments until `terraform plan` reports no changes, so Terraform will not
+      modify the resource by accident.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/import
+    glossary: [tf-import]
+
+  - id: terraform-maint-006
+    difficulty: 1
+    type: single
+    question: "You want a quick list of every resource address that Terraform tracks in the `module.network` module. Which command should you use?"
+    options:
+      - id: a
+        text: "`terraform output module.network`"
+        why: "`terraform output` shows root module output values. It does not list resources."
+      - id: b
+        text: "`terraform state list module.network`"
+      - id: c
+        text: "`terraform providers module.network`"
+        why: "`terraform providers` shows which providers the configuration needs. It does not list resources in state."
+      - id: d
+        text: "`terraform graph module.network`"
+        why: "`terraform graph` prints a dependency graph in DOT format. It is not a simple list of addresses in state."
+    answer: [b]
+    explanation: |
+      `terraform state list` prints the address of every resource in the
+      state. You can pass an address as a filter, such as `module.network`, to
+      see only the resources inside that module.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/state/list
+    glossary: [tf-resource-address, tf-state]
+
+  - id: terraform-maint-007
+    difficulty: 1
+    type: single
+    question: "You need the private IP and all other attributes of one resource, `aws_instance.app`, as stored in state. Which command shows only that resource?"
+    options:
+      - id: a
+        text: "`terraform state show aws_instance.app`"
+      - id: b
+        text: "`terraform state list aws_instance.app`"
+        why: "`state list` prints only addresses. It does not show the attributes of the resource."
+      - id: c
+        text: "`terraform console aws_instance.app`"
+        why: "`terraform console` opens an interactive prompt and takes no address argument. You would type expressions inside it."
+      - id: d
+        text: "`terraform plan -target=aws_instance.app`"
+        why: "A targeted plan compares code and reality for that resource. It is not a way to read its stored attributes."
+    answer: [a]
+    explanation: |
+      `terraform state show ADDRESS` prints all attributes of one resource
+      instance from the state, in a human-readable format. Use
+      `terraform state list` first if you do not know the exact address.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/state/show
+    glossary: [tf-state, tf-resource-address]
+
+  - id: terraform-maint-008
+    difficulty: 2
+    type: single
+    question: "A pipeline saved a plan with `terraform plan -out=release.tfplan`. A reviewer wants to read it in a machine-readable format before approval. Which command should they run?"
+    options:
+      - id: a
+        text: "`terraform state show -json release.tfplan`"
+        why: "`terraform state show` reads one resource from state. It does not read plan files."
+      - id: b
+        text: "`terraform output -json release.tfplan`"
+        why: "`terraform output` reads output values from state. It does not open plan files."
+      - id: c
+        text: "`terraform show -json release.tfplan`"
+      - id: d
+        text: "`terraform validate -json release.tfplan`"
+        why: "`terraform validate` checks configuration files. It does not read plan files."
+    answer: [c]
+    explanation: |
+      `terraform show` displays the current state, or a saved plan file when you
+      give its path. The `-json` flag prints a machine-readable JSON document
+      that tools and policy checks can process.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/show
+    glossary: [tf-state]
+
+  - id: terraform-maint-009
+    difficulty: 2
+    type: single
+    question: "A shell script needs the value of the output `lb_url` as a plain string, with no quotes, to pass to `curl`. Which command fits best?"
+    options:
+      - id: a
+        text: "`terraform output lb_url`"
+        why: "This prints the value in HCL style, so a string keeps its quotes. That can break a shell command."
+      - id: b
+        text: "`terraform output -raw lb_url`"
+      - id: c
+        text: "`terraform show -no-color lb_url`"
+        why: "`terraform show` takes a plan or state file path, not an output name."
+      - id: d
+        text: "`terraform state show lb_url`"
+        why: "`terraform state show` expects a resource address. Outputs are not resources."
+    answer: [b]
+    explanation: |
+      `terraform output -raw NAME` prints a string, number or bool output
+      directly, with no quotes or newline, which is ideal for scripts. Note that
+      `-raw` and `-json` show sensitive values in plain text.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/output
+    glossary: [tf-output, tf-sensitive]
+
+  - id: terraform-maint-010
+    difficulty: 1
+    type: single
+    question: "A provider fails with an unclear error. You want the most detailed logs Terraform can produce. Which setting should you use?"
+    options:
+      - id: a
+        text: "`TF_LOG=ERROR`"
+        why: "`ERROR` is the least verbose level. It shows only errors, so you get very little detail."
+      - id: b
+        text: "`TF_LOG=INFO`"
+        why: "`INFO` shows general messages but much less detail than `DEBUG` or `TRACE`."
+      - id: c
+        text: "`TF_LOG=TRACE`"
+      - id: d
+        text: "`TF_LOG=WARN`"
+        why: "`WARN` shows only warnings and errors. It is one of the less verbose levels."
+    answer: [c]
+    explanation: |
+      `TF_LOG` accepts `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`, from most
+      to least verbose. `TRACE` is the most detailed level. `TF_LOG=JSON` also
+      logs at `TRACE` level, but in JSON format.
+    docs:
+      - https://developer.hashicorp.com/terraform/internals/debugging
+    glossary: [tf-tf-log]
+
+  - id: terraform-maint-011
+    difficulty: 2
+    type: single
+    question: "You set `TF_LOG_PATH=./terraform.log` and run `terraform plan`, but no log file is created. What is the most likely reason?"
+    options:
+      - id: a
+        text: "The file must end with `.json`, not `.log`"
+        why: "Terraform accepts any file name for `TF_LOG_PATH`. The extension does not matter."
+      - id: b
+        text: "`TF_LOG` is not set, so logging is not enabled"
+      - id: c
+        text: "Logs are written only during `terraform apply`"
+        why: "Logging works for every command, including `plan` and `init`, once it is enabled."
+      - id: d
+        text: "`TF_LOG_PATH` works only in HCP Terraform remote runs"
+        why: "`TF_LOG_PATH` is an environment variable for the local Terraform CLI. It has nothing to do with HCP Terraform."
+    answer: [b]
+    explanation: |
+      `TF_LOG_PATH` only says where to write logs. Logging must also be enabled
+      with `TF_LOG` (for example `TF_LOG=DEBUG`). When both are set, Terraform
+      appends the logs to that file.
+    docs:
+      - https://developer.hashicorp.com/terraform/internals/debugging
+    glossary: [tf-tf-log]
+
+  - id: terraform-maint-012
+    difficulty: 2
+    type: single
+    question: "You suspect a bug in the AWS provider, and the full Terraform logs are too noisy. How can you get detailed logs only from providers?"
+    options:
+      - id: a
+        text: "Set `TF_LOG_PROVIDER=TRACE`"
+      - id: b
+        text: "Set `TF_LOG_CORE=TRACE`"
+        why: "`TF_LOG_CORE` controls logs from Terraform core, not from providers. It is the opposite of what you need."
+      - id: c
+        text: "Set `TF_LOG=PROVIDER`"
+        why: "`PROVIDER` is not a valid log level. `TF_LOG` accepts levels such as `TRACE` or `DEBUG`, or `JSON`."
+      - id: d
+        text: "Run `terraform plan -verbose`"
+        why: "`terraform plan` has no `-verbose` flag. Logging is controlled with environment variables."
+    answer: [a]
+    explanation: |
+      `TF_LOG_CORE` and `TF_LOG_PROVIDER` set the log level separately for
+      Terraform core and for providers. They take the same levels as `TF_LOG`.
+      Use `TF_LOG_PATH` as well to save the output to a file.
+    docs:
+      - https://developer.hashicorp.com/terraform/internals/debugging
+    glossary: [tf-tf-log]

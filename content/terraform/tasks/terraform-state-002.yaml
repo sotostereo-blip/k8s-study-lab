@@ -1,0 +1,70 @@
+id: terraform-state-002
+title: Rename a resource without recreating it
+domain: state
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  mkdir -p /root/rename-resource && cd /root/rename-resource
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "bucket1" {
+    bucket = "tfstate-quarterly-reports"
+  }
+
+  resource "aws_s3_object" "readme" {
+    bucket  = aws_s3_bucket.bucket1.id
+    key     = "README.txt"
+    content = "Quarterly reports. Do not delete."
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+  echo "q,total" > /tmp/2025.csv
+  aws s3api put-object --bucket tfstate-quarterly-reports --key archive/2025.csv --body /tmp/2025.csv >/dev/null
+task: |
+  In `/root/rename-resource`, the bucket resource has a bad name: `aws_s3_bucket.bucket1`.
+  Rename it to `aws_s3_bucket.reports` (and update every reference to it).
+
+  The bucket `tfstate-quarterly-reports` has real data (`archive/2025.csv`) that is not managed
+  by Terraform. The bucket must **not** be destroyed or recreated.
+
+  You can use a `moved` block or the `terraform state mv` command.
+  When you finish, `terraform plan` must show no changes.
+checks:
+  - name: The state has `aws_s3_bucket.reports` and no `aws_s3_bucket.bucket1`
+    run: |
+      s="$(terraform -chdir=/root/rename-resource state list)"
+      echo "$s" | grep -qx 'aws_s3_bucket.reports' && ! echo "$s" | grep -qx 'aws_s3_bucket.bucket1'
+  - name: '`terraform plan` shows no changes'
+    run: terraform -chdir=/root/rename-resource plan -input=false -detailed-exitcode >/dev/null
+    guard: true
+  - name: The object `archive/2025.csv` is still in the bucket
+    run: aws s3api head-object --bucket tfstate-quarterly-reports --key archive/2025.csv >/dev/null
+    guard: true
+solution: |
+  cd /root/rename-resource
+  # 1. In main.tf rename the block and the reference:
+  #      resource "aws_s3_bucket" "reports" { ... }
+  #      bucket = aws_s3_bucket.reports.id
+  sed -i 's/aws_s3_bucket" "bucket1"/aws_s3_bucket" "reports"/; s/aws_s3_bucket\.bucket1\.id/aws_s3_bucket.reports.id/' main.tf
+  terraform plan     # without step 2: 1 to add, 1 to destroy -- NOT what you want!
+
+  # 2a. Option A (recommended, reviewed in code): a moved block
+  cat >> main.tf <<'TF'
+
+  moved {
+    from = aws_s3_bucket.bucket1
+    to   = aws_s3_bucket.reports
+  }
+  TF
+  terraform plan     # "aws_s3_bucket.bucket1 has moved to aws_s3_bucket.reports", 0 to add/change/destroy
+  terraform apply -auto-approve
+
+  # 2b. Option B (instead of A): change only the state, with a CLI command
+  #   terraform state mv aws_s3_bucket.bucket1 aws_s3_bucket.reports
+  terraform plan     # No changes.
+docs:
+  - https://developer.hashicorp.com/terraform/language/modules/develop/refactoring
+  - https://developer.hashicorp.com/terraform/language/block/moved
+  - https://developer.hashicorp.com/terraform/cli/commands/state/mv

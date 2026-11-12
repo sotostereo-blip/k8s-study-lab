@@ -1,0 +1,726 @@
+domain: workflow
+questions:
+  - id: terraform-flow-001
+    difficulty: 1
+    type: single
+    question: "What are the three main steps of the core Terraform workflow, in order?"
+    options:
+      - id: a
+        text: "Init, Validate, Destroy"
+        why: "These are real commands, but destroy is not part of the normal cycle. The core workflow is about writing code, planning, and applying."
+      - id: b
+        text: "Write, Plan, Apply"
+      - id: c
+        text: "Plan, Write, Deploy"
+        why: "You cannot plan before you write the configuration, and 'deploy' is not a Terraform step name."
+      - id: d
+        text: "Build, Test, Release"
+        why: "Build, test, and release are general software delivery stages, not the names of the Terraform core workflow."
+    answer: [b]
+    explanation: |
+      The core workflow is Write (author the configuration), Plan (preview the
+      changes), and Apply (make the changes real). `terraform init` prepares the
+      directory before the first plan, and you repeat the cycle as the
+      infrastructure changes.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+    glossary: [tf-plan]
+
+  - id: terraform-flow-002
+    difficulty: 1
+    type: single
+    question: "You cloned a repository with Terraform code and want to create its infrastructure for the first time. Which order of commands is correct?"
+    options:
+      - id: a
+        text: "`terraform plan`, `terraform init`, `terraform apply`"
+        why: "plan needs an initialized directory with providers installed, so init must come first."
+      - id: b
+        text: "`terraform apply`, `terraform init`, `terraform plan`"
+        why: "apply also needs init first. Running plan after apply would only show what is already done."
+      - id: c
+        text: "`terraform init`, `terraform plan`, `terraform apply`"
+      - id: d
+        text: "`terraform init`, `terraform apply`, `terraform fmt`"
+        why: "fmt is useful, but it only formats files. Skipping plan means you do not review the changes before they happen."
+    answer: [c]
+    explanation: |
+      `terraform init` installs providers and modules and sets up the backend.
+      `terraform plan` shows what will change, and `terraform apply` performs the
+      changes. `apply` also shows a plan and asks for approval unless you give it
+      a saved plan or `-auto-approve`.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-working-directory, tf-plan]
+
+  - id: terraform-flow-003
+    difficulty: 2
+    type: single
+    question: "A team keeps its Terraform code in Git and uses pull requests. In a typical team workflow, when should the plan be reviewed?"
+    options:
+      - id: a
+        text: "After the apply, so reviewers can see what changed in the cloud"
+        why: "Reviewing after apply is too late to stop a bad change. The value of the plan is reviewing it before anything changes."
+      - id: b
+        text: "Only when a resource will be destroyed, never for new resources"
+        why: "Every change can have an effect, including new resources that cost money or open access. Teams review all plans."
+      - id: c
+        text: "Never; HCP Terraform applies merged code without any plan"
+        why: "HCP Terraform always creates a plan before it applies, and it can require manual approval of that plan."
+      - id: d
+        text: "In the pull request, before the change is merged and applied"
+    answer: [d]
+    explanation: |
+      In a team workflow, a pull request triggers a plan (for example a
+      speculative plan in HCP Terraform). Reviewers check the code and the plan
+      together. After the merge, the change is applied, often by CI or HCP
+      Terraform, not from a laptop.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+    glossary: [tf-plan, tf-hcp-terraform, ci-cd]
+
+  - id: terraform-flow-004
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements about the Write step of the core Terraform workflow are true? (Select 2)"
+    options:
+      - id: a
+        text: "You often run `terraform plan` repeatedly to check your edits"
+      - id: b
+        text: "Terraform makes real changes as soon as you save a .tf file"
+        why: "Saving a file does nothing to real infrastructure. Changes happen only when you run apply."
+      - id: c
+        text: "The configuration is usually stored in version control"
+      - id: d
+        text: "You must write all resources in a single file named main.tf"
+        why: "Terraform loads all .tf files in the directory. main.tf is only a common name, not a requirement."
+    answer: [a, c]
+    explanation: |
+      During Write, you edit the HCL code, usually in a Git repository, and run
+      `terraform plan` often to find syntax errors and see the effect of your
+      changes. Terraform loads every `.tf` file in the directory, so you can
+      split code into several files.
+    docs:
+      - https://developer.hashicorp.com/terraform/intro/core-workflow
+    glossary: [tf-plan, tf-hcl]
+
+  - id: terraform-flow-005
+    difficulty: 1
+    type: single
+    question: "Which of these is NOT done by `terraform init`?"
+    options:
+      - id: a
+        text: "Installing the providers that the configuration requires"
+        why: "init does install providers, so this is not the answer. It reads required_providers and downloads the plugins."
+      - id: b
+        text: "Downloading the child modules that module blocks refer to"
+        why: "init does download modules from registries or Git, so this is not the answer."
+      - id: c
+        text: "Creating the cloud resources described in the configuration"
+      - id: d
+        text: "Setting up the backend where Terraform will store the state"
+        why: "init does set up the backend, so this is not the answer. It also offers to migrate state when the backend changes."
+    answer: [c]
+    explanation: |
+      `terraform init` prepares the working directory: it sets up the backend,
+      downloads modules, installs providers, and writes the dependency lock file.
+      It never creates, changes, or deletes infrastructure; that is the job of
+      `terraform apply`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-working-directory, tf-backend, tf-provider]
+
+  - id: terraform-flow-006
+    difficulty: 1
+    type: single
+    question: "You already ran `terraform init` yesterday. Today you run it again in the same directory with no changes. What happens?"
+    options:
+      - id: a
+        text: "It deletes the state and starts the project from zero"
+        why: "init never deletes your state. It only prepares the directory and checks the backend."
+      - id: b
+        text: "It runs safely and keeps the current setup and lock file"
+      - id: c
+        text: "It fails because the .terraform directory already exists"
+        why: "An existing .terraform directory is normal. init is designed to be run many times."
+      - id: d
+        text: "It upgrades all providers to their newest version available"
+        why: "init upgrades providers only with -upgrade. Without it, init keeps the versions recorded in the lock file."
+    answer: [b]
+    explanation: |
+      It is safe to run `terraform init` many times. It checks the backend,
+      modules, and providers, and installs anything that is missing, but it does
+      not delete state or change locked provider versions unless you ask it to.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-working-directory, tf-lock-file]
+
+  - id: terraform-flow-007
+    difficulty: 2
+    type: single
+    question: "You add a new `module \"vpc\"` block that uses a module from the Terraform Registry. You run `terraform plan` and get an error that the module is not installed. What should you do?"
+    options:
+      - id: a
+        text: "Run `terraform validate` to download the missing module"
+        why: "validate only checks configuration. It never downloads modules or providers."
+      - id: b
+        text: "Run `terraform init` to install the new module"
+      - id: c
+        text: "Run `terraform apply`, which installs modules before planning"
+        why: "apply uses the same initialized directory as plan. It does not install new modules, so it fails the same way."
+      - id: d
+        text: "Run `terraform fmt` so Terraform finds the new module"
+        why: "fmt only changes whitespace and layout in files. It does not install anything."
+    answer: [b]
+    explanation: |
+      You must run `terraform init` again whenever you add or change a module
+      source or version, add a provider, or change the backend. init downloads
+      the module into `.terraform/modules`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-module, tf-registry, tf-working-directory]
+
+  - id: terraform-flow-008
+    difficulty: 3
+    type: single
+    question: "You change the `backend` block from a local backend to an S3 backend. What does `terraform init` do the next time you run it?"
+    options:
+      - id: a
+        text: "It detects the change and offers to copy the state to the new backend"
+      - id: b
+        text: "It ignores the change until you run `terraform apply` the next time"
+        why: "Backend changes are handled by init, not by apply. Plan and apply refuse to run until you run init again."
+      - id: c
+        text: "It deletes the old local state file without asking you anything"
+        why: "init does not delete state on its own. It asks whether to migrate the existing state to the new backend."
+      - id: d
+        text: "It creates the S3 bucket for you, then stores the state in it"
+        why: "init does not create backend storage. The S3 bucket must already exist before you configure it as a backend."
+    answer: [a]
+    explanation: |
+      When the backend configuration changes, `terraform init` notices it and
+      asks if you want to migrate the existing state. You can also use
+      `-migrate-state` to migrate, or `-reconfigure` to use the new backend
+      without migrating anything.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+      - https://developer.hashicorp.com/terraform/language/backend
+    glossary: [tf-backend, tf-state]
+
+  - id: terraform-flow-009
+    difficulty: 1
+    type: single
+    question: "What does `terraform validate` check?"
+    options:
+      - id: a
+        text: "Whether the real cloud resources match the configuration"
+        why: "Comparing real resources with the configuration is what plan does. validate does not contact remote services."
+      - id: b
+        text: "Whether the files use the standard Terraform formatting style"
+        why: "Formatting style is checked by `terraform fmt -check`. validate does not care about spaces or alignment."
+      - id: c
+        text: "Whether your provider credentials are valid for the API"
+        why: "validate does not call provider APIs, so it cannot test credentials. Wrong credentials show up during plan or apply."
+      - id: d
+        text: "Whether the configuration is valid in syntax and is consistent"
+    answer: [d]
+    explanation: |
+      `terraform validate` checks that the configuration is syntactically valid
+      and internally consistent, for example correct argument names, types, and
+      references. It does not access remote state or provider APIs, so it is
+      fast and safe to run in CI.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/validate
+    glossary: [ci-cd]
+
+  - id: terraform-flow-010
+    difficulty: 2
+    type: single
+    question: "A resource refers to `var.instance_type`, but no `variable \"instance_type\"` block exists anywhere in the module. Which command reports this problem first, without contacting any cloud API?"
+    options:
+      - id: a
+        text: "`terraform validate`"
+      - id: b
+        text: "`terraform fmt -check`"
+        why: "fmt -check only looks at formatting. A reference to an undeclared variable is not a formatting problem."
+      - id: c
+        text: "`terraform providers`"
+        why: "`terraform providers` lists provider requirements. It does not check variable references."
+      - id: d
+        text: "`terraform version`"
+        why: "`terraform version` only prints the Terraform and provider versions. It does not read the configuration for errors."
+    answer: [a]
+    explanation: |
+      A reference to an undeclared input variable is an internal consistency
+      error. `terraform validate` finds it without reading state or calling
+      provider APIs. plan would also fail, but validate is the check made for
+      this.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/validate
+    glossary: [tf-variable]
+
+  - id: terraform-flow-011
+    difficulty: 2
+    type: single
+    question: "A CI job runs `terraform validate` on a fresh checkout and fails because the directory is not initialized. The job should not touch the real state backend. What is a good fix?"
+    options:
+      - id: a
+        text: "Run `terraform init -backend=false` before validating"
+      - id: b
+        text: "Run `terraform validate -auto-approve` in the job"
+        why: "validate has no -auto-approve option. That flag belongs to apply and destroy."
+      - id: c
+        text: "Run `terraform apply -refresh-only` before validating"
+        why: "refresh-only would contact the backend and the cloud APIs, which the job wants to avoid. It also needs init first."
+      - id: d
+        text: "Delete the .terraform.lock.hcl file before validating"
+        why: "Deleting the lock file does not initialize anything. validate still needs the providers installed."
+    answer: [a]
+    explanation: |
+      `terraform validate` needs an initialized directory because it uses the
+      provider schemas. `terraform init -backend=false` installs providers and
+      modules but skips backend setup, which is perfect for a validation-only
+      CI step.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/validate
+      - https://developer.hashicorp.com/terraform/cli/commands/init
+    glossary: [tf-backend, ci-cd, tf-working-directory]
+
+  - id: terraform-flow-012
+    difficulty: 3
+    type: single
+    question: "A pipeline tool wants to read the results of `terraform validate` as structured data instead of text for humans. Which option does that?"
+    options:
+      - id: a
+        text: "`terraform validate -json`"
+      - id: b
+        text: "`terraform validate -out=result`"
+        why: "-out is used by plan to save a plan file. validate has no -out option."
+      - id: c
+        text: "`terraform validate -detailed-exitcode`"
+        why: "-detailed-exitcode belongs to plan, where it signals whether there are changes. validate does not support it."
+      - id: d
+        text: "`terraform validate -check`"
+        why: "-check is a flag of `terraform fmt`. validate does not have it."
+    answer: [a]
+    explanation: |
+      With `-json`, `terraform validate` prints a machine-readable JSON object
+      that lists whether the configuration is valid and the details of every
+      error or warning. Tools and editors use this output.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/validate
+    glossary: [ci-cd]
+
+  - id: terraform-flow-013
+    difficulty: 1
+    type: single
+    question: "What does `terraform plan` do?"
+    options:
+      - id: a
+        text: "It creates the resources in a safe test copy of the cloud"
+        why: "Terraform has no test copy of the cloud. plan does not create anything; it only computes changes."
+      - id: b
+        text: "It shows the changes Terraform would make, without making them"
+      - id: c
+        text: "It draws a diagram of the network and saves it as a PNG file"
+        why: "plan prints proposed changes as text. `terraform graph` can output a DOT graph, but plan does not draw pictures."
+      - id: d
+        text: "It checks that the code follows the standard formatting style"
+        why: "Formatting is the job of `terraform fmt`. plan is about infrastructure changes."
+    answer: [b]
+    explanation: |
+      `terraform plan` reads the current state, refreshes it from the real
+      infrastructure, compares it with the configuration, and prints an
+      execution plan. It does not change real resources, so it is safe to run
+      at any time.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+    glossary: [tf-plan, tf-state]
+
+  - id: terraform-flow-014
+    difficulty: 2
+    type: single
+    question: "In plan output, a resource is shown with the symbol `-/+`. What does this mean?"
+    options:
+      - id: a
+        text: "The resource will be updated in place without replacement"
+        why: "An in-place update is shown with `~`. It changes the object without destroying it."
+      - id: b
+        text: "The resource will be read as a data source during the apply"
+        why: "Reading a data source is shown with `<=`. `-/+` is about replacing a managed resource."
+      - id: c
+        text: "The resource will be destroyed and then created again"
+      - id: d
+        text: "The resource will be removed from state but kept in the cloud"
+        why: "Forgetting a resource without destroying it is a different action. `-/+` really destroys the old object."
+    answer: [c]
+    explanation: |
+      `-/+` means replacement: Terraform destroys the old object and then creates
+      a new one, usually because an argument that cannot be updated in place has
+      changed. With `create_before_destroy`, the order is reversed and the plan
+      shows `+/-`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+      - https://developer.hashicorp.com/terraform/language/resources/behavior
+    glossary: [tf-plan, tf-resource]
+
+  - id: terraform-flow-015
+    difficulty: 2
+    type: single
+    question: "You run `terraform plan -out=tfplan` and a reviewer approves it. What happens when you then run `terraform apply tfplan`?"
+    options:
+      - id: a
+        text: "Terraform makes a new plan and asks you to type yes again"
+        why: "With a saved plan file, apply does not make a new plan or ask for approval. The approval was the review of the saved plan."
+      - id: b
+        text: "Terraform applies exactly the saved plan without a prompt"
+      - id: c
+        text: "Terraform only checks the plan file and makes no changes"
+        why: "Checking without changes is what plan does. Passing a plan file to apply performs the changes in it."
+      - id: d
+        text: "Terraform applies the saved plan, then destroys old resources"
+        why: "apply does only what the saved plan says. It does not add extra destroy steps after the plan."
+    answer: [b]
+    explanation: |
+      A saved plan lets you separate review from execution. `terraform apply tfplan`
+      performs exactly those actions and does not ask for confirmation. If
+      the state changed after the plan was made, Terraform refuses to apply the
+      stale plan.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+      - https://developer.hashicorp.com/terraform/cli/commands/apply
+    glossary: [tf-saved-plan, tf-plan]
+
+  - id: terraform-flow-016
+    difficulty: 3
+    type: single
+    question: "Someone changed a security group's tags in the AWS console. You want Terraform to update its state to match the real infrastructure, without changing any real resource. Which command fits?"
+    options:
+      - id: a
+        text: "`terraform apply -replace=aws_security_group.web`"
+        why: "-replace forces Terraform to destroy and recreate the resource. That changes real infrastructure, which you want to avoid."
+      - id: b
+        text: "`terraform plan -refresh=false`"
+        why: "-refresh=false skips reading the real infrastructure, so the plan ignores the console change. It is the opposite of what you need."
+      - id: c
+        text: "`terraform apply -refresh-only`"
+      - id: d
+        text: "`terraform init -reconfigure`"
+        why: "-reconfigure is about backend setup. It does not read real resources or update their values in state."
+    answer: [c]
+    explanation: |
+      Refresh-only mode reads the real objects and proposes updating the state
+      and outputs to match them, without changing any infrastructure. Use
+      `terraform plan -refresh-only` to review it and `terraform apply -refresh-only`
+      to save it.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+    glossary: [tf-refresh-only, tf-state, tf-drift]
+
+  - id: terraform-flow-017
+    difficulty: 3
+    type: multiple
+    question: "A CI pipeline needs to know if a plan has changes. Which TWO statements about `terraform plan -detailed-exitcode` are true? (Select 2)"
+    options:
+      - id: a
+        text: "Exit code 0 means the plan succeeded and there are no changes"
+      - id: b
+        text: "Exit code 2 means the plan succeeded and there are changes"
+      - id: c
+        text: "Exit code 2 means the configuration has a syntax error"
+        why: "Errors return exit code 1. Exit code 2 is used for a successful plan that contains changes."
+      - id: d
+        text: "Exit code 1 means the plan has only resources to destroy"
+        why: "Exit code 1 means an error. Destroy actions are just changes, so a successful plan with them returns 2."
+    answer: [a, b]
+    explanation: |
+      With `-detailed-exitcode`, plan returns 0 for success with no changes,
+      1 for an error, and 2 for success with changes. Pipelines use this to
+      decide if an apply or an alert is needed, for example for drift checks.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+    glossary: [tf-plan, ci-cd]
+
+  - id: terraform-flow-018
+    difficulty: 1
+    type: single
+    question: "You run `terraform apply` with no extra options. What happens before Terraform changes anything?"
+    options:
+      - id: a
+        text: "It shows a plan and waits for you to type `yes`"
+      - id: b
+        text: "It runs `terraform destroy` to start from a clean state"
+        why: "apply never destroys everything first. It only makes the changes needed to reach the configuration."
+      - id: c
+        text: "It formats all files and commits them to your Git repository"
+        why: "Terraform does not run fmt or Git as part of apply. Formatting and commits are separate steps."
+      - id: d
+        text: "It sends the plan by email to the owners of the workspace"
+        why: "The CLI does not send emails. In HCP Terraform you can set notifications, but that is not default apply behaviour."
+    answer: [a]
+    explanation: |
+      Without a saved plan, `terraform apply` creates a new execution plan,
+      shows it, and asks for confirmation. Only the answer `yes` continues. Use
+      `-auto-approve` to skip the prompt, for example in automation.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/apply
+    glossary: [tf-plan]
+
+  - id: terraform-flow-019
+    difficulty: 2
+    type: single
+    question: "A virtual machine created by Terraform is working badly, but its configuration has not changed. You want Terraform to destroy and recreate only that machine. Which command is recommended in current Terraform versions?"
+    options:
+      - id: a
+        text: "`terraform apply -replace=\"aws_instance.app\"`"
+      - id: b
+        text: "`terraform apply -target=\"aws_instance.app\"`"
+        why: "-target limits the run to that resource, but if the configuration has not changed it plans no action. It does not force a replacement."
+      - id: c
+        text: "`terraform apply -refresh-only`"
+        why: "Refresh-only only updates state to match real objects. It never recreates a resource."
+      - id: d
+        text: "`terraform init -upgrade`"
+        why: "init -upgrade changes provider versions. It does not plan or replace any resource."
+    answer: [a]
+    explanation: |
+      `-replace=ADDRESS` tells Terraform to plan a replacement for that one
+      resource even though the configuration did not change. It replaces the
+      older `terraform taint` command and shows the replacement in the plan
+      first, so you can review it.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/apply
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+    glossary: [tf-resource, tf-plan]
+
+  - id: terraform-flow-020
+    difficulty: 2
+    type: single
+    question: "During `terraform apply`, Terraform creates 8 of 10 resources and then one fails because of an API error. What is the situation afterwards?"
+    options:
+      - id: a
+        text: "Terraform rolls back and deletes the 8 resources it created"
+        why: "Terraform does not roll back an apply. Resources that were created successfully stay in place."
+      - id: b
+        text: "The 8 created resources stay and are recorded in the state"
+      - id: c
+        text: "Nothing is written to state until all 10 resources succeed"
+        why: "Terraform writes state for the resources it created, even when the apply fails later. Otherwise it would lose track of them."
+      - id: d
+        text: "The state file is deleted, so you must import everything again"
+        why: "A failed apply does not delete state. The state keeps the resources that were created."
+    answer: [b]
+    explanation: |
+      Terraform applies are not transactions. If an error happens, the
+      resources that were already created stay, and Terraform saves them in
+      state. After you fix the problem, the next plan and apply continue from
+      there.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/apply
+    glossary: [tf-state]
+
+  - id: terraform-flow-021
+    difficulty: 3
+    type: single
+    question: "By default, how does `terraform apply` handle resources that do not depend on each other?"
+    options:
+      - id: a
+        text: "It always creates them one by one in the order of the files"
+        why: "File order does not matter in Terraform. It follows the dependency graph and runs independent work in parallel."
+      - id: b
+        text: "It creates them in parallel, up to 10 operations at a time"
+      - id: c
+        text: "It creates them in alphabetical order of their resource names"
+        why: "Terraform does not sort resources by name for creation. It uses the dependency graph."
+      - id: d
+        text: "It asks you to choose an order for each independent resource"
+        why: "Terraform never asks for an order. Dependencies come from references and depends_on."
+    answer: [b]
+    explanation: |
+      Terraform walks the dependency graph and runs independent operations at
+      the same time. The default limit is 10 concurrent operations, which you
+      can change with `-parallelism=n`.
+    docs:
+      - https://developer.hashicorp.com/terraform/internals/graph
+      - https://developer.hashicorp.com/terraform/cli/commands/apply
+    glossary: [tf-dependency-graph, tf-resource]
+
+  - id: terraform-flow-022
+    difficulty: 1
+    type: single
+    question: "What does `terraform destroy` do?"
+    options:
+      - id: a
+        text: "It deletes the .tf files and the .terraform directory"
+        why: "destroy does not touch your files. It deletes the real infrastructure that the configuration manages."
+      - id: b
+        text: "It removes every resource from the state but keeps them running"
+        why: "Forgetting resources without deleting them is done with `terraform state rm` or a removed block, not destroy."
+      - id: c
+        text: "It destroys all remote objects managed by the configuration"
+      - id: d
+        text: "It deletes every resource in the cloud account, managed or not"
+        why: "Terraform only destroys objects it tracks in its state. Resources created outside Terraform are not touched."
+    answer: [c]
+    explanation: |
+      `terraform destroy` plans the deletion of every object tracked in the
+      current state for that configuration, shows the plan, and asks for
+      confirmation. It does not affect resources that Terraform does not
+      manage.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/destroy
+    glossary: [tf-state]
+
+  - id: terraform-flow-023
+    difficulty: 2
+    type: single
+    question: "`terraform destroy` is a convenient alias for which other command?"
+    options:
+      - id: a
+        text: "`terraform plan -refresh-only`"
+        why: "Refresh-only mode only updates state to match real objects. It never destroys anything."
+      - id: b
+        text: "`terraform apply -destroy`"
+      - id: c
+        text: "`terraform state rm -all`"
+        why: "`terraform state rm` only removes items from state; the real objects keep running. It also has no -all option."
+      - id: d
+        text: "`terraform init -reconfigure`"
+        why: "-reconfigure sets up the backend again without migrating state. It does not touch resources."
+    answer: [b]
+    explanation: |
+      `terraform destroy` is the same as `terraform apply -destroy`. To only
+      preview what would be destroyed, without asking to apply it, run
+      `terraform plan -destroy`.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/destroy
+    glossary: [tf-plan]
+
+  - id: terraform-flow-024
+    difficulty: 2
+    type: multiple
+    question: "You want to delete one storage bucket that Terraform manages, but keep all other resources. Which TWO approaches work? (Select 2)"
+    options:
+      - id: a
+        text: "Remove its resource block from the code, then run `terraform apply`"
+      - id: b
+        text: "Run `terraform destroy -target=aws_s3_bucket.logs`"
+      - id: c
+        text: "Run `terraform state rm aws_s3_bucket.logs`"
+        why: "state rm only makes Terraform forget the bucket. The real bucket keeps existing in AWS."
+      - id: d
+        text: "Run `terraform fmt` after deleting the bucket's block"
+        why: "fmt only formats files. Nothing changes in the cloud until you run apply."
+    answer: [a, b]
+    explanation: |
+      If you remove a resource block and apply, Terraform plans to destroy the
+      object because it is in state but no longer in the configuration. You can
+      also use `-target` with destroy for an exceptional one-off case. The
+      first approach is better because the code stays the source of truth.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/destroy
+      - https://developer.hashicorp.com/terraform/cli/commands/plan
+    glossary: [tf-resource, tf-state]
+
+  - id: terraform-flow-025
+    difficulty: 2
+    type: single
+    question: "A pipeline must remove a temporary test environment at the end of each run without waiting for a human. Which command does that?"
+    options:
+      - id: a
+        text: "`terraform plan -destroy`"
+        why: "plan -destroy only shows what would be destroyed. It does not delete anything."
+      - id: b
+        text: "`terraform destroy -auto-approve`"
+      - id: c
+        text: "`terraform validate -destroy`"
+        why: "validate has no -destroy option and never changes infrastructure."
+      - id: d
+        text: "`terraform destroy -refresh-only`"
+        why: "Refresh-only mode is for updating state to match real objects. It cannot be used to destroy resources."
+    answer: [b]
+    explanation: |
+      `terraform destroy` asks for confirmation by default. In automation,
+      `-auto-approve` skips the prompt. Use it with care, and only in pipelines
+      that are meant to remove short-lived environments.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/destroy
+    glossary: [ci-cd]
+
+  - id: terraform-flow-026
+    difficulty: 1
+    type: single
+    question: "What does `terraform fmt` do by default?"
+    options:
+      - id: a
+        text: "It rewrites .tf files in the current folder to the standard style"
+      - id: b
+        text: "It checks the logic of the configuration and reports errors"
+        why: "Checking logic and references is the job of `terraform validate`. fmt only changes layout."
+      - id: c
+        text: "It rewrites files in every subfolder and in all child modules"
+        why: "By default fmt only works on the current directory. You need -recursive to include subdirectories."
+      - id: d
+        text: "It upgrades old HCL syntax to the newest Terraform version"
+        why: "fmt does not upgrade language features. It only fixes indentation, spacing, and alignment."
+    answer: [a]
+    explanation: |
+      `terraform fmt` rewrites Terraform files in the current directory to the
+      canonical style: two-space indentation, aligned equals signs, and so on.
+      It only changes layout, never meaning. Add `-recursive` to process
+      subdirectories too.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/fmt
+      - https://developer.hashicorp.com/terraform/language/style
+    glossary: [tf-hcl]
+
+  - id: terraform-flow-027
+    difficulty: 2
+    type: single
+    question: "In CI, you want the build to fail if any Terraform file in the repository, including subfolders, is not formatted, but the job must not change the files. Which command fits?"
+    options:
+      - id: a
+        text: "`terraform fmt -recursive`"
+        why: "Without -check, fmt rewrites the files and still succeeds. The job would change files instead of failing."
+      - id: b
+        text: "`terraform validate -recursive`"
+        why: "validate checks configuration validity, not formatting, and it has no -recursive option."
+      - id: c
+        text: "`terraform fmt -check -recursive`"
+      - id: d
+        text: "`terraform fmt -diff`"
+        why: "-diff shows the changes, but without -check it still rewrites the files. It also skips subfolders without -recursive."
+    answer: [c]
+    explanation: |
+      `-check` makes fmt only test the files: it returns a non-zero exit code
+      if any file needs formatting and does not modify them. `-recursive`
+      includes all subdirectories. Many teams add `-diff` to see what is wrong.
+    docs:
+      - https://developer.hashicorp.com/terraform/cli/commands/fmt
+    glossary: [ci-cd]
+
+  - id: terraform-flow-028
+    difficulty: 1
+    type: single
+    question: "Which indentation does the Terraform style guide (and `terraform fmt`) use for nested blocks?"
+    options:
+      - id: a
+        text: "One tab character for each nesting level"
+        why: "The standard style does not use tabs. fmt replaces indentation with spaces."
+      - id: b
+        text: "Four spaces for each nesting level"
+        why: "Four spaces is common in other languages such as Python, but Terraform uses two."
+      - id: c
+        text: "Two spaces for each nesting level"
+      - id: d
+        text: "No indentation; HCL ignores all whitespace"
+        why: "HCL does not need indentation to work, but the standard style uses it so code is easy to read."
+    answer: [c]
+    explanation: |
+      The Terraform style conventions use two spaces per nesting level and
+      align the equals signs of arguments that are next to each other.
+      `terraform fmt` applies these rules automatically.
+    docs:
+      - https://developer.hashicorp.com/terraform/language/style
+      - https://developer.hashicorp.com/terraform/cli/commands/fmt
+    glossary: [tf-hcl]
