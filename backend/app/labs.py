@@ -122,6 +122,27 @@ class LabManager:
         if rc != 0:
             return fail(out[-800:] or "docker compose up failed")
 
+        if nodes == 0:   # no Kubernetes: the toolbox image ships a lab-ready script
+            self._log("Waiting for the lab services…")
+            deadline = time.time() + 300
+            while alive():
+                rc, out = self.bash("lab-ready", 60)
+                if rc == 0:
+                    break
+                if time.time() > deadline:
+                    return fail("Lab services did not start in 5 minutes: " + out[-300:])
+                time.sleep(self.poll)
+            if setup.strip() and alive():
+                self._log("Preparing the task scenario…")
+                rc, out = self.bash(setup, setup_timeout)
+                if rc != 0:
+                    return fail("Task setup failed: " + out[-600:])
+            if alive():
+                self._log("Lab ready. Good luck!")
+                self.state.status = "ready"
+                self.state.started_at = time.time()
+            return
+
         self._log(f"Waiting for {nodes} node(s) to be Ready…")
         deadline = time.time() + 240
         while alive():

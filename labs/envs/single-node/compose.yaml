@@ -2,7 +2,7 @@
 # unless you are debugging: docker compose -p k8slab -f labs/envs/single-node/compose.yaml up -d
 services:
   server:
-    image: rancher/k3s:v1.31.4-k3s1
+    image: rancher/k3s:v1.37.2-k3s1
     hostname: controlplane
     command: server --disable=traefik --tls-san=server --node-name=controlplane
     privileged: true
@@ -14,7 +14,7 @@ services:
     volumes: [kubeconfig:/output]
   toolbox:
     build: ../../toolbox
-    image: k8s-study-lab/toolbox:2
+    image: k8s-study-lab/toolbox:3
     depends_on: [server]
     ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
     volumes: [kubeconfig:/output:ro]

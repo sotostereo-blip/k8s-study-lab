@@ -86,9 +86,6 @@ def pick_exam_questions(lib: Library, exam_id: str, n: int) -> list[Question]:
     return chosen
 
 
-MOCK_ENV, MOCK_NODES = "two-node", 2  # one cluster for all exam tasks
-
-
 def pick_mock_tasks(tasks: list, domains: list, n: int) -> list:
     """Sample tasks following the domain weights, skipping tasks that cannot share a cluster."""
     pool = [t for t in tasks if t.mock_exam]
@@ -403,8 +400,21 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             raise HTTPException(404, f"Unknown lab '{task_id}'")
         return lib.tasks[task_id]
 
+    @app.get("/api/certifications")
+    def certifications():
+        return [c.model_dump() for c in lib.certifications]
+
+    def get_track(track_id: str):
+        if track_id not in lib.tracks:
+            raise HTTPException(404, f"Unknown lab track '{track_id}'")
+        return lib.tracks[track_id]
+
+    def nodes_of(task) -> int:
+        return lib.tracks[task.id.split("-")[0]].environments[task.environment].nodes
+
     @app.get("/api/labs")
-    def labs_list():
+    def labs_list(track_id: str = "cka"):
+        get_track(track_id)
         with db.connect() as conn:
             rows = conn.execute(
                 "SELECT task_id, MAX(passed) AS solved, COUNT(*) AS tries, "
@@ -412,13 +422,13 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             ).fetchall()
         progress = {r["task_id"]: dict(r) for r in rows}
         return {
-            "tracks": [t.model_dump() for t in lib.tracks.values()],
+            "tracks": [lib.tracks[track_id].model_dump()],
             "tasks": [
                 t.public() | {"progress": progress.get(t.id)}
-                for t in sorted(lib.tasks.values(), key=lambda t: t.id)
+                for t in sorted(lib.tasks_for(track_id), key=lambda t: t.id)
             ],
             "lab": labs.status(),
-            "mock_exams": [dict(r) for r in mock_history()],
+            "mock_exams": [dict(r) for r in mock_history(track_id)],
         }
 
     @app.get("/api/labs/status")
@@ -428,8 +438,7 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     @app.post("/api/labs/{task_id}/start")
     def labs_start(task_id: str):
         task = get_task(task_id)
-        track = lib.tracks[task.id.split("-")[0]]
-        return labs.start(task.id, task.environment, track.environments[task.environment].nodes, task.setup)
+        return labs.start(task.id, task.environment, nodes_of(task), task.setup)
 
     @app.post("/api/labs/stop")
     def labs_stop():
@@ -454,11 +463,12 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
 
     # ---------- mock exam: several tasks, one cluster, one timer ----------
 
-    def mock_history():
+    def mock_history(track_id: str):
         with db.connect() as conn:
             return conn.execute(
                 "SELECT id, created_at, minutes, score, json_array_length(task_ids) AS tasks FROM mock_sessions "
-                "WHERE finished_at IS NOT NULL AND score IS NOT NULL ORDER BY created_at DESC LIMIT 5"
+                "WHERE track_id=? AND finished_at IS NOT NULL AND score IS NOT NULL ORDER BY created_at DESC LIMIT 5",
+                (track_id,),
             ).fetchall()
 
     def mock_public(row) -> dict:
@@ -484,10 +494,10 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
 
     @app.post("/api/mock/start")
     def mock_start(body: MockStartIn):
-        if body.track_id not in lib.tracks:
-            raise HTTPException(404, f"Unknown track '{body.track_id}'")
-        track = lib.tracks[body.track_id]
-        all_tasks = [t for t in lib.tasks.values() if t.id.startswith(f"{track.id}-")]
+        track = get_track(body.track_id)
+        if not track.mock:
+            raise HTTPException(400, f"{track.name} has no mock exam")
+        all_tasks = lib.tasks_for(track.id)
         chosen = pick_mock_tasks(all_tasks, track.domains, max(1, body.tasks))
         if not chosen:
             raise HTTPException(400, "No tasks available for a mock exam")
@@ -500,15 +510,17 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
                 "INSERT INTO mock_sessions (id, track_id, task_ids, minutes) VALUES (?,?,?,?)",
                 (sid, track.id, json.dumps([t.id for t in chosen]), minutes),
             )
-        labs.start(f"mock-{sid}", MOCK_ENV, MOCK_NODES, mock_setup_script(chosen),
+        env = track.mock_environment
+        labs.start(f"mock-{sid}", env, track.environments[env].nodes, mock_setup_script(chosen),
                    setup_timeout=120 + 120 * len(chosen))
         return mock_public(get_mock(sid))
 
     @app.get("/api/mock/current")
-    def mock_current():
+    def mock_current(track_id: str = "cka"):
         with db.connect() as conn:
             row = conn.execute(
-                "SELECT * FROM mock_sessions WHERE finished_at IS NULL ORDER BY created_at DESC LIMIT 1"
+                "SELECT * FROM mock_sessions WHERE track_id=? AND finished_at IS NULL ORDER BY created_at DESC LIMIT 1",
+                (track_id,),
             ).fetchone()
         return mock_public(row) if row else None
 

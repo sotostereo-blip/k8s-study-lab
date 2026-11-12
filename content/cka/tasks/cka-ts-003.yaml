@@ -36,5 +36,7 @@ solution: |
   kubectl get pod report -o yaml > report.yaml
   # edit report.yaml: requests.cpu: "100m"  (resources of a running Pod cannot be edited in place)
   kubectl replace --force -f report.yaml
+auto_solution: |
+  kubectl get pod report -o yaml | sed 's/cpu: "64"/cpu: 100m/' | kubectl replace --force -f -
 docs:
   - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/

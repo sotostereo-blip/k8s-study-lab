@@ -4,7 +4,7 @@ import { EnglishBar, EnglishText } from './english.jsx'
 
 /* Hands-on labs: pick a task, a real k3s cluster starts in Docker, solve it in the browser terminal. */
 
-export default function Labs() {
+export default function Labs({ trackId }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(null)
@@ -12,7 +12,7 @@ export default function Labs() {
   const [mock, setMock] = useState(null)         // mock exam open on screen
   const [pendingMock, setPendingMock] = useState(null)  // unfinished mock exam, can be resumed
 
-  const reload = () => Promise.all([api.labs(), api.mockCurrent()])
+  const reload = () => Promise.all([api.labs(trackId), api.mockCurrent(trackId)])
     .then(([d, m]) => { setData(d); setPendingMock(m); setError(null) })
     .catch((e) => setError(e.message))
   useEffect(() => { reload() }, [])
@@ -39,12 +39,13 @@ export default function Labs() {
     <section>
       <h1>Hands-on labs</h1>
       <p className="sub">
-        Practice for the {track.name} exam. Choosing a lab starts a real Kubernetes cluster in Docker
-        with a terminal in your browser. Solve the task, then press <b>Check my work</b>.
+        Practice for the {track.name} exam. Choosing a lab starts {isK8s(track)
+          ? 'a real Kubernetes cluster in Docker' : 'Terraform with LocalStack (a free local AWS emulator) in Docker'} with
+        a terminal in your browser. Solve the task, then press <b>Check my work</b>.
         · {solved}/{data.tasks.length} solved
       </p>
-      <MockPanel history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
-        busy={data.lab.status === 'starting' || data.lab.status === 'ready'} />
+      {track.mock && <MockPanel trackId={trackId} history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
+        busy={data.lab.status === 'starting' || data.lab.status === 'ready'} />}
       {running && (
         <div className="banner">
           <span>Running now: <b>{running.title}</b> ({data.lab.status})</span>
@@ -68,7 +69,7 @@ export default function Labs() {
             <span className="lab-meta">
               <span>{'●'.repeat(t.difficulty)}{'○'.repeat(3 - t.difficulty)}</span>
               <span>{t.minutes} min</span>
-              <span className="env">{track.environments[t.environment].nodes === 1 ? '1 node' : `${track.environments[t.environment].nodes} nodes`}</span>
+              <span className="env">{envLabel(track.environments[t.environment])}</span>
             </span>
             <span className="lab-progress">
               {t.progress?.solved ? `✓ Solved${t.progress.best_seconds ? ` in ${fmt(t.progress.best_seconds)}` : ''}`
@@ -184,7 +185,8 @@ function LabView({ task, track, domainName, onBack }) {
         {status === 'ready' && lab.terminal_url ? (
           <>
             <div className="term-bar">
-              <span>Terminal · kubectl is ready (alias <code>k</code>)</span>
+              <span>Terminal · {track.environments[task.environment].nodes
+                ? <>kubectl is ready (alias <code>k</code>)</> : <>terraform and aws CLI are ready (alias <code>tf</code>)</>}</span>
               <span>
                 <button className="link" onClick={() => setFrameKey(frameKey + 1)}>Reconnect</button>
                 {' · '}
@@ -252,19 +254,19 @@ function fmt(s) {
 
 /* ---------- Mock exam: several tasks in one cluster, one timer, scored at the end ---------- */
 
-function MockPanel({ history, pending, onOpen, onAbandoned, busy }) {
+function MockPanel({ trackId, history, pending, onOpen, onAbandoned, busy }) {
   const [count, setCount] = useState(10)
   const [starting, setStarting] = useState(false)
   const start = async () => {
     setStarting(true)
-    try { onOpen(await api.mockStart(count)) } finally { setStarting(false) }
+    try { onOpen(await api.mockStart(trackId, count)) } finally { setStarting(false) }
   }
   return (
     <div className="mock-panel">
       <div>
         <h2>Mock exam</h2>
         <p className="sub">
-          Several tasks in one 2-node cluster with one timer, like the real exam. You only see your
+          Several tasks in one cluster with one timer, like the real exam. You only see your
           score at the end (partial credit per task). Pass mark: 66%.
         </p>
         {history.length > 0 && (
@@ -478,3 +480,6 @@ function MockResult({ result, domains, onExit }) {
     </section>
   )
 }
+
+const isK8s = (track) => Object.values(track.environments).some((e) => e.nodes > 0)
+const envLabel = (env) => (env.nodes === 0 ? 'Terraform' : env.nodes === 1 ? '1 node' : `${env.nodes} nodes`)

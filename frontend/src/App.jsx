@@ -3,48 +3,79 @@ import { api } from './api.js'
 import Labs from './Labs.jsx'
 import { EnglishBar, EnglishContext, EnglishPage, EnglishText, ListenButton } from './english.jsx'
 
-const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'practice', label: 'Practice' },
-  { id: 'exam', label: 'Exam mode' },
-  { id: 'labs', label: 'Labs (CKA)' },
-  { id: 'english', label: 'English' },
-  { id: 'glossary', label: 'Glossary' },
-]
+function tabsFor(cert) {
+  return [
+    ...(cert?.exam ? [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'practice', label: 'Practice' },
+      { id: 'exam', label: 'Exam mode' },
+    ] : []),
+    ...(cert?.track ? [{ id: 'labs', label: 'Labs' }] : []),
+    { id: 'english', label: 'English' },
+    { id: 'glossary', label: 'Glossary' },
+  ]
+}
+
+const loadCert = () => { try { return localStorage.getItem('cert') } catch { return null } }
+const saveCert = (id) => { try { localStorage.setItem('cert', id) } catch { /* private mode */ } }
 
 export default function App() {
-  const [tab, setTab] = useState('dashboard')
+  const [certs, setCerts] = useState([])
+  const [certId, setCertId] = useState(loadCert)
+  const [tab, setTab] = useState(null)
   const [glossary, setGlossary] = useState([])
   const [vocabulary, setVocabulary] = useState([])
-  const [exam, setExam] = useState(null)
+  const [exams, setExams] = useState([])
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    Promise.all([api.glossary(), api.exams(), api.vocabulary()])
-      .then(([g, e, v]) => { setGlossary(g); setVocabulary(v); setExam(e.find((x) => x.id === 'kcna') || e[0]) })
+    Promise.all([api.glossary(), api.exams(), api.vocabulary(), api.certifications()])
+      .then(([g, e, v, c]) => { setGlossary(g); setExams(e); setVocabulary(v); setCerts(c) })
       .catch((e) => setError(e.message))
   }, [])
+
+  const cert = certs.find((c) => c.id === certId) || certs[0]
+  const exam = exams.find((e) => e.id === cert?.exam)
+  const tabs = tabsFor(cert)
+  const current = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
+  const chooseCert = (id) => {
+    setCertId(id); saveCert(id)
+    const c = certs.find((x) => x.id === id)
+    setTab(c?.exam ? 'dashboard' : 'labs')
+  }
+  const areas = [...new Set(certs.map((c) => c.area))]
 
   const english = useMemo(() => ({ glossary, vocabulary }), [glossary, vocabulary])
   return (
     <EnglishContext.Provider value={english}>
     <div className="app">
       <header>
-        <div className="brand"><span className="prompt">$</span> k8s-study-lab <span className="tag">{tab === 'labs' ? 'CKA' : 'KCNA'}</span></div>
+        <div className="brand">
+          <span className="prompt">$</span> k8s-study-lab
+          {certs.length > 0 && (
+            <select className="cert-select" value={cert?.id} onChange={(e) => chooseCert(e.target.value)} aria-label="Certification">
+              {areas.map((a) => (
+                <optgroup key={a} label={a}>
+                  {certs.filter((c) => c.area === a).map((c) => <option key={c.id} value={c.id}>{c.short} — {c.name}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          )}
+        </div>
         <nav>
-          {TABS.map((t) => (
-            <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
+          {tabs.map((t) => (
+            <button key={t.id} className={current === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
           ))}
         </nav>
       </header>
-      <main className={tab === 'labs' ? 'wide' : ''}>
+      <main className={current === 'labs' ? 'wide' : ''}>
         {error && <p className="error">Cannot reach the API: {error}. Is the backend running on port 8000?</p>}
-        {exam && tab === 'dashboard' && <Dashboard exam={exam} onGo={setTab} />}
-        {exam && tab === 'practice' && <Practice exam={exam} glossary={glossary} />}
-        {exam && tab === 'exam' && <ExamMode exam={exam} glossary={glossary} />}
-        {tab === 'glossary' && <GlossaryPage glossary={glossary} vocabulary={vocabulary} />}
-        {tab === 'labs' && <Labs />}
-        {tab === 'english' && <EnglishPage />}
+        {exam && current === 'dashboard' && <Dashboard key={exam.id} exam={exam} cert={cert} onGo={setTab} />}
+        {exam && current === 'practice' && <Practice key={exam.id} exam={exam} glossary={glossary} />}
+        {exam && current === 'exam' && <ExamMode key={exam.id} exam={exam} glossary={glossary} />}
+        {current === 'glossary' && <GlossaryPage glossary={glossary} vocabulary={vocabulary} />}
+        {cert?.track && current === 'labs' && <Labs key={cert.track} trackId={cert.track} />}
+        {current === 'english' && <EnglishPage />}
       </main>
     </div>
     </EnglishContext.Provider>
@@ -54,7 +85,11 @@ export default function App() {
 /* ---------- Glossary-aware text (see english.jsx) ---------- */
 
 function GlossaryText({ text, termIds, onTranslate }) {
-  return <EnglishText text={text} termIds={termIds} onTranslate={onTranslate} />
+  // `inline code` (commands, HCL, YAML) is shown as code and never highlighted as English
+  const parts = (text || '').split(/(`[^`]+`)/g)
+  return <span>{parts.map((p, i) => (p.startsWith('`') && p.endsWith('`') && p.length > 1
+    ? <code key={i}>{p.slice(1, -1)}</code>
+    : <EnglishText key={i} text={p} termIds={termIds} onTranslate={onTranslate} />))}</span>
 }
 
 /* ---------- Question card ---------- */
@@ -127,7 +162,7 @@ function WrongReasons({ q, result }) {
 
 /* ---------- Dashboard ---------- */
 
-function Dashboard({ exam, onGo }) {
+function Dashboard({ exam, cert, onGo }) {
   const [stats, setStats] = useState(null)
   useEffect(() => { api.stats(exam.id).then(setStats) }, [exam.id])
   if (!stats) return <p>Loading…</p>
@@ -138,6 +173,7 @@ function Dashboard({ exam, onGo }) {
     <section>
       <h1>{exam.name}</h1>
       <p className="sub">{exam.exam_questions} questions · {exam.exam_minutes} minutes · pass with {exam.passing_score}%</p>
+      {exam.facts_note && <p className="facts-note">ℹ️ {exam.facts_note}</p>}
       <div className="tiles">
         <div className="tile"><b>{due}</b><span>questions due for review</span></div>
         <div className="tile"><b>{stats.exams[0]?.score ?? '—'}{stats.exams[0] ? '%' : ''}</b><span>last mock exam</span></div>
@@ -158,6 +194,7 @@ function Dashboard({ exam, onGo }) {
       <div className="actions">
         <button className="primary" onClick={() => onGo('practice')}>Start practice</button>
         <button onClick={() => onGo('exam')}>Take a mock exam</button>
+        {cert?.track && <button onClick={() => onGo('labs')}>Hands-on labs</button>}
         <button onClick={() => onGo('english')}>Practise exam English</button>
       </div>
     </section>

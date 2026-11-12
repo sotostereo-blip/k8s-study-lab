@@ -5,11 +5,19 @@ can add or fix questions with a pull request.
 
 ```
 content/
+├── certifications.yaml         # what the app offers, in selector order
 ├── glossary.yaml               # shared technical glossary
-└── kcna/
-    ├── exam.yaml               # exam metadata and domains with weights
-    └── <domain-id>.yaml        # one file per domain
+├── glossary.d/<area>.yaml      # more glossary terms, one file per area (terraform, security…)
+├── vocabulary.yaml             # everyday exam English
+├── <exam>/                     # multiple-choice exam (kcna, kcsa, terraform)
+│   ├── exam.yaml               # metadata, domains with weights, optional facts_note
+│   └── <domain-id>.yaml        # one file per domain
+└── <track>/                    # hands-on labs (cka, ckad, cks, terraform)
+    ├── labs.yaml               # domains, environments, mock exam settings
+    └── tasks/<id>.yaml         # one file per task
 ```
+
+A folder can have both (`content/terraform/` has the question bank and the labs).
 
 ## Exam English (`content/vocabulary.yaml`)
 
@@ -93,6 +101,8 @@ solution: |                    # shown only when the student asks
   kubectl set image deployment/broken-web nginx=nginx:1.27-alpine
 docs:
   - https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+auto_solution: |               # optional; runnable version of `solution` for scripts/verify_labs.py
+  kubectl set image deployment/broken-web nginx=nginx:1.27-alpine
 mock_exam: true                # optional; false if the task changes the whole cluster
 conflicts_with: []             # optional; tasks that cannot share one cluster with this one
 ```
@@ -102,11 +112,18 @@ Rules for tasks:
 1. Checks must look at the **real cluster state**, not at the commands typed.
    Accept any valid way to solve the task.
 2. Before the task is solved, at least one check must fail; after the solution,
-   all must pass. Test both on a real lab before opening a pull request.
+   all must pass. Test both on a real lab before opening a pull request:
+   `python scripts/verify_labs.py tasks <id>` (and `mock <track>` for mock exams).
+   If `solution` has manual steps ("edit the file"), add a runnable `auto_solution`.
 3. Use small public images with a fixed tag (`nginx:1.27-alpine`, `busybox:1.36`).
-4. **Mock exams run many tasks in one 2-node cluster.** Use object names no other task
+4. **Mock exams run many tasks in one cluster** (the track's `mock_environment`). Use object names no other task
    uses. If your task drains or taints nodes, or reuses a name, set `mock_exam: false`
    or list the other tasks in `conflicts_with` (on both tasks).
-5. Mark with `guard: true` every check that already passes before the task is solved
+5. Checks run with `set -o pipefail`: in `cmd | grep` a failing `cmd` fails the check even
+   if grep matches. Capture first: `out=$(cmd 2>&1); echo "$out" | grep -q …`. This also
+   avoids leftover Pods from `kubectl run --rm -i … | grep -q` (SIGPIPE).
+6. For RBAC on subresources use `kubectl auth can-i create pods --subresource=exec`
+   (`pods/exec` is read as "the Pod named exec").
+7. Mark with `guard: true` every check that already passes before the task is solved
    ("do not remove the taint", "the user cannot delete…"). Mock exams give partial credit
    only for the other checks, so doing nothing scores 0.

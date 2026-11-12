@@ -68,6 +68,7 @@ class Exam(BaseModel):
     exam_questions: int
     passing_score: int
     domains: list[Domain]
+    facts_note: str | None = None   # e.g. which exam facts are not published officially
 
 
 class Term(BaseModel):
@@ -113,6 +114,9 @@ class LabTask(BaseModel):
     checks: list[Check] = Field(min_length=1)
     solution: str
     docs: list[str] = Field(min_length=1)
+    # Runnable bash used only by scripts/verify_labs.py when `solution` has manual steps
+    # (for example "edit the file"). Never shown to the learner.
+    auto_solution: str = ""
     # Mock exams run many tasks in ONE cluster. A task that changes the whole cluster
     # (for example draining a node) sets mock_exam: false; tasks that cannot share a
     # cluster (same object names, taints on every node) list each other in conflicts_with.
@@ -121,14 +125,14 @@ class LabTask(BaseModel):
 
     def public(self) -> dict:
         """Everything except the checker scripts (solution is shown on demand)."""
-        return self.model_dump(exclude={"checks", "setup", "solution", "mock_exam", "conflicts_with"}) | {
+        return self.model_dump(exclude={"checks", "setup", "solution", "auto_solution", "mock_exam", "conflicts_with"}) | {
             "checks": [c.name for c in self.checks]
         }
 
 
 class LabEnvironment(BaseModel):
     name: str
-    nodes: int = Field(ge=1)
+    nodes: int = Field(ge=0)   # Kubernetes nodes; 0 = no cluster (e.g. Terraform + LocalStack)
 
 
 class LabTrack(BaseModel):
@@ -139,6 +143,20 @@ class LabTrack(BaseModel):
     passing_score: int
     domains: list[Domain]
     environments: dict[str, LabEnvironment]
+    mock: bool = True                       # offer a multi-task mock exam for this track
+    mock_environment: str | None = None     # environment that runs all mock exam tasks together
+
+
+class Certification(BaseModel):
+    """What the app offers for one certification (content/certifications.yaml)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    name: str
+    short: str
+    area: str
+    exam: str | None = None    # multiple-choice exam id (content/<id>/exam.yaml)
+    track: str | None = None   # hands-on lab track id (content/<id>/labs.yaml)
+    description: str = ""
 
 
 class Library(BaseModel):
@@ -148,6 +166,11 @@ class Library(BaseModel):
     tracks: dict[str, LabTrack] = {}
     tasks: dict[str, LabTask] = {}
     vocabulary: dict[str, Word] = {}
+    certifications: list[Certification] = []
+    errors: list[str] = []
+
+    def tasks_for(self, track_id: str) -> list[LabTask]:
+        return [t for t in self.tasks.values() if t.id.startswith(f"{track_id}-")]
 
     def questions_for(self, exam_id: str, domain: str | None = None) -> list[Question]:
         prefix = f"{exam_id}-"
@@ -157,22 +180,46 @@ class Library(BaseModel):
         ]
 
 
-def _read(path: Path) -> dict:
+def _read_yaml(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def load_library(content_dir: Path) -> Library:
-    """Load everything and raise ValueError with all problems found."""
+def load_library(content_dir: Path, strict: bool = True) -> Library:
+    """Load everything and raise ValueError with all problems found.
+
+    strict=False skips broken files instead of raising (used by scripts/verify_labs.py
+    while other content is being edited); the problems are in Library.errors."""
     errors: list[str] = []
+
+    def _read(path: Path) -> dict:   # a YAML syntax error becomes a reported problem, not a crash
+        try:
+            return _read_yaml(path)
+        except yaml.YAMLError as e:
+            errors.append(f"{path}: invalid YAML: {e}")
+            return {}
     glossary: dict[str, Term] = {}
-    gpath = content_dir / "glossary.yaml"
-    if gpath.exists():
+    # glossary.yaml plus one file per area in glossary.d/ (terraform.yaml, security.yaml, ...)
+    gfiles = [content_dir / "glossary.yaml", *sorted((content_dir / "glossary.d").glob("*.yaml"))]
+    for gpath in gfiles:
+        if not gpath.exists():
+            continue
         for raw in _read(gpath).get("terms", []):
-            t = Term(**raw)
+            try:
+                t = Term(**raw)
+            except Exception as e:
+                errors.append(f"{gpath.name}: {raw.get('id', '?')}: {e}")
+                continue
             if t.id in glossary:
-                errors.append(f"glossary: duplicate term id {t.id}")
+                errors.append(f"{gpath.name}: duplicate term id {t.id}")
             glossary[t.id] = t
+
+    term_form_owner: dict[str, str] = {}
+    for t in glossary.values():   # one highlighted form must point to one term only
+        for m in t.match:
+            if m.lower() in term_form_owner and term_form_owner[m.lower()] != t.id:
+                errors.append(f"glossary: '{m}' is a match form of both {term_form_owner[m.lower()]} and {t.id}")
+            term_form_owner[m.lower()] = t.id
 
     vocabulary: dict[str, Word] = {}
     vpath = content_dir / "vocabulary.yaml"
@@ -199,11 +246,15 @@ def load_library(content_dir: Path) -> Library:
     exams: dict[str, Exam] = {}
     questions: dict[str, Question] = {}
     for exam_file in sorted(content_dir.glob("*/exam.yaml")):
-        exam = Exam(**_read(exam_file))
+        try:
+            exam = Exam(**_read(exam_file))
+        except Exception as e:
+            errors.append(f"{exam_file}: {e}")
+            continue
         exams[exam.id] = exam
         domain_ids = {d.id for d in exam.domains}
         for qfile in sorted(exam_file.parent.glob("*.yaml")):
-            if qfile.name == "exam.yaml":
+            if qfile.name in ("exam.yaml", "labs.yaml"):
                 continue
             data = _read(qfile)
             domain = data.get("domain")
@@ -233,6 +284,8 @@ def load_library(content_dir: Path) -> Library:
         except Exception as e:
             errors.append(f"{track_file}: {e}")
             continue
+        if track.mock and track.mock_environment not in track.environments:
+            errors.append(f"{track_file}: mock_environment must be one of the track environments")
         tracks[track.id] = track
         domain_ids = {d.id for d in track.domains}
         for tfile in sorted((track_file.parent / "tasks").glob("*.yaml")):
@@ -252,16 +305,34 @@ def load_library(content_dir: Path) -> Library:
                 errors.append(f"{tfile}: needs at least one check that is not a guard")
             if t.environment not in track.environments:
                 errors.append(f"{tfile}: unknown environment '{t.environment}'")
+            elif track.mock and t.mock_exam and track.environments[t.environment].nodes > \
+                    track.environments[track.mock_environment or t.environment].nodes:
+                errors.append(f"{tfile}: needs more nodes than the mock exam environment")
             if t.id in tasks:
                 errors.append(f"{tfile}: duplicate task id {t.id}")
             tasks[t.id] = t
+
+    certifications: list[Certification] = []
+    cpath = content_dir / "certifications.yaml"
+    if cpath.exists():
+        for raw in _read(cpath).get("certifications", []):
+            try:
+                c = Certification(**raw)
+            except Exception as e:
+                errors.append(f"certifications.yaml: {raw.get('id', '?')}: {e}")
+                continue
+            if c.exam and c.exam not in exams:
+                errors.append(f"certifications.yaml: {c.id}: unknown exam '{c.exam}'")
+            if c.track and c.track not in tracks:
+                errors.append(f"certifications.yaml: {c.id}: unknown lab track '{c.track}'")
+            certifications.append(c)
 
     for t in tasks.values():
         for other in t.conflicts_with:
             if other not in tasks:
                 errors.append(f"{t.id}: conflicts_with unknown task '{other}'")
 
-    if errors:
+    if errors and strict:
         raise ValueError("\n".join(errors))
-    return Library(exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks,
-                   vocabulary=vocabulary)
+    return Library(errors=errors, exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks,
+                   vocabulary=vocabulary, certifications=certifications)

@@ -18,7 +18,7 @@ checks:
     run: '[ "$(kubectl get svc orders -o jsonpath="{.spec.ports[0].port}")" = 80 ]'
     guard: true   # already true before the task; must stay true
   - name: A Pod can open http://orders
-    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://orders | grep -qi nginx
+    run: 'out=$(kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://orders 2>&1); echo "$out" | grep -qi nginx'
 solution: |
   kubectl describe svc orders           # TargetPort: 8080/TCP, Endpoints: <ip>:8080
   kubectl patch svc orders --type=json -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":80}]'

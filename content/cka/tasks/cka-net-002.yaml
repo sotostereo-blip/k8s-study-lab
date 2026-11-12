@@ -26,5 +26,7 @@ solution: |
   # edit svc.yaml: under ports add  nodePort: 30080
   kubectl apply -f svc.yaml
   curl http://server:30080
+auto_solution: |
+  kubectl expose deployment store --name=store-np --type=NodePort --port=80 --target-port=80 --dry-run=client -o yaml | sed 's/targetPort: 80/targetPort: 80\n    nodePort: 30080/' | kubectl apply -f -
 docs:
   - https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport

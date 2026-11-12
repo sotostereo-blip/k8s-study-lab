@@ -13,6 +13,7 @@ async function request(path, options = {}) {
 
 export const api = {
   exams: () => request('/exams'),
+  certifications: () => request('/certifications'),
   glossary: () => request('/glossary'),
   vocabulary: () => request('/vocabulary'),
   englishNext: (kind, n = 10) => request(`/english/next?n=${n}${kind ? `&kind=${kind}` : ''}`),
@@ -25,14 +26,14 @@ export const api = {
   examStart: (body) => request('/exam/start', { method: 'POST', body }),
   examSubmit: (id, answers) => request(`/exam/${id}/submit`, { method: 'POST', body: { answers } }),
   englishEvent: (kind, ref) => request('/english/event', { method: 'POST', body: { kind, ref } }),
-  labs: () => request('/labs'),
+  labs: (track) => request(`/labs?track_id=${track}`),
   labStatus: () => request('/labs/status'),
   labStart: (id) => request(`/labs/${id}/start`, { method: 'POST' }),
   labStop: () => request('/labs/stop', { method: 'POST' }),
   labCheck: (id) => request(`/labs/${id}/check`, { method: 'POST' }),
   labSolution: (id) => request(`/labs/${id}/solution`),
-  mockStart: (tasks) => request('/mock/start', { method: 'POST', body: { tasks } }),
-  mockCurrent: () => request('/mock/current'),
+  mockStart: (track, tasks) => request('/mock/start', { method: 'POST', body: { track_id: track, tasks } }),
+  mockCurrent: (track) => request(`/mock/current?track_id=${track}`),
   mockSubmit: (id) => request(`/mock/${id}/submit`, { method: 'POST' }),
   mockAbandon: (id) => request(`/mock/${id}/abandon`, { method: 'POST' }),
 }

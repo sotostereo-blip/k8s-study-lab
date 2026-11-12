@@ -24,5 +24,8 @@ solution: |
   kubectl run critical-app --image=nginx:1.27-alpine $do > pod.yaml
   # add under spec:  priorityClassName: high-priority
   kubectl apply -f pod.yaml
+auto_solution: |
+  kubectl create priorityclass high-priority --value=100000 --description="critical apps"
+  kubectl run critical-app --image=nginx:1.27-alpine --overrides='{"spec":{"priorityClassName":"high-priority"}}'
 docs:
   - https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/

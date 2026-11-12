@@ -1,14 +1,30 @@
 # k8s-study-lab
 
-A local study environment for Kubernetes certifications, built to practise
+A local study environment for **Cloud Engineer / DevOps certifications**, built to practise
 **the exam content and technical English at the same time**.
 
-Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
+| Certification | Multiple choice | Hands-on labs (terminal in the browser) |
+|---|---|---|
+| **KCNA** — Kubernetes and Cloud Native Associate | 150 questions | — |
+| **KCSA** — Kubernetes and Cloud Native Security Associate | 120 questions | — |
+| **CKA** — Certified Kubernetes Administrator | — | 38 tasks + mock exam |
+| **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
+| **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
+| **Terraform Associate (004)** — HashiCorp | 152 questions | 17 tasks (Terraform + LocalStack) |
+
+Choose the certification in the selector at the top of the page.
 
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
   When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
 - **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
-- **Built-in English support**, everywhere (KCNA questions, CKA labs and the mock exam):
+- **Hands-on labs**: choose a task and a real environment starts in Docker with a terminal
+  **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, or with API audit
+  logging for CKS) or Terraform 1.12 with LocalStack, a free local AWS emulator. Solve it,
+  press *Check my work*, and the app inspects the real state. Every task was verified on a real
+  environment (fails before, passes after the solution). See [labs/README.md](labs/README.md).
+- **Lab mock exams** (CKA, CKAD, CKS): 5, 10 or 15 tasks in one cluster with one countdown,
+  graded at the end with partial credit, plus a full review with solutions.
+- **Built-in English support**, everywhere (questions, labs and mock exams):
   - technical terms (blue, dashed) and everyday exam words such as *ensure*, *by default*
     or *eventually* (amber, dotted) are clickable: simple English definition, example,
     pronunciation, and Spanish only on demand;
@@ -18,15 +34,6 @@ Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
     looked up most come first;
   - the app counts lookups, translations and listens, so you can watch your need for
     Spanish go down.
-
-**Hands-on labs (CKA)**: choose a task and a real Kubernetes cluster (k3s) starts in
-Docker, with a terminal **inside the browser**. Solve it with `kubectl`, press
-*Check my work* and the app inspects the real cluster state. 38 tasks across the five
-CKA domains (troubleshooting, cluster architecture, networking, workloads, storage —
-including Helm, Kustomize, RBAC, certificates, NetworkPolicies and StatefulSets),
-on 1-node or 2-node clusters, with an exam-style timer and solutions.
-**Mock exam**: 5, 10 or 15 tasks in one cluster with one countdown, graded at the end
-with partial credit and the 66% pass mark, plus a full review with solutions. See [labs/README.md](labs/README.md).
 
 Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).
 

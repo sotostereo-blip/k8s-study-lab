@@ -21,9 +21,11 @@ checks:
   - name: The Service has 2 endpoints
     run: '[ "$(kubectl get endpoints hello-svc -o jsonpath="{.subsets[*].addresses[*].ip}" | wc -w)" -eq 2 ]'
   - name: A Pod can open http://hello-svc:8080
-    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://hello-svc:8080 | grep -qi nginx
+    run: 'out=$(kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://hello-svc:8080 2>&1); echo "$out" | grep -qi nginx'
 solution: |
   kubectl expose deployment hello --name=hello-svc --type=ClusterIP --port=8080 --target-port=80
   kubectl run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- http://hello-svc:8080
+auto_solution: |
+  kubectl expose deployment hello --name=hello-svc --type=ClusterIP --port=8080 --target-port=80
 docs:
   - https://kubernetes.io/docs/concepts/services-networking/service/

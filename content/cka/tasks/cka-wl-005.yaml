@@ -23,6 +23,9 @@ solution: |
   #   nodeSelector:
   #     disk: ssd
   kubectl apply -f pod.yaml
+auto_solution: |
+  kubectl label node node01 disk=ssd
+  kubectl run fast-app --image=nginx:1.27-alpine --overrides='{"spec":{"nodeSelector":{"disk":"ssd"}}}'
 docs:
   - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 conflicts_with: [cka-wl-006]   # its taint on node01 would block fast-app

@@ -22,11 +22,20 @@
 - [ ] More tasks: Gateway API, kubeadm upgrade, etcd backup (need a kubeadm-based environment)
 - [x] Multi-task mock exam (several tasks, one cluster, one timer, partial credit)
 
+## Phase 2b — More certifications (Cloud Engineer / DevOps)
+- [x] App supports several certifications (selector, per-exam progress, per-track labs and mocks)
+- [x] Terraform Associate 004: 152 questions over the 8 official objectives + 17 labs on LocalStack
+- [x] KCSA: 120 questions over the 6 official domains
+- [x] CKAD: 27 labs over the 5 official domains + mock exam
+- [x] CKS: 24 labs over the 6 official domains + mock exam (audit-log environment)
+- [x] Labs on Kubernetes 1.37 (same version as the CKA/CKAD/CKS curriculum)
+- [ ] CKS topics that need a real node: AppArmor, Falco, kube-bench, API server flags
+- [ ] Terraform labs for `depends_on` / `create_before_destroy` (need plan-JSON checks)
+- [ ] Later: AWS (Cloud Practitioner / SAA), Prometheus (PCA), Argo CD (CAPA), GitHub Actions
+
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`
 - [ ] "Explain it" exercise: write why an answer is right; the LLM corrects grammar and technical accuracy
 
 ## Phase 4 — More exams
-- [ ] KCSA question bank
-- [ ] CKAD and CKS labs
 - [ ] Full mock exams and progress history

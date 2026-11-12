@@ -1,0 +1,16 @@
+# The certifications the app offers, in the order shown in the selector.
+# exam  = multiple-choice question bank (content/<exam>/exam.yaml)
+# track = hands-on labs (content/<track>/labs.yaml)
+certifications:
+- id: kcna
+  name: Kubernetes and Cloud Native Associate
+  short: KCNA
+  area: Kubernetes
+  exam: kcna
+  description: Multiple choice. Kubernetes and cloud native basics.
+- id: cka
+  name: Certified Kubernetes Administrator
+  short: CKA
+  area: Kubernetes
+  track: cka
+  description: Hands-on. Run and fix a real cluster from the command line.

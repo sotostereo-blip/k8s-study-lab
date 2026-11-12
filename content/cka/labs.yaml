@@ -13,3 +13,4 @@ domains:
 environments:
   single-node: { name: "1 node (controlplane)", nodes: 1 }
   two-node: { name: "2 nodes (controlplane + node01)", nodes: 2 }
+mock_environment: two-node   # all mock exam tasks run together in one 2-node cluster

@@ -218,3 +218,5 @@ code { font-family: var(--mono); font-size: .88em; background: var(--accent-soft
   .chip.word { border-color: #d8a840; color: #d8a840; }
   .kind.word { color: #d8a840; }
 }
+.cert-select { margin-left: 10px; font: 600 13px var(--mono); background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 3px 8px; max-width: 60vw; }
+.facts-note { font-size: 13px; color: var(--muted); background: var(--surface); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; margin: -8px 0 16px; }

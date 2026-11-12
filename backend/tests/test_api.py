@@ -304,3 +304,19 @@ def test_stop_does_not_override_a_newer_start(tmp_path):
     while m.status()["status"] != "ready" and _t.time() < end:
         _t.sleep(0.02)
     assert m.status()["status"] == "ready" and m.status()["task_id"] == "cka-wl-001"
+
+
+# ---------- several certifications ----------
+
+def test_certifications_resolve(client):
+    certs = {c["id"]: c for c in client.get("/api/certifications").json()}
+    assert {"kcna", "cka"} <= set(certs)
+    exams = {e["id"] for e in client.get("/api/exams").json()}
+    for c in certs.values():
+        assert c["exam"] or c["track"]
+        if c["exam"]:
+            assert c["exam"] in exams
+            assert client.get(f"/api/practice/next?exam_id={c['exam']}&n=3").json()["questions"]
+        if c["track"]:
+            data = client.get(f"/api/labs?track_id={c['track']}").json()
+            assert data["tasks"] and all(t["id"].startswith(c["track"] + "-") for t in data["tasks"])
