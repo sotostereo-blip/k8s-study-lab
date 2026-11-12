@@ -1,28 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 import Labs from './Labs.jsx'
+import { EnglishBar, EnglishContext, EnglishPage, EnglishText, ListenButton } from './english.jsx'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'practice', label: 'Practice' },
   { id: 'exam', label: 'Exam mode' },
   { id: 'labs', label: 'Labs (CKA)' },
+  { id: 'english', label: 'English' },
   { id: 'glossary', label: 'Glossary' },
 ]
 
 export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [glossary, setGlossary] = useState([])
+  const [vocabulary, setVocabulary] = useState([])
   const [exam, setExam] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    Promise.all([api.glossary(), api.exams()])
-      .then(([g, e]) => { setGlossary(g); setExam(e.find((x) => x.id === 'kcna') || e[0]) })
+    Promise.all([api.glossary(), api.exams(), api.vocabulary()])
+      .then(([g, e, v]) => { setGlossary(g); setVocabulary(v); setExam(e.find((x) => x.id === 'kcna') || e[0]) })
       .catch((e) => setError(e.message))
   }, [])
 
+  const english = useMemo(() => ({ glossary, vocabulary }), [glossary, vocabulary])
   return (
+    <EnglishContext.Provider value={english}>
     <div className="app">
       <header>
         <div className="brand"><span className="prompt">$</span> k8s-study-lab <span className="tag">{tab === 'labs' ? 'CKA' : 'KCNA'}</span></div>
@@ -37,79 +42,19 @@ export default function App() {
         {exam && tab === 'dashboard' && <Dashboard exam={exam} onGo={setTab} />}
         {exam && tab === 'practice' && <Practice exam={exam} glossary={glossary} />}
         {exam && tab === 'exam' && <ExamMode exam={exam} glossary={glossary} />}
-        {tab === 'glossary' && <GlossaryPage glossary={glossary} />}
+        {tab === 'glossary' && <GlossaryPage glossary={glossary} vocabulary={vocabulary} />}
         {tab === 'labs' && <Labs />}
+        {tab === 'english' && <EnglishPage />}
       </main>
     </div>
+    </EnglishContext.Provider>
   )
 }
 
-/* ---------- Glossary-aware text: technical terms are clickable ---------- */
+/* ---------- Glossary-aware text (see english.jsx) ---------- */
 
-function GlossaryText({ text, termIds = [], glossary, onTranslate }) {
-  const [open, setOpen] = useState(null)
-  useEffect(() => {
-    if (open === null) return
-    const close = (e) => { if (!e.target.closest('.term-wrap')) setOpen(null) }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [open])
-  const toggleTerm = (p) => {
-    const next = open === p.key ? null : p.key
-    setOpen(next)
-    if (next !== null) api.englishEvent('glossary_lookup', p.term.id).catch(() => {})
-  }
-  const terms = useMemo(() => glossary.filter((t) => termIds.includes(t.id)), [glossary, termIds])
-  const parts = useMemo(() => {
-    const forms = terms.flatMap((t) => t.match.map((m) => ({ m, t }))).sort((a, b) => b.m.length - a.m.length)
-    if (!forms.length) return [text]
-    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const re = new RegExp(`\\b(${forms.map((f) => esc(f.m)).join('|')})\\b`, 'gi')
-    const out = []
-    let last = 0
-    for (const match of text.matchAll(re)) {
-      const term = forms.find((f) => f.m.toLowerCase() === match[0].toLowerCase()).t
-      out.push(text.slice(last, match.index), { word: match[0], term, key: match.index })
-      last = match.index + match[0].length
-    }
-    out.push(text.slice(last))
-    return out
-  }, [text, terms])
-
-  return (
-    <span>
-      {parts.map((p, i) =>
-        typeof p === 'string' ? p : (
-          <span key={p.key} className="term-wrap">
-            {/* span, not button: terms can appear inside option buttons */}
-            <span className="term" role="button" tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); toggleTerm(p) }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleTerm(p) } }}
-            >{p.word}</span>
-            {open === p.key && <TermPopover term={p.term} onTranslate={onTranslate} onClose={() => setOpen(null)} />}
-          </span>
-        ),
-      )}
-    </span>
-  )
-}
-
-function TermPopover({ term, onTranslate, onClose }) {
-  const [showEs, setShowEs] = useState(false)
-  return (
-    <span className="popover" role="dialog">
-      <strong>{term.term}</strong>
-      <span>{term.definition}</span>
-      {showEs ? <em className="es">ES: {term.es}</em> : (
-        <button className="link" onClick={() => {
-          setShowEs(true)
-          onTranslate?.()
-          api.englishEvent('translation', term.id).catch(() => {})
-        }}>Show in Spanish</button>
-      )}
-      <button className="link close" onClick={onClose}>close</button>
-    </span>
-  )
+function GlossaryText({ text, termIds, onTranslate }) {
+  return <EnglishText text={text} termIds={termIds} onTranslate={onTranslate} />
 }
 
 /* ---------- Question card ---------- */
@@ -128,6 +73,8 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
         <span>{'●'.repeat(q.difficulty)}{'○'.repeat(3 - q.difficulty)}</span>
       </div>
       <p className="question"><GlossaryText text={q.question} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} /></p>
+      <EnglishBar text={[q.question, ...q.options.map((o) => o.text)].join('\n')} termIds={q.glossary} onTranslate={onTranslate}
+        speakText={`${q.question} ${q.options.map((o) => `Option ${o.id.toUpperCase()}: ${o.text}.`).join(' ')}`} />
       {q.type === 'multiple' && <p className="hint">Select {q.select} answers.</p>}
       <ul className="options">
         {q.options.map((o) => {
@@ -140,7 +87,7 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
                 <span className="key">{o.id.toUpperCase()}</span>
                 <span className="opt-body">
                   <GlossaryText text={o.text} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} />
-                  {result && !isAns && !isSel && result.why?.[o.id] && <span className="why">{result.why[o.id]}</span>}
+                  {result && !isAns && !isSel && result.why?.[o.id] && <span className="why"><GlossaryText text={result.why[o.id]} termIds={q.glossary} onTranslate={onTranslate} /></span>}
                 </span>
               </button>
             </li>
@@ -151,7 +98,7 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
         <div className={`feedback ${result.correct ? 'ok' : 'ko'}`}>
           <strong>{result.correct ? 'Correct.' : 'Not quite.'}</strong>
           {!result.correct && <WrongReasons q={q} result={result} />}
-          <p>{!result.correct && <b>Right answer: </b>}{result.explanation}</p>
+          <p>{!result.correct && <b>Right answer: </b>}<GlossaryText text={result.explanation} termIds={q.glossary} onTranslate={onTranslate} /></p>
           <p className="docs">Read more: {result.docs.map((d) => <a key={d} href={d} target="_blank" rel="noreferrer">{d.replace(/^https?:\/\//, '')}</a>)}</p>
         </div>
       )}
@@ -168,7 +115,7 @@ function WrongReasons({ q, result }) {
       {chosenWrong.map((id) => (
         <p key={id}>
           <b>You chose {id.toUpperCase()} — “{text[id]}”.</b>{' '}
-          {result.why?.[id] || 'This option does not answer the question.'}
+          <GlossaryText text={result.why?.[id] || 'This option does not answer the question.'} termIds={q.glossary} />
         </p>
       ))}
       {missed.length > 0 && q.type === 'multiple' && (
@@ -211,6 +158,7 @@ function Dashboard({ exam, onGo }) {
       <div className="actions">
         <button className="primary" onClick={() => onGo('practice')}>Start practice</button>
         <button onClick={() => onGo('exam')}>Take a mock exam</button>
+        <button onClick={() => onGo('english')}>Practise exam English</button>
       </div>
     </section>
   )
@@ -372,22 +320,31 @@ function ExamResult({ result, exam, onAgain }) {
 
 /* ---------- Glossary page ---------- */
 
-function GlossaryPage({ glossary }) {
+function GlossaryPage({ glossary, vocabulary }) {
   const [q, setQ] = useState('')
+  const [kind, setKind] = useState('term')
   const [shown, setShown] = useState({})
-  const list = glossary.filter((t) => (t.term + t.definition).toLowerCase().includes(q.toLowerCase()))
+  const all = kind === 'term'
+    ? glossary.map((t) => ({ ...t, name: t.term, ref: t.id }))
+    : vocabulary.map((w) => ({ ...w, name: w.word, ref: `word:${w.id}` }))
+  const list = all.filter((t) => (t.name + t.definition).toLowerCase().includes(q.toLowerCase()))
   return (
     <section>
       <h1>Glossary</h1>
-      <p className="sub">Read the English definition first. Reveal the Spanish only if you need it.</p>
-      <input className="search" placeholder="Search terms…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <p className="sub">Read the English definition first. Listen to it. Reveal the Spanish only if you need it.</p>
+      <div className="chips">
+        <button className={kind === 'term' ? 'active' : ''} onClick={() => setKind('term')}>Technical terms ({glossary.length})</button>
+        <button className={kind === 'word' ? 'active' : ''} onClick={() => setKind('word')}>Exam English ({vocabulary.length})</button>
+      </div>
+      <input className="search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
       <dl className="glossary">
         {list.map((t) => (
-          <div key={t.id}>
-            <dt>{t.term}</dt>
+          <div key={t.ref}>
+            <dt>{t.name} <ListenButton text={t.name} refId={t.ref} label="" /></dt>
             <dd>{t.definition}</dd>
-            <dd>{shown[t.id] ? <em className="es">{t.es}</em> : (
-              <button className="link" onClick={() => { setShown({ ...shown, [t.id]: true }); api.englishEvent('translation', t.id).catch(() => {}) }}>Show in Spanish</button>
+            {t.example && <dd className="example">“{t.example}”</dd>}
+            <dd>{shown[t.ref] ? <em className="es">{t.es}</em> : (
+              <button className="link" onClick={() => { setShown({ ...shown, [t.ref]: true }); api.englishEvent('translation', t.ref).catch(() => {}) }}>Show in Spanish</button>
             )}</dd>
           </div>
         ))}

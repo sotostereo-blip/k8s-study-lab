@@ -14,6 +14,10 @@ async function request(path, options = {}) {
 export const api = {
   exams: () => request('/exams'),
   glossary: () => request('/glossary'),
+  vocabulary: () => request('/vocabulary'),
+  englishNext: (kind, n = 10) => request(`/english/next?n=${n}${kind ? `&kind=${kind}` : ''}`),
+  englishAnswer: (item_id, selected) => request('/english/answer', { method: 'POST', body: { item_id, selected } }),
+  englishStats: () => request('/english/stats'),
   stats: (exam = 'kcna') => request(`/stats?exam_id=${exam}`),
   practiceNext: (exam = 'kcna', domain, n = 10) =>
     request(`/practice/next?exam_id=${exam}&n=${n}${domain ? `&domain=${domain}` : ''}`),

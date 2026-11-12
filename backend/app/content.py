@@ -79,6 +79,17 @@ class Term(BaseModel):
     es: str
 
 
+class Word(BaseModel):
+    """General (non-technical) English vocabulary found in the content (content/vocabulary.yaml)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^[a-z0-9-]+$")
+    word: str
+    match: list[str] = Field(min_length=1)
+    definition: str
+    example: str
+    es: str
+
+
 class Check(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
@@ -136,6 +147,7 @@ class Library(BaseModel):
     glossary: dict[str, Term]
     tracks: dict[str, LabTrack] = {}
     tasks: dict[str, LabTask] = {}
+    vocabulary: dict[str, Word] = {}
 
     def questions_for(self, exam_id: str, domain: str | None = None) -> list[Question]:
         prefix = f"{exam_id}-"
@@ -161,6 +173,28 @@ def load_library(content_dir: Path) -> Library:
             if t.id in glossary:
                 errors.append(f"glossary: duplicate term id {t.id}")
             glossary[t.id] = t
+
+    vocabulary: dict[str, Word] = {}
+    vpath = content_dir / "vocabulary.yaml"
+    if vpath.exists():
+        term_forms = {m.lower() for t in glossary.values() for m in t.match}
+        seen_forms: dict[str, str] = {}
+        for raw in _read(vpath).get("words", []):
+            try:
+                w = Word(**raw)
+            except Exception as e:
+                errors.append(f"vocabulary: {raw.get('id', '?')}: {e}")
+                continue
+            if w.id in vocabulary:
+                errors.append(f"vocabulary: duplicate id {w.id}")
+            for m in w.match:
+                key = m.lower()
+                if key in term_forms:
+                    errors.append(f"vocabulary: {w.id}: '{m}' is already a glossary term")
+                if key in seen_forms:
+                    errors.append(f"vocabulary: {w.id}: '{m}' is also used by {seen_forms[key]}")
+                seen_forms[key] = w.id
+            vocabulary[w.id] = w
 
     exams: dict[str, Exam] = {}
     questions: dict[str, Question] = {}
@@ -229,4 +263,5 @@ def load_library(content_dir: Path) -> Library:
 
     if errors:
         raise ValueError("\n".join(errors))
-    return Library(exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks)
+    return Library(exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks,
+                   vocabulary=vocabulary)

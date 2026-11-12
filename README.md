@@ -8,9 +8,16 @@ Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
   When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
 - **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
-- **Built-in English support**: technical terms are clickable and show a simple English
-  definition. The Spanish translation is available on demand, and the dashboard tracks how
-  often you needed it, so you can watch that number go down.
+- **Built-in English support**, everywhere (KCNA questions, CKA labs and the mock exam):
+  - technical terms (blue, dashed) and everyday exam words such as *ensure*, *by default*
+    or *eventually* (amber, dotted) are clickable: simple English definition, example,
+    pronunciation, and Spanish only on demand;
+  - an **English help** bar under every question and task with its key words and a
+    🔊 *Listen* / *Slow* button (US English voice of your browser);
+  - an **English** tab to practise those words with spaced repetition; the words you
+    looked up most come first;
+  - the app counts lookups, translations and listens, so you can watch your need for
+    Spanish go down.
 
 **Hands-on labs (CKA)**: choose a task and a real Kubernetes cluster (k3s) starts in
 Docker, with a terminal **inside the browser**. Solve it with `kubectl`, press

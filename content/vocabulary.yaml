@@ -1,0 +1,837 @@
+# General English vocabulary used in the questions and lab tasks (not technical terms; those are in glossary.yaml).
+# `match` = forms highlighted in the text (case-insensitive, whole words). `es` is shown only on demand.
+words:
+  - id: actually
+    word: "actually"
+    match: ["actually"]
+    definition: "In fact; what is really true (often to correct an idea)."
+    example: "The Pod looks healthy, but it actually restarts every minute."
+    es: "en realidad, de hecho (no 'actualmente')"
+  - id: actual
+    word: "actual"
+    match: ["actual"]
+    definition: "Real; the one that truly exists, not the expected or planned one."
+    example: "The controller compares the desired state with the actual state."
+    es: "real, efectivo (no 'actual' = current)"
+  - id: eventually
+    word: "eventually"
+    match: ["eventually"]
+    definition: "In the end, after some time or after other things happen."
+    example: "If you wait, the new Pods will eventually become ready."
+    es: "finalmente, al final (no 'eventualmente')"
+  - id: available
+    word: "available"
+    match: ["available", "availability"]
+    definition: "Ready to be used or reached; not busy or broken."
+    example: "High availability means the app stays online when a node fails."
+    es: "disponible; availability = disponibilidad"
+  - id: ensure
+    word: "ensure"
+    match: ["ensure", "ensures", "ensured", "ensuring"]
+    definition: "To make certain that something happens or is true."
+    example: "A Deployment ensures that three replicas are always running."
+    es: "asegurar, garantizar"
+  - id: prevent
+    word: "prevent"
+    match: ["prevent", "prevents", "prevented"]
+    definition: "To stop something from happening."
+    example: "A NetworkPolicy can prevent traffic from other namespaces."
+    es: "impedir, evitar"
+  - id: such-as
+    word: "such as"
+    match: ["such as"]
+    definition: "For example; used before a short list of examples."
+    example: "Use a tool such as Helm or Kustomize to manage manifests."
+    es: "como, por ejemplo"
+  - id: instead-of
+    word: "instead of"
+    match: ["instead of", "instead"]
+    definition: "In place of another thing; as a replacement or alternative."
+    example: "Use a Deployment instead of a bare Pod."
+    es: "en lugar de, en vez de"
+  - id: whether
+    word: "whether"
+    match: ["whether"]
+    definition: "Used to talk about two possibilities (yes or no); similar to 'if'."
+    example: "The probe checks whether the app answers on port 80."
+    es: "si (en preguntas indirectas: si ... o no)"
+  - id: neither-nor
+    word: "neither ... nor"
+    match: ["neither", "nor"]
+    definition: "Not one and not the other of two things."
+    example: "Neither the Pod nor the Service was deleted."
+    es: "ni ... ni; ninguno de los dos"
+  - id: unless
+    word: "unless"
+    match: ["unless"]
+    definition: "Except if; only when a condition is not true."
+    example: "Pods are not scheduled on that node unless they tolerate the taint."
+    es: "a menos que, salvo que"
+  - id: until
+    word: "until"
+    match: ["until"]
+    definition: "Up to a point in time, and then it stops."
+    example: "The Pod stays Pending until a node has enough memory."
+    es: "hasta (que)"
+  - id: once
+    word: "once"
+    match: ["once"]
+    definition: "One time only; or 'as soon as / after' something happens."
+    example: "Once the image is pulled, the container starts."
+    es: "una vez; una vez que, en cuanto"
+  - id: per
+    word: "per"
+    match: ["per"]
+    definition: "For each; used to give a rate or amount for every unit."
+    example: "A DaemonSet runs one Pod per node."
+    es: "por (cada)"
+  - id: according-to
+    word: "according to"
+    match: ["according to"]
+    definition: "As stated by, or following the rules of, something."
+    example: "The HPA scales the Deployment according to CPU usage."
+    es: "según, de acuerdo con"
+  - id: each-other
+    word: "each other"
+    match: ["each other"]
+    definition: "Used when two or more things do the same action to one another."
+    example: "Containers in a Pod can talk to each other on localhost."
+    es: "el uno al otro, entre sí"
+  - id: on-its-own
+    word: "on its own"
+    match: ["on its own"]
+    definition: "Alone, without help from anything else."
+    example: "A bare Pod is not recreated on its own if its node dies."
+    es: "por sí solo, solo"
+  - id: by-default
+    word: "by default"
+    match: ["by default"]
+    definition: "What happens automatically if you do not change any setting."
+    example: "By default, all Pods can talk to all other Pods."
+    es: "por defecto, de forma predeterminada"
+  - id: on-top-of
+    word: "on top of"
+    match: ["on top of"]
+    definition: "Above something; built over another layer."
+    example: "Helm works on top of the Kubernetes API."
+    es: "encima de, sobre"
+  - id: no-longer
+    word: "no longer"
+    match: ["no longer"]
+    definition: "Not anymore; something was true before but not now."
+    example: "Dockershim is no longer part of Kubernetes."
+    es: "ya no"
+  - id: so-that
+    word: "so that"
+    match: ["so that"]
+    definition: "In order to; used to explain the purpose of an action."
+    example: "Label the node so that the Pod can be scheduled there."
+    es: "para que, de modo que"
+  - id: at-least
+    word: "at least"
+    match: ["at least"]
+    definition: "Not less than a number; the minimum amount."
+    example: "The HPA keeps at least 2 replicas."
+    es: "al menos, como mínimo"
+  - id: whole
+    word: "whole"
+    match: ["whole"]
+    definition: "All of something; complete, with no part missing."
+    example: "A ClusterRole applies to the whole cluster."
+    es: "entero, todo (el)"
+  - id: desired
+    word: "desired"
+    match: ["desired"]
+    definition: "Wanted; the state that you ask for."
+    example: "You declare the desired state in a YAML file."
+    es: "deseado"
+  - id: reach
+    word: "reach"
+    match: ["reach", "reaches", "reaching", "reachable"]
+    definition: "To get to a place or connect to something over the network."
+    example: "Other Pods must reach the Service on port 8080."
+    es: "alcanzar, llegar a, acceder a"
+  - id: unreachable
+    word: "unreachable"
+    match: ["unreachable"]
+    definition: "Impossible to contact or connect to."
+    example: "The node is marked unreachable when the kubelet stops reporting."
+    es: "inaccesible, sin conexión"
+  - id: plain
+    word: "plain"
+    match: ["plain"]
+    definition: "Simple and without any extra changes, protection or format."
+    example: "Secrets are base64 encoded, not encrypted, so it is almost plain text."
+    es: "simple, sin formato; plain text = texto plano"
+  - id: bare
+    word: "bare"
+    match: ["bare"]
+    definition: "Without anything extra around it or protecting it."
+    example: "A bare Pod has no controller to recreate it."
+    es: "desnudo, suelto; bare metal = servidor físico"
+  - id: wrap
+    word: "wrap"
+    match: ["wrap", "wraps", "wrapped"]
+    definition: "To put something around another thing to hold or cover it."
+    example: "A Pod wraps one or more containers."
+    es: "envolver, encapsular"
+  - id: spread
+    word: "spread"
+    match: ["spread"]
+    definition: "To place things over a wide area instead of in one place."
+    example: "Topology spread constraints spread Pods across zones."
+    es: "repartir, distribuir"
+  - id: handle
+    word: "handle"
+    match: ["handle", "handles", "handled"]
+    definition: "To deal with something or take care of it."
+    example: "The Ingress controller handles HTTP traffic."
+    es: "gestionar, ocuparse de, manejar"
+  - id: hold
+    word: "hold"
+    match: ["hold", "holds"]
+    definition: "To contain or keep something."
+    example: "etcd holds all the cluster data."
+    es: "contener, guardar"
+  - id: fit
+    word: "fit"
+    match: ["fit", "fits"]
+    definition: "To have the right size or be suitable for a place."
+    example: "The scheduler checks whether the Pod fits on the node."
+    es: "caber, encajar"
+  - id: drift
+    word: "drift"
+    match: ["drift"]
+    definition: "A slow change away from the expected state."
+    example: "Argo CD detects drift between Git and the cluster."
+    es: "desviación, deriva"
+  - id: coupled
+    word: "coupled"
+    match: ["coupled", "coupling"]
+    definition: "Connected so that one part depends on another."
+    example: "Microservices should be loosely coupled."
+    es: "acoplado; acoplamiento"
+  - id: loosely
+    word: "loosely"
+    match: ["loosely", "loose"]
+    definition: "Not tightly; with a weak or flexible connection."
+    example: "Loosely coupled services can be deployed independently."
+    es: "de forma débil o flexible; loose = suelto"
+  - id: tightly
+    word: "tightly"
+    match: ["tightly"]
+    definition: "Strongly and closely, so parts cannot move or change alone."
+    example: "In a monolith, the parts are tightly coupled."
+    es: "fuertemente, estrechamente"
+  - id: throttle
+    word: "throttle"
+    match: ["throttle", "throttled", "throttling"]
+    definition: "To slow something down by limiting it."
+    example: "A container that uses more CPU than its limit is throttled."
+    es: "limitar, frenar (la velocidad)"
+  - id: gradually
+    word: "gradually"
+    match: ["gradually", "gradual"]
+    definition: "Slowly, in small steps over time."
+    example: "A canary release gradually sends more traffic to the new version."
+    es: "gradualmente, poco a poco"
+  - id: explicitly
+    word: "explicitly"
+    match: ["explicitly"]
+    definition: "In a clear and direct way, written or said on purpose."
+    example: "Traffic is allowed only if a policy explicitly allows it."
+    es: "explícitamente"
+  - id: continuously
+    word: "continuously"
+    match: ["continuously"]
+    definition: "Without stopping, all the time."
+    example: "Controllers continuously watch the API server."
+    es: "continuamente, sin parar"
+  - id: independently
+    word: "independently"
+    match: ["independently"]
+    definition: "Alone, without depending on other parts."
+    example: "Each microservice can be scaled independently."
+    es: "de forma independiente"
+  - id: fixed
+    word: "fixed"
+    match: ["fixed"]
+    definition: "Not changing; set to one value. Also: repaired."
+    example: "A StatefulSet Pod has a fixed, stable name."
+    es: "fijo; también 'arreglado'"
+  - id: against
+    word: "against"
+    match: ["against"]
+    definition: "In opposition to; or used to compare or check one thing with another."
+    example: "The admission controller checks the Pod against the policy."
+    es: "contra; comparado con"
+  - id: long-lived
+    word: "long-lived"
+    match: ["long-lived"]
+    definition: "Existing or running for a long time."
+    example: "A Deployment is for long-lived apps; a Job is for short tasks."
+    es: "de larga duración"
+  - id: upgrade
+    word: "upgrade"
+    match: ["upgrade", "upgrades"]
+    definition: "To change something to a newer or better version."
+    example: "Upgrade the control plane before the worker nodes."
+    es: "actualizar (a una versión nueva)"
+  - id: belong
+    word: "belong"
+    match: ["belong", "belongs"]
+    definition: "To be a part or member of a group, or to be owned by someone."
+    example: "These Pods belong to the Deployment web."
+    es: "pertenecer"
+  - id: approve
+    word: "approve"
+    match: ["approve", "approves", "approved", "approval"]
+    definition: "To officially say yes to something."
+    example: "An admin must approve the certificate signing request."
+    es: "aprobar; approval = aprobación"
+  - id: merge
+    word: "merge"
+    match: ["merge", "merges", "merged"]
+    definition: "To join two or more things into one."
+    example: "After review, merge the change into the main branch."
+    es: "fusionar, combinar"
+  - id: cause
+    word: "cause"
+    match: ["cause", "causes", "caused"]
+    definition: "The reason something happens; or to make something happen."
+    example: "Read the logs to find the cause of the crash."
+    es: "causa; causar"
+  - id: downtime
+    word: "downtime"
+    match: ["downtime"]
+    definition: "Time when a system or app is not working or not available."
+    example: "A rolling update replaces Pods with no downtime."
+    es: "tiempo de inactividad, caída del servicio"
+  - id: forward
+    word: "forward"
+    match: ["forward", "forwards", "forwarded"]
+    definition: "To send something on to another place."
+    example: "kube-proxy forwards traffic from the Service to a Pod."
+    es: "reenviar, redirigir"
+  - id: enforce
+    word: "enforce"
+    match: ["enforce", "enforces", "enforced"]
+    definition: "To make sure that a rule is obeyed."
+    example: "The CNI plugin enforces NetworkPolicies."
+    es: "hacer cumplir, aplicar (una regla)"
+  - id: guarantee
+    word: "guarantee"
+    match: ["guarantee"]
+    definition: "A promise that something will happen; or to promise it."
+    example: "A PodDisruptionBudget can guarantee that 2 replicas stay up during a drain."
+    es: "garantía; garantizar"
+  - id: across
+    word: "across"
+    match: ["across"]
+    definition: "Over all parts of something, or from one side to the other."
+    example: "Spread the replicas across three zones."
+    es: "a través de, entre, en todos"
+  - id: feasible
+    word: "feasible"
+    match: ["feasible"]
+    definition: "Possible to do or able to work."
+    example: "The scheduler first finds the feasible nodes for a Pod."
+    es: "factible, viable"
+  - id: maintenance
+    word: "maintenance"
+    match: ["maintenance"]
+    definition: "Work done to keep something in good condition."
+    example: "Drain the node before maintenance."
+    es: "mantenimiento"
+  - id: provide
+    word: "provide"
+    match: ["provide", "provides"]
+    definition: "To give or make something available."
+    example: "The cloud provider provides the load balancer."
+    es: "proporcionar, ofrecer"
+  - id: earlier
+    word: "earlier"
+    match: ["earlier"]
+    definition: "Before; at a time in the past compared with now."
+    example: "Roll back to an earlier revision."
+    es: "anterior, antes"
+  - id: expose
+    word: "expose"
+    match: ["expose", "exposes", "exposed", "exposing"]
+    definition: "To make something reachable or visible to others."
+    example: "Expose the Deployment with a NodePort Service."
+    es: "exponer, publicar (hacer accesible)"
+  - id: enable
+    word: "enable"
+    match: ["enable", "enabled"]
+    definition: "To turn on, or to make something possible."
+    example: "Enable encryption at rest for Secrets."
+    es: "habilitar, activar; permitir"
+  - id: support
+    word: "support"
+    match: ["support", "supports"]
+    definition: "To work with something or be able to use it."
+    example: "Not every storage class supports ReadWriteMany."
+    es: "admitir, ser compatible con; soporte"
+  - id: healthy
+    word: "healthy"
+    match: ["healthy"]
+    definition: "Working correctly, in good condition."
+    example: "Traffic goes only to healthy Pods."
+    es: "sano, en buen estado"
+  - id: cattle
+    word: "cattle"
+    match: ["cattle"]
+    definition: "Cows kept as a group; used for servers that are all the same and easy to replace."
+    example: "Treat servers like cattle, not pets."
+    es: "ganado (servidores reemplazables)"
+  - id: voluntary
+    word: "voluntary"
+    match: ["voluntary", "involuntary"]
+    definition: "Done by choice. Involuntary: not chosen, like a hardware crash."
+    example: "Draining a node is a voluntary disruption."
+    es: "voluntario; involuntary = involuntario"
+  - id: stay
+    word: "stay"
+    match: ["stay", "stays"]
+    definition: "To remain in the same place or state."
+    example: "The Pod stays in Pending."
+    es: "quedarse, permanecer"
+  - id: survive
+    word: "survive"
+    match: ["survive", "survives"]
+    definition: "To continue to exist after a bad event."
+    example: "Data in a PersistentVolume survives a Pod restart."
+    es: "sobrevivir, persistir"
+  - id: deny
+    word: "deny"
+    match: ["deny"]
+    definition: "To refuse to allow something."
+    example: "Start with a default deny policy for all incoming traffic."
+    es: "denegar, rechazar"
+  - id: crash
+    word: "crash"
+    match: ["crash", "crashed", "crashing"]
+    definition: "To stop working suddenly because of an error."
+    example: "The container keeps crashing because of a wrong env variable."
+    es: "fallar, colgarse; caída"
+  - id: purpose
+    word: "purpose"
+    match: ["purpose"]
+    definition: "The reason why something exists or is done."
+    example: "The purpose of a readiness probe is to control traffic."
+    es: "propósito, finalidad"
+  - id: opposite
+    word: "opposite"
+    match: ["opposite"]
+    definition: "Completely different; on the other side."
+    example: "Uncordon is the opposite of cordon."
+    es: "lo contrario, opuesto"
+  - id: revert
+    word: "revert"
+    match: ["revert"]
+    definition: "To go back to a previous state."
+    example: "Revert the commit in Git to undo the change."
+    es: "revertir, volver atrás"
+  - id: overwrite
+    word: "overwrite"
+    match: ["overwrite", "overwriting"]
+    definition: "To write new data in the place of old data, so the old data is lost."
+    example: "Kustomize patches change fields without overwriting the base."
+    es: "sobrescribir"
+  - id: approach
+    word: "approach"
+    match: ["approach"]
+    definition: "A way of doing or thinking about something."
+    example: "GitOps is a declarative approach to deployment."
+    es: "enfoque, forma de abordar"
+  - id: scrape
+    word: "scrape"
+    match: ["scrape", "scrapes", "scraped"]
+    definition: "To collect data by reading it from a source again and again."
+    example: "Prometheus scrapes the /metrics endpoint every 15 seconds."
+    es: "extraer, recoger (datos periódicamente)"
+  - id: govern
+    word: "govern"
+    match: ["governing", "governance"]
+    definition: "To control and make the rules for a group or organization."
+    example: "The CNCF has a governing board and a technical committee."
+    es: "gobernar; governance = gobernanza"
+  - id: fewer
+    word: "fewer"
+    match: ["fewer"]
+    definition: "A smaller number of (for things you can count)."
+    example: "Smaller images have fewer vulnerabilities."
+    es: "menos (cantidad contable)"
+  - id: consistent
+    word: "consistent"
+    match: ["consistent"]
+    definition: "Always the same, and in agreement with itself."
+    example: "etcd gives a consistent view of the cluster state."
+    es: "coherente, uniforme (no 'consistente' = sólido)"
+  - id: measure
+    word: "measure"
+    match: ["measure", "measures", "measured", "measurement"]
+    definition: "To find the size, amount or value of something."
+    example: "An SLI measures how well the service works."
+    es: "medir; measurement = medición"
+  - id: agreement
+    word: "agreement"
+    match: ["agreement"]
+    definition: "A promise or contract between two or more sides."
+    example: "An SLA is an agreement with your customers."
+    es: "acuerdo, contrato"
+  - id: require
+    word: "require"
+    match: ["require", "requires", "required"]
+    definition: "To need something, or to make it necessary."
+    example: "This volume requires a StorageClass."
+    es: "requerir, necesitar"
+  - id: pick
+    word: "pick"
+    match: ["pick", "picks", "picked"]
+    definition: "To select one from a group."
+    example: "kube-proxy picks a random Pod behind the Service."
+    es: "escoger, elegir"
+  - id: scope
+    word: "scope"
+    match: ["scope", "scoped"]
+    definition: "The area or range where something applies."
+    example: "A Role is namespace-scoped; a ClusterRole is cluster-scoped."
+    es: "ámbito, alcance"
+  - id: pressure
+    word: "pressure"
+    match: ["pressure"]
+    definition: "A state where a resource is close to running out."
+    example: "Under memory pressure, the kubelet evicts Pods."
+    es: "presión, escasez (de recursos)"
+  - id: onto
+    word: "onto"
+    match: ["onto"]
+    definition: "To a position on something."
+    example: "The scheduler places the Pod onto a node."
+    es: "sobre, en (con movimiento)"
+  - id: deprecated
+    word: "deprecated"
+    match: ["deprecated", "deprecate"]
+    definition: "Still available but no longer recommended; it will be removed later."
+    example: "This API version is deprecated, so update your manifest."
+    es: "obsoleto, en desuso"
+  - id: grant
+    word: "grant"
+    match: ["grant", "grants", "granted"]
+    definition: "To give a right or permission to someone."
+    example: "A RoleBinding grants the Role to a user."
+    es: "conceder, otorgar"
+  - id: restrict
+    word: "restrict"
+    match: ["restrict", "restricts", "restricted"]
+    definition: "To limit what someone or something can do."
+    example: "Restrict which Pods can talk to the database."
+    es: "restringir, limitar"
+  - id: prove
+    word: "prove"
+    match: ["prove", "proves"]
+    definition: "To show that something is true."
+    example: "A client certificate proves who the user is."
+    es: "demostrar, probar"
+  - id: escalation
+    word: "escalation"
+    match: ["escalation"]
+    definition: "An increase to a higher level, e.g. getting more rights than allowed."
+    example: "Set allowPrivilegeEscalation to false."
+    es: "escalada (de privilegios)"
+  - id: majority
+    word: "majority"
+    match: ["majority"]
+    definition: "More than half of a group."
+    example: "etcd needs a majority of members to accept writes."
+    es: "mayoría"
+  - id: threshold
+    word: "threshold"
+    match: ["threshold"]
+    definition: "A limit or value where something starts to happen."
+    example: "The probe fails after the failure threshold is reached."
+    es: "umbral, límite"
+  - id: kill
+    word: "kill"
+    match: ["kill", "kills", "killed"]
+    definition: "To stop a process by force."
+    example: "A container that uses more memory than its limit is killed."
+    es: "matar, terminar (un proceso)"
+  - id: issue
+    word: "issue"
+    match: ["issue", "issues", "issued"]
+    definition: "A problem; or to officially give out something, like a certificate."
+    example: "The CA issued the certificate after approval."
+    es: "problema; emitir"
+  - id: source-of-truth
+    word: "source of truth"
+    match: ["source of truth"]
+    definition: "The one place that holds the correct, official version of data."
+    example: "In GitOps, Git is the source of truth."
+    es: "fuente de verdad (referencia única)"
+  - id: override
+    word: "override"
+    match: ["override", "overridden"]
+    definition: "To replace a default value with your own value."
+    example: "Override chart values with --set."
+    es: "sobrescribir, anular (un valor)"
+  - id: cutover
+    word: "cutover"
+    match: ["cutover"]
+    definition: "The moment when traffic switches fully from an old system to a new one."
+    example: "Blue-green deployment gives an instant cutover."
+    es: "cambio (de golpe) al nuevo sistema"
+  - id: refuse
+    word: "refuse"
+    match: ["refuse", "refuses", "refused"]
+    definition: "To say no; to not accept something."
+    example: "The connection was refused because nothing listens on that port."
+    es: "rechazar, negarse"
+  - id: on-demand
+    word: "on demand"
+    match: ["on demand"]
+    definition: "When it is needed or asked for, not before."
+    example: "Serverless platforms start code on demand."
+    es: "bajo demanda, cuando se pide"
+  - id: vendor
+    word: "vendor"
+    match: ["vendor", "vendors"]
+    definition: "A company that sells a product or service."
+    example: "OpenTelemetry is vendor-neutral."
+    es: "proveedor, fabricante"
+  - id: lock-in
+    word: "lock-in"
+    match: ["lock-in"]
+    definition: "Being stuck with one company because changing is too hard or expensive."
+    example: "Open standards help avoid vendor lock-in."
+    es: "dependencia de un proveedor"
+  - id: spend
+    word: "spend"
+    match: ["spend", "spent", "spending"]
+    definition: "To use money or time."
+    example: "FinOps helps teams see where they spend money on the cloud."
+    es: "gastar; spending = gasto"
+  - id: drive
+    word: "drive"
+    match: ["drive", "drives"]
+    definition: "To cause or control how something happens."
+    example: "Events in a queue drive the scaling of the app."
+    es: "impulsar, guiar"
+  - id: proprietary
+    word: "proprietary"
+    match: ["proprietary"]
+    definition: "Owned by one company and not open for others to change or share."
+    example: "Avoid proprietary APIs if you want portability."
+    es: "propietario, privativo (de una empresa)"
+  - id: avoid
+    word: "avoid"
+    match: ["avoid", "avoids"]
+    definition: "To stay away from something or stop it from happening."
+    example: "Avoid the latest tag in production."
+    es: "evitar"
+  - id: aggregate
+    word: "aggregate"
+    match: ["aggregate"]
+    definition: "To collect many items and combine them into one total or view."
+    example: "A logging backend aggregates logs from all nodes."
+    es: "agregar, reunir (datos)"
+  - id: mainly
+    word: "mainly"
+    match: ["mainly", "mostly"]
+    definition: "In most cases; more than anything else."
+    example: "This tool is mainly used for tracing."
+    es: "principalmente, sobre todo"
+  - id: constraint
+    word: "constraint"
+    match: ["constraint", "constraints"]
+    definition: "A rule or limit on what is allowed."
+    example: "Topology spread constraints control where Pods run."
+    es: "restricción"
+  - id: attach
+    word: "attach"
+    match: ["attach", "attached"]
+    definition: "To connect or join one thing to another."
+    example: "The volume is attached to the node before the Pod starts."
+    es: "conectar, adjuntar"
+  - id: from-scratch
+    word: "scratch"
+    match: ["scratch"]
+    definition: "From the very beginning; also an empty base image."
+    example: "A static binary can run in an image built from scratch."
+    es: "desde cero; imagen vacía"
+  - id: leave
+    word: "leave"
+    match: ["leave", "leaves"]
+    definition: "To go away from a place, or to let something stay as it is."
+    example: "The Retain policy leaves the volume after the claim is deleted."
+    es: "dejar; salir de"
+  - id: reuse
+    word: "reuse"
+    match: ["reuse", "reused"]
+    definition: "To use something again."
+    example: "Build layers are cached and reused."
+    es: "reutilizar"
+  - id: reject
+    word: "reject"
+    match: ["reject", "rejected", "rejects"]
+    definition: "To refuse to accept something."
+    example: "A validating webhook can reject a Pod."
+    es: "rechazar"
+  - id: locked-down
+    word: "locked"
+    match: ["locked"]
+    definition: "Closed or protected so it cannot be changed or opened easily."
+    example: "The Restricted profile is heavily locked down."
+    es: "bloqueado, cerrado (locked down = muy restringido)"
+  - id: harden
+    word: "harden"
+    match: ["harden", "hardened", "hardening"]
+    definition: "To make a system more secure against attacks."
+    example: "Use a hardened base image."
+    es: "reforzar la seguridad, bastionar"
+  - id: recommend
+    word: "recommend"
+    match: ["recommend", "recommends", "recommended"]
+    definition: "To suggest that something is good or the best choice."
+    example: "An odd number of etcd members is recommended."
+    es: "recomendar"
+  - id: fault-tolerance
+    word: "fault tolerance"
+    match: ["fault tolerance"]
+    definition: "The ability to keep working when some parts break."
+    example: "Five etcd members give fault tolerance for two failures."
+    es: "tolerancia a fallos (fault = fallo, no 'falta')"
+  - id: told-apart
+    word: "tell apart"
+    match: ["told apart", "tell apart"]
+    definition: "To see the difference between two similar things."
+    example: "Labels let Pods be told apart."
+    es: "distinguir, diferenciar"
+  - id: room
+    word: "room"
+    match: ["room"]
+    definition: "Free space available for something."
+    example: "Preemption removes low-priority Pods to make room."
+    es: "espacio, sitio (no solo 'habitación')"
+  - id: stuck
+    word: "stuck"
+    match: ["stuck"]
+    definition: "Not able to move or continue."
+    example: "The Pod is stuck in Pending."
+    es: "atascado, bloqueado"
+  - id: depend
+    word: "depend"
+    match: ["depend", "depends", "dependent"]
+    definition: "To need something else in order to work."
+    example: "The app depends on the database being ready."
+    es: "depender (de); dependent = dependiente"
+  - id: within
+    word: "within"
+    match: ["within"]
+    definition: "Inside; not beyond a limit."
+    example: "Pods within the same namespace can reach each other."
+    es: "dentro de"
+  - id: oversight
+    word: "oversight"
+    match: ["oversight"]
+    definition: "The job of watching and controlling something to check it is done well."
+    example: "The TOC gives technical oversight to CNCF projects."
+    es: "supervisión (no 'descuido' aquí)"
+  - id: sensitive
+    word: "sensitive"
+    match: ["sensitive"]
+    definition: "Private or secret, and needs to be protected."
+    example: "Store sensitive data, like passwords, in a Secret."
+    es: "sensible, confidencial (no 'sensible' = sensato, que es 'sensible' en inglés)"
+  - id: whose
+    word: "whose"
+    match: ["whose"]
+    definition: "Used to say who or what something belongs to."
+    example: "Select the Pods whose label is app=web."
+    es: "cuyo, cuya"
+  - id: toward
+    word: "toward"
+    match: ["toward", "towards"]
+    definition: "In the direction of."
+    example: "Traffic moves toward the new version step by step."
+    es: "hacia"
+  - id: retry
+    word: "retry"
+    match: ["retry", "retries"]
+    definition: "To try again after a failure."
+    example: "A service mesh can add retries to failed requests."
+    es: "reintentar; reintento"
+  - id: premises
+    word: "premises"
+    match: ["premises"]
+    definition: "A building or site; used for servers in your own data center, not in the cloud."
+    example: "Some clusters run on premises, others in the cloud."
+    es: "instalaciones (on-premises = en local)"
+  - id: suitable
+    word: "suitable"
+    match: ["suitable"]
+    definition: "Right or good for a purpose."
+    example: "A Deployment is not suitable for a database."
+    es: "adecuado, apropiado"
+  - id: underlying
+    word: "underlying"
+    match: ["underlying"]
+    definition: "Lying below; the base layer that something else uses."
+    example: "The PV represents the underlying storage."
+    es: "subyacente"
+  - id: compliant
+    word: "compliant"
+    match: ["compliant"]
+    definition: "Following a rule, law or standard."
+    example: "Any OCI-compliant runtime can run the image."
+    es: "conforme, que cumple (con un estándar)"
+  - id: intercept
+    word: "intercept"
+    match: ["intercept", "intercepts"]
+    definition: "To stop and catch something on its way to another place."
+    example: "An admission controller intercepts requests to the API server."
+    es: "interceptar"
+  - id: notice
+    word: "notice"
+    match: ["notice", "notices"]
+    definition: "To see or become aware of something."
+    example: "The controller notices that a Pod is missing."
+    es: "darse cuenta, notar (no 'noticia')"
+  - id: respect
+    word: "respect"
+    match: ["respect", "respecting", "respects"]
+    definition: "To follow or obey a rule or limit."
+    example: "kubectl drain respects PodDisruptionBudgets."
+    es: "respetar"
+  - id: exceed
+    word: "exceed"
+    match: ["exceed", "exceeds"]
+    definition: "To go above a limit."
+    example: "A Pod cannot exceed its memory limit."
+    es: "superar, exceder"
+  - id: compromised
+    word: "compromised"
+    match: ["compromised"]
+    definition: "Attacked and controlled by someone who should not have access."
+    example: "If a Pod is compromised, the attacker gets its permissions."
+    es: "comprometido, vulnerado (atacado)"
+  - id: ignore
+    word: "ignore"
+    match: ["ignore", "ignores", "ignored"]
+    definition: "To pay no attention to something on purpose."
+    example: "Use --ignore-daemonsets when you drain the node."
+    es: "no tener en cuenta, pasar por alto (no 'desconocer')"
+  - id: average
+    word: "average"
+    match: ["average"]
+    definition: "The typical middle value, found by adding values and dividing by the count."
+    example: "The HPA targets 60% average CPU usage."
+    es: "media, promedio"
+  - id: find-out
+    word: "find out"
+    match: ["find out"]
+    definition: "To learn or discover a fact."
+    example: "Find out why the Pod does not start."
+    es: "averiguar, descubrir"

@@ -21,6 +21,7 @@ def main() -> int:
         for d in exam.domains:
             print(f"  {d.name:<40} {len(lib.questions_for(exam.id, d.id)):>3}  (weight {d.weight}%)")
     print(f"glossary: {len(lib.glossary)} terms")
+    print(f"vocabulary (exam English): {len(lib.vocabulary)} words")
     for track in lib.tracks.values():
         tasks = [t for t in lib.tasks.values() if t.id.startswith(f"{track.id}-")]
         print(f"{track.id} labs: {len(tasks)} tasks")

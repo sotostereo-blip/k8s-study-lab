@@ -189,3 +189,32 @@ code { font-family: var(--mono); font-size: .88em; background: var(--accent-soft
 .confirm { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-soft); }
 .confirm p { margin: 0; }
 .checks .guard { color: var(--muted); font-size: 12px; }
+
+/* ---------- English support ---------- */
+.term { border-bottom: 2px dashed var(--accent); cursor: help; }
+.word { border-bottom: 2px dotted #b07d1a; cursor: help; }
+.english-bar { margin: 10px 0 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.eb-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.eb-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
+.eb-hint { font-size: 13px; color: var(--muted); margin-left: 6px; }
+.eb-card { margin-top: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.listen { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 2px 10px; font-size: 13px; cursor: pointer; }
+.listen:hover { border-color: var(--accent); }
+.chip { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 2px 10px; font-size: 13px; cursor: pointer; }
+.chip.term { border-color: var(--accent); color: var(--accent); }
+.chip.word { border-color: #b07d1a; color: #b07d1a; }
+.chip.active { background: var(--accent-soft); }
+.word-card { display: flex; flex-direction: column; gap: 4px; }
+.wc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wc-head .listen { padding: 0 8px; }
+.kind { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; }
+.kind.term { background: var(--accent-soft); color: var(--accent); }
+.kind.word { background: rgba(176, 125, 26, .15); color: #b07d1a; }
+.example { color: var(--muted); font-style: italic; }
+.definition { font-size: 18px; margin: 0 0 6px; }
+.card .options button { font-size: 16px; }
+@media (prefers-color-scheme: dark) {
+  .word { border-bottom-color: #d8a840; }
+  .chip.word { border-color: #d8a840; color: #d8a840; }
+  .kind.word { color: #d8a840; }
+}

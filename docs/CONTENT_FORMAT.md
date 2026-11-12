@@ -11,6 +11,24 @@ content/
     └── <domain-id>.yaml        # one file per domain
 ```
 
+## Exam English (`content/vocabulary.yaml`)
+
+Everyday (non-technical) words used in the questions and tasks that a learner may not
+know. They are highlighted automatically wherever they appear.
+
+```yaml
+words:
+  - id: ensure
+    word: ensure
+    match: [ensure, ensures, ensured, ensuring]   # forms to highlight (whole words)
+    definition: "To make certain that something happens or is true."
+    example: "Ensure that the Pod is running before you test the Service."
+    es: "asegurar, garantizar"
+```
+
+A form may not repeat a glossary term, and every word must appear somewhere in the content
+(a test checks this).
+
 ## Question
 
 ```yaml

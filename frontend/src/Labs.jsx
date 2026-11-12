@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
+import { EnglishBar, EnglishText } from './english.jsx'
 
 /* Hands-on labs: pick a task, a real k3s cluster starts in Docker, solve it in the browser terminal. */
 
@@ -149,6 +150,7 @@ function LabView({ task, track, domainName, onBack }) {
           <p className={`timer ${over ? 'low' : ''}`}>{fmt(elapsed)} <small>/ {task.minutes}:00 target</small></p>
         )}
         <div className="task-text"><Markdown text={task.task} /></div>
+        <EnglishBar text={`${task.title}\n${noCode(task.task)}`} speakText={`${task.title}. ${speakable(task.task)}`} />
 
         <h2>Checks</h2>
         <ul className="checks">
@@ -234,9 +236,15 @@ function Inline({ text }) {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
   return parts.map((p, i) =>
     p.startsWith('`') ? <code key={i}>{p.slice(1, -1)}</code>
-      : p.startsWith('**') ? <strong key={i}>{p.slice(2, -2)}</strong>
-        : p)
+      : p.startsWith('**') ? <strong key={i}><EnglishText text={p.slice(2, -2)} /></strong>
+        : <EnglishText key={i} text={p} />)
 }
+
+/* key words should not come from names inside `code` (gpu-job is not the word Job) */
+const noCode = (md) => md.replace(/`[^`]+`/g, ' ')
+
+/* text for the 🔊 button: no Markdown, no YAML/commands in backticks read letter by letter */
+const speakable = (md) => md.replace(/`([^`]+)`/g, '$1').replace(/\*\*/g, '').replace(/^\s*[-*]\s+/gm, '').replace(/\n+/g, ' ')
 
 function fmt(s) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -362,6 +370,7 @@ function MockExam({ session, track, domains, onExit }) {
         </div>
         <h1>{task.title}</h1>
         <div className="task-text"><Markdown text={task.task} /></div>
+        <EnglishBar key={task.id} text={`${task.title}\n${noCode(task.task)}`} speakText={`${task.title}. ${speakable(task.task)}`} />
         <div className="actions">
           <button disabled={i === 0} onClick={() => setI(i - 1)}>Previous</button>
           <button disabled={i === session.tasks.length - 1} onClick={() => setI(i + 1)}>Next</button>

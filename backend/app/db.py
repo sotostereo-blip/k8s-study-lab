@@ -44,6 +44,13 @@ CREATE TABLE IF NOT EXISTS lab_attempts (
     seconds INTEGER,                  -- time since the lab was ready
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS vocab_cards (
+    item_id TEXT PRIMARY KEY,         -- term:<glossary id> | word:<vocabulary id>
+    box INTEGER NOT NULL DEFAULT 1,   -- Leitner box 1..5
+    due_at TEXT NOT NULL DEFAULT (datetime('now')),
+    correct INTEGER NOT NULL DEFAULT 0,
+    wrong INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS mock_sessions (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL,

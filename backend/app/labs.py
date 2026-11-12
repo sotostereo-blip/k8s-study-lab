@@ -82,8 +82,9 @@ class LabManager:
         return self.run(self.compose(env, "exec", "-T", "toolbox", "bash", "-s"),
                         "set -o pipefail\n" + script, timeout)
 
-    def _log(self, msg: str) -> None:
-        self.state.log.append(f"[{time.strftime('%H:%M:%S')}] {msg}")
+    def _log(self, msg: str, gen: int | None = None) -> None:
+        if gen is None or gen == self.generation:   # a stale thread must not write into a newer lab's log
+            self.state.log.append(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
     # ---------- lifecycle ----------
 
@@ -154,11 +155,15 @@ class LabManager:
     def stop(self) -> dict:
         with self.lock:
             self.generation += 1
+            gen = self.generation
             env = self.state.environment
             self.state = LabState(status="stopping", environment=env)
         with self.docker_lock:
-            self.run(self.compose(env, "down", "-v", "--remove-orphans"), None, 180)
-        self.state = LabState()
+            if gen == self.generation:   # a newer start does its own "down" first
+                self.run(self.compose(env, "down", "-v", "--remove-orphans"), None, 180)
+        with self.lock:
+            if gen == self.generation:   # never overwrite the state of a lab started after this stop
+                self.state = LabState()
         return self.status()
 
     def status(self) -> dict:

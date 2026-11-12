@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,8 +44,13 @@ class MockStartIn(BaseModel):
 
 
 class EnglishEventIn(BaseModel):
-    kind: str  # glossary_lookup | translation
-    ref: str | None = None
+    kind: str  # glossary_lookup | translation | listen
+    ref: str | None = None  # glossary id, or word:<vocabulary id>
+
+
+class VocabAnswerIn(BaseModel):
+    item_id: str
+    selected: str
 
 
 def is_correct(q: Question, selected: list[str]) -> bool:
@@ -173,6 +179,94 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     @app.get("/api/glossary")
     def glossary():
         return [t.model_dump() for t in lib.glossary.values()]
+
+    @app.get("/api/vocabulary")
+    def vocabulary():
+        return [w.model_dump() for w in lib.vocabulary.values()]
+
+    # ---------- English: vocabulary practice (Leitner boxes, like the questions) ----------
+
+    def vocab_items() -> dict[str, dict]:
+        items = {f"term:{t.id}": {"id": f"term:{t.id}", "kind": "term", "word": t.term, "definition": t.definition,
+                                  "example": None, "es": t.es, "match": t.match or [t.term]} for t in lib.glossary.values()}
+        items |= {f"word:{w.id}": {"id": f"word:{w.id}", "kind": "word", "word": w.word, "definition": w.definition,
+                                   "example": w.example, "es": w.es, "match": w.match} for w in lib.vocabulary.values()}
+        return items
+
+    def lookups() -> dict[str, int]:
+        """How often each item was looked up or translated while studying."""
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT ref, COUNT(*) AS n FROM english_events WHERE ref IS NOT NULL GROUP BY ref").fetchall()
+        out: dict[str, int] = {}
+        for r in rows:
+            key = r["ref"] if r["ref"].startswith("word:") else f"term:{r['ref']}"
+            out[key] = out.get(key, 0) + r["n"]
+        return out
+
+    @app.get("/api/english/next")
+    def english_next(n: int = 10, kind: str | None = None):
+        items = {k: v for k, v in vocab_items().items() if kind in (None, v["kind"])}
+        if len(items) < 4:
+            raise HTTPException(400, "Not enough vocabulary yet")
+        with db.connect() as conn:
+            cards = {r["item_id"]: dict(r) for r in conn.execute("SELECT * FROM vocab_cards").fetchall()}
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        looked = lookups()
+        due = sorted((c["box"], c["due_at"], k) for k, c in cards.items() if k in items and c["due_at"] <= now)
+        unseen = [k for k in items if k not in cards]
+        random.shuffle(unseen)
+        unseen.sort(key=lambda k: -looked.get(k, 0))   # words you needed help with come first
+        ids = ([k for *_, k in due] + unseen)[:n]
+        out = []
+        for k in ids:
+            it = items[k]
+            others = random.sample([o for o in items.values() if o["kind"] == it["kind"] and o["id"] != k], 3)
+            options = [o["word"] for o in others] + [it["word"]]
+            random.shuffle(options)
+            example = it["example"]
+            if example:   # hide the word (all its forms) in the example sentence
+                forms = sorted(it["match"] + [it["word"]], key=len, reverse=True)
+                example = re.sub(r"\b(" + "|".join(map(re.escape, forms)) + r")\b", "_____", example, flags=re.I)
+            out.append({"id": k, "kind": it["kind"], "definition": it["definition"], "example": example,
+                        "options": options, "looked_up": looked.get(k, 0)})
+        return {"due": len(due), "unseen": len(unseen), "items": out}
+
+    @app.post("/api/english/answer")
+    def english_answer(body: VocabAnswerIn):
+        items = vocab_items()
+        if body.item_id not in items:
+            raise HTTPException(404, "Unknown vocabulary item")
+        it = items[body.item_id]
+        ok = body.selected.strip().lower() == it["word"].lower()
+        with db.connect() as conn:
+            row = conn.execute("SELECT box FROM vocab_cards WHERE item_id=?", (body.item_id,)).fetchone()
+            box = srs.next_box(row["box"] if row else 1, ok)
+            conn.execute(
+                "INSERT INTO vocab_cards (item_id, box, due_at, correct, wrong) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(item_id) DO UPDATE SET box=excluded.box, due_at=excluded.due_at, "
+                "correct=correct+excluded.correct, wrong=wrong+excluded.wrong",
+                (body.item_id, box, srs.due_at(box), int(ok), int(not ok)),
+            )
+        return {"correct": ok, **it}
+
+    @app.get("/api/english/stats")
+    def english_stats():
+        items = vocab_items()
+        with db.connect() as conn:
+            cards = conn.execute("SELECT item_id, box FROM vocab_cards").fetchall()
+            ev = conn.execute("SELECT kind, COUNT(*) AS n FROM english_events GROUP BY kind").fetchall()
+        looked = lookups()
+        top = sorted(((n, k) for k, n in looked.items() if k in items), reverse=True)[:10]
+        return {
+            "items": len(items),
+            "terms": sum(1 for i in items.values() if i["kind"] == "term"),
+            "words": sum(1 for i in items.values() if i["kind"] == "word"),
+            "practised": sum(1 for c in cards if c["item_id"] in items),
+            "mastered": sum(1 for c in cards if c["item_id"] in items and c["box"] >= 4),
+            "events": {r["kind"]: r["n"] for r in ev},
+            "most_looked_up": [{**items[k], "count": n} for n, k in top],
+        }
 
     @app.get("/api/practice/next")
     def practice_next(exam_id: str = "kcna", domain: str | None = None, n: int = 10):

@@ -229,3 +229,78 @@ def test_mock_exam_guards(tmp_path):
 def test_every_task_has_work_checks():
     for t in load_library(CONTENT).tasks.values():
         assert any(not c.guard for c in t.checks), t.id
+
+
+# ---------- English practice ----------
+
+def test_vocabulary_practice_prioritises_lookups(client):
+    lib = load_library(CONTENT)
+    for _ in range(3):
+        client.post("/api/english/event", json={"kind": "glossary_lookup", "ref": "taint"})
+    batch = client.get("/api/english/next?n=5&kind=term").json()
+    first = batch["items"][0]
+    assert first["id"] == "term:taint" and first["looked_up"] == 3   # the word you looked up comes first
+    assert len(first["options"]) == 4 and lib.glossary["taint"].term in first["options"]
+    assert "es" not in first and "word" not in first                 # no answer leak
+
+    ok = client.post("/api/english/answer", json={"item_id": "term:taint", "selected": "Taint"}).json()
+    assert ok["correct"] and ok["es"]
+    bad = client.post("/api/english/answer", json={"item_id": "term:pod", "selected": "Node"}).json()
+    assert not bad["correct"] and bad["word"] == "Pod"
+
+    stats = client.get("/api/english/stats").json()
+    assert stats["practised"] == 2 and stats["most_looked_up"][0]["id"] == "term:taint"
+    assert stats["events"]["glossary_lookup"] == 3
+
+
+def test_vocabulary_words_are_valid_and_found_in_content():
+    import re
+    import yaml
+    lib = load_library(CONTENT)
+    if not lib.vocabulary:
+        return
+    def strings(node):
+        if isinstance(node, str):
+            yield node
+        elif isinstance(node, dict):
+            for v in node.values():
+                yield from strings(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from strings(v)
+
+    text = " ".join(
+        t for f in CONTENT.rglob("*.yaml") if f.name not in ("vocabulary.yaml", "glossary.yaml")
+        for t in strings(yaml.safe_load(f.read_text()))
+    ).lower()
+    missing = [w.id for w in lib.vocabulary.values()
+               if not any(re.search(rf"\b{re.escape(m.lower())}\b", text) for m in w.match)]
+    assert not missing, f"words not used anywhere in the content: {missing}"
+
+
+def test_stop_does_not_override_a_newer_start(tmp_path):
+    """A stop that finishes after a newer start must not mark the new lab as idle."""
+    import threading
+    import time as _t
+    from app.labs import LabManager
+
+    gate = threading.Event()
+
+    def slow_docker(cmd, stdin, timeout):
+        if "down" in cmd:
+            gate.wait(2)          # the stop's "down" is slow
+        if stdin and "grep -cw Ready" in stdin:
+            return 0, "1"
+        return 0, ""
+
+    m = LabManager(LABS, slow_docker, poll_seconds=0.01)
+    stopper = threading.Thread(target=m.stop)
+    stopper.start()
+    _t.sleep(0.05)
+    m.start("cka-wl-001", "single-node", 1)   # newer start while the stop is still running
+    gate.set()
+    stopper.join()
+    end = _t.time() + 3
+    while m.status()["status"] != "ready" and _t.time() < end:
+        _t.sleep(0.02)
+    assert m.status()["status"] == "ready" and m.status()["task_id"] == "cka-wl-001"

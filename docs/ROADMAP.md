@@ -8,6 +8,8 @@
 - [x] Dashboard: accuracy per domain, due reviews, Spanish usage
 - [x] Grow the bank to 150 original questions (66 / 42 / 24 / 18 per domain)
 - [x] Explain why each wrong option is wrong (`why` on every distractor)
+- [x] English everywhere: exam-English vocabulary, key-word bar, text to speech, vocabulary
+      practice with spaced repetition (KCNA and CKA labs)
 - [ ] Second review pass of all questions against current docs
 - [ ] Reading-speed indicator per question (words per minute)
 
