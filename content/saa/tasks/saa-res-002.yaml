@@ -1,0 +1,58 @@
+id: saa-res-002
+title: Fan out SNS messages to an SQS queue
+domain: resilient
+difficulty: 2
+minutes: 10
+environment: aws
+setup: |
+  aws sns create-topic --name saa-order-events >/dev/null
+  aws sqs create-queue --queue-name saa-billing >/dev/null
+task: |
+  The shop publishes order events to the SNS topic `saa-order-events`. The billing team wants its
+  own copy of every event in the SQS queue `saa-billing`, so billing can be slow or down without
+  losing events (a **fan-out** design).
+
+  1. Add a **queue policy** to `saa-billing` that allows the service `sns.amazonaws.com` to
+     `sqs:SendMessage`, only when the source is the topic (`aws:SourceArn` = the topic ARN).
+  2. **Subscribe** the queue `saa-billing` to the topic (protocol `sqs`).
+  3. **Publish** a test message to the topic with the text `order-1001 paid` and leave it in the
+     queue (do not delete it).
+checks:
+  - name: '`saa-billing` is subscribed to `saa-order-events` with protocol sqs'
+    run: |
+      out=$(aws sns list-subscriptions-by-topic --topic-arn arn:aws:sns:us-east-1:000000000000:saa-order-events --output json 2>&1)
+      echo "$out" | jq -e '[.Subscriptions[] | select(.Protocol == "sqs" and .Endpoint == "arn:aws:sqs:us-east-1:000000000000:saa-billing")] | length > 0' >/dev/null
+  - name: The queue policy lets SNS send messages from this topic only
+    run: |
+      u=$(aws sqs get-queue-url --queue-name saa-billing --query QueueUrl --output text 2>&1) || exit 1
+      out=$(aws sqs get-queue-attributes --queue-url "$u" --attribute-names Policy --output json 2>&1)
+      echo "$out" | jq -e '.Attributes.Policy | fromjson | [.Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Allow" and ([.Principal.Service] | flatten | index("sns.amazonaws.com"))
+          and ([.Action] | flatten | any(. == "sqs:SendMessage" or . == "sqs:*"))
+          and (.Condition | tostring | contains("arn:aws:sns:us-east-1:000000000000:saa-order-events")))] | length > 0' >/dev/null
+  - name: The message `order-1001 paid` arrived in `saa-billing`
+    run: |
+      u=$(aws sqs get-queue-url --queue-name saa-billing --query QueueUrl --output text 2>&1) || exit 1
+      out=$(aws sqs receive-message --queue-url "$u" --max-number-of-messages 10 --visibility-timeout 0 --wait-time-seconds 1 --output json 2>&1)
+      echo "$out" | grep -q 'order-1001 paid'
+solution: |
+  TOPIC=arn:aws:sns:us-east-1:000000000000:saa-order-events
+  URL=$(aws sqs get-queue-url --queue-name saa-billing --query QueueUrl --output text)
+  QARN=$(aws sqs get-queue-attributes --queue-url "$URL" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+
+  # 1. Queue policy (the Policy attribute is a JSON string inside JSON)
+  POLICY=$(jq -nc --arg q "$QARN" --arg t "$TOPIC" '{Version:"2012-10-17",Statement:[{Effect:"Allow",
+    Principal:{Service:"sns.amazonaws.com"},Action:"sqs:SendMessage",Resource:$q,
+    Condition:{ArnEquals:{"aws:SourceArn":$t}}}]}')
+  jq -n --arg p "$POLICY" '{Policy:$p}' > /tmp/qpolicy.json
+  aws sqs set-queue-attributes --queue-url "$URL" --attributes file:///tmp/qpolicy.json
+
+  # 2. Subscribe and 3. publish
+  aws sns subscribe --topic-arn "$TOPIC" --protocol sqs --notification-endpoint "$QARN"
+  aws sns publish --topic-arn "$TOPIC" --message "order-1001 paid"
+
+  # Look at the message without deleting it (it is wrapped in an SNS JSON envelope):
+  aws sqs receive-message --queue-url "$URL" --visibility-timeout 0
+docs:
+  - https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html
+  - https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html

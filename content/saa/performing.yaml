@@ -1,0 +1,932 @@
+domain: performing
+questions:
+  # ---------- 3.1 High-performing and scalable storage ----------
+  - id: saa-perf-001
+    difficulty: 1
+    type: single
+    question: "A company runs a web application on 12 Linux EC2 instances in three Availability Zones. All instances must read and write the same files at the same time through a standard POSIX file system. The storage must grow and shrink on its own. Which storage service meets these requirements?"
+    options:
+      - id: a
+        text: "One Amazon EBS gp3 volume attached to all instances"
+        why: "EBS Multi-Attach works only with io1/io2 volumes, only in one AZ, and needs a cluster-aware file system. It does not grow on its own."
+      - id: b
+        text: "Amazon S3 mounted as a local disk on each instance"
+        why: "S3 is object storage. Mounting tools do not give full POSIX semantics such as file locking and in-place edits."
+      - id: c
+        text: "Amazon EFS file system with mount targets in each AZ"
+      - id: d
+        text: "Instance store volumes synced between the instances"
+        why: "Instance store is local to one host and is lost when the instance stops. Syncing it yourself is complex and slow."
+    answer: [c]
+    explanation: |
+      Amazon EFS is a managed NFS file system for Linux. Thousands of instances
+      in many AZs can mount it at the same time. It scales storage up and down
+      automatically, so you do not provision capacity.
+    docs:
+      - https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html
+    glossary: [aws-efs, aws-ec2, aws-az]
+
+  - id: saa-perf-002
+    difficulty: 2
+    type: single
+    question: "A research team runs high performance computing (HPC) jobs on hundreds of EC2 instances. The jobs need a shared file system with sub-millisecond latency and hundreds of GB/s of throughput. The input data is stored in an S3 bucket, and the results must go back to S3. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Amazon FSx for Lustre file system linked to the S3 bucket"
+      - id: b
+        text: "Amazon EFS file system in Max I/O mode with data copied from S3"
+        why: "EFS is a general shared file system. It cannot reach Lustre-level throughput for HPC and has no native link to an S3 bucket."
+      - id: c
+        text: "Amazon FSx for Windows File Server with data copied from S3"
+        why: "FSx for Windows File Server gives SMB shares for Windows workloads. It is not built for Linux HPC clusters."
+      - id: d
+        text: "AWS Storage Gateway File Gateway in front of the S3 bucket"
+        why: "File Gateway gives on-premises apps NFS/SMB access to S3. It is not a high-throughput parallel file system for HPC."
+    answer: [a]
+    explanation: |
+      FSx for Lustre is a parallel file system made for HPC, machine learning and
+      media processing. A data repository association links it to S3: it shows
+      S3 objects as files and can export results back to the bucket.
+    docs:
+      - https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html
+    glossary: [aws-fsx, aws-s3]
+
+  - id: saa-perf-003
+    difficulty: 2
+    type: single
+    question: "A company moves a Windows application to AWS. The application stores files on SMB shares and uses Microsoft Active Directory for user permissions. The company wants a fully managed file service with the LEAST operational overhead. Which service should a solutions architect choose?"
+    options:
+      - id: a
+        text: "Amazon EFS with an Active Directory connector"
+        why: "EFS uses the NFS protocol and is for Linux clients. It does not support SMB or Windows Active Directory permissions."
+      - id: b
+        text: "A Windows EC2 instance with a large EBS volume shared over SMB"
+        why: "This works, but the company must patch, back up and scale the file server itself. That is more operational overhead."
+      - id: c
+        text: "Amazon FSx for Lustre joined to the domain"
+        why: "FSx for Lustre is a Linux parallel file system for HPC. It does not offer SMB shares for Windows clients."
+      - id: d
+        text: "Amazon FSx for Windows File Server joined to the domain"
+    answer: [d]
+    explanation: |
+      FSx for Windows File Server is a managed Windows file system. It supports
+      the SMB protocol, NTFS permissions and integration with Microsoft Active
+      Directory. AWS handles hardware, patching and backups.
+    docs:
+      - https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html
+    glossary: [aws-fsx]
+
+  - id: saa-perf-004
+    difficulty: 3
+    type: single
+    question: "A company runs a large Oracle database on EC2. One EBS volume must deliver 150,000 IOPS with sub-millisecond latency and 99.999% durability. Which EBS volume type meets these requirements?"
+    options:
+      - id: a
+        text: "General Purpose SSD (gp3) with the highest IOPS setting"
+        why: "gp3 has a lower IOPS limit per volume than this workload needs and is designed for 99.8%-99.9% durability, not 99.999%."
+      - id: b
+        text: "Provisioned IOPS SSD (io2 Block Express)"
+      - id: c
+        text: "Throughput Optimized HDD (st1)"
+        why: "st1 is for large sequential reads and writes such as logs and big data. Its IOPS are very low for a database."
+      - id: d
+        text: "Instance store NVMe volumes in a RAID 0 array"
+        why: "Instance store can be fast, but data is lost when the instance stops or the host fails. It does not offer 99.999% durability."
+    answer: [b]
+    explanation: |
+      io2 Block Express volumes support up to 256,000 IOPS per volume, sub-
+      millisecond latency and 99.999% durability. They are made for large,
+      I/O-intensive databases such as Oracle, SAP HANA and SQL Server.
+    docs:
+      - https://docs.aws.amazon.com/ebs/latest/userguide/provisioned-iops.html
+      - https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html
+    glossary: [aws-ebs, aws-ec2]
+
+  - id: saa-perf-005
+    difficulty: 1
+    type: single
+    question: "An application on EC2 writes a large amount of temporary scratch data during processing. The data needs the lowest possible disk latency. Losing the data when the instance stops is acceptable. Which storage option is the BEST fit?"
+    options:
+      - id: a
+        text: "Instance store volumes on the EC2 instance"
+      - id: b
+        text: "An Amazon EBS io2 volume"
+        why: "io2 is fast and durable, but it is network-attached storage. It costs more and has more latency than local NVMe disks for scratch data."
+      - id: c
+        text: "An Amazon EFS file system"
+        why: "EFS is shared network storage. Its latency is higher than local disks, and scratch data does not need sharing."
+      - id: d
+        text: "An Amazon S3 bucket in the same Region"
+        why: "S3 is object storage reached over HTTPS. It is not a low-latency disk for temporary processing data."
+    answer: [a]
+    explanation: |
+      Instance store disks are physically attached to the host, so they give
+      very low latency and high IOPS. The data is temporary and is lost on stop
+      or host failure, which is fine for scratch data, buffers and caches.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html
+    glossary: [aws-instance-store, aws-ec2]
+
+  - id: saa-perf-006
+    difficulty: 3
+    type: single
+    question: "An application reads about 20,000 objects per second from one S3 bucket. All object keys start with the same prefix, `images/`. The application often receives HTTP 503 Slow Down errors. Which change will improve performance MOST?"
+    options:
+      - id: a
+        text: "Turn on S3 Transfer Acceleration for the bucket"
+        why: "Transfer Acceleration speeds up long-distance transfers through edge locations. It does not raise the request rate limit per prefix."
+      - id: b
+        text: "Spread the objects across several key prefixes"
+      - id: c
+        text: "Move the objects to the S3 Standard-IA storage class"
+        why: "Storage classes change cost and availability, not the request rate per prefix. Standard-IA also adds a retrieval fee."
+      - id: d
+        text: "Turn on S3 Versioning to keep more object copies"
+        why: "Versioning keeps old versions for recovery. It does not add read capacity and can add more requests to the same prefix."
+    answer: [b]
+    explanation: |
+      S3 supports at least 5,500 GET/HEAD and 3,500 PUT/COPY/POST/DELETE
+      requests per second for each partitioned prefix. There is no limit on the
+      number of prefixes, so spreading keys across more prefixes (and adding
+      retries with backoff) scales the read rate.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html
+    glossary: [aws-s3, aws-s3-bucket]
+
+  - id: saa-perf-007
+    difficulty: 2
+    type: multiple
+    question: "Users around the world upload video files of 2-10 GB to one S3 bucket in us-east-1. Uploads are slow and often fail halfway. Which combination of steps will make the uploads faster and more reliable? (Select TWO.)"
+    options:
+      - id: a
+        text: "Turn on S3 Versioning for the bucket"
+        why: "Versioning keeps old copies of objects. It does not change upload speed or retry failed parts."
+      - id: b
+        text: "Use multipart upload for the video files"
+      - id: c
+        text: "Use the S3 Intelligent-Tiering storage class"
+        why: "Intelligent-Tiering moves objects between access tiers to save money. It has no effect on upload speed."
+      - id: d
+        text: "Add an S3 Lifecycle rule to clean up old files"
+        why: "Lifecycle rules can remove incomplete uploads, but they do not make new uploads faster."
+      - id: e
+        text: "Turn on S3 Transfer Acceleration for the bucket"
+    answer: [b, e]
+    explanation: |
+      Multipart upload sends parts in parallel, and a failed part can be sent
+      again without restarting the whole file. AWS recommends it for objects
+      over 100 MB. Transfer Acceleration routes uploads through CloudFront edge
+      locations and the AWS network, which helps distant users.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html
+    glossary: [aws-s3, aws-transfer-acceleration, aws-edge-location]
+
+  # ---------- 3.2 High-performing and elastic compute ----------
+  - id: saa-perf-008
+    difficulty: 1
+    type: single
+    question: "A company runs a tightly coupled HPC application on EC2. The nodes exchange a lot of data and need the lowest possible network latency between them. Which placement strategy should the company use?"
+    options:
+      - id: a
+        text: "A spread placement group across three AZs"
+        why: "A spread group puts each instance on different hardware to reduce shared failures. It does not give the lowest latency."
+      - id: b
+        text: "A partition placement group in one AZ"
+        why: "Partition groups separate groups of instances onto different racks for large distributed systems. They are not tuned for lowest latency."
+      - id: c
+        text: "An Auto Scaling group across all AZs in the Region"
+        why: "Spreading nodes across AZs adds network distance and latency between them, which is the opposite of the goal."
+      - id: d
+        text: "A cluster placement group in one AZ"
+    answer: [d]
+    explanation: |
+      A cluster placement group packs instances close together inside one AZ.
+      This gives low latency and high per-flow throughput between nodes, which
+      tightly coupled HPC jobs need.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-strategies.html
+    glossary: [aws-ec2, aws-az]
+
+  - id: saa-perf-009
+    difficulty: 2
+    type: single
+    question: "A company runs a large Apache Cassandra cluster on 60 EC2 instances. The company wants to limit the impact of a hardware failure by keeping groups of nodes on separate racks, and Cassandra must know which group each node is in. Which placement strategy meets these requirements?"
+    options:
+      - id: a
+        text: "Partition placement group"
+      - id: b
+        text: "Cluster placement group"
+        why: "A cluster group places all instances close together. One rack failure could affect many nodes at once."
+      - id: c
+        text: "Spread placement group"
+        why: "A spread group allows only seven running instances per AZ, which is too few for 60 nodes."
+      - id: d
+        text: "Dedicated Hosts for every node"
+        why: "Dedicated Hosts are for licensing and compliance. They do not show rack-level groups to the application."
+    answer: [a]
+    explanation: |
+      A partition placement group splits instances into partitions, and each
+      partition uses its own set of racks. EC2 shows the partition number, so
+      topology-aware systems like Cassandra, HDFS and Kafka can place replicas
+      in different partitions.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-strategies.html
+    glossary: [aws-ec2]
+
+  - id: saa-perf-010
+    difficulty: 2
+    type: single
+    question: "A Lambda function resizes images. It is configured with 512 MB of memory and uses only about 200 MB, but it is CPU-bound and runs slowly. How can a solutions architect make the function run faster?"
+    options:
+      - id: a
+        text: "Increase the function timeout to 15 minutes"
+        why: "A longer timeout only lets the function run longer before it stops. It does not make the code faster."
+      - id: b
+        text: "Turn on provisioned concurrency for the function"
+        why: "Provisioned concurrency removes cold starts. It does not give each invocation more CPU power."
+      - id: c
+        text: "Increase the memory setting of the function"
+      - id: d
+        text: "Increase the reserved concurrency of the function"
+        why: "Reserved concurrency sets how many copies can run at once. Each copy still gets the same CPU."
+    answer: [c]
+    explanation: |
+      Lambda gives CPU power in proportion to the memory setting (128 MB to
+      10,240 MB). Raising memory also gives more vCPU, so CPU-bound code runs
+      faster, even if it does not use the extra memory.
+    docs:
+      - https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html
+    glossary: [aws-lambda, serverless]
+
+  - id: saa-perf-011
+    difficulty: 2
+    type: single
+    question: "A company uses API Gateway and a Java Lambda function for a checkout API. Some requests are slow because of cold starts. Traffic is steady during business hours, and the company needs consistent low latency. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Set reserved concurrency on the function"
+        why: "Reserved concurrency guarantees and limits capacity, but it does not keep execution environments warm."
+      - id: b
+        text: "Configure provisioned concurrency on the function"
+      - id: c
+        text: "Raise the function timeout and the API Gateway timeout"
+        why: "Timeouts only decide when a request fails. They do not remove the cold start delay."
+      - id: d
+        text: "Put the function in a VPC with a NAT gateway"
+        why: "Putting a function in a VPC does not reduce cold starts and adds network setup that the API does not need."
+    answer: [b]
+    explanation: |
+      Provisioned concurrency keeps a set number of execution environments
+      initialized and ready. Requests use them with no cold start. You can
+      schedule it with Application Auto Scaling for business hours.
+    docs:
+      - https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html
+    glossary: [aws-lambda, aws-api-gateway]
+
+  - id: saa-perf-012
+    difficulty: 1
+    type: single
+    question: "A team wants to run containerized microservices on Amazon ECS. The team does not want to provision, patch or scale any EC2 instances. Which option meets these requirements?"
+    options:
+      - id: a
+        text: "ECS with the EC2 launch type and an Auto Scaling group"
+        why: "With the EC2 launch type, the team still manages the instances, their AMIs and their scaling."
+      - id: b
+        text: "AWS Elastic Beanstalk with a single EC2 instance"
+        why: "Beanstalk still runs EC2 instances in the account. The team must still think about instance size and updates."
+      - id: c
+        text: "Amazon EKS with self-managed node groups"
+        why: "Self-managed nodes are EC2 instances that the team must patch and scale itself."
+      - id: d
+        text: "ECS with the AWS Fargate launch type"
+    answer: [d]
+    explanation: |
+      AWS Fargate is a serverless compute engine for containers. You define CPU
+      and memory per task, and AWS runs the task without servers for you to
+      manage. It works with both ECS and EKS.
+    docs:
+      - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html
+    glossary: [aws-fargate, aws-ecs, serverless]
+
+  - id: saa-perf-013
+    difficulty: 2
+    type: single
+    question: "A genomics company runs thousands of batch jobs each night. The jobs need different amounts of CPU and memory, some need GPUs, and they must wait in a queue until compute is free. Jobs can run up to 6 hours. Which service meets these requirements with the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "AWS Lambda functions started by an SQS queue"
+        why: "Lambda has a 15-minute limit and no GPU support, so it cannot run 6-hour GPU jobs."
+      - id: b
+        text: "A fleet of EC2 instances with a custom job scheduler"
+        why: "This can work, but the company must build and run the scheduler and scaling itself, which is high overhead."
+      - id: c
+        text: "AWS Batch with managed compute environments"
+      - id: d
+        text: "Amazon EventBridge Scheduler calling EC2 Run Command"
+        why: "EventBridge Scheduler starts tasks on a timetable. It has no job queue, priorities or resource matching."
+    answer: [c]
+    explanation: |
+      AWS Batch manages job queues and compute environments. It picks the right
+      instance types (including GPU and Spot) for each job, scales capacity up
+      and down, and runs jobs of any length.
+    docs:
+      - https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html
+    glossary: [aws-ec2, aws-spot]
+
+  - id: saa-perf-014
+    difficulty: 1
+    type: single
+    question: "A web application runs on EC2 instances in an Auto Scaling group. The company wants the group to add or remove instances so that average CPU utilization stays near 50%. Which scaling policy is the simplest way to do this?"
+    options:
+      - id: a
+        text: "A target tracking scaling policy on average CPU"
+      - id: b
+        text: "A scheduled scaling action every hour"
+        why: "Scheduled actions change capacity at set times. They do not react to the real CPU load."
+      - id: c
+        text: "A simple scaling policy with one CloudWatch alarm"
+        why: "Simple scaling reacts to one alarm and waits for a cooldown. You must build and tune both scale-out and scale-in alarms yourself."
+      - id: d
+        text: "A fixed desired capacity set to the peak load"
+        why: "A fixed size does not scale. It wastes money at low load and can still be too small at higher peaks."
+    answer: [a]
+    explanation: |
+      With target tracking, you choose a metric and a target value. Auto Scaling
+      creates and manages the CloudWatch alarms and adjusts capacity to keep the
+      metric near the target.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html
+    glossary: [aws-auto-scaling, aws-cloudwatch]
+
+  - id: saa-perf-015
+    difficulty: 3
+    type: single
+    question: "An Auto Scaling group serves a business application. Every weekday, traffic rises sharply at 8:00 AM, and the pattern repeats each week. New instances need 10 minutes to start. Users see slow responses at the start of each day. Which solution will fix this with the LEAST manual work?"
+    options:
+      - id: a
+        text: "Lower the target value of the target tracking policy"
+        why: "This makes the group run more instances all day. It still reacts only after the load arrives."
+      - id: b
+        text: "Add a predictive scaling policy to the group"
+      - id: c
+        text: "Replace the policy with step scaling and larger steps"
+        why: "Step scaling also reacts after the alarm fires, so new instances still arrive 10 minutes late."
+      - id: d
+        text: "Use larger instance types in the launch template"
+        why: "Bigger instances raise cost and do not solve the delay when more capacity is needed at the spike."
+    answer: [b]
+    explanation: |
+      Predictive scaling studies past CloudWatch data to find daily and weekly
+      patterns. It forecasts the load and launches instances before the spike.
+      It works together with target tracking for unexpected changes.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-predictive-scaling.html
+    glossary: [aws-auto-scaling, aws-cloudwatch]
+
+  - id: saa-perf-016
+    difficulty: 2
+    type: multiple
+    question: "A company runs two workloads on EC2. Workload 1 is an in-memory analytics engine that needs a lot of RAM per vCPU. Workload 2 is CPU-heavy video encoding that runs all day. Which instance families should a solutions architect choose? (Select TWO.)"
+    options:
+      - id: a
+        text: "Memory optimized (R family) for workload 1"
+      - id: b
+        text: "Burstable general purpose (T family) for workload 2"
+        why: "T instances use CPU credits. Constant heavy CPU use runs out the credits or adds extra charges."
+      - id: c
+        text: "Storage optimized (I family) for workload 1"
+        why: "I instances give fast local NVMe storage for high disk I/O. They are not the best choice for a large RAM need."
+      - id: d
+        text: "Compute optimized (C family) for workload 2"
+      - id: e
+        text: "Accelerated computing (P family) for workload 1"
+        why: "P instances have GPUs for machine learning training. An in-memory engine needs RAM, not GPUs."
+    answer: [a, d]
+    explanation: |
+      R instances have a high memory-to-vCPU ratio for in-memory databases and
+      analytics. C instances have a high vCPU-to-memory ratio for batch
+      processing, media encoding and other compute-bound work.
+    docs:
+      - https://docs.aws.amazon.com/ec2/latest/instancetypes/instance-types.html
+    glossary: [aws-ec2]
+
+  - id: saa-perf-017
+    difficulty: 3
+    type: single
+    question: "An application on an Auto Scaling group needs 15 minutes after launch to load a large cache and run start-up scripts. When load rises suddenly, new instances are not ready in time. The company wants faster scale-out without paying for extra running instances all the time. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Increase the health check grace period to 20 minutes"
+        why: "The grace period only delays health checks. The instances still take 15 minutes before they can serve traffic."
+      - id: b
+        text: "Raise the minimum capacity to the expected peak"
+        why: "This keeps peak capacity running all the time, which is the extra cost the company wants to avoid."
+      - id: c
+        text: "Use a cluster placement group for the instances"
+        why: "Placement groups change network layout. They do not shorten the start-up and initialization time."
+      - id: d
+        text: "Add a warm pool of stopped, pre-initialized instances"
+    answer: [d]
+    explanation: |
+      A warm pool keeps instances that already ran their start-up steps. They can
+      wait in the Stopped state, so you pay only for storage. On scale-out,
+      Auto Scaling moves them into service much faster than a new launch.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-warm-pools.html
+    glossary: [aws-auto-scaling, aws-ec2]
+
+  # ---------- 3.3 High-performing database solutions ----------
+  - id: saa-perf-018
+    difficulty: 1
+    type: single
+    question: "An e-commerce site uses Amazon RDS for MySQL. Heavy reporting queries run during the day and slow down the main database for customers. Which solution will reduce the load on the main database?"
+    options:
+      - id: a
+        text: "Turn on Multi-AZ and run reports on the standby"
+        why: "In a Multi-AZ DB instance deployment, the standby cannot serve reads. It only takes over during failover."
+      - id: b
+        text: "Increase the backup retention period"
+        why: "Backup retention controls how long backups are kept. It does not change query load."
+      - id: c
+        text: "Create a read replica and run reports on it"
+      - id: d
+        text: "Switch the storage from gp3 to magnetic"
+        why: "Magnetic storage is older and slower. It would make performance worse."
+    answer: [c]
+    explanation: |
+      An RDS read replica gets changes from the primary by asynchronous
+      replication. Read-only queries such as reports can use the replica
+      endpoint, so the primary has more capacity for customer writes and reads.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html
+    glossary: [aws-rds, aws-read-replica]
+
+  - id: saa-perf-019
+    difficulty: 2
+    type: single
+    question: "An Aurora MySQL cluster has one writer and four Aurora Replicas. Replicas are added and removed often. The application must spread its read connections across all replicas without code changes when the number of replicas changes. What should the application use?"
+    options:
+      - id: a
+        text: "The cluster reader endpoint for all read connections"
+      - id: b
+        text: "The cluster endpoint for all read and write connections"
+        why: "The cluster endpoint always points to the writer. All reads would hit the writer instead of the replicas."
+      - id: c
+        text: "A list of instance endpoints stored in the code"
+        why: "Instance endpoints point to one instance each. The code must change every time a replica is added or removed."
+      - id: d
+        text: "A Route 53 weighted record for each replica"
+        why: "This needs manual record updates when replicas change. Aurora already gives an endpoint that does this."
+    answer: [a]
+    explanation: |
+      The Aurora reader endpoint load balances connections across the available
+      Aurora Replicas. It updates on its own when replicas are added or removed,
+      so the application keeps one connection string for reads.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.Endpoints.html
+    glossary: [aws-aurora, aws-read-replica]
+
+  - id: saa-perf-020
+    difficulty: 1
+    type: single
+    question: "A startup launches a new mobile game that uses Amazon DynamoDB. The team cannot predict traffic, and it may jump from almost zero to very high in minutes. Which capacity setting should the team choose?"
+    options:
+      - id: a
+        text: "Provisioned capacity with a fixed number of units"
+        why: "Fixed provisioned capacity can throttle requests during sudden spikes and wastes money when traffic is low."
+      - id: b
+        text: "On-demand capacity mode"
+      - id: c
+        text: "Provisioned capacity with reserved capacity"
+        why: "Reserved capacity lowers the price of steady, known usage. It is a bad fit for unknown traffic."
+      - id: d
+        text: "Provisioned capacity with DynamoDB Accelerator"
+        why: "DAX caches reads. It does not add write capacity or remove the need to plan provisioned units."
+    answer: [b]
+    explanation: |
+      On-demand mode serves requests as they come and charges per request. You
+      do not plan capacity, and the table adapts quickly to changing traffic.
+      It is the recommended mode for new or unpredictable workloads.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html
+    glossary: [aws-dynamodb, serverless]
+
+  - id: saa-perf-021
+    difficulty: 3
+    type: single
+    question: "A DynamoDB table stores orders with `OrderId` as the partition key. A new feature must find all orders for one `CustomerEmail`, sorted by `OrderDate`. Today the application scans the whole table, which is slow and expensive. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Add a local secondary index with `CustomerEmail` as the sort key"
+        why: "An LSI keeps the same partition key (`OrderId`) and must be created with the table. It cannot query by email."
+      - id: b
+        text: "Run the scan with parallel segments to finish faster"
+        why: "A parallel scan still reads every item and uses even more capacity in a short time."
+      - id: c
+        text: "Put DAX in front of the table to cache the scan"
+        why: "DAX caches results, but scans still read the whole table. It does not give an efficient access pattern by email."
+      - id: d
+        text: "Add a GSI with `CustomerEmail` as partition key and `OrderDate` as sort key"
+    answer: [d]
+    explanation: |
+      A global secondary index can use a different partition key and sort key
+      from the base table, and you can add it at any time. A Query on the GSI
+      reads only the orders for one email, already sorted by date.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html
+    glossary: [aws-dynamodb, aws-gsi]
+
+  - id: saa-perf-022
+    difficulty: 2
+    type: single
+    question: "A gaming leaderboard reads the same DynamoDB items millions of times per minute. Reads take a few milliseconds, but the company needs microsecond read latency. The company does not want to change the data access logic much. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Turn on DynamoDB global tables"
+        why: "Global tables copy data to other Regions for multi-Region apps. They do not give microsecond reads."
+      - id: b
+        text: "Switch the table to on-demand capacity mode"
+        why: "On-demand mode changes how capacity is billed and scaled. Read latency stays in milliseconds."
+      - id: c
+        text: "Add DynamoDB Accelerator (DAX) in front of the table"
+      - id: d
+        text: "Export the table to S3 and query it with Athena"
+        why: "Athena runs analytic SQL over files in S3. Its queries take seconds, not microseconds."
+    answer: [c]
+    explanation: |
+      DAX is an in-memory cache built for DynamoDB. It is API-compatible, so the
+      application keeps the same calls with a DAX client. Cached reads return in
+      microseconds.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html
+    glossary: [aws-dax, aws-dynamodb]
+
+  - id: saa-perf-023
+    difficulty: 2
+    type: single
+    question: "A serverless application uses thousands of concurrent Lambda functions that connect to an Amazon RDS for PostgreSQL database. During traffic spikes, the database runs out of connections and CPU rises from opening new connections. Which solution meets these requirements with the LEAST code change?"
+    options:
+      - id: a
+        text: "Put Amazon RDS Proxy between Lambda and the database"
+      - id: b
+        text: "Add an RDS read replica for the Lambda functions"
+        why: "A replica only helps reads. Connection storms would still hit the primary and the replica."
+      - id: c
+        text: "Move the database to a larger instance class"
+        why: "A bigger instance raises the connection limit a little, but connection churn still wastes CPU and costs more."
+      - id: d
+        text: "Place an Amazon SQS queue before the database"
+        why: "SQS can buffer writes, but the app would need a big redesign, and reads cannot go through a queue."
+    answer: [a]
+    explanation: |
+      RDS Proxy keeps a pool of database connections and shares them across many
+      clients. Lambda functions connect to the proxy endpoint instead of the
+      database, so the database sees far fewer connections.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html
+    glossary: [aws-rds-proxy, aws-lambda, aws-rds]
+
+  - id: saa-perf-024
+    difficulty: 2
+    type: multiple
+    question: "A news website uses Amazon RDS for PostgreSQL. 90% of the database traffic is reads, and many queries ask for the same popular articles. Which combination of actions will improve read performance? (Select TWO.)"
+    options:
+      - id: a
+        text: "Turn on Multi-AZ and send reads to the standby instance"
+        why: "In a Multi-AZ DB instance deployment, the standby is not readable. It exists for failover only."
+      - id: b
+        text: "Increase the automated backup retention period"
+        why: "Backups protect data. They do not help query speed."
+      - id: c
+        text: "Cache popular query results in Amazon ElastiCache"
+      - id: d
+        text: "Turn on storage autoscaling for the DB instance"
+        why: "Storage autoscaling adds disk space when it runs low. It does not speed up reads."
+      - id: e
+        text: "Add read replicas and send read queries to them"
+    answer: [c, e]
+    explanation: |
+      ElastiCache (Valkey, Redis OSS or Memcached) serves repeated reads from
+      memory with a cache-aside pattern. Read replicas add more database
+      capacity for reads that miss the cache. Both take load off the primary.
+    docs:
+      - https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html
+    glossary: [aws-elasticache, aws-read-replica, aws-rds]
+
+  - id: saa-perf-025
+    difficulty: 3
+    type: single
+    question: "A company uses Aurora PostgreSQL in us-east-1. It opens a new office in Europe, and users there need low-latency reads of the same data. Replication lag to Europe must usually be under one second. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Create a cross-Region RDS snapshot copy every hour"
+        why: "Snapshots are for backup and restore. Hourly copies mean data can be up to an hour old."
+      - id: b
+        text: "Use an Aurora global database with a secondary Region in Europe"
+      - id: c
+        text: "Put Amazon CloudFront in front of the Aurora cluster"
+        why: "CloudFront caches HTTP content. It cannot cache database connections or SQL queries."
+      - id: d
+        text: "Add more Aurora Replicas to the cluster in us-east-1"
+        why: "Replicas in us-east-1 do not reduce the network distance for users in Europe."
+    answer: [b]
+    explanation: |
+      Aurora global database copies data with storage-based replication to up to
+      several secondary Regions, with typical lag under one second. Readers in
+      the secondary Region give local, low-latency reads.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html
+    glossary: [aws-aurora, aws-region]
+
+  # ---------- 3.4 High-performing and scalable network architectures ----------
+  - id: saa-perf-026
+    difficulty: 1
+    type: single
+    question: "A company serves images, CSS and JavaScript files from an S3 bucket in one Region. Users on other continents see slow page loads. Which service will reduce latency for these users?"
+    options:
+      - id: a
+        text: "Amazon CloudFront with the S3 bucket as the origin"
+      - id: b
+        text: "S3 Cross-Region Replication to every Region"
+        why: "Replication copies objects, but users still need routing to the nearest copy. It is costly and not a cache."
+      - id: c
+        text: "An Application Load Balancer in front of the bucket"
+        why: "An ALB balances traffic to targets in one Region. It does not cache content near users."
+      - id: d
+        text: "A NAT gateway in each Availability Zone"
+        why: "NAT gateways let private subnets reach the internet. They have nothing to do with content delivery."
+    answer: [a]
+    explanation: |
+      CloudFront caches content at edge locations around the world. Users get
+      files from a nearby edge location, so latency drops and the origin gets
+      fewer requests.
+    docs:
+      - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html
+    glossary: [aws-cloudfront, aws-edge-location, aws-s3]
+
+  - id: saa-perf-027
+    difficulty: 2
+    type: single
+    question: "A multiplayer game uses UDP and runs on Network Load Balancers in two Regions. Players around the world need lower latency and jitter. The game client must use fixed IP addresses, and traffic must move to the other Region within seconds if one fails. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Amazon CloudFront with both NLBs as origins"
+        why: "CloudFront works with HTTP and HTTPS. It does not carry UDP game traffic."
+      - id: b
+        text: "Route 53 latency-based routing to both NLBs"
+        why: "DNS answers are cached by clients, so failover is slower, and Route 53 does not give fixed anycast IPs."
+      - id: c
+        text: "AWS Global Accelerator with both NLBs as endpoints"
+      - id: d
+        text: "An inter-Region VPC peering connection"
+        why: "VPC peering connects VPCs privately. It does not bring player traffic onto the AWS network near the user."
+    answer: [c]
+    explanation: |
+      Global Accelerator gives two static anycast IP addresses. It takes TCP and
+      UDP traffic in at the nearest edge location and sends it over the AWS
+      global network to healthy endpoints, failing over in seconds.
+    docs:
+      - https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html
+    glossary: [aws-global-accelerator, aws-nlb, aws-edge-location]
+
+  - id: saa-perf-028
+    difficulty: 2
+    type: single
+    question: "A company runs the same web application behind ALBs in us-east-1, eu-west-1 and ap-southeast-1. The company wants each user sent to the Region that gives that user the fastest response. Which Route 53 routing policy should the company use?"
+    options:
+      - id: a
+        text: "Weighted routing with equal weights"
+        why: "Weighted routing splits traffic by percentage. It ignores where users are and how fast each Region is for them."
+      - id: b
+        text: "Geolocation routing by continent"
+        why: "Geolocation routes by the user's location, not by measured latency. The closest place on a map is not always the fastest."
+      - id: c
+        text: "Simple routing with all three ALBs"
+        why: "Simple routing returns all values in random order. It does not choose by latency."
+      - id: d
+        text: "Latency-based routing"
+    answer: [d]
+    explanation: |
+      Latency-based routing uses AWS latency data between user networks and
+      Regions. Route 53 answers with the record for the Region that has the
+      lowest latency for that user.
+    docs:
+      - https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-latency.html
+    glossary: [aws-route53, aws-region, aws-alb]
+
+  - id: saa-perf-029
+    difficulty: 2
+    type: single
+    question: "A financial trading platform uses a custom TCP protocol. It must handle millions of requests per second with very low latency, and partners need one static IP address per AZ to put in their firewall rules. Which load balancer should the company use?"
+    options:
+      - id: a
+        text: "Application Load Balancer"
+        why: "An ALB works at layer 7 for HTTP/HTTPS and gRPC. It does not handle custom TCP protocols or give static IPs."
+      - id: b
+        text: "Network Load Balancer"
+      - id: c
+        text: "Gateway Load Balancer"
+        why: "A Gateway Load Balancer sends traffic to third-party appliances such as firewalls. It is not for serving app clients."
+      - id: d
+        text: "Classic Load Balancer"
+        why: "The Classic Load Balancer is a legacy option. It does not give one static IP per AZ and has lower performance."
+    answer: [b]
+    explanation: |
+      A Network Load Balancer works at layer 4 (TCP, UDP, TLS). It handles
+      millions of requests per second with ultra-low latency and gives one
+      static IP per AZ, where you can also use your own Elastic IP addresses.
+    docs:
+      - https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html
+    glossary: [aws-nlb, aws-elb]
+
+  - id: saa-perf-030
+    difficulty: 3
+    type: multiple
+    question: "A REST API in Amazon API Gateway calls a Lambda function that queries a database. Many clients ask for the same product data again and again, and one partner sometimes sends sudden bursts that overload the backend. Which combination of steps will improve performance and protect the backend? (Select TWO.)"
+    options:
+      - id: a
+        text: "Turn on API caching for the API stage with a suitable TTL"
+      - id: b
+        text: "Set throttling limits with a usage plan for the partner's API key"
+      - id: c
+        text: "Change the endpoint type from Regional to private"
+        why: "A private endpoint can be reached only from inside a VPC. It does not cache or limit requests."
+      - id: d
+        text: "Increase the Lambda function timeout to 15 minutes"
+        why: "A longer timeout lets slow calls run longer. API Gateway still times out first, and the load stays the same."
+      - id: e
+        text: "Turn on AWS X-Ray tracing for the stage"
+        why: "X-Ray shows where time is spent. It helps find problems but does not reduce backend load."
+    answer: [a, b]
+    explanation: |
+      API caching stores responses at the stage for a TTL (300 seconds by
+      default), so repeated requests do not reach Lambda. Usage plans with API
+      keys set rate and burst limits per client, so one partner cannot
+      overload the backend.
+    docs:
+      - https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html
+      - https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html
+    glossary: [aws-api-gateway, aws-lambda]
+
+  - id: saa-perf-031
+    difficulty: 1
+    type: single
+    question: "A company has several microservices on Amazon ECS. Requests to `/orders/*` must go to the orders service, and requests to `/users/*` must go to the users service, all behind one DNS name. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "A Network Load Balancer with one listener per service"
+        why: "An NLB works at layer 4 and cannot read the URL path. Each service would need a different port."
+      - id: b
+        text: "Route 53 weighted records for each service"
+        why: "DNS works with host names, not URL paths. It cannot route `/orders/*` and `/users/*` differently."
+      - id: c
+        text: "An Application Load Balancer with path-based listener rules"
+      - id: d
+        text: "AWS Global Accelerator with two endpoint groups"
+        why: "Global Accelerator routes by Region and health, not by URL path."
+    answer: [c]
+    explanation: |
+      An Application Load Balancer works at layer 7. Listener rules can check the
+      URL path (and host, headers or query strings) and forward each request to
+      a different target group.
+    docs:
+      - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-condition-types.html
+    glossary: [aws-alb, aws-ecs]
+
+  # ---------- 3.5 Data ingestion and transformation ----------
+  - id: saa-perf-032
+    difficulty: 2
+    type: single
+    question: "A company collects clickstream events from a website at about 50,000 records per second. Three different applications must read the same events in real time, in order for each user, and must be able to replay the last 24 hours of data. Which service meets these requirements?"
+    options:
+      - id: a
+        text: "Amazon SQS standard queue"
+        why: "A standard queue does not keep order, and a message is deleted after one consumer handles it. It cannot be replayed."
+      - id: b
+        text: "Amazon SNS topic with three subscriptions"
+        why: "SNS pushes messages to subscribers but does not store them. Consumers cannot replay old data."
+      - id: c
+        text: "Amazon Data Firehose to an S3 bucket"
+        why: "Firehose buffers data and delivers it to destinations. It does not let several real-time apps read and replay a stream."
+      - id: d
+        text: "Amazon Kinesis Data Streams"
+    answer: [d]
+    explanation: |
+      Kinesis Data Streams keeps records in order within each shard (by
+      partition key) and stores them for 24 hours by default, up to 365 days.
+      Many consumers can read the same stream at the same time and replay data.
+    docs:
+      - https://docs.aws.amazon.com/streams/latest/dev/introduction.html
+    glossary: [aws-kinesis]
+
+  - id: saa-perf-033
+    difficulty: 1
+    type: single
+    question: "A company wants to load streaming JSON log data into an S3 data lake. The data must be converted to Apache Parquet before it is stored. The company does not want to write or manage any consumer code. Which service meets these requirements?"
+    options:
+      - id: a
+        text: "Amazon Data Firehose with record format conversion"
+      - id: b
+        text: "Kinesis Data Streams with a custom consumer on EC2"
+        why: "This works, but the company must write, run and scale the consumer code, which it wants to avoid."
+      - id: c
+        text: "AWS DataSync from the log servers to S3"
+        why: "DataSync moves files between storage systems in tasks. It does not handle streaming records or convert them to Parquet."
+      - id: d
+        text: "Amazon SQS with an S3 event notification"
+        why: "S3 event notifications fire after objects are written. They cannot read from a queue or convert data."
+    answer: [a]
+    explanation: |
+      Amazon Data Firehose is a fully managed delivery service. It buffers
+      streaming data and can convert JSON to Parquet or ORC with a schema from
+      the AWS Glue Data Catalog before it writes to S3.
+    docs:
+      - https://docs.aws.amazon.com/firehose/latest/dev/record-format-conversion.html
+    glossary: [aws-kinesis, aws-s3, aws-glue]
+
+  - id: saa-perf-034
+    difficulty: 2
+    type: multiple
+    question: "A company stores terabytes of CSV and Parquet files in Amazon S3. Analysts want to run ad hoc SQL queries on the files. New folders are added each day, and the table schema must stay up to date. Which combination of steps meets these requirements with the LEAST operational overhead? (Select TWO.)"
+    options:
+      - id: a
+        text: "Load the files into a provisioned Amazon Redshift cluster"
+        why: "A cluster must be sized and managed, and data must be loaded first. That is more work for ad hoc queries."
+      - id: b
+        text: "Run an AWS Glue crawler to update the Data Catalog"
+      - id: c
+        text: "Start an Amazon EMR cluster with Apache Hive"
+        why: "EMR gives full control of big data frameworks, but the team must run and size the cluster."
+      - id: d
+        text: "Query the files in place with Amazon Athena"
+      - id: e
+        text: "Import the files into Amazon DynamoDB tables"
+        why: "DynamoDB is a key-value database. It does not support ad hoc SQL analytics with joins and aggregations."
+    answer: [b, d]
+    explanation: |
+      A Glue crawler reads the files, finds the schema and partitions, and keeps
+      tables in the Glue Data Catalog current. Athena is serverless and runs SQL
+      directly on S3 using that catalog. You pay only for the data scanned.
+    docs:
+      - https://docs.aws.amazon.com/glue/latest/dg/add-crawler.html
+      - https://docs.aws.amazon.com/athena/latest/ug/what-is.html
+    glossary: [aws-glue, aws-athena, aws-s3, serverless]
+
+  - id: saa-perf-035
+    difficulty: 2
+    type: multiple
+    question: "A company is moving its analytics platform to AWS. Large Apache Spark ETL jobs must run with few code changes, and business analysts need a petabyte-scale data warehouse for complex SQL with many joins. Which services meet these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "AWS Lambda to run the Spark ETL jobs"
+        why: "Lambda runs short functions up to 15 minutes. It does not run Spark clusters for large ETL jobs."
+      - id: b
+        text: "Amazon DynamoDB as the data warehouse"
+        why: "DynamoDB is built for key-value access at scale. It is not a SQL data warehouse for complex joins."
+      - id: c
+        text: "Amazon EMR to run the Spark ETL jobs"
+      - id: d
+        text: "Amazon ElastiCache as the data warehouse"
+        why: "ElastiCache is an in-memory cache. It is not made to store and query petabytes of history."
+      - id: e
+        text: "Amazon Redshift as the data warehouse"
+    answer: [c, e]
+    explanation: |
+      Amazon EMR runs open-source frameworks such as Apache Spark, Hive and
+      Presto, so existing Spark code moves with few changes. Amazon Redshift is a
+      columnar data warehouse that runs complex SQL on petabytes of data.
+    docs:
+      - https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html
+      - https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html
+    glossary: [aws-redshift]
+
+  - id: saa-perf-036
+    difficulty: 3
+    type: multiple
+    question: "A company builds a data lake on Amazon S3. Several teams query it with Athena and Redshift Spectrum. The company needs one central place to give column-level permissions on the tables, and business users need interactive dashboards. Which combination of services meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "AWS Lake Formation to manage data lake permissions"
+      - id: b
+        text: "S3 bucket policies for each column of each table"
+        why: "Bucket policies control access to objects and prefixes. They cannot allow or deny single columns inside a file."
+      - id: c
+        text: "Amazon Macie to control who can see each column"
+        why: "Macie finds sensitive data such as personal information in S3. It does not grant query permissions."
+      - id: d
+        text: "Amazon QuickSight to build dashboards for business users"
+      - id: e
+        text: "AWS Glue DataBrew to build the dashboards"
+        why: "DataBrew is a visual tool to clean and prepare data. It does not publish interactive dashboards."
+    answer: [a, d]
+    explanation: |
+      Lake Formation gives central, fine-grained permissions (database, table,
+      column and row level) on Glue Data Catalog tables, used by Athena, Redshift
+      Spectrum and EMR. Amazon QuickSight is a serverless BI service for
+      interactive dashboards.
+    docs:
+      - https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html
+      - https://docs.aws.amazon.com/quicksight/latest/user/welcome.html
+    glossary: [aws-glue, aws-athena, aws-s3]

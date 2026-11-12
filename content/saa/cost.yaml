@@ -1,0 +1,786 @@
+domain: cost
+questions:
+  - id: saa-cost-001
+    difficulty: 1
+    type: single
+    question: "A company stores log files in Amazon S3 Standard. The files are read often for 30 days, rarely for the next 11 months, and must be kept for 7 years for audits. Audit reads can wait 12 hours. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Keep all files in S3 Standard and delete them after 7 years with a lifecycle rule"
+        why: "This keeps the expensive storage class for years of rarely read data. A lifecycle rule should also move the files to cheaper classes."
+      - id: b
+        text: "Use lifecycle rules to move files to S3 Standard-IA after 30 days and to S3 Glacier Deep Archive after 1 year"
+      - id: c
+        text: "Move files to S3 One Zone-IA after 30 days and keep them there for 7 years"
+        why: "One Zone-IA stores data in one Availability Zone, which is risky for audit data. It is also far more expensive than Deep Archive for long-term storage."
+      - id: d
+        text: "Copy the files every night to an Amazon EBS Cold HDD (sc1) volume for long-term storage"
+        why: "EBS volumes cost more per GB than archive storage and you pay for the full size you provision. They are not designed for 7-year retention."
+    answer: [b]
+    explanation: |
+      Lifecycle rules move objects between storage classes automatically as they age.
+      Standard-IA is cheaper for data read rarely but still needed fast. S3 Glacier
+      Deep Archive is the lowest-cost class and fits data that can wait 12 hours or more.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html
+    glossary: [aws-s3-lifecycle, aws-s3-storage-class, aws-s3-glacier]
+
+  - id: saa-cost-002
+    difficulty: 1
+    type: single
+    question: "A media company has millions of objects in Amazon S3. Some objects are popular for a few days, others are never read, and the team cannot predict which. The team wants lower storage cost without writing any rules. Which storage class should they use?"
+    options:
+      - id: a
+        text: "S3 Standard-IA for all objects"
+        why: "Standard-IA charges a retrieval fee per GB. Popular objects that are read often would cost more than in S3 Standard."
+      - id: b
+        text: "S3 Glacier Flexible Retrieval for all objects"
+        why: "Objects in Glacier Flexible Retrieval must be restored before they can be read. Popular objects would not be available right away."
+      - id: c
+        text: "S3 Intelligent-Tiering"
+      - id: d
+        text: "S3 Express One Zone"
+        why: "S3 Express One Zone is built for very low latency in one Availability Zone. It costs more per GB than S3 Standard, so it does not lower storage cost."
+    answer: [c]
+    explanation: |
+      S3 Intelligent-Tiering watches access to each object and moves it to cheaper
+      tiers when it is not used, and back to the frequent tier when it is read. There
+      are no retrieval fees, only a small monitoring fee per object. It is made for
+      unknown or changing access patterns.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/intelligent-tiering-overview.html
+    glossary: [aws-s3-storage-class, aws-s3]
+
+  - id: saa-cost-003
+    difficulty: 2
+    type: single
+    question: "A company must keep 2 PB of old research data for 10 years. The data is restored maybe once a year, and the team can wait up to 48 hours for it. Which solution has the LOWEST cost?"
+    options:
+      - id: a
+        text: "Store the data in S3 Glacier Deep Archive and use bulk retrieval when needed"
+      - id: b
+        text: "Store the data in S3 Glacier Instant Retrieval and read it directly when needed"
+        why: "Glacier Instant Retrieval gives millisecond access, but its storage price is much higher than Deep Archive. Fast access is not needed here."
+      - id: c
+        text: "Store the data in S3 Glacier Flexible Retrieval and use expedited retrieval"
+        why: "Flexible Retrieval costs more per GB than Deep Archive, and expedited retrieval is the most expensive retrieval option."
+      - id: d
+        text: "Store the data in S3 Intelligent-Tiering with only the Archive Access tier enabled"
+        why: "Intelligent-Tiering adds a monitoring fee per object and only moves data to archive tiers after it is idle. Deep Archive is cheaper for data known to be cold."
+    answer: [a]
+    explanation: |
+      S3 Glacier Deep Archive is the cheapest S3 storage class. Standard retrieval
+      finishes within 12 hours and bulk retrieval within 48 hours. Bulk is the lowest
+      cost way to restore large amounts of data when time is not critical.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/restoring-objects-retrieval-options.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html
+    glossary: [aws-s3-glacier, aws-s3-storage-class]
+
+  - id: saa-cost-004
+    difficulty: 2
+    type: single
+    question: "A hospital stores medical images in Amazon S3. Each image is opened about once every three months, but when a doctor opens it, it must load in milliseconds. Which storage class is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "S3 Glacier Flexible Retrieval"
+        why: "Objects in this class must be restored first, which takes minutes to hours. Doctors need the image in milliseconds."
+      - id: b
+        text: "S3 Standard"
+        why: "S3 Standard gives fast access but has the highest storage price. Data read once a quarter can be stored more cheaply."
+      - id: c
+        text: "S3 Glacier Deep Archive"
+        why: "Deep Archive restores take up to 12 hours or more. It does not give millisecond access."
+      - id: d
+        text: "S3 Glacier Instant Retrieval"
+    answer: [d]
+    explanation: |
+      S3 Glacier Instant Retrieval is made for long-lived data that is read about once
+      a quarter but needs millisecond access. Its storage price is lower than Standard-IA,
+      with a higher retrieval fee. It has a 90-day minimum storage duration.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html
+    glossary: [aws-s3-glacier, aws-s3-storage-class]
+
+  - id: saa-cost-005
+    difficulty: 2
+    type: single
+    question: "An application creates thumbnail images from original photos. The originals are kept safely in S3 Standard. The thumbnails are read rarely and can be created again if they are lost. Which storage class is the MOST cost-effective for the thumbnails?"
+    options:
+      - id: a
+        text: "S3 Standard-IA"
+        why: "Standard-IA stores data in at least three Availability Zones. That extra durability is not needed for data that can be created again, so it costs more than needed."
+      - id: b
+        text: "S3 One Zone-IA"
+      - id: c
+        text: "S3 Glacier Deep Archive"
+        why: "Deep Archive needs a restore of hours before each read. The application needs to show thumbnails without that delay."
+      - id: d
+        text: "S3 Standard with S3 Versioning enabled"
+        why: "Versioning keeps old copies, which adds storage cost. S3 Standard is also the most expensive class for rarely read data."
+    answer: [b]
+    explanation: |
+      S3 One Zone-IA costs about 20% less than Standard-IA because it keeps data in a
+      single Availability Zone. It is a good fit for infrequently read data that you can
+      recreate, such as thumbnails or secondary copies.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html
+    glossary: [aws-s3-storage-class, aws-az]
+
+  - id: saa-cost-006
+    difficulty: 2
+    type: multiple
+    question: "A company has an S3 bucket with S3 Versioning enabled. Storage cost keeps growing. The team finds many old object versions and many parts from uploads that never finished. Which combination of actions will reduce cost? (Select TWO.)"
+    options:
+      - id: a
+        text: "Add a lifecycle rule that expires noncurrent object versions after 30 days"
+      - id: b
+        text: "Suspend S3 Versioning so that old versions are deleted automatically"
+        why: "Suspending versioning only stops new versions. Existing noncurrent versions stay in the bucket and keep costing money."
+      - id: c
+        text: "Turn on S3 Transfer Acceleration for the bucket"
+        why: "Transfer Acceleration speeds up long-distance uploads and adds a cost. It does not remove stored data."
+      - id: d
+        text: "Add a lifecycle rule that aborts incomplete multipart uploads after 7 days"
+      - id: e
+        text: "Enable S3 Object Lock in compliance mode on the bucket"
+        why: "Object Lock stops objects from being deleted. It would make the cost problem worse, not better."
+    answer: [a, d]
+    explanation: |
+      Old versions are billed like normal objects, so a NoncurrentVersionExpiration
+      action removes them after a set time. Parts of unfinished multipart uploads are
+      also billed until you remove them. The AbortIncompleteMultipartUpload lifecycle
+      action cleans them up automatically.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html
+    glossary: [aws-s3-lifecycle, aws-s3-versioning]
+
+  - id: saa-cost-007
+    difficulty: 2
+    type: single
+    question: "A company runs many EC2 instances with gp2 EBS volumes of 500 GiB. The workload needs about 3,000 IOPS per volume. The company wants to cut EBS cost without downtime. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Change the volumes to io2 Block Express volumes"
+        why: "io2 volumes are for very high, consistent IOPS and cost more per GB and per IOPS. They would raise the bill."
+      - id: b
+        text: "Replace the volumes with instance store volumes"
+        why: "Instance store data is lost when the instance stops or fails. It is not a safe replacement for persistent EBS data."
+      - id: c
+        text: "Modify the volumes to gp3 with Elastic Volumes"
+      - id: d
+        text: "Change the volumes to Cold HDD (sc1) volumes"
+        why: "sc1 volumes are cheap but are made for large sequential reads with very low IOPS. They cannot give 3,000 random IOPS."
+    answer: [c]
+    explanation: |
+      gp3 costs less per GB than gp2 and includes 3,000 IOPS and 125 MiB/s as a
+      baseline at any size. With Elastic Volumes you can change the type while the
+      volume stays attached and in use, so there is no downtime.
+    docs:
+      - https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html
+      - https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html
+    glossary: [aws-ebs, aws-ec2]
+
+  - id: saa-cost-008
+    difficulty: 2
+    type: multiple
+    question: "A team takes manual EBS snapshots every day and never deletes them. Some snapshots must be kept for 1 year for compliance but are almost never restored. Which combination of steps will reduce snapshot cost with the LEAST operational overhead? (Select TWO.)"
+    options:
+      - id: a
+        text: "Copy every snapshot to another Region each night"
+        why: "Cross-Region copies add storage and data transfer cost. They improve disaster recovery, not cost."
+      - id: b
+        text: "Use Amazon Data Lifecycle Manager to create snapshots and delete them by a retention rule"
+      - id: c
+        text: "Write a cron job on an EC2 instance that lists and deletes old snapshots"
+        why: "This works, but you must build, run and patch the instance and script. Data Lifecycle Manager does this as a managed feature."
+      - id: d
+        text: "Convert the snapshots to AMIs so they are stored for free"
+        why: "AMIs that use EBS are backed by snapshots, and you still pay for those snapshots. Creating AMIs does not lower cost."
+      - id: e
+        text: "Move the long-term snapshots to the EBS Snapshots Archive tier"
+    answer: [b, e]
+    explanation: |
+      Amazon Data Lifecycle Manager automates creating and deleting snapshots with a
+      retention policy, so old snapshots do not pile up. EBS Snapshots Archive stores
+      rarely restored snapshots at a much lower price. It has a 90-day minimum and
+      restores take hours, which is fine for compliance copies.
+    docs:
+      - https://docs.aws.amazon.com/ebs/latest/userguide/snapshot-lifecycle.html
+      - https://docs.aws.amazon.com/ebs/latest/userguide/snapshot-archive.html
+    glossary: [aws-ebs, aws-backup]
+
+  - id: saa-cost-009
+    difficulty: 2
+    type: single
+    question: "A company must move 400 TB of files from its data center to Amazon S3 within 3 weeks. Its internet link is 100 Mbps and is already busy. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Order AWS Snowball Edge devices, copy the data, and ship them back to AWS"
+      - id: b
+        text: "Use AWS DataSync over the existing internet link"
+        why: "At 100 Mbps, 400 TB would take about a year to send. DataSync cannot make the network faster."
+      - id: c
+        text: "Set up a new 10 Gbps AWS Direct Connect connection for the move"
+        why: "A new Direct Connect link can take weeks to months to set up and has port and partner costs. It is too slow and expensive for a one-time move."
+      - id: d
+        text: "Use S3 Transfer Acceleration to upload the files"
+        why: "Transfer Acceleration helps with long distances, but it is still limited by the 100 Mbps link and it adds a cost per GB."
+    answer: [a]
+    explanation: |
+      When the network is too slow for the data size, offline transfer is cheaper and
+      faster. Snowball Edge devices are shipped to you, filled locally and returned to
+      AWS, which imports the data into S3. The SAA-C03 guide still lists the Snow
+      Family, but AWS now limits new Snowball orders, so check availability in real
+      projects. For ongoing online sync over a good link, DataSync is the better tool.
+    docs:
+      - https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html
+      - https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html
+    glossary: [aws-snow, aws-datasync, aws-s3]
+
+  - id: saa-cost-010
+    difficulty: 3
+    type: single
+    question: "A company wants to add lifecycle rules to a large S3 bucket but does not know when objects stop being read. It wants data, not guesses, to decide when to move objects to S3 Standard-IA. Which feature should a solutions architect use?"
+    options:
+      - id: a
+        text: "AWS CloudTrail data events for the bucket"
+        why: "CloudTrail data events record each API call, which is costly at scale. They do not give a ready analysis of when to change storage class."
+      - id: b
+        text: "Amazon Macie automated discovery"
+        why: "Macie finds sensitive data such as personal information. It does not analyze access patterns for storage cost."
+      - id: c
+        text: "S3 Inventory reports in CSV format"
+        why: "S3 Inventory lists objects and their properties, but it does not show how often objects are read."
+      - id: d
+        text: "S3 Storage Class Analysis on the bucket"
+    answer: [d]
+    explanation: |
+      S3 Storage Class Analysis watches access patterns over time for a bucket, prefix
+      or tag. It shows when data becomes infrequently accessed, so you can set the right
+      day for a transition to Standard-IA in a lifecycle rule.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/analytics-storage-class.html
+    glossary: [aws-s3-lifecycle, aws-s3-storage-class]
+
+  - id: saa-cost-011
+    difficulty: 3
+    type: single
+    question: "A company has a steady base of compute that runs all day, every day. Today it runs on EC2 in two Regions. Next year it will move part of it to AWS Fargate and AWS Lambda. Which purchase option gives a large discount and stays useful after the move?"
+    options:
+      - id: a
+        text: "EC2 Instance Savings Plans for the current instance family"
+        why: "EC2 Instance Savings Plans apply only to one instance family in one Region. They do not cover Fargate or Lambda."
+      - id: b
+        text: "Compute Savings Plans with a 1-year or 3-year term"
+      - id: c
+        text: "Standard Reserved Instances for the current instance types"
+        why: "Standard Reserved Instances apply only to EC2 with fixed attributes. They give no discount for Fargate or Lambda."
+      - id: d
+        text: "Spot Instances for the steady base of compute"
+        why: "Spot capacity can be taken back with a 2-minute notice. It is not a safe choice for a base that must always run."
+    answer: [b]
+    explanation: |
+      Compute Savings Plans give a discount in exchange for a commitment in USD per
+      hour. The discount applies to EC2 in any family, size, Region or OS, and also to
+      Fargate and Lambda. This flexibility keeps the savings when the workload changes.
+    docs:
+      - https://docs.aws.amazon.com/savingsplans/latest/userguide/plan-types.html
+      - https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html
+    glossary: [aws-savings-plans, aws-reserved-instances, aws-fargate]
+
+  - id: saa-cost-012
+    difficulty: 1
+    type: single
+    question: "A company runs a nightly batch job that processes images. The job saves progress often, can be stopped and restarted, and has no fixed finish time. Which EC2 purchase option is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Spot Instances"
+      - id: b
+        text: "On-Demand Instances"
+        why: "On-Demand works, but you pay the full price. A job that can be interrupted can use much cheaper spare capacity."
+      - id: c
+        text: "Dedicated Hosts"
+        why: "Dedicated Hosts are physical servers for licensing or compliance needs. They are one of the most expensive options."
+      - id: d
+        text: "3-year Standard Reserved Instances"
+        why: "Reserved Instances need a long commitment and fit steady workloads. A nightly job runs only part of the day."
+    answer: [a]
+    explanation: |
+      Spot Instances use spare EC2 capacity at up to 90% off the On-Demand price. AWS
+      can take them back with a 2-minute notice. That is fine for fault-tolerant,
+      flexible jobs that save their progress.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html
+    glossary: [aws-spot, aws-ec2]
+
+  - id: saa-cost-013
+    difficulty: 2
+    type: single
+    question: "A company wants to move a database server to AWS. It will bring its existing software licenses, which are licensed per physical CPU socket. The company must see the socket count of the server. Which option meets these requirements?"
+    options:
+      - id: a
+        text: "Dedicated Instances"
+        why: "Dedicated Instances run on hardware used only by you, but they do not show sockets or cores. They do not support per-socket licensing."
+      - id: b
+        text: "Amazon RDS with the license-included model"
+        why: "License-included means you pay AWS for a new license. The company wants to reuse its own licenses."
+      - id: c
+        text: "Dedicated Hosts"
+      - id: d
+        text: "Spot Instances with a fixed instance type"
+        why: "Spot Instances run on shared hardware and can be stopped at any time. They do not show physical sockets."
+    answer: [c]
+    explanation: |
+      A Dedicated Host is a whole physical server for your use. It shows the number of
+      sockets and cores, so you can use bring-your-own-license (BYOL) software that is
+      licensed per socket or per core. This can be cheaper than buying new licenses.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/dedicated-hosts-overview.html
+    glossary: [aws-dedicated-hosts, aws-ec2]
+
+  - id: saa-cost-014
+    difficulty: 1
+    type: single
+    question: "A company thinks many of its EC2 instances are too large for their workload. Which AWS service analyzes usage metrics and recommends smaller instance types?"
+    options:
+      - id: a
+        text: "AWS Config"
+        why: "AWS Config records resource settings and checks them against rules. It does not analyze CPU or memory use to suggest sizes."
+      - id: b
+        text: "Amazon Inspector"
+        why: "Inspector scans for software vulnerabilities and network exposure. It does not give sizing advice."
+      - id: c
+        text: "AWS Systems Manager Patch Manager"
+        why: "Patch Manager installs operating system updates. It has nothing to do with instance sizing."
+      - id: d
+        text: "AWS Compute Optimizer"
+    answer: [d]
+    explanation: |
+      AWS Compute Optimizer uses CloudWatch metrics and machine learning to find
+      over-provisioned and under-provisioned resources. It recommends better instance
+      types for EC2, Auto Scaling groups, EBS volumes, Lambda functions and more.
+    docs:
+      - https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html
+    glossary: [aws-ec2, aws-cost-tools]
+
+  - id: saa-cost-015
+    difficulty: 2
+    type: single
+    question: "An internal web application runs on EC2 instances in an Auto Scaling group. Traffic is high from 8 AM to 6 PM on weekdays and almost zero at night and on weekends. Today the group always runs 10 instances. How can the company cut cost and still serve the daytime load?"
+    options:
+      - id: a
+        text: "Add scheduled scaling actions to increase capacity in the morning and decrease it in the evening"
+      - id: b
+        text: "Buy Reserved Instances for all 10 instances"
+        why: "Reserved Instances lower the price per hour, but the company would still pay for 10 instances all night and all weekend."
+      - id: c
+        text: "Move the instances to a cluster placement group"
+        why: "Placement groups change how instances are placed on hardware for network speed. They do not change how many instances run."
+      - id: d
+        text: "Change the group to use larger instances so fewer are needed"
+        why: "Fewer, larger instances still run 24/7. The problem is idle capacity outside work hours, not the instance size."
+    answer: [a]
+    explanation: |
+      Scheduled scaling changes the desired, minimum and maximum capacity at set times.
+      The group grows before the work day and shrinks at night and on weekends, so the
+      company pays only for what it needs. Predictive scaling is another option for
+      repeating patterns.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-predictive-scaling.html
+    glossary: [aws-auto-scaling, aws-ec2]
+
+  - id: saa-cost-016
+    difficulty: 3
+    type: multiple
+    question: "A company runs a large fault-tolerant batch workload on Spot Instances. Jobs are often interrupted, and sometimes no capacity is found. Which combination of changes will improve Spot availability and keep cost low? (Select TWO.)"
+    options:
+      - id: a
+        text: "Allow many instance types and sizes across several Availability Zones"
+      - id: b
+        text: "Request a single instance type in one Availability Zone"
+        why: "One type in one AZ is a small capacity pool. When that pool is empty, the job cannot run, which makes interruptions more likely."
+      - id: c
+        text: "Use the price-capacity-optimized allocation strategy"
+      - id: d
+        text: "Use the lowest-price allocation strategy only"
+        why: "Lowest-price picks the cheapest pools, which are often the most likely to be interrupted. AWS does not recommend it for most workloads."
+      - id: e
+        text: "Set the Spot maximum price far below the current Spot price"
+        why: "If your maximum price is below the Spot price, your request is not filled. This reduces capacity instead of improving it."
+    answer: [a, c]
+    explanation: |
+      Being flexible across many instance types and Availability Zones lets EC2 use
+      more Spot capacity pools. The price-capacity-optimized strategy picks pools with
+      the most spare capacity and a low price. Together they reduce interruptions at
+      a low cost.
+    docs:
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-best-practices.html
+      - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html
+    glossary: [aws-spot, aws-az]
+
+  - id: saa-cost-017
+    difficulty: 1
+    type: single
+    question: "A small company has an API that gets a few thousand requests per day at random times. Each request takes less than 1 second. Today it runs on two EC2 instances that are idle most of the time. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Move the API to larger EC2 instances with Reserved Instances"
+        why: "Larger instances cost more, and Reserved Instances still charge for every hour even when the API is idle."
+      - id: b
+        text: "Move the API to Amazon API Gateway and AWS Lambda"
+      - id: c
+        text: "Move the API to an Amazon EKS cluster with two nodes"
+        why: "EKS adds a cluster fee per hour, and the nodes still run all the time. This costs more than the current setup."
+      - id: d
+        text: "Put the EC2 instances behind a Network Load Balancer"
+        why: "A load balancer adds an hourly cost. It does not remove the idle EC2 instances."
+    answer: [b]
+    explanation: |
+      With Lambda you pay per request and per millisecond of run time, and nothing
+      when there is no traffic. For low, spiky traffic, a serverless design with API
+      Gateway and Lambda costs much less than servers that run all day.
+    docs:
+      - https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+      - https://aws.amazon.com/lambda/pricing/
+    glossary: [aws-lambda, aws-api-gateway, serverless]
+
+  - id: saa-cost-018
+    difficulty: 3
+    type: single
+    question: "A web tier needs at least 4 instances at all times to stay available. Extra load during the day can run on interruptible capacity. The company wants the LOWEST cost with one Auto Scaling group. What should a solutions architect configure?"
+    options:
+      - id: a
+        text: "A launch template that requests only Spot Instances with one instance type"
+        why: "If all instances are Spot, the base of 4 can be taken away. One instance type also limits Spot capacity."
+      - id: b
+        text: "Two Auto Scaling groups, one with On-Demand and one with Spot, behind two load balancers"
+        why: "This can work but adds more resources to manage. The requirement asks for one group, and a mixed group does this directly."
+      - id: c
+        text: "An Auto Scaling group with only On-Demand Instances and a target tracking policy"
+        why: "This meets availability but pays full price for the extra daytime capacity, which could use Spot."
+      - id: d
+        text: "A mixed instances policy with an On-Demand base of 4 and Spot above the base"
+    answer: [d]
+    explanation: |
+      A mixed instances policy lets one Auto Scaling group combine purchase options.
+      The On-Demand base capacity keeps 4 reliable instances. Capacity above the base
+      uses Spot Instances across several instance types, which lowers cost.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-mixed-instances-groups.html
+    glossary: [aws-auto-scaling, aws-spot, aws-on-demand]
+
+  - id: saa-cost-019
+    difficulty: 2
+    type: single
+    question: "A company runs Linux web servers on x86 EC2 instances. The application is written in Java and has no x86-only code. The company wants better price performance for the same workload. What should it do?"
+    options:
+      - id: a
+        text: "Move the instances to Dedicated Instances"
+        why: "Dedicated Instances cost more because the hardware is not shared. They do not improve price performance."
+      - id: b
+        text: "Move to burstable T instances with unlimited mode always on"
+        why: "In unlimited mode you pay extra when CPU use stays above the baseline. A busy web server could cost more."
+      - id: c
+        text: "Move the workload to AWS Graviton-based instances"
+      - id: d
+        text: "Add more x86 instances of a smaller size"
+        why: "More, smaller instances of the same type keep about the same price performance. They do not lower the cost per unit of work."
+    answer: [c]
+    explanation: |
+      AWS Graviton processors are Arm-based CPUs built by AWS. Graviton instances can
+      give up to 40% better price performance than similar x86 instances. Java and most
+      Linux workloads run on Arm with little or no code change.
+    docs:
+      - https://aws.amazon.com/ec2/graviton/
+    glossary: [aws-ec2]
+
+  - id: saa-cost-020
+    difficulty: 2
+    type: single
+    question: "A company has many development databases on Amazon Aurora. Developers use them a few hours a day, at different times, and load changes a lot. The databases sit idle the rest of the time. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Use Aurora Serverless v2 so capacity scales with load and can pause when idle"
+      - id: b
+        text: "Buy Reserved DB Instances for each development database"
+        why: "Reserved DB Instances give a discount for running 24/7. Databases idle most of the day would still be paid for all day."
+      - id: c
+        text: "Add Aurora Replicas to each cluster to share the load"
+        why: "Replicas add more instances and more cost. They help with read scaling, not with idle time."
+      - id: d
+        text: "Move each database to a larger provisioned instance class"
+        why: "A larger instance costs more per hour and still runs when nobody uses it."
+    answer: [a]
+    explanation: |
+      Aurora Serverless v2 adjusts capacity in Aurora Capacity Units (ACUs) as the load
+      changes, and you pay for the capacity used. It can scale down to 0 ACUs and pause
+      when there are no connections, which is ideal for dev and test databases.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html
+    glossary: [aws-aurora, serverless]
+
+  - id: saa-cost-021
+    difficulty: 1
+    type: single
+    question: "A startup is launching a new mobile app on Amazon DynamoDB. It has no idea how much traffic to expect, and traffic may jump suddenly. The team does not want to plan capacity. Which capacity mode should it use?"
+    options:
+      - id: a
+        text: "Provisioned capacity with a fixed number of read and write units"
+        why: "Fixed capacity must be planned ahead. Sudden spikes above it are throttled, and unused capacity is still paid for."
+      - id: b
+        text: "Provisioned capacity with reserved capacity for 3 years"
+        why: "Reserved capacity is a long commitment for steady, known traffic. It does not fit unknown traffic."
+      - id: c
+        text: "Provisioned capacity with a DynamoDB Accelerator (DAX) cluster"
+        why: "DAX is a cache for faster reads and is billed per node hour. It does not remove the need to plan table capacity."
+      - id: d
+        text: "On-demand capacity mode"
+    answer: [d]
+    explanation: |
+      In on-demand mode DynamoDB serves requests as they come and bills per read and
+      write request. There is no capacity planning. Provisioned mode with auto scaling
+      is often cheaper later, when traffic becomes steady and predictable.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html
+    glossary: [aws-dynamodb]
+
+  - id: saa-cost-022
+    difficulty: 2
+    type: single
+    question: "An application on Amazon RDS for MySQL runs the same product catalog queries thousands of times per minute. The data changes only a few times per day. The database CPU is high. Which solution reduces database load MOST cost-effectively?"
+    options:
+      - id: a
+        text: "Add five RDS read replicas and spread the queries across them"
+        why: "Read replicas work, but each one is a full database instance. Five replicas cost much more than a small cache for repeated queries."
+      - id: b
+        text: "Cache query results in Amazon ElastiCache with a time to live"
+      - id: c
+        text: "Change the DB instance to Multi-AZ deployment"
+        why: "The Multi-AZ standby is for failover and does not serve reads. It doubles instance cost without reducing load."
+      - id: d
+        text: "Move the database to a larger instance with Provisioned IOPS storage"
+        why: "A larger instance and Provisioned IOPS raise cost. The same data would still be read again and again from the database."
+    answer: [b]
+    explanation: |
+      When the same data is read many times and changes rarely, a cache is the cheapest
+      fix. ElastiCache serves results from memory, so most queries never reach RDS. Read
+      replicas are better when reads are varied and need fresh data from the database.
+    docs:
+      - https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html
+    glossary: [aws-elasticache, aws-read-replica, aws-rds]
+
+  - id: saa-cost-023
+    difficulty: 3
+    type: multiple
+    question: "A DynamoDB table stores user sessions and old order history. Sessions are useless after 24 hours. Order history is kept for years but is rarely read. Storage is now the largest part of the bill. Which combination of steps will lower cost? (Select TWO.)"
+    options:
+      - id: a
+        text: "Add a global secondary index on the order date"
+        why: "A GSI copies data into another index and adds storage and write cost. It does not remove old data."
+      - id: b
+        text: "Run a scan every night with a Lambda function that deletes old sessions"
+        why: "Scans and deletes use read and write capacity that you pay for. TTL does the same work with no extra charge for the deletes."
+      - id: c
+        text: "Enable Time to Live (TTL) on an expiry attribute for session items"
+      - id: d
+        text: "Add a DynamoDB Accelerator (DAX) cluster in front of the table"
+        why: "DAX speeds up reads and adds node costs. It does not reduce what is stored in the table."
+      - id: e
+        text: "Move order history to a table that uses the Standard-IA table class"
+    answer: [c, e]
+    explanation: |
+      TTL deletes expired items automatically and the deletes do not use write
+      capacity. The DynamoDB Standard-IA table class has a much lower storage price, with
+      a higher price per request. It fits large tables of data that is rarely read.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.TableClasses.html
+    glossary: [aws-dynamodb, aws-ttl]
+
+  - id: saa-cost-024
+    difficulty: 1
+    type: single
+    question: "A company runs a production Amazon RDS for PostgreSQL database 24 hours a day. The size and engine will not change for at least 3 years. How can the company reduce the database cost the MOST?"
+    options:
+      - id: a
+        text: "Stop the DB instance every night and start it in the morning"
+        why: "This is a production database that must run all day. Stopping it would cause downtime."
+      - id: b
+        text: "Run the database on Spot Instances with PostgreSQL installed"
+        why: "Spot capacity can be taken back at any time. That is not acceptable for a production database."
+      - id: c
+        text: "Buy a 3-year Reserved DB Instance for the database"
+      - id: d
+        text: "Move the database to an Aurora global database"
+        why: "A global database adds clusters in other Regions for disaster recovery and global reads. It increases cost."
+    answer: [c]
+    explanation: |
+      Reserved DB Instances give a large discount compared with On-Demand pricing in
+      exchange for a 1-year or 3-year term. A 3-year term gives the biggest discount and
+      fits a steady database that will not change.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithReservedDBInstances.html
+    glossary: [aws-rds, aws-reserved-instances]
+
+  - id: saa-cost-025
+    difficulty: 2
+    type: multiple
+    question: "EC2 instances in private subnets send several TB per month to Amazon S3 and Amazon DynamoDB in the same Region. All of this traffic goes through a NAT gateway, and the NAT data processing charge is high. Which combination of steps will reduce cost? (Select TWO.)"
+    options:
+      - id: a
+        text: "Add a second NAT gateway in another Availability Zone"
+        why: "Another NAT gateway adds an hourly charge and still charges per GB processed. It improves availability, not cost."
+      - id: b
+        text: "Create a gateway VPC endpoint for Amazon S3 and add it to the route tables"
+      - id: c
+        text: "Move the instances to public subnets and remove all security groups"
+        why: "This exposes the instances to the internet and is not secure. Security groups do not create data charges anyway."
+      - id: d
+        text: "Create a gateway VPC endpoint for Amazon DynamoDB and add it to the route tables"
+      - id: e
+        text: "Replace the NAT gateway with an AWS Site-to-Site VPN connection"
+        why: "A VPN connects to an on-premises network. It does not give a cheap private path to S3 or DynamoDB."
+    answer: [b, d]
+    explanation: |
+      Gateway VPC endpoints for S3 and DynamoDB have no hourly or per-GB charge. Traffic
+      to these services goes through the endpoint instead of the NAT gateway, so the
+      NAT data processing charge for that traffic goes away.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html
+      - https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html
+    glossary: [aws-vpc-endpoint, aws-nat-gateway, aws-route-table]
+
+  - id: saa-cost-026
+    difficulty: 1
+    type: single
+    question: "A company serves videos and images to users around the world directly from an S3 bucket. The data transfer out bill is high and users far away see slow loads. Which solution reduces cost and improves speed?"
+    options:
+      - id: a
+        text: "Put an Amazon CloudFront distribution in front of the bucket"
+      - id: b
+        text: "Enable S3 Transfer Acceleration on the bucket"
+        why: "Transfer Acceleration speeds up long-distance transfers but adds a charge per GB. It does not cache content near users."
+      - id: c
+        text: "Copy the bucket to every Region with S3 Cross-Region Replication"
+        why: "Replication adds storage and transfer cost in every Region. It also needs logic to send users to the nearest bucket."
+      - id: d
+        text: "Move the files to Amazon EFS and serve them from EC2"
+        why: "EFS and EC2 add storage and compute cost, and data still leaves AWS from one Region at internet rates."
+    answer: [a]
+    explanation: |
+      CloudFront caches content at edge locations close to users, so loads are faster.
+      Data transfer from S3 to CloudFront is free, and CloudFront's data transfer out
+      price is usually lower than serving from S3 directly. Fewer requests reach S3.
+    docs:
+      - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html
+      - https://aws.amazon.com/cloudfront/pricing/
+    glossary: [aws-cloudfront, aws-data-transfer, aws-edge-location]
+
+  - id: saa-cost-027
+    difficulty: 3
+    type: single
+    question: "A solutions architect is reviewing data transfer charges. Which type of traffic has NO data transfer charge?"
+    options:
+      - id: a
+        text: "Traffic between EC2 instances in different Availability Zones using private IP addresses"
+        why: "Traffic between Availability Zones in the same Region is charged per GB in each direction."
+      - id: b
+        text: "Traffic from an EC2 instance to users on the internet"
+        why: "Data transfer out to the internet is charged per GB after the monthly free amount."
+      - id: c
+        text: "Traffic from S3 Cross-Region Replication to a bucket in another Region"
+        why: "Data sent between Regions is charged per GB, and replication also adds request and storage cost."
+      - id: d
+        text: "Traffic from an Amazon S3 bucket to Amazon CloudFront edge locations"
+    answer: [d]
+    explanation: |
+      AWS does not charge for data transferred from AWS origins such as S3 to CloudFront.
+      Data coming into AWS from the internet is also free. Cross-AZ, cross-Region and
+      internet-bound traffic are charged, so placing traffic carefully saves money.
+    docs:
+      - https://aws.amazon.com/cloudfront/pricing/
+      - https://aws.amazon.com/ec2/pricing/on-demand/
+    glossary: [aws-data-transfer, aws-cloudfront, aws-az]
+
+  - id: saa-cost-028
+    difficulty: 3
+    type: single
+    question: "A company sends about 80 TB per month from AWS to its data center over a Site-to-Site VPN. The volume is steady and will grow. The company wants to lower the monthly data transfer cost. Which solution meets this requirement?"
+    options:
+      - id: a
+        text: "Add a second Site-to-Site VPN tunnel and use ECMP"
+        why: "More VPN tunnels can add bandwidth, but data still leaves AWS at internet data transfer out rates."
+      - id: b
+        text: "Set up an AWS Direct Connect connection for this traffic"
+      - id: c
+        text: "Send the data through Amazon CloudFront to the data center"
+        why: "CloudFront is a content delivery network for users. It is not a private link to a data center."
+      - id: d
+        text: "Use AWS Global Accelerator in front of the VPN endpoint"
+        why: "Global Accelerator improves the path over the AWS network and adds its own charges. It does not lower the per-GB price."
+    answer: [b]
+    explanation: |
+      AWS Direct Connect has lower data transfer out prices than the internet. With a
+      large and steady volume, the per-GB savings are larger than the port and partner
+      fees. A VPN is cheaper to start but uses internet rates for every GB.
+    docs:
+      - https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html
+      - https://aws.amazon.com/directconnect/pricing/
+    glossary: [aws-direct-connect, aws-vpn, aws-data-transfer]
+
+  - id: saa-cost-029
+    difficulty: 2
+    type: multiple
+    question: "A company with several projects in one AWS account wants to see monthly cost for each project in AWS Cost Explorer. Which combination of steps must a solutions architect take? (Select TWO.)"
+    options:
+      - id: a
+        text: "Add a Project tag with the project name to each resource"
+      - id: b
+        text: "Create an AWS Config rule that requires the Project tag"
+        why: "A Config rule can report missing tags, but it does not make tags appear in billing tools."
+      - id: c
+        text: "Add the Project tag to the IAM users who create the resources"
+        why: "Tags on IAM users do not copy to the resources they create. Cost is reported by resource tags."
+      - id: d
+        text: "Activate the Project tag as a cost allocation tag in the Billing console"
+      - id: e
+        text: "Turn on AWS CloudTrail and filter the logs by project"
+        why: "CloudTrail records API calls, not cost. It cannot show monthly spend per project."
+    answer: [a, d]
+    explanation: |
+      Cost is grouped by tags on the resources. User-defined tags appear in Cost Explorer
+      and the Cost and Usage Report only after you activate them as cost allocation tags.
+      After activation it can take up to 24 hours for them to show.
+    docs:
+      - https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html
+      - https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html
+    glossary: [aws-cost-tools]
+
+  - id: saa-cost-030
+    difficulty: 1
+    type: single
+    question: "A finance team wants an email alert when the forecasted monthly AWS spend for an account goes above 5,000 USD. Which service should they use?"
+    options:
+      - id: a
+        text: "AWS Trusted Advisor"
+        why: "Trusted Advisor checks for idle resources and other best practices. It does not send alerts based on a spend amount you set."
+      - id: b
+        text: "AWS Cost and Usage Report"
+        why: "The Cost and Usage Report delivers detailed billing data files to S3. It does not send alerts."
+      - id: c
+        text: "AWS Budgets"
+      - id: d
+        text: "AWS Pricing Calculator"
+        why: "The Pricing Calculator estimates the cost of a planned architecture. It does not watch real spend."
+    answer: [c]
+    explanation: |
+      AWS Budgets lets you set a cost or usage amount and get alerts by email or Amazon
+      SNS when actual or forecasted spend goes above it. Budget actions can also apply
+      policies or stop instances when a limit is reached.
+    docs:
+      - https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html
+    glossary: [aws-cost-tools, aws-sns]

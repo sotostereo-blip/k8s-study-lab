@@ -1,0 +1,81 @@
+id: saa-sec-003
+title: Create a least-privilege IAM role for EC2
+domain: secure
+difficulty: 2
+minutes: 10
+environment: aws
+setup: |
+  aws s3api create-bucket --bucket saa-finance-data >/dev/null
+task: |
+  An application on EC2 must **read** files from the bucket `saa-finance-data`, without access keys
+  stored on the server.
+
+  1. Create an IAM role `saa-report-reader` that the **EC2 service** (`ec2.amazonaws.com`) can assume.
+  2. Give the role (inline or managed policy) permission to **list** the bucket and **read** its
+     objects: only `s3:ListBucket` on `arn:aws:s3:::saa-finance-data` and `s3:GetObject` on
+     `arn:aws:s3:::saa-finance-data/*`. No other actions, no wildcards like `s3:*` or `"Resource": "*"`.
+  3. Create an **instance profile** `saa-report-reader` and add the role to it (EC2 uses instance
+     profiles to pass a role to an instance).
+checks:
+  - name: Role `saa-report-reader` trusts the EC2 service
+    run: |
+      out=$(aws iam get-role --role-name saa-report-reader --output json 2>&1)
+      echo "$out" | jq -e '[.Role.AssumeRolePolicyDocument | (if type == "string" then fromjson else . end)
+        | .Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Allow" and ([.Action] | flatten | index("sts:AssumeRole")) and ([.Principal.Service] | flatten | index("ec2.amazonaws.com")))] | length > 0' >/dev/null
+  - name: The role can s3:GetObject on the objects of saa-finance-data
+    run: |
+      r=saa-report-reader; docs=""
+      for p in $(aws iam list-role-policies --role-name $r --query 'PolicyNames[]' --output text); do
+        docs="$docs$(aws iam get-role-policy --role-name $r --policy-name "$p" --query PolicyDocument --output json)"; done
+      for a in $(aws iam list-attached-role-policies --role-name $r --query 'AttachedPolicies[].PolicyArn' --output text); do
+        v=$(aws iam get-policy --policy-arn "$a" --query Policy.DefaultVersionId --output text)
+        docs="$docs$(aws iam get-policy-version --policy-arn "$a" --version-id "$v" --query PolicyVersion.Document --output json)"; done
+      echo "$docs" | jq -s -e '[.[] | (if type == "string" then fromjson else . end) | .Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Allow" and ([.Action] | flatten | index("s3:GetObject")) and ([.Resource] | flatten | index("arn:aws:s3:::saa-finance-data/*")))] | length > 0' >/dev/null
+  - name: 'Least privilege: only s3:GetObject / s3:ListBucket on saa-finance-data, no wildcards'
+    run: |
+      r=saa-report-reader; docs=""
+      for p in $(aws iam list-role-policies --role-name $r --query 'PolicyNames[]' --output text); do
+        docs="$docs$(aws iam get-role-policy --role-name $r --policy-name "$p" --query PolicyDocument --output json)"; done
+      for a in $(aws iam list-attached-role-policies --role-name $r --query 'AttachedPolicies[].PolicyArn' --output text); do
+        v=$(aws iam get-policy --policy-arn "$a" --query Policy.DefaultVersionId --output text)
+        docs="$docs$(aws iam get-policy-version --policy-arn "$a" --version-id "$v" --query PolicyVersion.Document --output json)"; done
+      [ -n "$docs" ] && echo "$docs" | jq -s -e '[.[] | (if type == "string" then fromjson else . end) | .Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Allow")] | length > 0 and all(
+          ([.Action] | flatten | all(. == "s3:GetObject" or . == "s3:ListBucket"))
+          and ([.Resource] | flatten | all(. == "arn:aws:s3:::saa-finance-data" or . == "arn:aws:s3:::saa-finance-data/*")))' >/dev/null
+  - name: Instance profile `saa-report-reader` contains the role
+    run: |
+      out=$(aws iam get-instance-profile --instance-profile-name saa-report-reader --output json 2>&1)
+      echo "$out" | jq -e '[.InstanceProfile.Roles[].RoleName] | index("saa-report-reader")' >/dev/null
+solution: |
+  cat > /tmp/trust.json <<'JSON'
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" }
+    ]
+  }
+  JSON
+  aws iam create-role --role-name saa-report-reader --assume-role-policy-document file:///tmp/trust.json
+
+  cat > /tmp/read-finance.json <<'JSON'
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      { "Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::saa-finance-data" },
+      { "Effect": "Allow", "Action": "s3:GetObject", "Resource": "arn:aws:s3:::saa-finance-data/*" }
+    ]
+  }
+  JSON
+  aws iam put-role-policy --role-name saa-report-reader --policy-name read-finance-data \
+    --policy-document file:///tmp/read-finance.json
+
+  aws iam create-instance-profile --instance-profile-name saa-report-reader
+  aws iam add-role-to-instance-profile --instance-profile-name saa-report-reader --role-name saa-report-reader
+  # Note: ListBucket works on the bucket ARN, GetObject on the object ARNs (bucket/*).
+docs:
+  - https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html
+  - https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
+  - https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html

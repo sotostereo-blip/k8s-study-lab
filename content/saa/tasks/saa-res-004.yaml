@@ -1,0 +1,35 @@
+id: saa-res-004
+title: Schedule a job with an EventBridge rule and an SQS target
+domain: resilient
+difficulty: 2
+minutes: 8
+environment: aws
+setup: |
+  aws sqs create-queue --queue-name saa-report-jobs >/dev/null
+task: |
+  A cron job on one server starts the nightly report. If that server is down, no report is made.
+  Replace it with a managed, **decoupled** schedule:
+
+  1. Create an **EventBridge rule** `saa-nightly-report` with the schedule expression
+     `cron(0 2 * * ? *)` (every day at 02:00 UTC). The rule must be `ENABLED`.
+  2. Add the SQS queue `saa-report-jobs` as the **target** of the rule. Any worker can then take
+     the job from the queue.
+checks:
+  - name: Rule `saa-nightly-report` is enabled with the schedule cron(0 2 * * ? *)
+    run: |
+      out=$(aws events describe-rule --name saa-nightly-report --output json 2>&1)
+      echo "$out" | jq -e '.State == "ENABLED" and (.ScheduleExpression | gsub(" +"; " ")) == "cron(0 2 * * ? *)"' >/dev/null
+  - name: The target of the rule is the queue `saa-report-jobs`
+    run: |
+      out=$(aws events list-targets-by-rule --rule saa-nightly-report --output json 2>&1)
+      echo "$out" | jq -e '[.Targets[] | select(.Arn == "arn:aws:sqs:us-east-1:000000000000:saa-report-jobs")] | length > 0' >/dev/null
+solution: |
+  aws events put-rule --name saa-nightly-report --schedule-expression 'cron(0 2 * * ? *)' --state ENABLED
+  aws events put-targets --rule saa-nightly-report \
+    --targets Id=report-queue,Arn=arn:aws:sqs:us-east-1:000000000000:saa-report-jobs
+  aws events list-targets-by-rule --rule saa-nightly-report
+  # In real AWS the queue also needs a queue policy that allows events.amazonaws.com
+  # to call sqs:SendMessage. EventBridge Scheduler is a newer option for schedules.
+docs:
+  - https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html
+  - https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html

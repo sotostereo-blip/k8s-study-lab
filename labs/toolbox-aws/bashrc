@@ -1,0 +1,9 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+complete -C aws_completer aws 2>/dev/null
+export EDITOR=vim
+PS1='\[\e[33m\]aws-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+AWS lab ready. The AWS CLI talks to LocalStack, a local emulator of the AWS APIs:
+no real cloud, no account, no cost. Region us-east-1, account 000000000000.
+Try: aws sts get-caller-identity    aws s3 ls    aws ec2 describe-vpcs
+MSG

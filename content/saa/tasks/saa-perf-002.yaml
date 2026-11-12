@@ -1,0 +1,43 @@
+id: saa-perf-002
+title: CloudWatch alarm that notifies an SNS topic
+domain: performing
+difficulty: 2
+minutes: 8
+environment: aws
+task: |
+  The operations team wants an e-mail when the web servers are too busy. Prepare the alarm
+  (the e-mail subscription itself is not needed here):
+
+  1. Create an SNS topic `saa-ops-alerts`.
+  2. Create a **CloudWatch alarm** `saa-high-cpu` on the metric `CPUUtilization` in the namespace
+     `AWS/EC2` (statistic `Average`, period **300** seconds) that goes to ALARM when the value is
+     **greater than 80** for **3** evaluation periods in a row.
+  3. The alarm action (`AlarmActions`) must be the topic `saa-ops-alerts`.
+checks:
+  - name: Alarm `saa-high-cpu` watches AWS/EC2 CPUUtilization (Average, 300 s)
+    run: |
+      out=$(aws cloudwatch describe-alarms --alarm-names saa-high-cpu --output json 2>&1)
+      echo "$out" | jq -e '.MetricAlarms[0] | .MetricName == "CPUUtilization" and .Namespace == "AWS/EC2"
+        and .Statistic == "Average" and .Period == 300' >/dev/null
+  - name: It fires when the value is greater than 80 for 3 periods
+    run: |
+      out=$(aws cloudwatch describe-alarms --alarm-names saa-high-cpu --output json 2>&1)
+      echo "$out" | jq -e '.MetricAlarms[0] | .Threshold == 80 and .ComparisonOperator == "GreaterThanThreshold"
+        and .EvaluationPeriods == 3' >/dev/null
+  - name: The alarm action is the SNS topic `saa-ops-alerts`
+    run: |
+      aws sns get-topic-attributes --topic-arn arn:aws:sns:us-east-1:000000000000:saa-ops-alerts >/dev/null 2>&1 || exit 1
+      out=$(aws cloudwatch describe-alarms --alarm-names saa-high-cpu --output json 2>&1)
+      echo "$out" | jq -e '.MetricAlarms[0].AlarmActions | index("arn:aws:sns:us-east-1:000000000000:saa-ops-alerts")' >/dev/null
+solution: |
+  TOPIC=$(aws sns create-topic --name saa-ops-alerts --query TopicArn --output text)
+  aws cloudwatch put-metric-alarm --alarm-name saa-high-cpu \
+    --namespace AWS/EC2 --metric-name CPUUtilization --statistic Average --period 300 \
+    --comparison-operator GreaterThanThreshold --threshold 80 --evaluation-periods 3 \
+    --alarm-actions "$TOPIC"
+  aws cloudwatch describe-alarms --alarm-names saa-high-cpu
+  # In real AWS you would add: aws sns subscribe --topic-arn $TOPIC --protocol email --notification-endpoint you@example.com
+  # The same metric can drive an Auto Scaling policy instead of (or as well as) an e-mail.
+docs:
+  - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html
+  - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/US_AlarmAtThresholdEC2.html

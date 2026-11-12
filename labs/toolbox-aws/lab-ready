@@ -1,0 +1,12 @@
+#!/bin/bash
+# Exit 0 when LocalStack answers and every service used by the labs works.
+h=$(curl -sf http://localstack:4566/_localstack/health) || exit 1
+for s in s3 iam sts sqs sns dynamodb ec2 cloudwatch logs secretsmanager ssm kms events; do
+  echo "$h" | jq -e --arg s "$s" '.services[$s] == "running" or .services[$s] == "available"' >/dev/null || exit 1
+done
+aws s3api list-buckets >/dev/null 2>&1 \
+  && aws sqs list-queues >/dev/null 2>&1 \
+  && aws dynamodb list-tables >/dev/null 2>&1 \
+  && aws ec2 describe-vpcs >/dev/null 2>&1 \
+  && aws iam list-roles >/dev/null 2>&1 \
+  && aws events list-rules >/dev/null 2>&1

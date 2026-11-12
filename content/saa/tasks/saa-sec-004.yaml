@@ -1,0 +1,59 @@
+id: saa-sec-004
+title: Fix an over-permissive managed IAM policy
+domain: secure
+difficulty: 2
+minutes: 8
+environment: aws
+setup: |
+  aws s3api create-bucket --bucket saa-app-uploads >/dev/null
+  aws iam create-user --user-name saa-app-user >/dev/null
+  cat > /tmp/too-wide.json <<'JSON'
+  {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:*","Resource":"*"}]}
+  JSON
+  aws iam create-policy --policy-name saa-app-policy --policy-document file:///tmp/too-wide.json >/dev/null
+  aws iam attach-user-policy --user-name saa-app-user --policy-arn arn:aws:iam::000000000000:policy/saa-app-policy
+task: |
+  The IAM user `saa-app-user` is used by an upload service. It has the customer managed policy
+  `saa-app-policy`, which allows `s3:*` on every resource. A security review says this breaks
+  **least privilege**.
+
+  Change `saa-app-policy` so that its **default version** allows only `s3:PutObject` on
+  `arn:aws:s3:::saa-app-uploads/*`, and nothing else.
+  Keep the policy attached to `saa-app-user` (tip: managed policies have **versions**).
+checks:
+  - name: The default version of saa-app-policy allows s3:PutObject on saa-app-uploads/*
+    run: |
+      a=arn:aws:iam::000000000000:policy/saa-app-policy
+      v=$(aws iam get-policy --policy-arn $a --query Policy.DefaultVersionId --output text 2>&1)
+      out=$(aws iam get-policy-version --policy-arn $a --version-id "$v" --query PolicyVersion.Document --output json 2>&1)
+      echo "$out" | jq -e '(if type == "string" then fromjson else . end) | [.Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Allow" and ([.Action] | flatten | index("s3:PutObject")) and ([.Resource] | flatten | index("arn:aws:s3:::saa-app-uploads/*")))] | length > 0' >/dev/null
+  - name: The default version allows nothing else (no s3:*, no other bucket)
+    run: |
+      a=arn:aws:iam::000000000000:policy/saa-app-policy
+      v=$(aws iam get-policy --policy-arn $a --query Policy.DefaultVersionId --output text 2>&1)
+      out=$(aws iam get-policy-version --policy-arn $a --version-id "$v" --query PolicyVersion.Document --output json 2>&1)
+      echo "$out" | jq -e '(if type == "string" then fromjson else . end) | [.Statement | (if type == "array" then .[] else . end) | select(.Effect == "Allow")]
+        | length > 0 and all(([.Action] | flatten | all(. == "s3:PutObject")) and ([.Resource] | flatten | all(. == "arn:aws:s3:::saa-app-uploads/*")))' >/dev/null
+  - name: saa-app-policy is still attached to saa-app-user
+    run: |
+      out=$(aws iam list-attached-user-policies --user-name saa-app-user --output json 2>&1)
+      echo "$out" | jq -e '[.AttachedPolicies[].PolicyName] | index("saa-app-policy")' >/dev/null
+    guard: true
+solution: |
+  cat > /tmp/put-only.json <<'JSON'
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      { "Effect": "Allow", "Action": "s3:PutObject", "Resource": "arn:aws:s3:::saa-app-uploads/*" }
+    ]
+  }
+  JSON
+  aws iam create-policy-version --policy-arn arn:aws:iam::000000000000:policy/saa-app-policy \
+    --policy-document file:///tmp/put-only.json --set-as-default
+  aws iam list-policy-versions --policy-arn arn:aws:iam::000000000000:policy/saa-app-policy
+  # Optional clean-up: aws iam delete-policy-version --policy-arn ... --version-id v1
+  # (a managed policy keeps at most 5 versions).
+docs:
+  - https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-versioning.html
+  - https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html

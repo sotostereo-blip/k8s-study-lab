@@ -1,0 +1,49 @@
+id: saa-sec-001
+title: Protect an S3 bucket with versioning and Block Public Access
+domain: secure
+difficulty: 1
+minutes: 5
+environment: aws
+setup: |
+  aws s3api create-bucket --bucket saa-reports-archive >/dev/null
+  # An old bucket: someone removed the Block Public Access settings years ago.
+  aws s3api delete-public-access-block --bucket saa-reports-archive
+  echo "2025 report" > /tmp/report.txt
+  aws s3api put-object --bucket saa-reports-archive --key reports/2025.txt --body /tmp/report.txt >/dev/null
+task: |
+  The bucket `saa-reports-archive` keeps company reports. People sometimes overwrite or delete
+  files by mistake. Years ago someone removed its Block Public Access settings, and the security
+  team wants to be sure the bucket can never become public.
+
+  1. Turn on **S3 Versioning** for the bucket, so old versions of every object are kept.
+  2. Turn on all four **Block Public Access** settings for the bucket
+     (`BlockPublicAcls`, `IgnorePublicAcls`, `BlockPublicPolicy`, `RestrictPublicBuckets`).
+
+  Do not delete the object `reports/2025.txt`.
+checks:
+  - name: Versioning is `Enabled` on `saa-reports-archive`
+    run: |
+      out=$(aws s3api get-bucket-versioning --bucket saa-reports-archive --output json 2>&1)
+      echo "$out" | jq -e '.Status == "Enabled"' >/dev/null
+  - name: All four Block Public Access settings are true
+    run: |
+      out=$(aws s3api get-public-access-block --bucket saa-reports-archive --output json 2>&1)
+      echo "$out" | jq -e '.PublicAccessBlockConfiguration | .BlockPublicAcls and .IgnorePublicAcls and .BlockPublicPolicy and .RestrictPublicBuckets' >/dev/null
+  - name: The object `reports/2025.txt` is still in the bucket
+    run: aws s3api head-object --bucket saa-reports-archive --key reports/2025.txt >/dev/null
+    guard: true
+solution: |
+  aws s3api put-bucket-versioning --bucket saa-reports-archive \
+    --versioning-configuration Status=Enabled
+  aws s3api put-public-access-block --bucket saa-reports-archive \
+    --public-access-block-configuration \
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+  # Check your work:
+  aws s3api get-bucket-versioning --bucket saa-reports-archive
+  aws s3api get-public-access-block --bucket saa-reports-archive
+  # Versioning can be suspended later, but never turned off completely.
+  # New buckets get Block Public Access by default (since April 2023); old ones may not have it.
+docs:
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html

@@ -1,0 +1,1157 @@
+domain: secure
+questions:
+  - id: saa-sec-001
+    difficulty: 1
+    type: single
+    question: "A company has just created a new AWS account. A security review says the root user is a big risk. Which action follows AWS best practices for the root user?"
+    options:
+      - id: a
+        text: "Create access keys for the root user and store them in a safe place"
+        why: "AWS recommends that the root user has no access keys at all. Long-term root keys give full control of the account if they leak."
+      - id: b
+        text: "Use the root user for daily admin work, but only from the office network"
+        why: "Network location does not reduce the power of the root user. Daily work should use IAM roles or IAM Identity Center users."
+      - id: c
+        text: "Enable MFA on the root user and use it only for tasks that need root"
+      - id: d
+        text: "Delete the root user after creating an IAM user with admin rights"
+        why: "You cannot delete the root user of an AWS account. You can only protect it and avoid using it."
+    answer: [c]
+    explanation: |
+      The root user has full access to everything in the account. AWS recommends
+      a strong password, MFA, no access keys, and using the root user only for
+      the few tasks that require it. Daily work uses IAM roles or Identity Center.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html
+    glossary: [aws-iam, aws-mfa]
+
+  - id: saa-sec-002
+    difficulty: 1
+    type: single
+    question: "An application runs on Amazon EC2 instances and must read objects from an Amazon S3 bucket. Which solution is the MOST secure way to give the application access?"
+    options:
+      - id: a
+        text: "Attach an IAM role to the instances with an instance profile"
+      - id: b
+        text: "Create an IAM user and put its access keys in the application code"
+        why: "Access keys in code are long-term credentials that can leak and must be rotated by hand. A role gives temporary credentials automatically."
+      - id: c
+        text: "Make the bucket public and restrict access by the instance IP"
+        why: "A public bucket exposes data to the internet. IP filters are not a replacement for IAM authentication."
+      - id: d
+        text: "Store the root user access keys in the EC2 user data script"
+        why: "Root keys give full control of the account. User data is also readable from inside the instance, so this is very unsafe."
+    answer: [a]
+    explanation: |
+      An IAM role attached through an instance profile gives the instance
+      temporary credentials from AWS STS. The SDK picks them up and they rotate
+      automatically. No long-term keys are stored on the instance.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html
+    glossary: [aws-iam-role, aws-sts, aws-ec2, least-privilege]
+
+  - id: saa-sec-003
+    difficulty: 2
+    type: multiple
+    question: "A solutions architect explains how IAM decides if a request inside one AWS account is allowed. Which statements are correct? (Select TWO.)"
+    options:
+      - id: a
+        text: "An explicit allow in any policy overrides an explicit deny in another policy"
+        why: "It is the other way around. An explicit deny always wins over any allow."
+      - id: b
+        text: "An explicit deny in any applicable policy overrides every allow"
+      - id: c
+        text: "If no policy mentions an action, the request is allowed by default"
+        why: "When nothing allows the action, the result is an implicit deny. Access must be granted explicitly."
+      - id: d
+        text: "By default, every request is implicitly denied until something allows it"
+      - id: e
+        text: "Permissions boundaries add extra permissions on top of identity policies"
+        why: "A permissions boundary only sets the maximum permissions. It never grants permissions by itself."
+    answer: [b, d]
+    explanation: |
+      IAM starts with an implicit deny for every request. If any applicable
+      policy has an explicit deny, the request is denied. Only when there is no
+      explicit deny and at least one allow (inside all limits) is it allowed.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html
+    glossary: [aws-iam-policy, aws-iam]
+
+  - id: saa-sec-004
+    difficulty: 3
+    type: single
+    question: "A member account in AWS Organizations has an SCP that denies `ec2:RunInstances` outside eu-west-1. An IAM user in that account has the AdministratorAccess policy. The user tries to launch an instance in us-east-1. What happens?"
+    options:
+      - id: a
+        text: "The launch works, because AdministratorAccess allows all actions"
+        why: "Identity policies cannot go beyond what the SCP allows. The SCP deny still applies to the user."
+      - id: b
+        text: "The launch fails, because the SCP limits what the account can do"
+      - id: c
+        text: "The launch works, but AWS Config marks the instance as noncompliant"
+        why: "AWS Config only records and evaluates resources. The SCP blocks the API call before any resource exists."
+      - id: d
+        text: "The launch fails only if the user has not signed in with MFA"
+        why: "MFA is not part of this SCP. The deny is based on the Region, so it applies with or without MFA."
+    answer: [b]
+    explanation: |
+      SCPs set the maximum permissions for IAM users and roles in member
+      accounts. They never grant access, and an explicit deny in an SCP cannot
+      be overridden by an allow in an identity policy. The request is denied.
+    docs:
+      - https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html
+    glossary: [aws-scp, aws-organizations, aws-iam-policy]
+
+  - id: saa-sec-005
+    difficulty: 3
+    type: single
+    question: "Developers must be able to create IAM roles for their Lambda functions. The security team wants to make sure that these new roles can never have more permissions than a defined set. Which solution meets this requirement?"
+    options:
+      - id: a
+        text: "Give developers AdministratorAccess and review CloudTrail logs every week"
+        why: "Reviewing logs only finds problems after they happen. It does not prevent privilege escalation."
+      - id: b
+        text: "Use an SCP that allows only the actions the developers need"
+        why: "An SCP affects the whole account, not only the roles the developers create. It cannot stop a developer from creating a role with more rights than the developer should give."
+      - id: c
+        text: "Create a customer managed KMS key and give developers access to it"
+        why: "KMS keys control encryption, not which IAM permissions a new role can have."
+      - id: d
+        text: "Require a permissions boundary on every role that developers create"
+    answer: [d]
+    explanation: |
+      A permissions boundary sets the maximum permissions an IAM role or user can
+      have. The developers' policy can allow `iam:CreateRole` only with a
+      condition that the boundary is attached. Then no new role can do more than
+      the boundary allows.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
+    glossary: [aws-iam-policy, aws-iam-role, least-privilege]
+
+  - id: saa-sec-006
+    difficulty: 2
+    type: single
+    question: "Users in the Dev account must read data from an Amazon DynamoDB table in the Prod account. The company does not want to create IAM users in the Prod account. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Create a role in Prod that trusts the Dev account, and let users assume it"
+      - id: b
+        text: "Copy the access keys of a Prod IAM user into a file in the Dev account"
+        why: "This shares long-term credentials and goes against the requirement of not creating IAM users in Prod."
+      - id: c
+        text: "Create a VPC peering connection between the two accounts' VPCs"
+        why: "VPC peering connects networks. It does not give IAM permissions to call DynamoDB in another account."
+      - id: d
+        text: "Add the Dev users to an IAM group that exists in the Prod account"
+        why: "IAM groups can contain only users from the same account. Groups cannot include users from other accounts."
+    answer: [a]
+    explanation: |
+      A cross-account IAM role in Prod has a trust policy that names the Dev
+      account and a permissions policy for DynamoDB. Dev users with
+      `sts:AssumeRole` permission get temporary credentials for that role.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html
+    glossary: [aws-iam-role, aws-sts, aws-dynamodb]
+
+  - id: saa-sec-007
+    difficulty: 2
+    type: single
+    question: "A company has 40 AWS accounts in AWS Organizations. Employees already sign in with Microsoft Entra ID. The company wants single sign-on to all accounts with central control of permissions. Which solution has the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "Create IAM users in every account with the same user names"
+        why: "This means 40 copies of each user to manage. It is the opposite of central, low-overhead access."
+      - id: b
+        text: "Use Amazon Cognito user pools federated with Entra ID for each account"
+        why: "Cognito is for users of your applications, not for workforce access to the AWS console and accounts."
+      - id: c
+        text: "Use IAM Identity Center with Entra ID as the external identity provider"
+      - id: d
+        text: "Share one IAM admin user per account in a password manager"
+        why: "Shared users break traceability and least privilege. It also does not give single sign-on."
+    answer: [c]
+    explanation: |
+      IAM Identity Center connects to an external identity provider such as
+      Entra ID. Admins create permission sets once and assign them to groups in
+      any account of the organization. Users sign in once and pick an account.
+    docs:
+      - https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html
+    glossary: [aws-identity-center, aws-organizations]
+
+  - id: saa-sec-008
+    difficulty: 1
+    type: single
+    question: "A company is building a mobile app. Customers must be able to sign up, sign in, and reset their password. The company does not want to build its own user directory. Which AWS service should it use?"
+    options:
+      - id: a
+        text: "AWS IAM Identity Center"
+        why: "Identity Center gives employees access to AWS accounts and business apps. It is not a customer directory for a mobile app."
+      - id: b
+        text: "Amazon Cognito user pools"
+      - id: c
+        text: "AWS Directory Service for Microsoft AD"
+        why: "Managed AD is for Windows workloads and corporate users. It does not give ready-made sign-up flows for mobile customers."
+      - id: d
+        text: "IAM users with console passwords"
+        why: "IAM users are for people and workloads that manage AWS. They are not designed for millions of app customers."
+    answer: [b]
+    explanation: |
+      Cognito user pools are a managed user directory for web and mobile apps.
+      They handle sign-up, sign-in, password reset, MFA and social sign-in, and
+      they return tokens the app can use.
+    docs:
+      - https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html
+    glossary: [aws-cognito]
+
+  - id: saa-sec-009
+    difficulty: 2
+    type: single
+    question: "Signed-in users of a mobile app must upload photos directly to an Amazon S3 bucket. Each user needs temporary AWS credentials with limited rights. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Embed one IAM user's access keys in the mobile app"
+        why: "Keys inside an app can be extracted by anyone. All users would also share the same identity."
+      - id: b
+        text: "Make the bucket allow public writes and hide the bucket name"
+        why: "Hiding a name is not security. Anyone could upload anything to a publicly writable bucket."
+      - id: c
+        text: "Use IAM Identity Center permission sets for each app user"
+        why: "Identity Center is for workforce access to AWS accounts, not for millions of mobile app customers."
+      - id: d
+        text: "Use an Amazon Cognito identity pool that maps users to an IAM role"
+    answer: [d]
+    explanation: |
+      A Cognito identity pool exchanges a user's sign-in token for temporary AWS
+      credentials. The credentials come from an IAM role, so you can limit them,
+      for example to a prefix in the bucket for each user.
+    docs:
+      - https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html
+    glossary: [aws-cognito, aws-iam-role, aws-sts, aws-s3]
+
+  - id: saa-sec-010
+    difficulty: 1
+    type: single
+    question: "Which statement correctly compares security groups and network ACLs in a VPC?"
+    options:
+      - id: a
+        text: "Security groups are stateful; network ACLs are stateless"
+      - id: b
+        text: "Security groups are stateless; network ACLs are stateful"
+        why: "This is reversed. Security groups track connections, so return traffic is allowed automatically."
+      - id: c
+        text: "Both are stateful and both support deny rules"
+        why: "Network ACLs are stateless, and security groups support only allow rules."
+      - id: d
+        text: "Both work at the subnet level and use rule numbers"
+        why: "Security groups work at the instance (ENI) level and have no rule numbers. Only network ACLs use numbered rules at the subnet level."
+    answer: [a]
+    explanation: |
+      Security groups are attached to network interfaces, have only allow rules,
+      and are stateful. Network ACLs are attached to subnets, have numbered
+      allow and deny rules, and are stateless, so return traffic needs a rule.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html
+      - https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html
+    glossary: [aws-security-group, aws-nacl, aws-vpc]
+
+  - id: saa-sec-011
+    difficulty: 2
+    type: single
+    question: "A web application in public subnets is getting bad traffic from one known IP address range. The company must block this range for all instances in the subnets quickly. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Add a deny rule for the range to the instances' security group"
+        why: "Security groups do not support deny rules. You can only allow traffic with them."
+      - id: b
+        text: "Remove the internet gateway route from the subnet route table"
+        why: "This would cut off all internet users, not only the bad range."
+      - id: c
+        text: "Add a deny rule for the range to the subnet's network ACL"
+      - id: d
+        text: "Enable VPC Flow Logs on the subnets to stop the traffic"
+        why: "Flow Logs only record traffic metadata. They do not block anything."
+    answer: [c]
+    explanation: |
+      Network ACLs support explicit deny rules and apply to every instance in the
+      subnet. Give the deny rule a lower rule number than the allow rules so it
+      is evaluated first.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html
+    glossary: [aws-nacl, aws-subnet, aws-security-group]
+
+  - id: saa-sec-012
+    difficulty: 2
+    type: multiple
+    question: "A three-tier app has web servers behind an internet-facing ALB, and a MySQL database on Amazon RDS. The database must accept connections only from the web servers. Which security group rules meet these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "ALB security group: allow inbound TCP 443 from 0.0.0.0/0"
+      - id: b
+        text: "Database security group: allow inbound TCP 3306 from 0.0.0.0/0"
+        why: "This allows anyone who can reach the database to try to connect. It breaks the requirement."
+      - id: c
+        text: "Web server security group: allow inbound all traffic from 0.0.0.0/0"
+        why: "The web servers only need traffic from the ALB. Opening all ports to the internet is not needed."
+      - id: d
+        text: "Database security group: deny inbound TCP 3306 from the ALB"
+        why: "Security groups cannot have deny rules. Traffic not allowed is already blocked."
+      - id: e
+        text: "Database security group: allow TCP 3306 from the web server security group"
+    answer: [a, e]
+    explanation: |
+      The ALB must accept HTTPS from users on the internet. The database rule
+      references the web server security group as its source, so only instances
+      in that group can connect on port 3306, even when their IPs change.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html
+    glossary: [aws-security-group, aws-alb, aws-rds]
+
+  - id: saa-sec-013
+    difficulty: 2
+    type: single
+    question: "EC2 instances in a private subnet with no internet access must upload files to Amazon S3 in the same Region. Traffic must not leave the AWS network. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Add a NAT gateway and route S3 traffic through it"
+        why: "A NAT gateway has hourly and per-GB charges, and the traffic goes to the public S3 endpoint."
+      - id: b
+        text: "Create a gateway VPC endpoint for S3 and add it to the route table"
+      - id: c
+        text: "Attach an internet gateway and give the instances public IPs"
+        why: "This puts the instances on the internet. It breaks the private subnet design."
+      - id: d
+        text: "Set up a Site-to-Site VPN connection to reach the S3 service"
+        why: "A VPN connects to on-premises networks. It is not a way to reach S3 from a VPC."
+    answer: [b]
+    explanation: |
+      A gateway endpoint for S3 adds a route to S3 in the route table. Traffic
+      stays on the AWS network and there is no extra charge for gateway
+      endpoints. You can also add an endpoint policy to limit which buckets are
+      reachable.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html
+    glossary: [aws-vpc-endpoint, aws-s3, aws-route-table]
+
+  - id: saa-sec-014
+    difficulty: 2
+    type: single
+    question: "Lambda functions in a VPC with no NAT gateway must read secrets from AWS Secrets Manager. The traffic must stay private. What should a solutions architect create?"
+    options:
+      - id: a
+        text: "A gateway VPC endpoint for Secrets Manager"
+        why: "Gateway endpoints exist only for Amazon S3 and DynamoDB. Other services use interface endpoints."
+      - id: b
+        text: "A VPC peering connection to the Secrets Manager VPC"
+        why: "AWS services are not reached by peering with an AWS-owned VPC. Peering is between your own VPCs."
+      - id: c
+        text: "An internet gateway and a public subnet for the functions"
+        why: "Lambda functions in a VPC do not get public IPs, and this would not keep the traffic private."
+      - id: d
+        text: "An interface VPC endpoint (AWS PrivateLink) for Secrets Manager"
+    answer: [d]
+    explanation: |
+      An interface endpoint creates network interfaces with private IPs in your
+      subnets. With private DNS enabled, the normal Secrets Manager hostname
+      resolves to these IPs, so calls stay inside the AWS network.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html
+    glossary: [aws-vpc-endpoint, aws-secrets-manager, aws-lambda]
+
+  - id: saa-sec-015
+    difficulty: 3
+    type: single
+    question: "A SaaS company runs an API in its VPC. Hundreds of customer VPCs in other accounts must call the API privately. Many customer VPCs use the same CIDR range as the company. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Expose the API with a Network Load Balancer and an endpoint service"
+      - id: b
+        text: "Create a VPC peering connection to each customer VPC"
+        why: "Peering does not work with overlapping CIDR ranges, and hundreds of peerings are hard to manage."
+      - id: c
+        text: "Attach all customer VPCs to one AWS Transit Gateway"
+        why: "Transit Gateway routes between networks, so overlapping CIDRs still cause routing conflicts. It also opens wider network access."
+      - id: d
+        text: "Put the API behind a public ALB and allow customer IPs only"
+        why: "This sends traffic over the internet. It does not give private connectivity."
+    answer: [a]
+    explanation: |
+      AWS PrivateLink lets you publish a service behind a Network Load Balancer
+      as an endpoint service. Customers create interface endpoints in their own
+      VPCs. Only the one service is exposed, and overlapping CIDRs do not matter.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html
+    glossary: [aws-vpc-endpoint, aws-nlb, aws-cidr]
+
+  - id: saa-sec-016
+    difficulty: 1
+    type: single
+    question: "EC2 instances in private subnets must download operating system patches from the internet. The internet must not be able to start connections to the instances. What should be used?"
+    options:
+      - id: a
+        text: "An internet gateway attached to the private subnets"
+        why: "Internet gateways attach to VPCs, not subnets. With public IPs, instances could also receive inbound connections."
+      - id: b
+        text: "A gateway VPC endpoint for the patch repositories"
+        why: "Gateway endpoints only reach S3 and DynamoDB. They cannot reach general internet sites."
+      - id: c
+        text: "A NAT gateway in a public subnet, with a route from the private subnets"
+      - id: d
+        text: "An Elastic IP address attached to each private instance"
+        why: "Elastic IPs make instances directly reachable from the internet, which the company does not want."
+    answer: [c]
+    explanation: |
+      A NAT gateway in a public subnet lets instances in private subnets start
+      outbound connections to the internet. Return traffic comes back, but the
+      internet cannot start new connections to the instances.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html
+    glossary: [aws-nat-gateway, aws-subnet, aws-route-table]
+
+  - id: saa-sec-017
+    difficulty: 2
+    type: single
+    question: "A public web application runs behind an Application Load Balancer. The security team sees SQL injection and cross-site scripting attempts. Which service protects the application from these attacks?"
+    options:
+      - id: a
+        text: "Amazon GuardDuty"
+        why: "GuardDuty detects threats from logs and sends findings. It does not inspect and block HTTP requests."
+      - id: b
+        text: "AWS WAF with managed rule groups on the ALB"
+      - id: c
+        text: "Network ACLs on the ALB subnets"
+        why: "Network ACLs filter by IP, port and protocol. They cannot read HTTP request content."
+      - id: d
+        text: "Amazon Inspector on the web servers"
+        why: "Inspector scans for software vulnerabilities. It does not filter live web traffic."
+    answer: [b]
+    explanation: |
+      AWS WAF is a web application firewall for ALB, CloudFront, API Gateway and
+      other resources. AWS managed rule groups include rules against SQL
+      injection and cross-site scripting at layer 7.
+    docs:
+      - https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
+    glossary: [aws-waf, aws-alb]
+
+  - id: saa-sec-018
+    difficulty: 2
+    type: single
+    question: "A company's public website is a frequent target of large DDoS attacks. It wants help from an AWS response team during attacks and protection from scaling costs caused by attacks. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "AWS Shield Standard, which is included at no cost"
+        why: "Shield Standard gives basic layer 3 and 4 protection for everyone, but no response team and no cost protection."
+      - id: b
+        text: "Amazon GuardDuty with automated findings"
+        why: "GuardDuty detects suspicious activity in accounts. It does not absorb DDoS traffic or give cost protection."
+      - id: c
+        text: "AWS Firewall Manager with security group policies"
+        why: "Firewall Manager manages rules across accounts. On its own it does not add DDoS response or cost protection."
+      - id: d
+        text: "AWS Shield Advanced on the protected resources"
+    answer: [d]
+    explanation: |
+      Shield Advanced adds enhanced DDoS detection and mitigation, 24/7 access to
+      the Shield Response Team, and credits for scaling charges caused by DDoS
+      attacks on protected resources.
+    docs:
+      - https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html
+    glossary: [aws-shield, aws-cloudfront]
+
+  - id: saa-sec-019
+    difficulty: 1
+    type: single
+    question: "A company wants a managed service that continuously looks for threats such as crypto mining or calls from known bad IPs. It uses CloudTrail, VPC Flow Logs and DNS logs. Which service is this?"
+    options:
+      - id: a
+        text: "Amazon GuardDuty"
+      - id: b
+        text: "Amazon Macie"
+        why: "Macie finds sensitive data such as PII in S3. It does not analyze network or API logs for threats."
+      - id: c
+        text: "AWS Config"
+        why: "Config records resource settings and checks compliance rules. It does not detect active threats."
+      - id: d
+        text: "AWS Trusted Advisor"
+        why: "Trusted Advisor gives best-practice checks. It does not analyze logs for threats."
+    answer: [a]
+    explanation: |
+      GuardDuty is a threat detection service. It analyzes CloudTrail events,
+      VPC Flow Logs and DNS logs (and more with optional protection plans) and
+      creates findings you can send to EventBridge for automated response.
+    docs:
+      - https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html
+    glossary: [aws-guardduty, aws-cloudtrail, aws-flow-logs]
+
+  - id: saa-sec-020
+    difficulty: 1
+    type: single
+    question: "A company stores millions of files in Amazon S3. It must find which buckets contain credit card numbers or other personal data. Which service should it use?"
+    options:
+      - id: a
+        text: "Amazon Inspector"
+        why: "Inspector scans compute workloads for software vulnerabilities. It does not classify data in S3."
+      - id: b
+        text: "AWS Shield"
+        why: "Shield protects against DDoS attacks. It does not look at data inside buckets."
+      - id: c
+        text: "Amazon Macie"
+      - id: d
+        text: "Amazon Detective"
+        why: "Detective helps investigate security findings. It does not discover sensitive data in S3."
+    answer: [c]
+    explanation: |
+      Macie uses machine learning and pattern matching to discover sensitive
+      data, such as PII and financial data, in S3. It also reports buckets that
+      are public or not encrypted.
+    docs:
+      - https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html
+    glossary: [aws-macie, aws-s3]
+
+  - id: saa-sec-021
+    difficulty: 2
+    type: single
+    question: "A company must automatically find known software vulnerabilities (CVEs) in its EC2 instances, container images in Amazon ECR, and Lambda functions. Which service meets this requirement with the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "AWS Config managed rules"
+        why: "Config checks resource settings against rules. It does not scan software packages for CVEs."
+      - id: b
+        text: "Amazon Inspector"
+      - id: c
+        text: "Amazon GuardDuty"
+        why: "GuardDuty detects threats from activity and logs. It does not list package vulnerabilities."
+      - id: d
+        text: "AWS WAF"
+        why: "WAF filters web requests. It does not scan instances, images or functions."
+    answer: [b]
+    explanation: |
+      Amazon Inspector automatically discovers EC2 instances, ECR images and
+      Lambda functions and scans them continuously for software vulnerabilities
+      and unintended network exposure.
+    docs:
+      - https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html
+    glossary: [aws-ec2, aws-ecr, aws-lambda]
+
+  - id: saa-sec-022
+    difficulty: 2
+    type: single
+    question: "A company with many accounts in AWS Organizations must record API activity from every account, including new accounts, in one central S3 bucket. Which solution has the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "Create a trail in each account and point it to the central bucket"
+        why: "This works but you must remember to create a trail in every new account. It is more work."
+      - id: b
+        text: "Enable VPC Flow Logs in every account and send them to the bucket"
+        why: "Flow Logs record network traffic, not API calls."
+      - id: c
+        text: "Turn on AWS Config in each account with an aggregator"
+        why: "Config records resource configuration changes, not every API call made in the accounts."
+      - id: d
+        text: "Create an organization trail in AWS CloudTrail from the management account"
+    answer: [d]
+    explanation: |
+      An organization trail logs events for all accounts in the organization,
+      and it applies to new accounts automatically. Member accounts can see the
+      trail but cannot change or delete it.
+    docs:
+      - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/creating-trail-organization.html
+    glossary: [aws-cloudtrail, aws-organizations, audit-log]
+
+  - id: saa-sec-023
+    difficulty: 2
+    type: single
+    question: "A company must detect any EBS volume that is not encrypted, keep a history of resource configuration changes, and fix problems automatically. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "AWS Config rules with automatic remediation"
+      - id: b
+        text: "AWS CloudTrail Insights on the management events"
+        why: "CloudTrail Insights finds unusual API call volume. It does not evaluate resource settings against rules."
+      - id: c
+        text: "Amazon Macie scans of the EBS volumes"
+        why: "Macie works with data in S3. It does not check EBS volume settings."
+      - id: d
+        text: "Amazon CloudWatch metrics for the EBS volumes"
+        why: "EBS metrics show performance, such as IOPS. They do not show encryption state or config history."
+    answer: [a]
+    explanation: |
+      AWS Config records the configuration history of resources. Config rules
+      (for example the managed rule for encrypted volumes) mark resources as
+      noncompliant, and remediation actions with Systems Manager Automation can
+      fix them.
+    docs:
+      - https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html
+      - https://docs.aws.amazon.com/config/latest/developerguide/remediation.html
+    glossary: [aws-config, aws-ebs, encryption-at-rest]
+
+  - id: saa-sec-024
+    difficulty: 3
+    type: multiple
+    question: "Auditors require proof that AWS CloudTrail log files were not changed or deleted after delivery. Which combination of steps should a solutions architect take? (Select TWO.)"
+    options:
+      - id: a
+        text: "Enable S3 Transfer Acceleration on the log bucket"
+        why: "Transfer Acceleration speeds up long-distance uploads. It does nothing for log integrity."
+      - id: b
+        text: "Enable CloudTrail log file integrity validation"
+      - id: c
+        text: "Send logs to a bucket in a separate security account with a strict policy"
+      - id: d
+        text: "Turn on Amazon Macie for the log bucket"
+        why: "Macie finds sensitive data. It does not prove that log files were not modified."
+      - id: e
+        text: "Copy the logs every day to EC2 instance store volumes"
+        why: "Instance store is temporary storage that is lost when the instance stops. It is not a safe archive."
+    answer: [b, c]
+    explanation: |
+      Log file validation creates signed digest files, so you can prove whether a
+      log file was changed or deleted. Storing logs in a separate account with a
+      tight bucket policy (and optionally Object Lock) stops admins in workload
+      accounts from tampering with them.
+    docs:
+      - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-intro.html
+      - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/creating-trail-organization.html
+    glossary: [aws-cloudtrail, aws-bucket-policy, audit-log]
+
+  - id: saa-sec-025
+    difficulty: 3
+    type: single
+    question: "Account A has a customer managed KMS key. An application in Account B must use this key to decrypt data. What must a solutions architect do?"
+    options:
+      - id: a
+        text: "Only attach an IAM policy that allows kms:Decrypt to the role in Account B"
+        why: "An IAM policy in Account B is not enough. The key policy in Account A must also allow Account B."
+      - id: b
+        text: "Copy the KMS key material from Account A into a new key in Account B"
+        why: "You cannot export key material from a normal KMS key. Data encrypted with the original key also needs that key."
+      - id: c
+        text: "Allow Account B in the key policy and allow the role in an IAM policy in Account B"
+      - id: d
+        text: "Change the key to an AWS managed key so other accounts can use it"
+        why: "You cannot convert keys, and AWS managed keys cannot be shared with other accounts."
+    answer: [c]
+    explanation: |
+      For cross-account use, two policies must agree. The key policy in Account A
+      must allow Account B (or the role), and an IAM policy in Account B must
+      give the role permission to use the key ARN.
+    docs:
+      - https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-modifying-external-accounts.html
+      - https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html
+    glossary: [aws-kms-key, aws-iam-policy, kms]
+
+  - id: saa-sec-026
+    difficulty: 1
+    type: single
+    question: "A company's policy says encryption keys must be rotated regularly. Data uses a customer managed KMS key. What is the simplest way to meet this policy?"
+    options:
+      - id: a
+        text: "Create a new key every year and re-encrypt all data by hand"
+        why: "This works but is a lot of manual work. KMS can rotate the key material for you."
+      - id: b
+        text: "Enable automatic key rotation on the KMS key"
+      - id: c
+        text: "Delete the key every year so that KMS creates a new one"
+        why: "Deleting a key makes all data encrypted with it unreadable forever. KMS does not create a replacement."
+      - id: d
+        text: "Switch the data to SSE-C and rotate keys in the application"
+        why: "SSE-C means the company manages keys itself. That adds work instead of reducing it."
+    answer: [b]
+    explanation: |
+      With automatic rotation, KMS creates new key material on a schedule (one
+      year by default, configurable). The key ID stays the same and old key
+      material is kept, so older data still decrypts with no changes.
+    docs:
+      - https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
+    glossary: [aws-kms-key, kms]
+
+  - id: saa-sec-027
+    difficulty: 3
+    type: single
+    question: "An S3 bucket uses SSE-KMS with a customer managed key. A data pipeline writes millions of small objects per hour. KMS costs are high and some requests are throttled. Which solution fixes this with the LEAST effort?"
+    options:
+      - id: a
+        text: "Change to client-side encryption with keys in the application"
+        why: "This moves key management to the company. It is much more work and risk."
+      - id: b
+        text: "Request a higher KMS quota and keep the same configuration"
+        why: "This may reduce throttling but does not lower the number of KMS calls or the cost."
+      - id: c
+        text: "Disable default encryption on the bucket"
+        why: "This removes the encryption requirement. It weakens security instead of fixing the cost."
+      - id: d
+        text: "Enable S3 Bucket Keys for SSE-KMS on the bucket"
+    answer: [d]
+    explanation: |
+      An S3 Bucket Key is a short-lived bucket-level key made from the KMS key.
+      S3 uses it to create data keys, so far fewer requests go to KMS. This
+      lowers KMS cost and the chance of throttling while keeping SSE-KMS.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html
+    glossary: [aws-sse, aws-kms-key, aws-s3]
+
+  - id: saa-sec-028
+    difficulty: 2
+    type: single
+    question: "An application connects to an Amazon RDS for PostgreSQL database. The database password must be changed automatically every 30 days, and the app must always get the current password. Which solution has the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "Store the credentials in AWS Secrets Manager with automatic rotation"
+      - id: b
+        text: "Store the password in a Parameter Store String parameter"
+        why: "Parameter Store has no built-in rotation. You would need your own scheduled job to change the password."
+      - id: c
+        text: "Store the password in an encrypted file in an S3 bucket"
+        why: "S3 does not change the database password. A custom process would be needed for rotation."
+      - id: d
+        text: "Put the password in Lambda environment variables and update them by hand"
+        why: "Manual updates are error-prone and do not meet the automatic rotation requirement."
+    answer: [a]
+    explanation: |
+      Secrets Manager can rotate RDS credentials on a schedule. It updates both
+      the database and the secret. The app reads the secret at run time, so it
+      always gets the current password.
+    docs:
+      - https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html
+    glossary: [aws-secrets-manager, aws-rds]
+
+  - id: saa-sec-029
+    difficulty: 2
+    type: single
+    question: "An application needs about 50 configuration values, a few of which are API keys that must be encrypted. The values do not need automatic rotation. Which solution is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "AWS Secrets Manager secrets for every value"
+        why: "Secrets Manager charges per secret per month. Without a rotation need, it costs more than needed."
+      - id: b
+        text: "An Amazon DynamoDB table with one item per value"
+        why: "DynamoDB is not designed for app config with encryption per value and IAM control per parameter."
+      - id: c
+        text: "Parameter Store standard parameters, with SecureString for the keys"
+      - id: d
+        text: "Plain text values in the EC2 user data script"
+        why: "User data is not encrypted and is readable from the instance. It is not safe for API keys."
+    answer: [c]
+    explanation: |
+      Systems Manager Parameter Store standard parameters have no extra charge.
+      SecureString parameters are encrypted with KMS. Secrets Manager is better
+      when you need built-in rotation, which is not required here.
+    docs:
+      - https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html
+    glossary: [aws-ssm-parameter-store, aws-secrets-manager, aws-kms-key]
+
+  - id: saa-sec-030
+    difficulty: 2
+    type: multiple
+    question: "A company runs a web app on EC2 instances behind an ALB. Compliance rules say data must be encrypted in transit from the client to the instances. Which combination of steps meets this requirement? (Select TWO.)"
+    options:
+      - id: a
+        text: "Add an HTTPS listener on the ALB with a certificate from ACM"
+      - id: b
+        text: "Enable EBS encryption on the volumes of the instances"
+        why: "EBS encryption protects data at rest on disk. It does not encrypt network traffic."
+      - id: c
+        text: "Use HTTPS for the target group, with a certificate on each instance"
+      - id: d
+        text: "Enable AWS Shield Advanced on the ALB"
+        why: "Shield Advanced protects against DDoS. It does not encrypt traffic."
+      - id: e
+        text: "Use a network ACL that allows only port 80 to the instances"
+        why: "Port 80 is plain HTTP, so traffic between the ALB and instances would not be encrypted."
+    answer: [a, c]
+    explanation: |
+      The HTTPS listener with an ACM certificate encrypts traffic from clients to
+      the ALB. An HTTPS target group makes the ALB open a new TLS connection to
+      the instances, so the second hop is encrypted too.
+    docs:
+      - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html
+      - https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html
+    glossary: [aws-acm, aws-alb, tls]
+
+  - id: saa-sec-031
+    difficulty: 3
+    type: single
+    question: "A company's resources run in eu-west-1. It puts an Amazon CloudFront distribution in front with the custom domain www.example.com and HTTPS. Where must the ACM certificate for the distribution be?"
+    options:
+      - id: a
+        text: "In eu-west-1, the same Region as the origin"
+        why: "CloudFront does not use certificates from the origin Region. It only reads ACM certificates in us-east-1."
+      - id: b
+        text: "In the us-east-1 (N. Virginia) Region"
+      - id: c
+        text: "In every Region where the company has users"
+        why: "CloudFront is global. You need only one certificate, in us-east-1."
+      - id: d
+        text: "At each CloudFront edge location, uploaded by hand"
+        why: "You do not manage edge locations. CloudFront distributes the certificate for you."
+    answer: [b]
+    explanation: |
+      To use an ACM certificate with CloudFront, you must request or import it
+      in us-east-1. CloudFront then deploys it to all edge locations. ACM
+      renews public certificates it issued automatically.
+    docs:
+      - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html
+    glossary: [aws-acm, aws-cloudfront, tls]
+
+  - id: saa-sec-032
+    difficulty: 1
+    type: single
+    question: "A company wants to make sure that no S3 bucket in its AWS account can ever be made public, even by mistake. Which solution meets this requirement with the LEAST effort?"
+    options:
+      - id: a
+        text: "Turn on S3 Block Public Access at the account level"
+      - id: b
+        text: "Enable default encryption with SSE-S3 on all buckets"
+        why: "Encryption protects data at rest but does not stop a bucket policy from allowing public access."
+      - id: c
+        text: "Enable S3 Versioning on every bucket"
+        why: "Versioning keeps old versions of objects. It does not control who can read them."
+      - id: d
+        text: "Review every bucket policy by hand each month"
+        why: "Manual reviews find problems late and take effort. They do not block public access."
+    answer: [a]
+    explanation: |
+      S3 Block Public Access at the account level overrides bucket policies and
+      ACLs that would grant public access, for all current and future buckets in
+      the account. You can also enforce it across accounts with an SCP.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+    glossary: [aws-block-public-access, aws-s3-bucket]
+
+  - id: saa-sec-033
+    difficulty: 3
+    type: single
+    question: "A security team must make sure that an S3 bucket rejects every request that does not use HTTPS. What should a solutions architect add?"
+    options:
+      - id: a
+        text: "An S3 Lifecycle rule that deletes objects uploaded over HTTP"
+        why: "Lifecycle rules act on object age and storage class. They cannot see how a request was sent."
+      - id: b
+        text: "A network ACL rule that blocks port 80 in the VPC"
+        why: "S3 is not inside your VPC subnets, and clients outside the VPC would not be affected."
+      - id: c
+        text: "A bucket policy that denies requests when aws:SecureTransport is false"
+      - id: d
+        text: "Default bucket encryption with SSE-KMS"
+        why: "SSE-KMS encrypts data at rest. It does not force clients to use TLS."
+    answer: [c]
+    explanation: |
+      The `aws:SecureTransport` condition key is false when a request uses plain
+      HTTP. A bucket policy with a Deny statement for that case rejects every
+      non-TLS request, whoever sends it.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html
+    glossary: [aws-bucket-policy, tls, aws-s3-bucket]
+
+  - id: saa-sec-034
+    difficulty: 2
+    type: single
+    question: "A web app lets customers download their invoices, which are stored in a private S3 bucket. Each download link must work only for 15 minutes. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Make the invoice objects public and rename them every 15 minutes"
+        why: "Public objects can be read by anyone with the name, and renaming files is not access control."
+      - id: b
+        text: "Have the app create a presigned URL that expires in 15 minutes"
+      - id: c
+        text: "Create an IAM user for each customer with S3 read access"
+        why: "IAM users are not meant for app customers, and they do not expire after 15 minutes."
+      - id: d
+        text: "Add a bucket policy that allows access from any IP for 15 minutes"
+        why: "Bucket policies do not have a per-link time limit. This would open the bucket to everyone."
+    answer: [b]
+    explanation: |
+      A presigned URL is signed with the app's credentials and has an expiry
+      time. Anyone with the URL can download that one object until it expires.
+      The bucket stays private.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html
+    glossary: [aws-presigned-url, aws-s3]
+
+  - id: saa-sec-035
+    difficulty: 2
+    type: single
+    question: "A static website is stored in an S3 bucket and served by Amazon CloudFront. Users must not be able to read the files directly from S3, only through CloudFront. Which solution is recommended?"
+    options:
+      - id: a
+        text: "Enable S3 static website hosting and make the bucket public"
+        why: "A public bucket can be read directly, which is what the company wants to prevent."
+      - id: b
+        text: "Use a presigned URL as the CloudFront origin"
+        why: "Presigned URLs expire and are for single objects. They are not an origin setting."
+      - id: c
+        text: "Allow only CloudFront edge IP ranges in a network ACL"
+        why: "S3 is not in your VPC, so network ACLs do not apply to it."
+      - id: d
+        text: "Use CloudFront origin access control (OAC) and a matching bucket policy"
+    answer: [d]
+    explanation: |
+      With OAC, CloudFront signs its requests to S3. The bucket policy allows
+      only the CloudFront service principal for that distribution, so the bucket
+      can stay private with Block Public Access on. OAC replaces the older OAI.
+    docs:
+      - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html
+    glossary: [aws-cloudfront, aws-bucket-policy, aws-block-public-access]
+
+  - id: saa-sec-036
+    difficulty: 2
+    type: single
+    question: "A financial company must store trade records in Amazon S3 for 7 years. No one, including the root user, may delete or change them during that time. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "S3 Object Lock in compliance mode with a 7-year retention period"
+      - id: b
+        text: "S3 Object Lock in governance mode with a 7-year retention period"
+        why: "In governance mode, users with special permission can remove the lock. It does not stop everyone."
+      - id: c
+        text: "S3 Versioning with a Lifecycle rule to S3 Glacier Deep Archive"
+        why: "Versioning and Lifecycle help with recovery and cost, but an admin can still delete versions."
+      - id: d
+        text: "A bucket policy that denies s3:DeleteObject for all IAM users"
+        why: "An admin or the root user can edit or remove the bucket policy, so this is not a true lock."
+    answer: [a]
+    explanation: |
+      Object Lock stores objects in a write-once-read-many (WORM) model. In
+      compliance mode, no user, including the root user, can delete or
+      overwrite a locked object version or shorten its retention period.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
+    glossary: [aws-s3-object-lock, aws-s3-versioning]
+
+  - id: saa-sec-037
+    difficulty: 3
+    type: single
+    question: "A company wants to protect S3 objects from deletion for 1 year. A small group of security admins must still be able to delete objects early in special cases. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "S3 Object Lock in compliance mode for 1 year"
+        why: "Compliance mode cannot be bypassed by anyone, so the admins could not delete objects early."
+      - id: b
+        text: "S3 Versioning with MFA delete for the security admins"
+        why: "MFA delete adds a step for deleting versions, but it does not give a 1-year retention period."
+      - id: c
+        text: "S3 Object Lock in governance mode, with bypass permission for the admins"
+      - id: d
+        text: "An S3 Lifecycle rule that expires objects after 1 year"
+        why: "A Lifecycle rule deletes objects after a time. It does not protect them before then."
+    answer: [c]
+    explanation: |
+      Governance mode protects locked object versions from most users. Users with
+      the `s3:BypassGovernanceRetention` permission can delete them early when
+      they send the bypass header. This fits the special-case requirement.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
+    glossary: [aws-s3-object-lock, aws-iam-policy]
+
+  - id: saa-sec-038
+    difficulty: 2
+    type: single
+    question: "A company has an Amazon RDS for MySQL DB instance that was created without encryption. It must now be encrypted at rest. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Modify the DB instance and turn on encryption in place"
+        why: "RDS does not let you turn on encryption for an existing unencrypted DB instance."
+      - id: b
+        text: "Take a snapshot, copy it with encryption, and restore from the copy"
+      - id: c
+        text: "Create an encrypted read replica of the unencrypted instance"
+        why: "You cannot create an encrypted read replica from an unencrypted DB instance."
+      - id: d
+        text: "Enable EBS encryption by default in the Region"
+        why: "This setting affects new EC2 volumes. It does not encrypt an existing RDS instance."
+    answer: [b]
+    explanation: |
+      Encryption must be chosen when an RDS instance is created. To encrypt an
+      existing one, snapshot it, copy the snapshot with a KMS key and encryption
+      on, then restore a new encrypted instance from the copy and switch the app.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html
+    glossary: [aws-rds, encryption-at-rest, aws-kms-key]
+
+  - id: saa-sec-039
+    difficulty: 1
+    type: single
+    question: "A company wants every new Amazon EBS volume in a Region to be encrypted, without asking each team to remember. Which solution meets this requirement with the LEAST effort?"
+    options:
+      - id: a
+        text: "Write a Lambda function that encrypts each new volume"
+        why: "You cannot encrypt an existing volume in place, and custom code adds work."
+      - id: b
+        text: "Use only instance store volumes, which are always encrypted"
+        why: "Instance store is temporary storage that is lost on stop. It is not a replacement for EBS."
+      - id: c
+        text: "Enable S3 default encryption on all buckets"
+        why: "S3 default encryption applies to S3 objects, not EBS volumes."
+      - id: d
+        text: "Turn on EBS encryption by default for the Region"
+    answer: [d]
+    explanation: |
+      EBS encryption by default is a Region setting for the account. After you
+      turn it on, every new volume and snapshot copy is encrypted with the
+      default or chosen KMS key.
+    docs:
+      - https://docs.aws.amazon.com/ebs/latest/userguide/encryption-by-default.html
+    glossary: [aws-ebs, encryption-at-rest]
+
+  - id: saa-sec-040
+    difficulty: 2
+    type: multiple
+    question: "A company must back up EBS volumes and RDS databases daily and keep each backup for 35 days. Backups must be protected so that nobody can delete them early. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Write cron jobs on an EC2 instance that call the snapshot APIs"
+        why: "This is custom work to maintain, and it does not stop anyone from deleting the snapshots."
+      - id: b
+        text: "Copy the backups to EC2 instance store volumes"
+        why: "Instance store data is lost when the instance stops, so it is not safe backup storage."
+      - id: c
+        text: "Create an AWS Backup plan with a daily rule and 35-day retention"
+      - id: d
+        text: "Apply AWS Backup Vault Lock in compliance mode on the backup vault"
+      - id: e
+        text: "Enable S3 Transfer Acceleration for the backup traffic"
+        why: "Transfer Acceleration speeds up uploads to S3. It does not schedule or protect backups."
+    answer: [c, d]
+    explanation: |
+      An AWS Backup plan schedules backups across services and deletes them when
+      the retention period ends. Vault Lock in compliance mode stops anyone,
+      including the root user, from deleting backups early or changing the lock.
+    docs:
+      - https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html
+      - https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html
+    glossary: [aws-backup, aws-ebs, aws-rds]
+
+  - id: saa-sec-041
+    difficulty: 2
+    type: multiple
+    question: "A company keeps important reports in an S3 bucket. It wants to protect them from accidental or malicious deletion by users. Which combination of steps should it take? (Select TWO.)"
+    options:
+      - id: a
+        text: "Enable S3 Versioning on the bucket"
+      - id: b
+        text: "Enable S3 Transfer Acceleration on the bucket"
+        why: "Transfer Acceleration only makes uploads faster. It does not protect objects."
+      - id: c
+        text: "Move the objects to S3 Intelligent-Tiering"
+        why: "Intelligent-Tiering lowers storage cost. Objects can still be deleted."
+      - id: d
+        text: "Enable MFA delete on the bucket"
+      - id: e
+        text: "Encrypt the objects with SSE-S3"
+        why: "Encryption protects data at rest from being read, not from being deleted."
+    answer: [a, d]
+    explanation: |
+      Versioning keeps old versions, so a delete only adds a delete marker and
+      you can restore the object. MFA delete requires an MFA code to delete a
+      version or to turn off versioning, which blocks attackers with stolen keys.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html
+    glossary: [aws-s3-versioning, aws-mfa, aws-s3-bucket]
+
+  - id: saa-sec-042
+    difficulty: 3
+    type: multiple
+    question: "A solutions architect plans to use service control policies (SCPs) in AWS Organizations. Which statements about SCPs are correct? (Select TWO.)"
+    options:
+      - id: a
+        text: "SCPs can be attached directly to individual IAM users"
+        why: "SCPs attach to the organization root, OUs, or accounts. They are not attached to IAM users."
+      - id: b
+        text: "SCPs do not restrict users and roles in the management account"
+      - id: c
+        text: "An allow in an SCP overrides a deny in an IAM identity policy"
+        why: "An explicit deny in any policy always wins. SCPs also never grant permissions."
+      - id: d
+        text: "SCPs also limit service-linked roles in member accounts"
+        why: "Service-linked roles are not affected by SCPs, so AWS services can keep working."
+      - id: e
+        text: "SCPs never grant permissions; they only set the maximum allowed"
+    answer: [b, e]
+    explanation: |
+      SCPs are guardrails. They define the maximum permissions for IAM users and
+      roles in member accounts, and you still need IAM policies to grant access.
+      They do not apply to the management account or to service-linked roles.
+    docs:
+      - https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html
+    glossary: [aws-scp, aws-organizations]
+
+  - id: saa-sec-043
+    difficulty: 2
+    type: multiple
+    question: "A company runs a web app on EC2 instances behind an internet-facing ALB. It wants to reduce the attack surface of the instances. Which combination of steps should a solutions architect take? (Select TWO.)"
+    options:
+      - id: a
+        text: "Move the instances to private subnets and keep the ALB in public subnets"
+      - id: b
+        text: "Give each instance an Elastic IP address for direct access"
+        why: "Public IPs make each instance reachable from the internet, which increases the attack surface."
+      - id: c
+        text: "Allow app traffic to the instances only from the ALB security group"
+      - id: d
+        text: "Open SSH port 22 from 0.0.0.0/0 so admins can connect from anywhere"
+        why: "Open SSH is a common attack target. Use Systems Manager Session Manager instead."
+      - id: e
+        text: "Set the subnet network ACLs to allow all inbound and outbound traffic"
+        why: "This removes a layer of protection. It does not reduce the attack surface."
+    answer: [a, c]
+    explanation: |
+      Instances in private subnets cannot be reached directly from the internet.
+      Only the ALB is public. A security group rule that references the ALB
+      security group makes sure only the ALB can send traffic to the app port.
+    docs:
+      - https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html
+      - https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html
+    glossary: [aws-subnet, aws-security-group, aws-alb]
+
+  - id: saa-sec-044
+    difficulty: 3
+    type: multiple
+    question: "A third-party company needs read-only access to a customer's AWS account to run security audits. The third party has its own AWS account. Which combination of steps is MOST secure? (Select TWO.)"
+    options:
+      - id: a
+        text: "Create an IAM user and send its access keys to the third party"
+        why: "Long-term keys can leak and are hard to track. A role with temporary credentials is safer."
+      - id: b
+        text: "Share the root user credentials with MFA turned off"
+        why: "The root user has full access. It must never be shared."
+      - id: c
+        text: "Make the S3 buckets public so the third party can review them"
+        why: "This exposes data to everyone on the internet, not only the auditor."
+      - id: d
+        text: "Create a role that trusts the third-party account and requires an external ID"
+      - id: e
+        text: "Attach only the SecurityAudit or ReadOnlyAccess managed policy to the role"
+    answer: [d, e]
+    explanation: |
+      A cross-account role gives the auditor temporary credentials through STS.
+      The external ID condition protects against the confused deputy problem.
+      A read-only managed policy follows least privilege.
+    docs:
+      - https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
+    glossary: [aws-iam-role, aws-sts, least-privilege]
+
+  - id: saa-sec-045
+    difficulty: 1
+    type: single
+    question: "Under the AWS shared responsibility model, which task is the customer's responsibility for Amazon EC2?"
+    options:
+      - id: a
+        text: "Physical security of the data centers that host the instances"
+        why: "AWS is responsible for the physical security of its facilities."
+      - id: b
+        text: "Patching the hypervisor that runs the instances"
+        why: "The virtualization layer is managed by AWS as part of security of the cloud."
+      - id: c
+        text: "Replacing failed disks in the AWS hardware"
+        why: "AWS manages and replaces the physical hardware."
+      - id: d
+        text: "Patching the guest OS and configuring security groups"
+    answer: [d]
+    explanation: |
+      AWS is responsible for security of the cloud: facilities, hardware and the
+      virtualization layer. The customer is responsible for security in the
+      cloud: the guest OS, applications, data, IAM, and security group rules.
+    docs:
+      - https://aws.amazon.com/compliance/shared-responsibility-model/
+    glossary: [shared-responsibility, aws-ec2, aws-security-group]

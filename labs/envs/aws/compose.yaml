@@ -1,0 +1,13 @@
+# AWS Solutions Architect lab: LocalStack (free local AWS emulator, no real cloud, no cost)
+# + a terminal with the AWS CLI already pointed at it.
+services:
+  localstack:
+    image: localstack/localstack:4.9.2
+    environment:
+      SERVICES: s3,iam,sts,sqs,sns,dynamodb,ec2,cloudwatch,logs,secretsmanager,ssm,kms,events
+      EAGER_SERVICE_LOADING: "1"
+  toolbox:
+    build: ../../toolbox-aws
+    image: k8s-study-lab/toolbox-aws:1
+    depends_on: [localstack]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]

@@ -1,0 +1,61 @@
+id: saa-cost-001
+title: Save storage cost with an S3 lifecycle rule
+domain: cost
+difficulty: 2
+minutes: 8
+environment: aws
+setup: |
+  aws s3api create-bucket --bucket saa-app-logs >/dev/null
+  aws s3api put-bucket-versioning --bucket saa-app-logs --versioning-configuration Status=Enabled
+  echo "GET /index.html 200" > /tmp/access.log
+  aws s3api put-object --bucket saa-app-logs --key logs/2025-01-01.log --body /tmp/access.log >/dev/null
+task: |
+  The versioned bucket `saa-app-logs` stores application logs under the prefix `logs/`.
+  Logs are read often in the first month, rarely after that, and must be kept for one year.
+  Add a **lifecycle rule** (enabled, only for the prefix `logs/`) that:
+
+  - moves objects to `STANDARD_IA` after **30** days,
+  - moves objects to `GLACIER` (S3 Glacier Flexible Retrieval) after **90** days,
+  - deletes (expires) objects after **365** days,
+  - deletes **noncurrent versions** 30 days after they become noncurrent.
+checks:
+  - name: An enabled rule for the prefix `logs/` moves objects to STANDARD_IA at 30 days and GLACIER at 90 days
+    run: |
+      out=$(aws s3api get-bucket-lifecycle-configuration --bucket saa-app-logs --output json 2>&1)
+      echo "$out" | jq -e '[.Rules[] | select(.Status == "Enabled" and ((.Filter.Prefix // .Prefix // .Filter.And.Prefix) == "logs/"))
+        | select(any(.Transitions[]?; .Days == 30 and .StorageClass == "STANDARD_IA"))
+        | select(any(.Transitions[]?; .Days == 90 and .StorageClass == "GLACIER"))] | length > 0' >/dev/null
+  - name: The rule expires current objects after 365 days
+    run: |
+      out=$(aws s3api get-bucket-lifecycle-configuration --bucket saa-app-logs --output json 2>&1)
+      echo "$out" | jq -e '[.Rules[] | select(.Status == "Enabled" and ((.Filter.Prefix // .Prefix // .Filter.And.Prefix) == "logs/"))
+        | select(.Expiration.Days == 365)] | length > 0' >/dev/null
+  - name: Noncurrent versions expire after 30 days
+    run: |
+      out=$(aws s3api get-bucket-lifecycle-configuration --bucket saa-app-logs --output json 2>&1)
+      echo "$out" | jq -e '[.Rules[] | select(.Status == "Enabled") | select(.NoncurrentVersionExpiration.NoncurrentDays == 30)] | length > 0' >/dev/null
+solution: |
+  cat > /tmp/lifecycle.json <<'JSON'
+  {
+    "Rules": [
+      {
+        "ID": "logs-to-cheaper-storage",
+        "Status": "Enabled",
+        "Filter": { "Prefix": "logs/" },
+        "Transitions": [
+          { "Days": 30, "StorageClass": "STANDARD_IA" },
+          { "Days": 90, "StorageClass": "GLACIER" }
+        ],
+        "Expiration": { "Days": 365 },
+        "NoncurrentVersionExpiration": { "NoncurrentDays": 30 }
+      }
+    ]
+  }
+  JSON
+  aws s3api put-bucket-lifecycle-configuration --bucket saa-app-logs \
+    --lifecycle-configuration file:///tmp/lifecycle.json
+  aws s3api get-bucket-lifecycle-configuration --bucket saa-app-logs
+  # Note: S3 Standard-IA needs objects to stay at least 30 days in S3 Standard first.
+docs:
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html

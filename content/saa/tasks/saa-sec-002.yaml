@@ -1,0 +1,60 @@
+id: saa-sec-002
+title: Force HTTPS with an S3 bucket policy
+domain: secure
+difficulty: 2
+minutes: 8
+environment: aws
+setup: |
+  aws s3api create-bucket --bucket saa-secure-uploads >/dev/null
+task: |
+  Compliance says data in the bucket `saa-secure-uploads` must only travel **encrypted in transit**.
+  Add a **bucket policy** with a statement that **denies** every S3 action (`s3:*`) for every
+  principal (`"*"`) when the request does not use HTTPS: the condition key `aws:SecureTransport`
+  is `false`.
+
+  The statement must cover the bucket itself **and** all objects in it.
+checks:
+  - name: The bucket has a policy with a Deny statement on `aws:SecureTransport` = false
+    run: |
+      out=$(aws s3api get-bucket-policy --bucket saa-secure-uploads --query Policy --output text 2>&1)
+      echo "$out" | jq -e '[.Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Deny")
+        | select(.Condition.Bool | tostring | ascii_downcase | test("securetransport\":\"?false"))] | length > 0' >/dev/null
+  - name: The Deny applies to all principals and all S3 actions
+    run: |
+      out=$(aws s3api get-bucket-policy --bucket saa-secure-uploads --query Policy --output text 2>&1)
+      echo "$out" | jq -e '[.Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Deny" and (.Condition.Bool | tostring | ascii_downcase | test("securetransport\":\"?false")))
+        | select(.Principal == "*" or .Principal.AWS == "*" or .Principal.AWS == ["*"])
+        | select([.Action] | flatten | any(. == "s3:*" or . == "*"))] | length > 0' >/dev/null
+  - name: The Deny covers the bucket ARN and the objects (`/*`)
+    run: |
+      out=$(aws s3api get-bucket-policy --bucket saa-secure-uploads --query Policy --output text 2>&1)
+      echo "$out" | jq -e '[.Statement | (if type == "array" then .[] else . end)
+        | select(.Effect == "Deny" and (.Condition.Bool | tostring | ascii_downcase | test("securetransport\":\"?false")))
+        | [.Resource] | flatten
+        | select(any(. == "arn:aws:s3:::saa-secure-uploads") and any(. == "arn:aws:s3:::saa-secure-uploads/*"))] | length > 0' >/dev/null
+solution: |
+  cat > /tmp/https-only.json <<'JSON'
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "DenyInsecureTransport",
+        "Effect": "Deny",
+        "Principal": "*",
+        "Action": "s3:*",
+        "Resource": [
+          "arn:aws:s3:::saa-secure-uploads",
+          "arn:aws:s3:::saa-secure-uploads/*"
+        ],
+        "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+      }
+    ]
+  }
+  JSON
+  aws s3api put-bucket-policy --bucket saa-secure-uploads --policy file:///tmp/https-only.json
+  aws s3api get-bucket-policy --bucket saa-secure-uploads --query Policy --output text | jq .
+docs:
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html
+  - https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html

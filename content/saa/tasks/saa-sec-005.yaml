@@ -1,0 +1,50 @@
+id: saa-sec-005
+title: Store database credentials in Secrets Manager and Parameter Store
+domain: secure
+difficulty: 2
+minutes: 10
+environment: aws
+task: |
+  Today the database password of an app is written in its source code. Move the settings to
+  managed services:
+
+  1. Create a **customer managed KMS key** with the alias `alias/saa-db`.
+  2. Create a secret in **Secrets Manager** named `saa/prod/db`, **encrypted with that key**. Its
+     value is JSON with the keys `username` (value `app`) and `password` (any value).
+  3. Create an **SSM parameter** `/saa/prod/db/host` of type `String` with the value
+     `db.internal.example`. (A host name is not a secret, so Parameter Store is enough.)
+checks:
+  - name: The alias `alias/saa-db` points to a KMS key
+    run: |
+      out=$(aws kms describe-key --key-id alias/saa-db --output json 2>&1)
+      echo "$out" | jq -e '.KeyMetadata.KeyId | length > 0' >/dev/null
+  - name: Secret `saa/prod/db` is encrypted with the key `alias/saa-db`
+    run: |
+      k=$(aws kms describe-key --key-id alias/saa-db --query KeyMetadata.KeyId --output text 2>&1) || exit 1
+      s=$(aws secretsmanager describe-secret --secret-id saa/prod/db --query KmsKeyId --output text 2>&1) || exit 1
+      [ "$s" = alias/saa-db ] || [ "$(aws kms describe-key --key-id "$s" --query KeyMetadata.KeyId --output text 2>&1)" = "$k" ]
+  - name: The secret value is JSON with `username` = app and a non-empty `password`
+    run: |
+      out=$(aws secretsmanager get-secret-value --secret-id saa/prod/db --query SecretString --output text 2>&1)
+      echo "$out" | jq -e '.username == "app" and ((.password // "") | length > 0)' >/dev/null
+  - name: Parameter `/saa/prod/db/host` is a String with value db.internal.example
+    run: |
+      out=$(aws ssm get-parameter --name /saa/prod/db/host --output json 2>&1)
+      echo "$out" | jq -e '.Parameter.Type == "String" and .Parameter.Value == "db.internal.example"' >/dev/null
+solution: |
+  KEY=$(aws kms create-key --description "saa database secrets" --query KeyMetadata.KeyId --output text)
+  aws kms create-alias --alias-name alias/saa-db --target-key-id $KEY
+
+  aws secretsmanager create-secret --name saa/prod/db --kms-key-id alias/saa-db \
+    --secret-string '{"username":"app","password":"Change-me-42"}'
+
+  aws ssm put-parameter --name /saa/prod/db/host --type String --value db.internal.example
+
+  # The app reads them at start time (IAM decides who may do this):
+  aws secretsmanager get-secret-value --secret-id saa/prod/db --query SecretString --output text
+  aws ssm get-parameter --name /saa/prod/db/host --query Parameter.Value --output text
+  # Secrets Manager can also rotate the password automatically (Parameter Store cannot).
+docs:
+  - https://docs.aws.amazon.com/secretsmanager/latest/userguide/create_secret.html
+  - https://docs.aws.amazon.com/secretsmanager/latest/userguide/security-encryption.html
+  - https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html

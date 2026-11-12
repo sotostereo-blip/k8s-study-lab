@@ -1,0 +1,24 @@
+# Hands-on AWS labs for the Solutions Architect - Associate. The real exam is multiple choice,
+# but these tasks build the skills behind it with the AWS CLI. LocalStack EMULATES the AWS APIs
+# on your computer: no real cloud, no AWS account, no cost. IAM policies are stored and can be
+# read back, but LocalStack (free edition) does not enforce them.
+id: saa
+name: AWS Certified Solutions Architect - Associate
+intro: "an AWS emulator (LocalStack: the AWS APIs on your computer, no real cloud and no cost)"
+exam_minutes: 60
+passing_score: 72
+domains:
+  - { id: secure, name: "Design Secure Architectures", weight: 30 }
+  - { id: resilient, name: "Design Resilient Architectures", weight: 26 }
+  - { id: performing, name: "Design High-Performing Architectures", weight: 24 }
+  - { id: cost, name: "Design Cost-Optimized Architectures", weight: 20 }
+environments:
+  aws:
+    name: "AWS CLI + LocalStack 4.9 (emulated AWS APIs, no real cloud, no cost)"
+    nodes: 0
+    label: "AWS (LocalStack)"
+    tools: "The `aws` CLI is ready (region us-east-1, account 000000000000, emulated by LocalStack)"
+    ready: "lab-ready"
+    ready_timeout: 300
+mock: true
+mock_environment: aws   # every task uses its own resource names, so all of them share one LocalStack

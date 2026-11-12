@@ -74,6 +74,13 @@ certifications:
     exam: pca
     track: pca
     description: Multiple choice. PromQL, scraping, instrumentation, alerting and observability concepts, plus hands-on labs on a real Prometheus stack.
+  - id: saa
+    name: AWS Certified Solutions Architect - Associate (SAA-C03)
+    short: AWS SAA
+    area: Cloud
+    exam: saa
+    track: saa
+    description: Multiple choice scenario questions, plus hands-on AWS CLI labs on LocalStack (a free local AWS emulator).
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

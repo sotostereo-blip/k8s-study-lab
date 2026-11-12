@@ -1,0 +1,134 @@
+# Everyday exam English used in the AWS Solutions Architect - Associate questions and labs.
+words:
+  - id: meet-requirements
+    word: "meet (requirements)"
+    match: ["meet", "meets"]
+    definition: "To do what is needed or asked; to satisfy a need or a rule."
+    example: "Which solution meets these requirements with the least effort?"
+    es: "cumplir, satisfacer (requisitos)"
+  - id: requirement
+    word: "requirement"
+    match: ["requirement", "requirements"]
+    definition: "Something that is needed or that must be done."
+    example: "One requirement is that the data stays in one Region."
+    es: "requisito"
+  - id: overhead
+    word: "overhead"
+    match: ["overhead", "operational overhead"]
+    definition: "Extra work or cost that you need just to keep something running."
+    example: "A managed service has less operational overhead than servers you patch yourself."
+    es: "carga (de trabajo) adicional, gastos generales"
+  - id: cost-effective
+    word: "cost-effective"
+    match: ["cost-effective", "cost-effectively"]
+    definition: "Giving good results for the money you spend."
+    example: "Spot Instances are the most cost-effective choice for batch jobs that can stop."
+    es: "rentable, económico"
+  - id: retention
+    word: "retention"
+    match: ["retention", "retain", "retains", "retained"]
+    definition: "Keeping something for a period of time; to retain is to keep."
+    example: "The retention period of the queue is 14 days."
+    es: "retención, conservación"
+  - id: workload
+    word: "workload"
+    match: ["workload", "workloads"]
+    definition: "An application or a set of jobs that runs on computers and uses their resources."
+    example: "The workload runs every night for two hours."
+    es: "carga de trabajo"
+  - id: compliance
+    word: "compliance"
+    match: ["compliance"]
+    definition: "Following the laws, rules or standards that a company must respect."
+    example: "For compliance, the logs must be kept for seven years."
+    es: "cumplimiento normativo"
+  - id: steady
+    word: "steady"
+    match: ["steady"]
+    definition: "Regular and not changing much over time."
+    example: "The database has a steady load all day, every day."
+    es: "constante, estable"
+  - id: rarely
+    word: "rarely"
+    match: ["rarely"]
+    definition: "Not often; almost never."
+    example: "Old invoices are rarely read after the first year."
+    es: "rara vez"
+  - id: durability
+    word: "durability"
+    match: ["durability", "durable"]
+    definition: "How well something lasts without being lost or damaged."
+    example: "Amazon S3 is designed for very high durability of objects."
+    es: "durabilidad"
+  - id: sudden
+    word: "sudden"
+    match: ["sudden", "suddenly"]
+    definition: "Happening quickly and without warning."
+    example: "A sudden spike in traffic slows down the website."
+    es: "repentino"
+  - id: peak
+    word: "peak"
+    match: ["peak", "peaks"]
+    definition: "The highest point or level, for example of traffic in a day."
+    example: "Traffic reaches its peak at 9 a.m."
+    es: "pico, punto máximo"
+  - id: spiky
+    word: "spiky"
+    match: ["spiky"]
+    definition: "Going up and down suddenly, with short high points."
+    example: "Session traffic is spiky and hard to predict."
+    es: "con picos, irregular"
+  - id: mistake
+    word: "mistake"
+    match: ["mistake", "mistakes"]
+    definition: "Something done wrong, without wanting to."
+    example: "People sometimes delete files by mistake."
+    es: "error, equivocación"
+  - id: accidental
+    word: "accidental"
+    match: ["accidental", "accidentally"]
+    definition: "Happening by chance or by mistake, not on purpose."
+    example: "Versioning protects against accidental deletes."
+    es: "accidental, involuntario"
+  - id: interrupted
+    word: "interrupted"
+    match: ["interrupted", "interrupt", "interruption", "interruptions"]
+    definition: "Stopped for a time before it is finished."
+    example: "The job can be interrupted and started again later."
+    es: "interrumpido"
+  - id: inspect
+    word: "inspect"
+    match: ["inspect", "inspects", "inspected"]
+    definition: "To look at something carefully to find problems or learn more."
+    example: "The team inspects failed messages in the dead-letter queue."
+    es: "inspeccionar, examinar"
+  - id: commitment
+    word: "commitment"
+    match: ["commitment", "commitments", "commit to"]
+    definition: "A promise to do or pay something over a period of time."
+    example: "Savings Plans need a one- or three-year commitment."
+    es: "compromiso"
+  - id: infrequently
+    word: "infrequently"
+    match: ["infrequently", "infrequent"]
+    definition: "Not often."
+    example: "The files are accessed infrequently, but must be ready in milliseconds."
+    es: "con poca frecuencia"
+  - id: tolerate
+    word: "tolerate"
+    match: ["tolerate", "tolerates"]
+    definition: "To accept something difficult, such as a delay or a failure, without serious problems."
+    example: "The batch job can tolerate interruptions."
+    es: "tolerar, soportar"
+  - id: predictable
+    word: "predictable"
+    match: ["predictable", "unpredictable"]
+    definition: "Easy to know before it happens. Unpredictable is the opposite."
+    example: "Unpredictable traffic is a good fit for on-demand capacity."
+    es: "predecible (unpredictable = impredecible)"
+  - id: legacy
+    word: "legacy"
+    match: ["legacy"]
+    definition: "Old, but still in use, and often hard to change."
+    example: "A legacy application needs a shared Windows file system."
+    es: "heredado, antiguo (sistema)"

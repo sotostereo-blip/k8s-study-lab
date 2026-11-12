@@ -1,0 +1,69 @@
+id: saa-res-003
+title: Build a VPC with public and private subnets in two AZs
+domain: resilient
+difficulty: 3
+minutes: 15
+environment: aws
+task: |
+  Build the network for a two-tier web app (EC2 API, emulated by LocalStack):
+
+  1. A VPC with CIDR `10.20.0.0/16` and the tag `Name=saa-vpc`.
+  2. A **public subnet** `10.20.1.0/24` in `us-east-1a` and a **private subnet** `10.20.2.0/24`
+     in `us-east-1b` (two Availability Zones).
+  3. An **internet gateway** attached to the VPC.
+  4. A **route table** for the public subnet with the route `0.0.0.0/0` to the internet gateway,
+     **associated** with the public subnet.
+  5. The private subnet must **not** have a route to the internet gateway.
+checks:
+  - name: VPC `saa-vpc` exists with CIDR 10.20.0.0/16
+    run: |
+      out=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=saa-vpc --output json 2>&1)
+      echo "$out" | jq -e '[.Vpcs[] | select(.CidrBlock == "10.20.0.0/16")] | length == 1' >/dev/null
+  - name: Subnets 10.20.1.0/24 (us-east-1a) and 10.20.2.0/24 (us-east-1b) are in the VPC
+    run: |
+      v=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=saa-vpc --query 'Vpcs[0].VpcId' --output text 2>&1)
+      out=$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$v" --output json 2>&1)
+      echo "$out" | jq -e '([.Subnets[] | select(.CidrBlock == "10.20.1.0/24" and .AvailabilityZone == "us-east-1a")] | length == 1)
+        and ([.Subnets[] | select(.CidrBlock == "10.20.2.0/24" and .AvailabilityZone == "us-east-1b")] | length == 1)' >/dev/null
+  - name: An internet gateway is attached to the VPC
+    run: |
+      v=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=saa-vpc --query 'Vpcs[0].VpcId' --output text 2>&1)
+      out=$(aws ec2 describe-internet-gateways --filters Name=attachment.vpc-id,Values="$v" --output json 2>&1)
+      echo "$out" | jq -e '.InternetGateways | length > 0' >/dev/null
+  - name: The public subnet routes 0.0.0.0/0 to the internet gateway; the private subnet does not
+    run: |
+      v=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=saa-vpc --query 'Vpcs[0].VpcId' --output text 2>&1)
+      rts=$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$v" --output json 2>&1)
+      subs=$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$v" --output json 2>&1)
+      igw_for() {   # prints "yes" if the subnet's route table (explicit or main) has 0.0.0.0/0 -> igw-
+        s=$(echo "$subs" | jq -r --arg c "$1" '.Subnets[] | select(.CidrBlock == $c) | .SubnetId')
+        [ -n "$s" ] || { echo missing; return; }
+        echo "$rts" | jq -r --arg s "$s" '
+          ([.RouteTables[] | select(any(.Associations[]?; .SubnetId == $s))] | first) //
+          ([.RouteTables[] | select(any(.Associations[]?; .Main == true))] | first)
+          | if any(.Routes[]?; .DestinationCidrBlock == "0.0.0.0/0" and ((.GatewayId // "") | startswith("igw-"))) then "yes" else "no" end'
+      }
+      [ "$(igw_for 10.20.1.0/24)" = yes ] && [ "$(igw_for 10.20.2.0/24)" = no ]
+solution: |
+  VPC=$(aws ec2 create-vpc --cidr-block 10.20.0.0/16 \
+    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=saa-vpc}]' --query Vpc.VpcId --output text)
+  PUB=$(aws ec2 create-subnet --vpc-id $VPC --cidr-block 10.20.1.0/24 --availability-zone us-east-1a \
+    --query Subnet.SubnetId --output text)
+  PRIV=$(aws ec2 create-subnet --vpc-id $VPC --cidr-block 10.20.2.0/24 --availability-zone us-east-1b \
+    --query Subnet.SubnetId --output text)
+
+  IGW=$(aws ec2 create-internet-gateway --query InternetGateway.InternetGatewayId --output text)
+  aws ec2 attach-internet-gateway --internet-gateway-id $IGW --vpc-id $VPC
+
+  RT=$(aws ec2 create-route-table --vpc-id $VPC --query RouteTable.RouteTableId --output text)
+  aws ec2 create-route --route-table-id $RT --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW
+  aws ec2 associate-route-table --route-table-id $RT --subnet-id $PUB
+  aws ec2 modify-subnet-attribute --subnet-id $PUB --map-public-ip-on-launch   # optional
+
+  # The private subnet keeps the main route table (only the local route).
+  # In real AWS, private instances reach the internet through a NAT gateway in the public subnet.
+  aws ec2 describe-route-tables --filters Name=vpc-id,Values=$VPC
+docs:
+  - https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html
+  - https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html
+  - https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html

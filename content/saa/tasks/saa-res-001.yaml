@@ -1,0 +1,55 @@
+id: saa-res-001
+title: Add a dead-letter queue to an SQS queue
+domain: resilient
+difficulty: 2
+minutes: 8
+environment: aws
+setup: |
+  aws sqs create-queue --queue-name saa-orders >/dev/null
+task: |
+  Workers read orders from the SQS queue `saa-orders`. A few broken messages fail again and again
+  and block the workers. Make the design more **resilient**:
+
+  1. Create a queue `saa-orders-dlq` to be the **dead-letter queue**. It must keep messages for
+     **14 days** (`MessageRetentionPeriod` = 1209600 seconds), so the team has time to inspect them.
+  2. Add a **redrive policy** to `saa-orders`: after **5** failed receives (`maxReceiveCount`), a
+     message moves to `saa-orders-dlq`.
+  3. Set the **visibility timeout** of `saa-orders` to **60** seconds (a worker needs up to 50 seconds
+     per order).
+checks:
+  - name: Queue `saa-orders-dlq` exists and keeps messages for 14 days
+    run: |
+      u=$(aws sqs get-queue-url --queue-name saa-orders-dlq --query QueueUrl --output text 2>&1) || exit 1
+      out=$(aws sqs get-queue-attributes --queue-url "$u" --attribute-names MessageRetentionPeriod --output json 2>&1)
+      echo "$out" | jq -e '.Attributes.MessageRetentionPeriod == "1209600"' >/dev/null
+  - name: '`saa-orders` sends messages to `saa-orders-dlq` after 5 receives'
+    run: |
+      u=$(aws sqs get-queue-url --queue-name saa-orders --query QueueUrl --output text 2>&1) || exit 1
+      out=$(aws sqs get-queue-attributes --queue-url "$u" --attribute-names RedrivePolicy --output json 2>&1)
+      echo "$out" | jq -e '.Attributes.RedrivePolicy | fromjson
+        | (.deadLetterTargetArn == "arn:aws:sqs:us-east-1:000000000000:saa-orders-dlq") and ((.maxReceiveCount | tostring) == "5")' >/dev/null
+  - name: The visibility timeout of `saa-orders` is 60 seconds
+    run: |
+      u=$(aws sqs get-queue-url --queue-name saa-orders --query QueueUrl --output text 2>&1) || exit 1
+      out=$(aws sqs get-queue-attributes --queue-url "$u" --attribute-names VisibilityTimeout --output json 2>&1)
+      echo "$out" | jq -e '.Attributes.VisibilityTimeout == "60"' >/dev/null
+solution: |
+  aws sqs create-queue --queue-name saa-orders-dlq --attributes MessageRetentionPeriod=1209600
+  DLQ_ARN=$(aws sqs get-queue-attributes \
+    --queue-url "$(aws sqs get-queue-url --queue-name saa-orders-dlq --query QueueUrl --output text)" \
+    --attribute-names QueueArn --query Attributes.QueueArn --output text)
+  URL=$(aws sqs get-queue-url --queue-name saa-orders --query QueueUrl --output text)
+
+  cat > /tmp/attrs.json <<JSON
+  {
+    "VisibilityTimeout": "60",
+    "RedrivePolicy": "{\"deadLetterTargetArn\":\"$DLQ_ARN\",\"maxReceiveCount\":\"5\"}"
+  }
+  JSON
+  aws sqs set-queue-attributes --queue-url "$URL" --attributes file:///tmp/attrs.json
+  aws sqs get-queue-attributes --queue-url "$URL" --attribute-names All
+  # The DLQ retention should be longer than the source queue retention (default 4 days),
+  # because the original enqueue time is kept when a message moves to a standard DLQ.
+docs:
+  - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
+  - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html

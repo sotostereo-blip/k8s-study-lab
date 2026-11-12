@@ -1,0 +1,995 @@
+domain: resilient
+questions:
+  - id: saa-res-001
+    difficulty: 1
+    type: single
+    question: "A company has a web tier that sends orders directly to a processing tier. When the processing tier is slow, the web tier fails and orders are lost. Which solution decouples the two tiers and keeps the orders safe?"
+    options:
+      - id: a
+        text: "Put an Application Load Balancer between the web tier and the processing tier"
+        why: "A load balancer spreads requests, but it does not store them. If all processing targets are slow or busy, requests still fail."
+      - id: b
+        text: "Send each order to an Amazon SQS queue and let the processing tier poll the queue"
+      - id: c
+        text: "Store each order in an Amazon ElastiCache for Redis cluster as a temporary cache"
+        why: "A cache is for fast reads of data. It is not a durable message buffer and data can be evicted before it is processed."
+      - id: d
+        text: "Increase the instance size of the processing tier so it is never slow"
+        why: "Bigger instances do not decouple the tiers. A spike or a failure can still make the processing tier slow, and orders are still lost."
+    answer: [b]
+    explanation: |
+      Amazon SQS stores messages durably until a consumer processes and deletes them.
+      The web tier only needs to write to the queue, so it no longer depends on the
+      speed of the processing tier. The queue absorbs spikes and the consumers can scale on their own.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html
+    glossary: [aws-sqs, aws-decoupling]
+
+  - id: saa-res-002
+    difficulty: 2
+    type: single
+    question: "An application reads messages from an Amazon SQS standard queue. Each message takes about 2 minutes to process. The team sees that many messages are processed twice by different consumers. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Enable long polling by setting the receive message wait time to 20 seconds"
+        why: "Long polling reduces empty responses and cost. It does not stop a message from becoming visible again while it is still being processed."
+      - id: b
+        text: "Change the message retention period of the queue to 14 days"
+        why: "Retention controls how long unprocessed messages are kept. It has no effect on when a received message becomes visible to other consumers."
+      - id: c
+        text: "Set the queue visibility timeout to a value longer than the processing time"
+      - id: d
+        text: "Add a delay queue setting of 15 minutes to every new message"
+        why: "A delay only hides a message when it first arrives in the queue. After a consumer receives it, the visibility timeout still applies."
+    answer: [c]
+    explanation: |
+      After a consumer receives a message, SQS hides it for the visibility timeout (default 30 seconds).
+      If processing takes longer, the message becomes visible again and another consumer receives it.
+      Setting the timeout above the processing time (or extending it with ChangeMessageVisibility) fixes this.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+    glossary: [aws-sqs]
+
+  - id: saa-res-003
+    difficulty: 2
+    type: single
+    question: "Some messages in an Amazon SQS queue have a bad format. The consumers fail on them again and again, and these messages block other work. The company wants to keep the bad messages for later analysis. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Configure a dead-letter queue with a redrive policy and a maxReceiveCount value"
+      - id: b
+        text: "Reduce the message retention period so that bad messages expire quickly"
+        why: "Short retention deletes the messages. The company wants to keep them for analysis, and good messages could also expire."
+      - id: c
+        text: "Convert the queue to a FIFO queue so that messages are processed in order"
+        why: "FIFO keeps order, but a failing message would then block its whole message group. It does not move bad messages aside."
+      - id: d
+        text: "Publish the bad messages to an Amazon SNS topic from the consumer code"
+        why: "SNS does not store messages for later. It pushes them to subscribers at once, so the messages are not kept for analysis."
+    answer: [a]
+    explanation: |
+      A dead-letter queue (DLQ) receives messages that were received more times than
+      maxReceiveCount without being deleted. The bad messages leave the source queue, so they
+      stop blocking other work, and you can inspect them and redrive them later.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
+    glossary: [aws-sqs, aws-dlq]
+
+  - id: saa-res-004
+    difficulty: 2
+    type: single
+    question: "A banking application sends account transactions through a queue. For each account, transactions must be processed in the exact order they were sent, and no transaction can be processed twice. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "An Amazon SQS standard queue with a visibility timeout of 12 hours"
+        why: "Standard queues give best-effort ordering and at-least-once delivery. A long visibility timeout does not add strict order or remove duplicates."
+      - id: b
+        text: "An Amazon SNS standard topic with an AWS Lambda function subscriber"
+        why: "SNS standard topics do not guarantee order and can deliver a message more than once."
+      - id: c
+        text: "An Amazon SQS standard queue with a dead-letter queue for failed messages"
+        why: "A DLQ handles failures. It does not change the ordering or delivery guarantees of a standard queue."
+      - id: d
+        text: "An Amazon SQS FIFO queue that uses the account ID as the message group ID"
+    answer: [d]
+    explanation: |
+      SQS FIFO queues keep strict order inside each message group and remove duplicates
+      within a 5-minute deduplication interval. Using the account ID as the message group ID keeps
+      order per account while different accounts can still be processed in parallel.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues.html
+    glossary: [aws-sqs, aws-decoupling]
+
+  - id: saa-res-005
+    difficulty: 2
+    type: single
+    question: "When a new order is placed, three independent systems (billing, shipping, and analytics) must each get a copy of the order event. Each system must be able to process at its own speed, even if it is offline for a short time. Which design meets these requirements?"
+    options:
+      - id: a
+        text: "Write the event to one SQS queue that all three systems poll"
+        why: "With one queue, each message goes to only one consumer and is deleted after processing. The other two systems never see it."
+      - id: b
+        text: "Publish to an SNS topic with one SQS queue subscribed for each system"
+      - id: c
+        text: "Call the API of each system one after another from the order service"
+        why: "This is tight coupling. If one system is offline, the order service must handle the error and the event can be lost."
+      - id: d
+        text: "Store the event in an S3 bucket and let each system list the bucket"
+        why: "Polling a bucket listing is slow and complex. It gives no built-in delivery tracking for each system."
+    answer: [b]
+    explanation: |
+      This is the SNS fan-out pattern. SNS copies each message to every subscribed SQS queue.
+      Each queue stores its copy until its own system processes it, so each system works at its
+      own speed and can catch up after a short outage.
+    docs:
+      - https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html
+    glossary: [aws-sns, aws-sqs, aws-decoupling]
+
+  - id: saa-res-006
+    difficulty: 2
+    type: single
+    question: "A company wants to run different AWS Lambda functions when certain AWS service events happen, for example when an EC2 instance changes state. The routing must use content-based filtering on event fields and must need no servers. Which service should the company use?"
+    options:
+      - id: a
+        text: "Amazon SQS with a separate queue for each type of event"
+        why: "SQS does not receive AWS service events by itself and does not filter on event content. You would need another service to route events to it."
+      - id: b
+        text: "Amazon Kinesis Data Streams with a Lambda consumer for each shard"
+        why: "Kinesis is for high-volume ordered streams. It does not match event patterns or route AWS service events to targets."
+      - id: c
+        text: "Amazon EventBridge with rules that match event patterns to targets"
+      - id: d
+        text: "AWS Step Functions with a Choice state for every event type"
+        why: "Step Functions orchestrates workflows. It is not an event bus that receives AWS service events and routes them."
+    answer: [c]
+    explanation: |
+      Amazon EventBridge receives events from AWS services, SaaS partners, and your own apps.
+      Rules use event patterns to filter on any field and send matching events to targets such as Lambda.
+      It is serverless, so there is nothing to manage.
+    docs:
+      - https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html
+    glossary: [aws-eventbridge, aws-lambda, serverless]
+
+  - id: saa-res-007
+    difficulty: 2
+    type: single
+    question: "An order process has five steps that run in AWS Lambda. Some steps must be retried with backoff when they fail, and one step must run a compensation action if a later step fails. The team wants to see the state of each order. Which solution meets these requirements with the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "Use an AWS Step Functions state machine with Retry and Catch fields"
+      - id: b
+        text: "Chain the functions so that each one calls the next one directly"
+        why: "Direct chaining hides the state of each order and puts retry and error logic inside every function. It is hard to run and debug."
+      - id: c
+        text: "Put an Amazon SQS queue between each pair of Lambda functions"
+        why: "Queues decouple steps but do not track the whole workflow state or run compensation logic for you."
+      - id: d
+        text: "Run a cron job on an EC2 instance that checks and moves each order"
+        why: "A custom scheduler on EC2 adds servers to patch and scale, and you must write all the retry and state logic yourself."
+    answer: [a]
+    explanation: |
+      Step Functions orchestrates the steps as a state machine. Retry fields add retries with
+      exponential backoff, and Catch fields send errors to a compensation step. The console shows the
+      state and history of every execution.
+    docs:
+      - https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html
+    glossary: [aws-step-functions, aws-lambda, serverless]
+
+  - id: saa-res-008
+    difficulty: 3
+    type: single
+    question: "Amazon S3 invokes an AWS Lambda function asynchronously for each uploaded file. Sometimes the function fails for all retry attempts, and the event is lost. The team wants the failed event and the error details sent to an Amazon SQS queue. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Set the reserved concurrency of the function to zero during failures"
+        why: "Reserved concurrency of zero stops all invocations. It does not save failed events or their error details."
+      - id: b
+        text: "Increase the function timeout to the maximum of 15 minutes"
+        why: "A longer timeout may help slow code, but events that still fail after all retries are still dropped."
+      - id: c
+        text: "Configure an S3 Lifecycle rule to copy failed files to another bucket"
+        why: "Lifecycle rules move or expire objects by age. They do not know if a Lambda invocation failed."
+      - id: d
+        text: "Add an on-failure destination that points to the SQS queue"
+    answer: [d]
+    explanation: |
+      For asynchronous invocations, Lambda retries failed events (two retries by default) and then
+      can send the event to an on-failure destination. Destinations include the invocation record
+      with error details, which a classic dead-letter queue does not.
+    docs:
+      - https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html
+    glossary: [aws-lambda, aws-sqs, aws-dlq]
+
+  - id: saa-res-009
+    difficulty: 1
+    type: single
+    question: "A company runs a containerized web API. The company does not want to manage servers or patch hosts, and the API must keep running if one Availability Zone fails. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Run the containers on one large EC2 instance with Docker installed"
+        why: "One instance is a single point of failure in one AZ, and the company must patch and manage the host."
+      - id: b
+        text: "Run an Amazon ECS service on AWS Fargate with subnets in several AZs"
+      - id: c
+        text: "Run Amazon ECS on EC2 instances in a single Availability Zone"
+        why: "EC2 launch type means managing hosts, and a single AZ does not survive an AZ failure."
+      - id: d
+        text: "Run the containers as AWS Batch jobs on a daily schedule"
+        why: "AWS Batch is for batch jobs, not for a web API that must be always available."
+    answer: [b]
+    explanation: |
+      AWS Fargate runs containers without servers to manage. An ECS service keeps the desired
+      number of tasks running and spreads them across the subnets you choose, so tasks in
+      other AZs keep serving traffic if one AZ fails.
+    docs:
+      - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html
+    glossary: [aws-ecs, aws-fargate, aws-az]
+
+  - id: saa-res-010
+    difficulty: 1
+    type: single
+    question: "A web application runs on EC2 instances in an Auto Scaling group. All instances are in one Availability Zone. What is the BEST way to make the application tolerate the failure of an Availability Zone?"
+    options:
+      - id: a
+        text: "Add a second Auto Scaling group in the same Availability Zone"
+        why: "Both groups would still be in the same AZ. An AZ failure would stop all instances."
+      - id: b
+        text: "Use larger instance types and increase the minimum capacity"
+        why: "More or larger instances in one AZ do not help if that AZ fails."
+      - id: c
+        text: "Configure the Auto Scaling group to use subnets in several AZs"
+      - id: d
+        text: "Take daily AMIs of the instances and store them in Amazon S3"
+        why: "AMIs help you rebuild later, but the application is down until someone launches new instances."
+    answer: [c]
+    explanation: |
+      An Auto Scaling group can span several Availability Zones in a Region. It balances
+      instances across the AZs and, if one AZ fails, launches replacement instances in the healthy AZs.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-availability-zone-balanced.html
+    glossary: [aws-auto-scaling, aws-az, aws-ec2]
+
+  - id: saa-res-011
+    difficulty: 2
+    type: single
+    question: "EC2 instances in an Auto Scaling group sit behind an Application Load Balancer. Sometimes the application on an instance stops responding, but the instance keeps running. The load balancer marks it unhealthy, but Auto Scaling never replaces it. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Turn on Elastic Load Balancing health checks for the Auto Scaling group"
+      - id: b
+        text: "Enable detailed monitoring on the instances in the Auto Scaling group"
+        why: "Detailed monitoring only sends CloudWatch metrics every minute. It does not change how Auto Scaling decides health."
+      - id: c
+        text: "Change the target group health check path to the root path /"
+        why: "The load balancer already detects the problem. The issue is that Auto Scaling does not use the load balancer result."
+      - id: d
+        text: "Add a scheduled scaling action that replaces instances every night"
+        why: "Scheduled actions change capacity at set times. Broken instances would still serve no traffic until then."
+    answer: [a]
+    explanation: |
+      By default, Auto Scaling uses only EC2 status checks, which pass while the instance is running.
+      When you turn on ELB health checks for the group, Auto Scaling also uses the target group result
+      and replaces instances that fail it.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html
+    glossary: [aws-auto-scaling, aws-alb, aws-elb]
+
+  - id: saa-res-012
+    difficulty: 1
+    type: single
+    question: "A company runs an Amazon RDS for MySQL DB instance. The company needs automatic failover to a standby if the primary DB instance or its Availability Zone fails. Which solution meets this requirement?"
+    options:
+      - id: a
+        text: "Create a read replica in the same Availability Zone as the primary"
+        why: "Read replicas use asynchronous replication and do not fail over automatically. A replica in the same AZ also does not survive an AZ failure."
+      - id: b
+        text: "Enable automated backups with a 35-day retention period"
+        why: "Backups let you restore to a new instance, but restore is manual and takes time. It is not automatic failover."
+      - id: c
+        text: "Take a manual DB snapshot every hour and copy it to another AZ"
+        why: "Snapshots need a manual restore. They give no automatic failover and can lose up to one hour of data."
+      - id: d
+        text: "Convert the DB instance to a Multi-AZ deployment"
+    answer: [d]
+    explanation: |
+      In a Multi-AZ deployment, RDS keeps a synchronous standby in another Availability Zone.
+      If the primary or its AZ fails, RDS fails over to the standby automatically and the
+      DB endpoint DNS name points to the new primary.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html
+    glossary: [aws-rds, aws-multi-az]
+
+  - id: saa-res-013
+    difficulty: 1
+    type: single
+    question: "An application uses an Amazon RDS for PostgreSQL Multi-AZ DB instance. Reporting queries now slow down the main application. The reports can use data that is a few seconds old. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Send the reporting queries to the standby instance of the Multi-AZ deployment"
+        why: "In a Multi-AZ instance deployment, the standby cannot serve read traffic. It only exists for failover."
+      - id: b
+        text: "Create a read replica and point the reporting queries to its endpoint"
+      - id: c
+        text: "Increase the allocated storage of the DB instance to get more IOPS"
+        why: "More storage may raise IOPS on some volume types, but the reports still compete with the main app on the same instance."
+      - id: d
+        text: "Create a second Multi-AZ deployment and split the tables between them"
+        why: "Splitting tables across databases needs app changes and does not give a copy of the same data for reports."
+    answer: [b]
+    explanation: |
+      A read replica receives changes asynchronously from the primary and serves read-only queries.
+      Moving the reports to the replica removes their load from the primary. A small replica lag is
+      fine because the reports can use slightly old data.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html
+    glossary: [aws-rds, aws-read-replica, aws-multi-az]
+
+  - id: saa-res-014
+    difficulty: 3
+    type: single
+    question: "An Amazon Aurora MySQL DB cluster has one writer and three Aurora Replicas. One replica is a large instance class like the writer; the other two are small and serve light reports. The company wants Aurora to promote the large replica if the writer fails. What should a solutions architect do?"
+    options:
+      - id: a
+        text: "Place the large replica in the same Availability Zone as the writer"
+        why: "AZ placement does not decide which replica is promoted. Being in the same AZ as the writer is also worse for an AZ failure."
+      - id: b
+        text: "Enable Multi-AZ on the large replica in the cluster settings"
+        why: "Aurora clusters do not have a Multi-AZ switch per replica. Replicas in other AZs already act as failover targets."
+      - id: c
+        text: "Give the large replica the highest failover priority, tier 0"
+      - id: d
+        text: "Convert the small replicas into an Aurora global database"
+        why: "A global database adds clusters in other Regions. It does not set which replica in this cluster is promoted."
+    answer: [c]
+    explanation: |
+      Each Aurora Replica has a promotion tier from 0 (highest priority) to 15. On failover,
+      Aurora promotes the replica with the highest priority. If several replicas share a tier,
+      Aurora picks the largest one.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html
+    glossary: [aws-aurora, aws-read-replica]
+
+  - id: saa-res-015
+    difficulty: 2
+    type: single
+    question: "A global company uses Amazon Aurora PostgreSQL in one Region. It needs a disaster recovery plan for a full Region failure with an RPO of about 1 second and an RTO of a few minutes. Users in a second Region also need fast local reads. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Use Amazon Aurora Global Database with a secondary cluster in the second Region"
+      - id: b
+        text: "Copy automated Aurora snapshots to the second Region every hour"
+        why: "Hourly snapshots give an RPO of up to one hour, and restoring a cluster takes much longer than a few minutes."
+      - id: c
+        text: "Add more Aurora Replicas in other Availability Zones of the same Region"
+        why: "Replicas in the same Region do not protect against a full Region failure."
+      - id: d
+        text: "Use AWS DMS to copy the data to an RDS instance in the second Region daily"
+        why: "A daily copy cannot meet a 1-second RPO, and DMS adds a replication instance to manage."
+    answer: [a]
+    explanation: |
+      Aurora Global Database replicates storage to secondary Regions with typical lag under 1 second.
+      Secondary clusters serve local reads, and you can promote one in minutes if the primary Region fails.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html
+    glossary: [aws-aurora, aws-region, aws-rpo, aws-rto]
+
+  - id: saa-res-016
+    difficulty: 2
+    type: single
+    question: "A mobile game stores player profiles in Amazon DynamoDB. Players in North America and Europe must be able to read and write their profiles with low latency, and the game must keep working if one Region fails. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Add a DynamoDB Accelerator (DAX) cluster in each Region"
+        why: "DAX is an in-memory read cache in one Region. It does not replicate writes across Regions."
+      - id: b
+        text: "Create a global secondary index for each Region on the table"
+        why: "A GSI is an extra index of the same table in the same Region. It does not copy data to other Regions."
+      - id: c
+        text: "Turn on point-in-time recovery and restore to Europe when needed"
+        why: "PITR restores into the same Region, and a restore takes time. It does not give low-latency writes in Europe."
+      - id: d
+        text: "Convert the table to a DynamoDB global table with replicas in both Regions"
+    answer: [d]
+    explanation: |
+      DynamoDB global tables are multi-Region and multi-active. Every replica accepts reads and
+      writes, and changes replicate to the other Regions. If one Region fails, the application can
+      use the replica in the other Region.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html
+    glossary: [aws-dynamodb, aws-region]
+
+  - id: saa-res-017
+    difficulty: 1
+    type: single
+    question: "A developer ran a script that wrote wrong values into many items of an Amazon DynamoDB table 2 hours ago. The company wants to recover the table to the state it had just before the script ran. Which feature should have been turned on?"
+    options:
+      - id: a
+        text: "DynamoDB Streams with a 24-hour retention period"
+        why: "Streams record item changes for 24 hours, but they do not restore a table. You would need to write custom code to undo changes."
+      - id: b
+        text: "Point-in-time recovery (PITR) for the table"
+      - id: c
+        text: "Time to Live (TTL) on the item timestamp attribute"
+        why: "TTL deletes expired items. It does not keep old versions of items."
+      - id: d
+        text: "Auto scaling for read and write capacity"
+        why: "Auto scaling changes throughput. It does not protect data from bad writes."
+    answer: [b]
+    explanation: |
+      With point-in-time recovery, DynamoDB keeps continuous backups and lets you restore the
+      table to any second in the recovery window (up to 35 days). The restore creates a new table.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Point-in-time-recovery.html
+    glossary: [aws-dynamodb, aws-rpo]
+
+  - id: saa-res-018
+    difficulty: 2
+    type: single
+    question: "A company runs its website in us-east-1 and keeps a standby copy in us-west-2. Users must be sent to us-west-2 automatically only when the primary site is unhealthy. Which Amazon Route 53 configuration meets this requirement?"
+    options:
+      - id: a
+        text: "Weighted routing with a weight of 50 for each Region"
+        why: "Weighted routing splits traffic between both sites all the time. It does not keep the standby idle."
+      - id: b
+        text: "Simple routing with both IP addresses in one record"
+        why: "Simple routing returns all values in random order and cannot use health checks to remove the failed site."
+      - id: c
+        text: "Failover routing with a health check on the primary record"
+      - id: d
+        text: "Geolocation routing based on the continent of the user"
+        why: "Geolocation sends users by location, not by health. Users would go to both sites during normal operation."
+    answer: [c]
+    explanation: |
+      Failover routing uses a primary record and a secondary record. Route 53 answers with the
+      primary while its health check passes and switches to the secondary when it fails. This is
+      active-passive failover.
+    docs:
+      - https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-types.html
+    glossary: [aws-route53, aws-dr-strategies]
+
+  - id: saa-res-019
+    difficulty: 1
+    type: single
+    question: "A company has an internal application that is not critical. If a Region fails, the company accepts an RTO of 24 hours and an RPO of 24 hours. Which disaster recovery strategy is the MOST cost-effective?"
+    options:
+      - id: a
+        text: "Backup and restore"
+      - id: b
+        text: "Pilot light"
+        why: "Pilot light keeps core parts, such as a replicated database, always running. That costs more than needed for a 24-hour RTO."
+      - id: c
+        text: "Warm standby"
+        why: "Warm standby runs a scaled-down full copy all the time. It is for short RTOs and costs much more."
+      - id: d
+        text: "Multi-site active/active"
+        why: "Active/active runs full capacity in two Regions. It is the most expensive strategy."
+    answer: [a]
+    explanation: |
+      Backup and restore has the lowest cost because nothing runs in the recovery Region until
+      a disaster. You copy backups there and rebuild when needed. Its RPO and RTO are measured in
+      hours, which fits these requirements.
+    docs:
+      - https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+    glossary: [aws-dr-strategies, aws-rpo, aws-rto]
+
+  - id: saa-res-020
+    difficulty: 2
+    type: single
+    question: "A company needs an RPO of a few minutes and an RTO of a few tens of minutes for a Region failure. To keep cost low, the application servers in the recovery Region must not run until a disaster. The database must already be replicated. Which DR strategy is this?"
+    options:
+      - id: a
+        text: "Backup and restore"
+        why: "In backup and restore, even the data is only in backups, so the RPO and RTO are hours, not minutes."
+      - id: b
+        text: "Warm standby"
+        why: "Warm standby keeps the application servers running at reduced size. Here the servers must be off."
+      - id: c
+        text: "Multi-site active/active"
+        why: "Active/active serves production traffic from both Regions at full capacity, which is not low cost."
+      - id: d
+        text: "Pilot light"
+    answer: [d]
+    explanation: |
+      In pilot light, the core of the system (the replicated data) is always on in the recovery Region,
+      while servers are kept off or not yet created (for example as AMIs and templates). In a disaster you
+      start the servers and scale them up.
+    docs:
+      - https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+    glossary: [aws-dr-strategies, aws-rpo, aws-rto]
+
+  - id: saa-res-021
+    difficulty: 3
+    type: single
+    question: "A company needs an RTO of a few minutes for a Region failure. It wants the recovery Region to already serve a small amount of test traffic, so the team knows it works. It also wants to pay less than for full capacity in two Regions. Which DR strategy meets these requirements?"
+    options:
+      - id: a
+        text: "Pilot light with AMIs that are copied to the recovery Region"
+        why: "In pilot light the servers are off, so the site cannot take test traffic, and starting servers makes the RTO longer."
+      - id: b
+        text: "Warm standby with a scaled-down copy that runs all the time"
+      - id: c
+        text: "Backup and restore with AWS Backup cross-Region copies"
+        why: "Backup and restore has an RTO of hours because the whole stack must be rebuilt."
+      - id: d
+        text: "Multi-site active/active with full capacity in both Regions"
+        why: "Active/active meets the RTO, but the company does not want to pay for full capacity in two Regions."
+    answer: [b]
+    explanation: |
+      Warm standby runs a smaller but fully working copy of production in the recovery Region.
+      It can handle traffic right away and is scaled up during a disaster. It costs less than
+      active/active but more than pilot light.
+    docs:
+      - https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+    glossary: [aws-dr-strategies, aws-rto]
+
+  - id: saa-res-022
+    difficulty: 2
+    type: single
+    question: "A payment platform must have near-zero downtime and near-zero data loss if an entire AWS Region fails. Cost is not the main concern. Which DR strategy should a solutions architect choose?"
+    options:
+      - id: a
+        text: "Pilot light"
+        why: "Pilot light must start and scale servers during a disaster, so the RTO is tens of minutes."
+      - id: b
+        text: "Backup and restore"
+        why: "Backup and restore has the longest RPO and RTO of all strategies."
+      - id: c
+        text: "Multi-site active/active"
+      - id: d
+        text: "Warm standby"
+        why: "Warm standby still needs scaling up and a failover step. Its RTO is minutes, not near zero."
+    answer: [c]
+    explanation: |
+      In multi-site active/active, the workload runs and serves traffic in more than one Region at
+      the same time. If one Region fails, traffic simply goes to the others, so RTO is near zero.
+      Data replicates continuously, so RPO is also near zero. It is the most expensive option.
+    docs:
+      - https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+    glossary: [aws-dr-strategies, aws-rpo, aws-rto]
+
+  - id: saa-res-023
+    difficulty: 2
+    type: single
+    question: "A company backs up Amazon EBS volumes, Amazon RDS databases, and Amazon EFS file systems. A new rule says every backup must also be stored in a second Region, managed from one central place. Which solution meets these requirements with the LEAST operational overhead?"
+    options:
+      - id: a
+        text: "Create an AWS Backup plan with a copy rule to a vault in the second Region"
+      - id: b
+        text: "Write a Lambda function that copies each snapshot type to the second Region"
+        why: "Custom code works, but you must write, schedule, and maintain it for each service. That is more overhead."
+      - id: c
+        text: "Turn on S3 Cross-Region Replication for the buckets that hold the snapshots"
+        why: "EBS and RDS snapshots are stored by AWS and are not in your S3 buckets, so you cannot replicate them with S3 CRR."
+      - id: d
+        text: "Use Amazon Data Lifecycle Manager policies for all three services"
+        why: "Data Lifecycle Manager manages EBS snapshots and EBS-backed AMIs only. It does not back up RDS or EFS."
+    answer: [a]
+    explanation: |
+      AWS Backup manages backups for many services from one place. A backup plan can include a
+      copy rule that sends each recovery point to a backup vault in another Region automatically.
+    docs:
+      - https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html
+    glossary: [aws-backup, aws-region, aws-ebs]
+
+  - id: saa-res-024
+    difficulty: 2
+    type: single
+    question: "A company wants new objects in an S3 bucket in eu-west-1 to be copied automatically to a bucket in eu-central-1. When the team tries to create a replication rule, the setup fails. What is the MOST likely reason?"
+    options:
+      - id: a
+        text: "The destination bucket uses a different storage class than the source"
+        why: "Replication can even change the storage class on the destination. Different storage classes do not block it."
+      - id: b
+        text: "S3 Cross-Region Replication only works between buckets in different accounts"
+        why: "Replication works in the same account and across accounts."
+      - id: c
+        text: "S3 Transfer Acceleration is not turned on for the source bucket"
+        why: "Transfer Acceleration speeds up client uploads over long distances. Replication does not need it."
+      - id: d
+        text: "S3 Versioning is not turned on for the source and destination buckets"
+    answer: [d]
+    explanation: |
+      S3 replication requires versioning on both the source bucket and the destination bucket.
+      Replication also needs an IAM role that lets S3 read and write the objects. Objects that existed
+      before the rule need S3 Batch Replication.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-requirements.html
+    glossary: [aws-s3-replication, aws-s3-versioning]
+
+  - id: saa-res-025
+    difficulty: 1
+    type: single
+    question: "Users sometimes delete or overwrite important files in an Amazon S3 bucket by mistake. The company wants to recover the earlier versions easily. Which S3 feature should be turned on?"
+    options:
+      - id: a
+        text: "S3 Transfer Acceleration"
+        why: "Transfer Acceleration speeds up uploads through edge locations. It does not keep old versions."
+      - id: b
+        text: "S3 Versioning"
+      - id: c
+        text: "S3 Block Public Access"
+        why: "Block Public Access stops public access. It does not protect from deletes by allowed users."
+      - id: d
+        text: "S3 Intelligent-Tiering"
+        why: "Intelligent-Tiering moves objects between access tiers to save cost. It does not keep old versions."
+    answer: [b]
+    explanation: |
+      With versioning, S3 keeps every version of an object. An overwrite creates a new version,
+      and a simple delete only adds a delete marker. You can restore an earlier version at any time.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+    glossary: [aws-s3-versioning, aws-s3]
+
+  - id: saa-res-026
+    difficulty: 2
+    type: single
+    question: "An application runs on an EC2 instance with a large Amazon EBS data volume. The company needs a copy of the data in another Region for disaster recovery and wants to pay only for changed blocks after the first copy. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Attach the EBS volume to a second instance in the other Region"
+        why: "An EBS volume is in one Availability Zone and can attach only to instances in that AZ."
+      - id: b
+        text: "Enable EBS Multi-Attach so the volume is shared between Regions"
+        why: "Multi-Attach shares an io1/io2 volume with instances in the same AZ only, not across Regions."
+      - id: c
+        text: "Take regular EBS snapshots and copy them to the other Region"
+      - id: d
+        text: "Change the volume type to gp3 so data is copied to all Regions"
+        why: "Volume type changes performance and price. No EBS volume type copies data to other Regions."
+    answer: [c]
+    explanation: |
+      EBS snapshots are incremental: after the first full snapshot, only changed blocks are saved.
+      You can copy snapshots to another Region (by hand, with Data Lifecycle Manager, or with AWS Backup)
+      and create new volumes from them there.
+    docs:
+      - https://docs.aws.amazon.com/ebs/latest/userguide/ebs-copy-snapshot.html
+    glossary: [aws-ebs, aws-region]
+
+  - id: saa-res-027
+    difficulty: 1
+    type: single
+    question: "Several Linux EC2 instances in three Availability Zones must read and write the same files at the same time. The storage must stay available if one AZ fails. Which storage service meets these requirements?"
+    options:
+      - id: a
+        text: "Amazon EFS with a Regional file system and a mount target in each AZ"
+      - id: b
+        text: "An Amazon EBS gp3 volume attached to one instance that shares it by NFS"
+        why: "The NFS server instance and its EBS volume are in one AZ, so they are a single point of failure."
+      - id: c
+        text: "EC2 instance store volumes on each of the instances"
+        why: "Instance store is local and temporary. Each instance has its own data, and data is lost when the instance stops."
+      - id: d
+        text: "Amazon EFS One Zone file system in the first Availability Zone"
+        why: "EFS One Zone stores data in one AZ only, so it does not survive the failure of that AZ."
+    answer: [a]
+    explanation: |
+      An EFS Regional file system stores data redundantly across several Availability Zones.
+      With a mount target in each AZ, instances in all AZs can share the same files, and the
+      file system stays available if one AZ fails.
+    docs:
+      - https://docs.aws.amazon.com/efs/latest/ug/availability-durability.html
+    glossary: [aws-efs, aws-az]
+
+  - id: saa-res-028
+    difficulty: 3
+    type: single
+    question: "A team patches EC2 instances in an Auto Scaling group by logging in to each one. Over time the instances drift apart and some updates fail. The company wants immutable infrastructure. Which approach meets this requirement?"
+    options:
+      - id: a
+        text: "Use AWS Systems Manager Run Command to patch all instances at the same time"
+        why: "Run Command is easier than logging in, but it still changes running servers in place. That is mutable infrastructure."
+      - id: b
+        text: "Stop scale-in so instances are never replaced, and patch them every week"
+        why: "Long-lived servers that are patched in place drift even more. This is the opposite of immutable."
+      - id: c
+        text: "Take a snapshot of one patched instance and copy its files to the others"
+        why: "Copying files onto running servers is still an in-place change and can fail half way."
+      - id: d
+        text: "Build a new AMI, update the launch template, and start an instance refresh"
+    answer: [d]
+    explanation: |
+      With immutable infrastructure you never change a running server. You build a new AMI,
+      point the launch template to it, and use an instance refresh to replace old instances
+      with new ones in batches. Every instance is the same, and rollback is easy.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-instance-refresh.html
+    glossary: [aws-ami, aws-auto-scaling, aws-ec2]
+
+  - id: saa-res-029
+    difficulty: 3
+    type: single
+    question: "During a sales event, many AWS SDK calls from an application fail with throttling errors (HTTP 429 or ThrottlingException). Most calls work if they are sent again a moment later. What should a solutions architect recommend FIRST?"
+    options:
+      - id: a
+        text: "Retry the failed calls at once in a tight loop until they succeed"
+        why: "Fast retries send even more requests, which makes the throttling worse for every client."
+      - id: b
+        text: "Retry with exponential backoff and jitter, and request a quota increase if needed"
+      - id: c
+        text: "Move the application to larger EC2 instances with more network bandwidth"
+        why: "Throttling comes from the service API rate limit, not from the client's network or CPU."
+      - id: d
+        text: "Deploy the application in a second Region and split the traffic"
+        why: "This adds a lot of complexity. Quotas and retries should be handled first, inside the current Region."
+    answer: [b]
+    explanation: |
+      Throttling means the request rate is above a service quota. Retries with exponential backoff
+      and random jitter spread the retries out and let the calls succeed. If the normal load is too high,
+      request a quota increase with Service Quotas.
+    docs:
+      - https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html
+      - https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html
+    glossary: [aws-api-gateway]
+
+  - id: saa-res-030
+    difficulty: 3
+    type: single
+    question: "A Lambda function reads messages from an Amazon SQS standard queue and charges a customer's card for each message. In rare cases a customer is charged twice for one order. Which change will prevent this with the LEAST effect on throughput?"
+    options:
+      - id: a
+        text: "Set the batch size of the event source mapping to 1"
+        why: "A smaller batch does not stop duplicates. Standard queues can still deliver the same message more than once."
+      - id: b
+        text: "Set the reserved concurrency of the function to 1"
+        why: "One concurrent function greatly lowers throughput, and duplicate deliveries can still happen."
+      - id: c
+        text: "Make the function idempotent with a unique order ID stored in DynamoDB"
+      - id: d
+        text: "Increase the queue message retention period to 14 days"
+        why: "Retention controls how long messages stay in the queue. It does not stop duplicate processing."
+    answer: [c]
+    explanation: |
+      SQS standard queues give at-least-once delivery, so the same message can arrive twice.
+      An idempotent consumer records each order ID (for example with a DynamoDB conditional write)
+      and skips orders it has already charged. Throughput stays high.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html
+      - https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
+    glossary: [aws-sqs, aws-lambda, aws-dynamodb]
+
+  - id: saa-res-031
+    difficulty: 2
+    type: single
+    question: "Many AWS Lambda functions connect to an Amazon RDS for MySQL Multi-AZ DB instance. During traffic spikes the database runs out of connections, and during failovers the functions see long connection errors. Which solution meets these requirements?"
+    options:
+      - id: a
+        text: "Put Amazon RDS Proxy between the Lambda functions and the database"
+      - id: b
+        text: "Add a read replica and send all queries to the replica endpoint"
+        why: "Writes cannot go to a read replica, and a replica does not pool connections or speed up failover."
+      - id: c
+        text: "Increase the Lambda function memory so each invocation finishes faster"
+        why: "Faster functions may help a bit, but each invocation still opens its own connection and failover is not improved."
+      - id: d
+        text: "Place an Application Load Balancer in front of the DB instance"
+        why: "An ALB is for HTTP and HTTPS traffic. It cannot pool MySQL connections."
+    answer: [a]
+    explanation: |
+      RDS Proxy keeps a pool of database connections and shares them between many clients,
+      so spikes do not use up the connection limit. It also keeps client connections open during
+      a failover and connects to the new primary, which makes failover faster for the application.
+    docs:
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html
+    glossary: [aws-rds-proxy, aws-lambda, aws-rds]
+
+  - id: saa-res-032
+    difficulty: 1
+    type: multiple
+    question: "A company runs a web application on a single EC2 instance. The company wants the application to be highly available and to survive the failure of one Availability Zone. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Create an Auto Scaling group that launches instances in at least two AZs"
+      - id: b
+        text: "Move the instance to a larger instance type with more vCPUs"
+        why: "A bigger single instance is still a single point of failure in one AZ."
+      - id: c
+        text: "Use a cluster placement group for the instances"
+        why: "A cluster placement group puts instances close together in one AZ. It lowers network latency but reduces availability."
+      - id: d
+        text: "Put an Application Load Balancer in front of the instances"
+      - id: e
+        text: "Attach an Elastic IP address to the instance"
+        why: "An Elastic IP address gives a fixed public IP. It does not add capacity in another AZ or route around failures."
+    answer: [a, d]
+    explanation: |
+      An Auto Scaling group across several AZs keeps healthy instances running in more than one AZ.
+      An Application Load Balancer spreads traffic to healthy instances only. Together they remove
+      the single point of failure.
+    docs:
+      - https://docs.aws.amazon.com/autoscaling/ec2/userguide/autoscaling-load-balancer.html
+    glossary: [aws-auto-scaling, aws-alb, aws-az]
+
+  - id: saa-res-033
+    difficulty: 3
+    type: multiple
+    question: "A company wants a pilot light DR setup in a second Region for an application that runs on EC2 instances with an Amazon RDS for PostgreSQL database. Which combination of steps should a solutions architect take? (Select TWO.)"
+    options:
+      - id: a
+        text: "Run a full-size copy of the EC2 fleet in the second Region all the time"
+        why: "A full-size running fleet is active/active or warm standby, not pilot light. It costs much more."
+      - id: b
+        text: "Create a cross-Region read replica of the database in the second Region"
+      - id: c
+        text: "Turn on Multi-AZ for the RDS DB instance in the primary Region"
+        why: "Multi-AZ protects against an AZ failure inside one Region. It does not put data in the second Region."
+      - id: d
+        text: "Store the database snapshots in an S3 Glacier Deep Archive vault"
+        why: "Deep Archive retrieval takes hours. Pilot light needs live replicated data for a short RPO."
+      - id: e
+        text: "Copy the AMIs to the second Region and keep launch templates ready"
+    answer: [b, e]
+    explanation: |
+      In pilot light, the data layer is always on in the recovery Region, here as a cross-Region read
+      replica that can be promoted. The servers are not running, but AMIs and launch templates are
+      ready, so you can start and scale them quickly during a disaster.
+    docs:
+      - https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+      - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.XRgn.html
+    glossary: [aws-dr-strategies, aws-read-replica, aws-ami]
+
+  - id: saa-res-034
+    difficulty: 3
+    type: multiple
+    question: "An order service must not create duplicate orders, even when a client retries a request or a message is delivered twice. Orders for the same customer must keep their order. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Use an SQS standard queue with a visibility timeout of 0 seconds"
+        why: "A zero visibility timeout makes every message visible again at once, so duplicates become much more common."
+      - id: b
+        text: "Use an SNS standard topic to send orders to the order service"
+        why: "SNS standard topics can deliver more than once and do not keep order."
+      - id: c
+        text: "Use an SQS FIFO queue with a deduplication ID and the customer ID as group ID"
+      - id: d
+        text: "Increase the number of consumers so messages are processed faster"
+        why: "More consumers raise throughput but do not stop duplicates or keep order."
+      - id: e
+        text: "Store each idempotency key with a DynamoDB conditional write before saving"
+    answer: [c, e]
+    explanation: |
+      A FIFO queue keeps order inside a message group and drops duplicates sent within 5 minutes.
+      Because client retries can come later than that, the consumer also stores an idempotency key
+      with a conditional write and skips any order it has already created.
+    docs:
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues-exactly-once-processing.html
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html
+    glossary: [aws-sqs, aws-dynamodb]
+
+  - id: saa-res-035
+    difficulty: 2
+    type: multiple
+    question: "A company stores critical documents in an Amazon S3 bucket. The documents must be protected against accidental deletion and must still be available if the whole Region becomes unavailable. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Turn on S3 Versioning on the bucket"
+      - id: b
+        text: "Move the objects to S3 One Zone-IA"
+        why: "One Zone-IA stores data in only one AZ. It lowers availability and does not add a copy in another Region."
+      - id: c
+        text: "Configure S3 Cross-Region Replication to a bucket in another Region"
+      - id: d
+        text: "Turn on S3 Transfer Acceleration on the bucket"
+        why: "Transfer Acceleration speeds up long-distance uploads. It does not protect data or copy it to another Region."
+      - id: e
+        text: "Add a bucket policy that allows only HTTPS requests"
+        why: "Forcing HTTPS protects data in transit. It does not stop deletes or protect against a Region failure."
+    answer: [a, c]
+    explanation: |
+      Versioning keeps earlier versions, so a deleted or overwritten object can be restored.
+      Cross-Region Replication (which needs versioning) keeps a copy in another Region, so the documents
+      are still available if the source Region fails.
+    docs:
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+      - https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html
+    glossary: [aws-s3-versioning, aws-s3-replication]
+
+  - id: saa-res-036
+    difficulty: 2
+    type: multiple
+    question: "A company has a primary website behind an Application Load Balancer in one Region and a static maintenance site in Amazon S3. Users must be sent to the S3 site automatically if the primary website fails. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Create latency-based records for the ALB and the S3 website"
+        why: "Latency routing sends users to the fastest endpoint, so some users would get the maintenance site during normal operation."
+      - id: b
+        text: "Create a Route 53 health check, or evaluate target health, for the primary"
+      - id: c
+        text: "Create a CloudFront distribution with the ALB as the only origin"
+        why: "With one origin there is nothing to fail over to. CloudFront origin failover needs an origin group with two origins."
+      - id: d
+        text: "Create failover alias records with the ALB primary and S3 secondary"
+      - id: e
+        text: "Set a very long TTL on the DNS records to reduce DNS queries"
+        why: "A long TTL makes clients keep the old answer longer, so failover takes more time."
+    answer: [b, d]
+    explanation: |
+      Route 53 failover routing returns the primary record while it is healthy and the secondary
+      record when it is not. Route 53 needs a health check, or Evaluate Target Health on the alias
+      record, to know when the primary has failed.
+    docs:
+      - https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-configuring.html
+    glossary: [aws-route53, aws-alb, aws-s3]
+
+  - id: saa-res-037
+    difficulty: 2
+    type: multiple
+    question: "A serverless API on Amazon API Gateway and AWS Lambda must stay stable during sudden traffic spikes. Some spikes are larger than the backend can handle at once, and the work can be done a little later. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Move the Lambda functions into a VPC with a NAT gateway"
+        why: "A VPC and NAT gateway give network access to private resources. They do not help with spikes."
+      - id: b
+        text: "Turn off all API Gateway throttling so no request is rejected"
+        why: "Without throttling, the full spike reaches the backend and can overload it."
+      - id: c
+        text: "Use Lambda provisioned concurrency set to zero for all functions"
+        why: "Provisioned concurrency pre-warms environments. Setting it to zero does nothing for spikes."
+      - id: d
+        text: "Set API Gateway throttling limits and usage plans for clients"
+      - id: e
+        text: "Send requests to an Amazon SQS queue that Lambda processes later"
+    answer: [d, e]
+    explanation: |
+      API Gateway throttling protects the backend by limiting the request rate per client or stage.
+      Putting an SQS queue in front of the work buffers the spike, and Lambda processes the messages at a
+      safe rate. This keeps the system stable while no accepted work is lost.
+    docs:
+      - https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html
+      - https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
+    glossary: [aws-api-gateway, aws-sqs, aws-lambda]
+
+  - id: saa-res-038
+    difficulty: 2
+    type: multiple
+    question: "A company runs a web service as an Amazon ECS service on AWS Fargate behind an Application Load Balancer. The company wants failed tasks replaced automatically and the service to keep running during an Availability Zone failure. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Configure the ECS service with private subnets in at least two AZs"
+      - id: b
+        text: "Use target group health checks so ECS replaces unhealthy tasks"
+      - id: c
+        text: "Run all tasks as standalone tasks started with RunTask"
+        why: "Standalone tasks are not kept at a desired count, so ECS does not replace them when they fail."
+      - id: d
+        text: "Set the desired count of the service to 1 to avoid conflicts"
+        why: "One task is a single point of failure and lives in only one AZ."
+      - id: e
+        text: "Pin all tasks to one AZ with a placement constraint"
+        why: "Fargate does not support placement constraints, and one AZ would not survive an AZ failure."
+    answer: [a, b]
+    explanation: |
+      An ECS service with subnets in several AZs spreads its tasks across those AZs. When the service
+      uses the load balancer health checks, ECS stops tasks that fail them and starts new ones to keep the
+      desired count.
+    docs:
+      - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html
+      - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html
+    glossary: [aws-ecs, aws-fargate, aws-alb, aws-az]
+
+  - id: saa-res-039
+    difficulty: 3
+    type: multiple
+    question: "A company wants an active/active application in two Regions. Users must go to the nearest healthy Region, and both Regions must accept writes to the same data store. Which combination of steps meets these requirements? (Select TWO.)"
+    options:
+      - id: a
+        text: "Use an RDS Multi-AZ DB cluster that spans both Regions"
+        why: "RDS Multi-AZ works inside one Region only. It cannot span two Regions."
+      - id: b
+        text: "Use Route 53 simple routing with the endpoints of both Regions"
+        why: "Simple routing cannot use health checks and does not choose the nearest Region."
+      - id: c
+        text: "Store the data in a DynamoDB global table with replicas in both Regions"
+      - id: d
+        text: "Use Route 53 latency-based routing with health checks for each Region"
+      - id: e
+        text: "Use an S3 bucket with a lifecycle rule to move data between Regions"
+        why: "Lifecycle rules change storage class or expire objects. They never copy data to another Region."
+    answer: [c, d]
+    explanation: |
+      DynamoDB global tables accept reads and writes in every replica Region, which is needed for
+      active/active. Route 53 latency-based routing sends users to the Region with the lowest latency,
+      and health checks remove a failed Region from the answers.
+    docs:
+      - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html
+      - https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-latency.html
+    glossary: [aws-dynamodb, aws-route53, aws-dr-strategies]
