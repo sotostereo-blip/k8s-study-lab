@@ -1,0 +1,45 @@
+id: lfcs-users-003
+title: Give one user access with ACLs
+domain: users
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  useradd -M auditor
+  useradd -M clerk
+  mkdir -p /srv/reports/2026
+  echo "Q3 revenue: 1.2M" > /srv/reports/q3.txt
+  echo "Q4 plan" > /srv/reports/2026/q4.txt
+  chown -R root:root /srv/reports
+  chmod 750 /srv/reports /srv/reports/2026
+  chmod 640 /srv/reports/q3.txt /srv/reports/2026/q4.txt
+task: |
+  The directory `/srv/reports` belongs to `root:root` (mode 750). The user `auditor` must be
+  able to read all reports, but you must **not** change the owner, the group or add `auditor` to
+  a group. Use **ACLs**:
+
+  1. `auditor` can enter all directories under `/srv/reports` and read all the files that exist now.
+  2. Files and directories created later in `/srv/reports` must also be readable by `auditor`
+     (a **default** ACL).
+  3. The user `clerk` must still have no access.
+checks:
+  - name: '`auditor` can read /srv/reports/q3.txt and /srv/reports/2026/q4.txt'
+    run: su -s /bin/sh auditor -c 'cat /srv/reports/q3.txt /srv/reports/2026/q4.txt' >/dev/null
+  - name: /srv/reports has a default ACL entry for `auditor` with read permission
+    run: |
+      out=$(getfacl -p /srv/reports 2>&1)
+      echo "$out" | grep -qE '^default:user:auditor:r'
+  - name: '`clerk` still cannot read the reports'
+    run: '! su -s /bin/sh clerk -c "cat /srv/reports/q3.txt" >/dev/null 2>&1'
+    guard: true
+  - name: Owner and group of /srv/reports are still root:root
+    run: '[ "$(stat -c %U:%G /srv/reports)" = root:root ]'
+    guard: true
+solution: |
+  setfacl -R -m u:auditor:rX /srv/reports      # X = execute only on directories (and already-executable files)
+  setfacl -R -d -m u:auditor:rX /srv/reports   # default ACL: inherited by new files and directories
+  getfacl /srv/reports
+  # ls -l now shows a "+" after the mode bits: the file has an ACL.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man1/setfacl.1.html
+  - https://manpages.ubuntu.com/manpages/noble/man5/acl.5.html

@@ -1,0 +1,57 @@
+id: lfcs-ess-005
+title: Create a systemd service for a script
+domain: essential
+difficulty: 2
+minutes: 8
+environment: linux
+setup: |
+  cat > /usr/local/bin/heartbeat.sh <<'SH'
+  #!/bin/bash
+  # Prints a line every 5 seconds (systemd sends it to the journal).
+  while true; do
+    echo "heartbeat from $(hostname) at $(date +%T)"
+    sleep 5
+  done
+  SH
+  chmod 755 /usr/local/bin/heartbeat.sh
+task: |
+  The script `/usr/local/bin/heartbeat.sh` must run all the time as a service.
+
+  1. Create a **system** user called `heartbeat` (no home directory needed, no login shell).
+  2. Create the unit `heartbeat.service` in `/etc/systemd/system/` that runs the script as the
+     user `heartbeat` and **restarts it when it fails**.
+  3. Start the service now and make sure it starts at boot.
+checks:
+  - name: '`heartbeat` is a system user (UID below 1000)'
+    run: '[ "$(id -u heartbeat)" -lt 1000 ]'
+  - name: heartbeat.service is active and enabled
+    run: systemctl is-active --quiet heartbeat.service && [ "$(systemctl is-enabled heartbeat.service)" = enabled ]
+  - name: The service runs as user `heartbeat` with Restart=on-failure (or always)
+    run: |
+      [ "$(systemctl show -p User --value heartbeat.service)" = heartbeat ] \
+        && systemctl show -p Restart --value heartbeat.service | grep -qE '^(on-failure|always)$'
+  - name: The script process runs as `heartbeat`
+    run: '[ "$(ps -o user= -C heartbeat.sh | head -1 | tr -d " ")" = heartbeat ]'
+solution: |
+  useradd --system --no-create-home --shell /usr/sbin/nologin heartbeat
+  cat > /etc/systemd/system/heartbeat.service <<'UNIT'
+  [Unit]
+  Description=Heartbeat logger
+  After=network.target
+
+  [Service]
+  User=heartbeat
+  ExecStart=/usr/local/bin/heartbeat.sh
+  Restart=on-failure
+  RestartSec=5
+
+  [Install]
+  WantedBy=multi-user.target
+  UNIT
+  systemctl daemon-reload
+  systemctl enable --now heartbeat.service
+  systemctl status heartbeat.service
+  journalctl -u heartbeat.service -n 5
+docs:
+  - https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+  - https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html

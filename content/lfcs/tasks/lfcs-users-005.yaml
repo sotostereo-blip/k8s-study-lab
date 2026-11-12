@@ -1,0 +1,35 @@
+id: lfcs-users-005
+title: User process limits and a system-wide profile
+domain: users
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  useradd -m -s /bin/bash batchjob
+task: |
+  1. The user `batchjob` sometimes starts too many processes. Limit the number of processes for
+     this user: **soft** limit `100`, **hard** limit `200`. Use the PAM limits configuration
+     (`/etc/security/limits.conf` or a file in `/etc/security/limits.d/`).
+  2. Every user must get the environment variable `APP_ENV=production` in a **login shell**.
+     Use a system-wide profile script in `/etc/profile.d/`.
+checks:
+  - name: In a login session `batchjob` has a soft process limit of 100 and a hard limit of 200
+    run: |
+      [ "$(su - batchjob -c 'ulimit -Su')" = 100 ] && [ "$(su - batchjob -c 'ulimit -Hu')" = 200 ]
+  - name: A login shell of `batchjob` has APP_ENV=production
+    run: '[ "$(su - batchjob -c "echo \$APP_ENV")" = production ]'
+  - name: The variable comes from a file in /etc/profile.d/
+    run: grep -rqs 'APP_ENV' /etc/profile.d/
+solution: |
+  cat > /etc/security/limits.d/batchjob.conf <<'CONF'
+  # <domain>  <type>  <item>  <value>
+  batchjob    soft    nproc   100
+  batchjob    hard    nproc   200
+  CONF
+  echo 'export APP_ENV=production' > /etc/profile.d/app-env.sh
+  su - batchjob -c 'ulimit -Su; ulimit -Hu; echo $APP_ENV'
+  # pam_limits applies the limits when a session starts (login, su, ssh), not to running shells.
+  # Per-user settings go in ~/.profile or ~/.bashrc; system-wide ones in /etc/profile.d/*.sh.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/limits.conf.5.html
+  - https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html

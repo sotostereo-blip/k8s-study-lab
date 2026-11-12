@@ -1,0 +1,39 @@
+id: lfcs-ess-008
+title: Create a self-signed TLS certificate
+domain: essential
+difficulty: 2
+minutes: 6
+environment: linux
+task: |
+  Create a key and a self-signed certificate for a test web site:
+
+  - private key `/etc/ssl/lab/shop.key`: **RSA, 2048 bits**, readable only by root (mode `600`)
+  - certificate `/etc/ssl/lab/shop.crt`: self-signed with that key, subject common name (CN)
+    `shop.lab.internal`, valid for **365 days**
+checks:
+  - name: shop.key is a 2048-bit RSA key with mode 600
+    run: |
+      out=$(openssl rsa -in /etc/ssl/lab/shop.key -noout -text 2>&1)
+      echo "$out" | grep -q 'Private-Key: (2048 bit' && [ "$(stat -c %a /etc/ssl/lab/shop.key)" = 600 ]
+  - name: shop.crt has CN shop.lab.internal and is signed by itself
+    run: |
+      out=$(openssl x509 -in /etc/ssl/lab/shop.crt -noout -subject -issuer 2>&1)
+      echo "$out" | grep -qE '^subject=.*CN ?= ?shop\.lab\.internal' && echo "$out" | grep -qE '^issuer=.*CN ?= ?shop\.lab\.internal'
+  - name: The certificate matches the key
+    run: |
+      a=$(openssl x509 -in /etc/ssl/lab/shop.crt -noout -pubkey) && b=$(openssl pkey -in /etc/ssl/lab/shop.key -pubout) \
+        && [ -n "$a" ] && [ "$a" = "$b" ]
+  - name: The certificate is valid for about 365 days (more than 360, less than 370)
+    run: |
+      openssl x509 -in /etc/ssl/lab/shop.crt -noout -checkend $((360*86400)) >/dev/null \
+        && ! openssl x509 -in /etc/ssl/lab/shop.crt -noout -checkend $((370*86400)) >/dev/null
+solution: |
+  mkdir -p /etc/ssl/lab
+  openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+    -keyout /etc/ssl/lab/shop.key -out /etc/ssl/lab/shop.crt -subj "/CN=shop.lab.internal"
+  chmod 600 /etc/ssl/lab/shop.key
+  openssl x509 -in /etc/ssl/lab/shop.crt -noout -subject -dates
+  # -nodes = do not encrypt the key with a passphrase (a service can read it at start).
+docs:
+  - https://docs.openssl.org/3.0/man1/openssl-req/
+  - https://docs.openssl.org/3.0/man1/openssl-x509/

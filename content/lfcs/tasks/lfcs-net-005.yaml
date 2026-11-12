@@ -1,0 +1,58 @@
+id: lfcs-net-005
+title: Configure a firewall with ufw on server2
+domain: networking
+difficulty: 2
+minutes: 8
+environment: linux
+setup: |
+  ssh server2 'bash -s' <<'S2'
+  mkdir -p /srv/web8080 /srv/admin9000
+  echo "public web" > /srv/web8080/index.html
+  echo "admin panel" > /srv/admin9000/index.html
+  systemd-run --quiet --unit=lab-web8080 python3 -m http.server 8080 --directory /srv/web8080
+  systemd-run --quiet --unit=lab-admin9000 python3 -m http.server 9000 --directory /srv/admin9000
+  S2
+  sleep 1
+task: |
+  On **server2** two web servers listen: a public site on port `8080` and an admin panel on
+  port `9000` that must not be reachable from the network.
+
+  Configure the firewall on server2 with **ufw**:
+
+  1. Allow incoming TCP on ports `22`, `2222` (SSH) and `8080`.
+  2. **Deny** all other incoming traffic by default (outgoing stays allowed).
+  3. Enable the firewall, also at boot.
+
+  Be careful: allow SSH **before** you enable ufw, or you lock yourself out.
+checks:
+  - name: ufw is active on server2 with default deny for incoming traffic
+    run: |
+      out=$(ssh -n -o BatchMode=yes server2 ufw status verbose 2>&1)
+      echo "$out" | grep -q 'Status: active' && echo "$out" | grep -qE 'Default: (deny|reject) \(incoming\)'
+  - name: Port 9000 on server2 is blocked from this server
+    run: '! nc -z -w 3 server2 9000'
+  - name: Port 8080 on server2 is reachable and SSH still works
+    run: nc -z -w 3 server2 8080 && ssh -n -o BatchMode=yes -o ConnectTimeout=5 server2 true
+    guard: true
+  - name: ufw allows 2222/tcp
+    run: |
+      out=$(ssh -n -o BatchMode=yes server2 ufw status 2>&1)
+      echo "$out" | grep -qE '^2222(/tcp)?\s+ALLOW'
+solution: |
+  ssh server2
+  ufw allow 22/tcp                 # or: ufw allow OpenSSH
+  ufw allow 2222/tcp
+  ufw allow 8080/tcp
+  ufw default deny incoming
+  ufw default allow outgoing
+  ufw enable                       # also sets ENABLED=yes in /etc/ufw/ufw.conf
+  ufw status verbose
+  exit
+  nc -zv -w 3 server2 8080         # open
+  nc -zv -w 3 server2 9000         # times out
+  # ufw writes iptables/nftables rules. Check them with: nft list ruleset
+auto_solution: |
+  ssh -n server2 'ufw allow 22/tcp && ufw allow 2222/tcp && ufw allow 8080/tcp && ufw default deny incoming && ufw --force enable'
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/ufw.8.html
+  - https://documentation.ubuntu.com/server/how-to/security/firewalls/

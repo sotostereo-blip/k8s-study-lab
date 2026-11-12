@@ -1,0 +1,32 @@
+id: lfcs-net-001
+title: Resolve host names with /etc/hosts
+domain: networking
+difficulty: 1
+minutes: 4
+environment: linux
+task: |
+  The application on this server connects to its database with the names `db.lab.internal`
+  and `db`. The database runs on the host `server2`.
+
+  1. Find the IPv4 address of `server2` and write it to `/root/server2-ip.txt`.
+  2. Make both names `db.lab.internal` and `db` resolve **on this server** to that address,
+     using `/etc/hosts`.
+checks:
+  - name: /root/server2-ip.txt contains the IPv4 address of server2
+    run: '[ "$(tr -d "[:space:]" < /root/server2-ip.txt)" = "$(getent ahostsv4 server2 | awk "NR==1{print \$1}")" ]'
+  - name: db.lab.internal and db resolve to the address of server2
+    run: |
+      ip2=$(getent ahostsv4 server2 | awk 'NR==1{print $1}')
+      [ "$(getent hosts db.lab.internal | awk '{print $1}')" = "$ip2" ] && [ "$(getent hosts db | awk '{print $1}')" = "$ip2" ]
+  - name: The names are in /etc/hosts
+    run: grep -qE '^[0-9.]+\s+.*\bdb\.lab\.internal\b' /etc/hosts
+solution: |
+  getent hosts server2                 # or: dig +short server2   /   host server2   /   ping -c1 server2
+  getent hosts server2 | awk '{print $1}' > /root/server2-ip.txt
+  echo "$(cat /root/server2-ip.txt) db.lab.internal db" >> /etc/hosts
+  getent hosts db.lab.internal db
+  # The order of sources (files, then dns) is set by the "hosts:" line in /etc/nsswitch.conf.
+  # Note: dig and nslookup ask the DNS server only; they do not read /etc/hosts.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/hosts.5.html
+  - https://manpages.ubuntu.com/manpages/noble/man5/nsswitch.conf.5.html

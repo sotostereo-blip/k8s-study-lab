@@ -1,0 +1,104 @@
+# Everyday exam English used in the LFCS questions and labs (not technical terms).
+words:
+  - id: contractor
+    word: "contractor"
+    match: ["contractor", "contractors"]
+    definition: "A person who works for a company for a limited time, not as a normal employee."
+    example: "The account of the contractor expires at the end of the year."
+    es: "contratista, trabajador externo"
+  - id: quarantine
+    word: "quarantine"
+    match: ["quarantine"]
+    definition: "A place where you keep something apart so it cannot cause problems."
+    example: "Move the suspicious file to the quarantine directory."
+    es: "cuarentena"
+  - id: spare
+    word: "spare"
+    match: ["spare"]
+    definition: "Extra; not used now, kept for when you need it."
+    example: "The lab has no spare disk, so we use an image file."
+    es: "de repuesto, libre, sobrante"
+  - id: shrink
+    word: "shrink"
+    match: ["shrink", "shrinks", "shrinking"]
+    definition: "To become smaller, or to make something smaller."
+    example: "You can grow an XFS filesystem, but you cannot shrink it."
+    es: "encoger, reducir"
+  - id: grow
+    word: "grow"
+    match: ["grow", "grows", "growing", "grew"]
+    definition: "To become bigger, or to make something bigger."
+    example: "Grow the logical volume and the filesystem in one step."
+    es: "crecer, ampliar"
+  - id: trailing
+    word: "trailing"
+    match: ["trailing"]
+    definition: "At the end of something, after everything else."
+    example: "A trailing slash on the source copies only the content of the directory."
+    es: "final, al final (p. ej. barra final)"
+  - id: quietly
+    word: "quietly"
+    match: ["quietly"]
+    definition: "Without telling you or showing a message."
+    example: "The command does not fail; it quietly replaces the list."
+    es: "silenciosamente, sin avisar"
+  - id: sticky
+    word: "sticky"
+    match: ["sticky"]
+    definition: "That stays attached; in Linux, a sticky bit protects files of other users in a shared directory."
+    example: "The sticky bit on /tmp stops users from deleting files of other users."
+    es: "pegajoso; 'sticky bit' = bit de permanencia"
+  - id: favourable
+    word: "favourable"
+    match: ["favourable", "favorable"]
+    definition: "Giving an advantage; good for someone."
+    example: "A nice value of -20 is the most favourable for the process."
+    es: "favorable"
+  - id: catch-up
+    word: "catch up"
+    match: ["catch up", "catches up", "catching up"]
+    definition: "To do something that should have been done earlier, so you are no longer behind."
+    example: "After boot, the timer catches up and runs the missed job once."
+    es: "ponerse al día, recuperar lo pendiente"
+  - id: expire
+    word: "expire"
+    match: ["expire", "expires", "expired"]
+    definition: "To come to an end; to stop being valid after a certain date."
+    example: "The certificate expires in 365 days."
+    es: "caducar, expirar"
+  - id: prompt
+    word: "prompt"
+    match: ["prompt"]
+    definition: "A message on the screen that asks you to type something."
+    example: "The login must work without a password prompt."
+    es: "solicitud, aviso que pide una entrada"
+  - id: in-turn
+    word: "in turn"
+    match: ["in turn"]
+    definition: "One after the other, in order."
+    example: "nginx sends requests to both backends in turn."
+    es: "por turnos, uno tras otro"
+  - id: lock-out
+    word: "lock out"
+    match: ["lock yourself out", "lock out", "locks you out"]
+    definition: "To make it impossible for someone (often yourself) to get in."
+    example: "Allow SSH before you enable the firewall, or you lock yourself out."
+    es: "dejar(se) fuera, quedarse sin acceso"
+  - id: purge
+    word: "purge"
+    match: ["purge", "purges"]
+    definition: "To remove something completely, including everything connected to it."
+    example: "apt purge also deletes the configuration files."
+    es: "purgar, eliminar por completo"
+  - id: aside
+    word: "aside"
+    match: ["aside"]
+    definition: "To one side; out of the way, to use or look at later."
+    example: "git stash puts your changes aside without a commit."
+    es: "a un lado, aparte"
+  - id: hidden
+    word: "hidden"
+    match: ["hidden"]
+    definition: "Not easy to see; in Linux, a file whose name starts with a dot."
+    example: "The largest file may be hidden, so use ls -a or find."
+    es: "oculto"

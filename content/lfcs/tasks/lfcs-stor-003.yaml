@@ -1,0 +1,31 @@
+id: lfcs-stor-003
+title: Mount a size-limited tmpfs at boot
+domain: storage
+difficulty: 1
+minutes: 4
+environment: linux
+task: |
+  An application needs a fast scratch directory in RAM.
+
+  1. Mount a **tmpfs** filesystem on `/mnt/scratch` with a maximum size of **64M** and the
+     permissions `1777` (everybody can write, the sticky bit protects files of other users).
+  2. Make the mount permanent with a line in `/etc/fstab`.
+checks:
+  - name: A tmpfs of 64M is mounted on /mnt/scratch
+    run: '[ "$(findmnt -no FSTYPE /mnt/scratch)" = tmpfs ] && [ "$(findmnt -bno SIZE /mnt/scratch)" = 67108864 ]'
+  - name: /mnt/scratch has mode 1777
+    run: '[ "$(stat -c %a /mnt/scratch)" = 1777 ]'
+  - name: /etc/fstab has a tmpfs entry for /mnt/scratch with size=64M
+    run: |
+      out=$(findmnt --fstab -n -o FSTYPE,OPTIONS --target /mnt/scratch 2>&1)
+      echo "$out" | grep -q '^tmpfs' && echo "$out" | grep -qE 'size=(64M|64m|65536k|67108864)'
+solution: |
+  mkdir -p /mnt/scratch
+  echo 'tmpfs  /mnt/scratch  tmpfs  size=64M,mode=1777  0  0' >> /etc/fstab
+  systemctl daemon-reload
+  mount /mnt/scratch               # mount reads the other fields from /etc/fstab
+  findmnt /mnt/scratch; stat -c %a /mnt/scratch
+  # tmpfs content is lost at unmount or reboot. Change the size live: mount -o remount,size=128M /mnt/scratch
+docs:
+  - https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html
+  - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html

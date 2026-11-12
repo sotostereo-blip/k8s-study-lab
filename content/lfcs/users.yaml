@@ -1,0 +1,206 @@
+domain: users
+questions:
+  - id: lfcs-users-001
+    difficulty: 1
+    type: single
+    question: "You run `usermod -G developers anna`. Anna was also in the group `docker`. What happens?"
+    options:
+      - id: a
+        text: "Anna is now only in `developers`; she was removed from `docker`"
+      - id: b
+        text: "The command fails, because Anna is already in a group"
+        why: "usermod does not refuse this. It quietly replaces the group list."
+      - id: c
+        text: "The primary group of Anna changes to `developers`"
+        why: "The primary group is changed with `-g` (lower case). `-G` sets supplementary groups."
+      - id: d
+        text: "Anna is in `developers` and still in `docker`"
+        why: "That needs `-aG` (append). Without `-a`, `-G` replaces the whole list of supplementary groups."
+    answer: [a]
+    explanation: |
+      `usermod -G` sets the full list of supplementary groups. To add a group and keep the
+      others, use `usermod -aG developers anna` (or `gpasswd -a anna developers`). The change is
+      active at the next login; `id anna` shows the groups.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/usermod.8.html
+    glossary: [lx-supplementary-group]
+
+  - id: lfcs-users-002
+    difficulty: 2
+    type: single
+    question: "In which file are the password hashes and the password aging data of local users stored?"
+    options:
+      - id: a
+        text: "`/etc/login.defs`"
+        why: "`login.defs` holds defaults for new accounts (like `PASS_MAX_DAYS`), not the data of each user."
+      - id: b
+        text: "`/etc/passwd`"
+        why: "`/etc/passwd` is readable by everyone. It holds names, UIDs, homes and shells; the password field is just `x`."
+      - id: c
+        text: "`/etc/group`"
+        why: "`/etc/group` lists groups and their members, not user passwords."
+      - id: d
+        text: "`/etc/shadow`"
+    answer: [d]
+    explanation: |
+      `/etc/shadow` is readable only by root. Each line has the user name, the password hash,
+      the date of the last change, and the min, max, warn, inactive and expire fields. Change
+      aging with `chage`, and see it with `chage -l user`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/shadow.5.html
+    glossary: [lx-shadow]
+
+  - id: lfcs-users-003
+    difficulty: 2
+    type: multiple
+    question: "Which commands stop the user `bob` from logging in, but keep his files and account? (Choose two.)"
+    options:
+      - id: a
+        text: "`usermod -L bob` together with `usermod -e 1 bob`"
+      - id: b
+        text: "`chmod 000 /home/bob`"
+        why: "This only blocks access to the home directory. Bob can still log in, for example over SSH."
+      - id: c
+        text: "`usermod -s /usr/sbin/nologin bob`"
+      - id: d
+        text: "`userdel bob`"
+        why: "`userdel` deletes the account. With `-r` it also removes the home directory."
+    answer: [a, c]
+    explanation: |
+      `usermod -L` locks the password (adds `!` to the hash) and `-e 1` expires the account, which
+      also blocks SSH key logins. Setting the shell to `nologin` refuses interactive logins.
+      `passwd -S bob` and `chage -l bob` show the state. Unlock with `usermod -U` and `-e ''`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/usermod.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/nologin.8.html
+    glossary: [lx-shadow]
+
+  - id: lfcs-users-004
+    difficulty: 1
+    type: single
+    question: "Which file is read by every **login shell** of every user, and is a good place for system-wide environment variables in a new file?"
+    options:
+      - id: a
+        text: "The file `~/.bashrc` in the home of root"
+        why: "This file is only for root's own interactive shells. Other users never read it."
+      - id: b
+        text: "The file `/etc/skel/.profile` for new users"
+        why: "Files in `/etc/skel` are copied only into new home directories. Existing users do not get the change."
+      - id: c
+        text: "A new `*.sh` file in `/etc/profile.d/`"
+      - id: d
+        text: "A new `*.conf` file in `/etc/environment.d/`"
+        why: "That directory configures the systemd user manager. Login shells read `/etc/profile` and `/etc/profile.d/`."
+    answer: [c]
+    explanation: |
+      Bash login shells read `/etc/profile`, which runs every `/etc/profile.d/*.sh` file, and
+      then the first of `~/.bash_profile`, `~/.bash_login` or `~/.profile`. Interactive non-login
+      shells read `/etc/bash.bashrc` and `~/.bashrc`. `/etc/environment` (read by PAM) is another
+      option for simple `NAME=value` lines.
+    docs:
+      - https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html
+    glossary: [lx-login-shell, lx-environment-variable]
+
+  - id: lfcs-users-005
+    difficulty: 2
+    type: single
+    question: "In `/etc/security/limits.conf`, what does the line `@students hard nofile 1024` do?"
+    options:
+      - id: a
+        text: "Members of group `students` can open at most 1024 files at the same time"
+      - id: b
+        text: "Members of `students` can run at most 1024 processes"
+        why: "That would be the `nproc` item. `nofile` is the number of open files."
+      - id: c
+        text: "Members of group `students` can use at most 1024 KB of disk space"
+        why: "Disk space per user or group is set with filesystem quotas, not with PAM limits."
+      - id: d
+        text: "The user `@students` can create at most 1024 files in total"
+        why: "`@` marks a group, and `nofile` limits open file descriptors, not the number of files on disk."
+    answer: [a]
+    explanation: |
+      Each line has: domain (user, `@group` or `*`), type (`soft` or `hard`), item and value.
+      `nofile` is the maximum number of open file descriptors. The soft limit is the current
+      value; users can raise it up to the hard limit with `ulimit`. pam_limits applies the file
+      at login.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/limits.conf.5.html
+    glossary: [lx-pam, lx-ulimit]
+
+  - id: lfcs-users-006
+    difficulty: 2
+    type: single
+    question: "`getfacl report.txt` shows `user:anna:rw-` and `mask::r--`. What can Anna do with the file?"
+    options:
+      - id: a
+        text: "Read and write it, because her own entry says `rw-`"
+        why: "The mask is the upper limit for named users and groups. `getfacl` would show `#effective:r--`."
+      - id: b
+        text: "Read, write and execute, because ACLs add to the owner rights"
+        why: "ACL entries do not add up with owner rights. Each entry, filtered by the mask, is used on its own."
+      - id: c
+        text: "Nothing, because a mask removes all ACL entries"
+        why: "The mask does not remove entries. It only filters their permissions."
+      - id: d
+        text: "Only read it, because the mask limits named user entries"
+    answer: [d]
+    explanation: |
+      The ACL mask is the maximum permission for named users, named groups and the owning group.
+      `rw-` combined with mask `r--` gives an effective `r--`. `chmod g=...` changes the mask,
+      and `setfacl -m m::rw report.txt` sets it directly.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/acl.5.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/setfacl.1.html
+    glossary: [lx-acl]
+
+  - id: lfcs-users-007
+    difficulty: 3
+    type: single
+    question: "Which line in `/etc/sudoers.d/ops` lets user `kim` restart **only** the nginx service as root, without a password?"
+    options:
+      - id: a
+        text: "`kim ALL=(ALL) ALL: systemctl restart nginx`"
+        why: "`ALL` here allows every command, and a command must be written with its full path."
+      - id: b
+        text: "`kim nginx=(root) /usr/bin/systemctl`"
+        why: "The host field is a host name, not a service. It also allows every `systemctl` command, with a password."
+      - id: c
+        text: "`%kim NOPASSWD=/usr/bin/systemctl restart nginx`"
+        why: "`%` marks a group, not a user, and the syntax `host=(runas) command` is missing."
+      - id: d
+        text: "`kim ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx`"
+    answer: [d]
+    explanation: |
+      The format is `who host=(run-as) [tags:] commands`. `NOPASSWD:` skips the password and the
+      command needs a full path, with its arguments if you want to allow only that call. Edit
+      with `visudo -f /etc/sudoers.d/ops`, which checks the syntax. `sudo -l -U kim` lists the
+      rights.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/sudoers.5.html
+    glossary: [lx-sudo]
+
+  - id: lfcs-users-008
+    difficulty: 3
+    type: single
+    question: "A server must accept logins of users stored in a central LDAP directory. Which component usually connects LDAP to NSS and PAM on Ubuntu?"
+    options:
+      - id: a
+        text: "nscd only, with no other configuration"
+        why: "nscd only caches name service lookups. It does not know how to talk to LDAP."
+      - id: b
+        text: "slapd"
+        why: "slapd is the OpenLDAP **server**. The client machine needs a service that queries it."
+      - id: c
+        text: "systemd-logind"
+        why: "logind manages sessions and seats of users that already logged in. It does not look up accounts."
+      - id: d
+        text: "SSSD (System Security Services Daemon)"
+    answer: [d]
+    explanation: |
+      SSSD queries LDAP (or Active Directory) and provides users and groups to NSS
+      (`passwd: files sss` in `/etc/nsswitch.conf`) and authentication to PAM. Its configuration
+      is `/etc/sssd/sssd.conf` (mode 600). Check with `getent passwd <ldap-user>` and `id`.
+    docs:
+      - https://documentation.ubuntu.com/server/how-to/sssd/with-ldap/
+      - https://sssd.io/docs/introduction.html
+    glossary: [lx-ldap, lx-nsswitch, lx-pam]

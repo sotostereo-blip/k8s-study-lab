@@ -1,0 +1,46 @@
+id: lfcs-ess-004
+title: Branch, commit, merge and tag with Git
+domain: essential
+difficulty: 2
+minutes: 7
+environment: linux
+setup: |
+  git config --global user.name "Lab Admin"
+  git config --global user.email "admin@lab.internal"
+  git config --global init.defaultBranch main
+  mkdir -p /srv/git/webapp && cd /srv/git/webapp
+  git init -q
+  echo "# webapp" > README.md && git add README.md && git commit -qm "Add README"
+  echo "<h1>Home</h1>" > index.html && git add index.html && git commit -qm "Add home page"
+task: |
+  In the Git repository `/srv/git/webapp` (branch `main`):
+
+  1. Create a branch called `feature-login`.
+  2. On that branch, add a file `login.html` (any content) and **commit** it.
+  3. **Merge** `feature-login` into `main`.
+  4. Create an **annotated** tag `v1.1` on the latest commit of `main`.
+checks:
+  - name: The branch `feature-login` exists and has a commit with login.html
+    run: git -C /srv/git/webapp cat-file -e feature-login:login.html
+  - name: '`main` contains login.html (the branch was merged)'
+    run: git -C /srv/git/webapp cat-file -e main:login.html
+  - name: '`v1.1` is an annotated tag that points to the latest commit of main'
+    run: |
+      cd /srv/git/webapp
+      [ "$(git cat-file -t v1.1)" = tag ] && [ "$(git rev-parse 'v1.1^{commit}')" = "$(git rev-parse main)" ]
+  - name: The first commits are still in the history of main
+    run: '[ "$(git -C /srv/git/webapp log --oneline main | grep -c "Add ")" -ge 2 ]'
+    guard: true
+solution: |
+  cd /srv/git/webapp
+  git switch -c feature-login          # or: git checkout -b feature-login
+  echo "<form>login</form>" > login.html
+  git add login.html
+  git commit -m "Add login page"
+  git switch main
+  git merge feature-login              # fast-forward merge
+  git tag -a v1.1 -m "Release 1.1"     # -a = annotated (has author, date and message)
+  git log --oneline --decorate
+docs:
+  - https://git-scm.com/docs/git-merge
+  - https://git-scm.com/book/en/v2/Git-Basics-Tagging

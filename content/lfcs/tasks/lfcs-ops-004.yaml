@@ -1,0 +1,38 @@
+id: lfcs-ops-004
+title: Find processes, change priority and send signals
+domain: operations
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  printf '#!/bin/bash\nwhile true; do sleep 2; done\n' > /usr/local/bin/data-miner
+  printf '#!/bin/bash\nwhile true; do sleep 2; done\n' > /usr/local/bin/render-worker
+  chmod 755 /usr/local/bin/data-miner /usr/local/bin/render-worker
+  systemd-run --quiet --unit=lab-data-miner /usr/local/bin/data-miner
+  systemd-run --quiet --unit=lab-render-worker /usr/local/bin/render-worker
+task: |
+  Two programs are running on this server: `data-miner` and `render-worker`.
+
+  1. Write the **PID** of the `render-worker` process to `/root/render.pid`.
+  2. Change the **nice value** of the running `render-worker` process to `15`. Do not restart it.
+  3. Stop the `data-miner` process with the **SIGTERM** signal.
+checks:
+  - name: /root/render.pid contains the PID of render-worker
+    run: '[ "$(tr -d "[:space:]" < /root/render.pid)" = "$(pgrep -xo render-worker)" ]'
+  - name: render-worker has nice value 15
+    run: '[ "$(ps -o ni= -p "$(pgrep -xo render-worker)" | tr -d " ")" = 15 ]'
+  - name: data-miner is not running
+    run: '! pgrep -x data-miner >/dev/null'
+  - name: render-worker is still running
+    run: pgrep -x render-worker >/dev/null
+    guard: true
+solution: |
+  pgrep -a render-worker                 # or: ps aux | grep render-worker
+  pgrep -xo render-worker > /root/render.pid
+  renice -n 15 -p "$(cat /root/render.pid)"
+  ps -o pid,ni,cmd -p "$(cat /root/render.pid)"
+  kill -TERM "$(pgrep -x data-miner)"    # or: pkill -TERM -x data-miner  (TERM is the default)
+  # SIGKILL (kill -9) cannot be caught: use it only when SIGTERM does not work.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man1/renice.1.html
+  - https://manpages.ubuntu.com/manpages/noble/man1/kill.1.html

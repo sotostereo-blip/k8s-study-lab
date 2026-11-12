@@ -1,0 +1,51 @@
+id: lfcs-ess-003
+title: Process a log and a config file with grep, sort and sed
+domain: essential
+difficulty: 2
+minutes: 7
+environment: linux
+setup: |
+  mkdir -p /var/log/shop /etc/shop
+  cat > /var/log/shop/access.log <<'LOG'
+  10.0.0.5 - - [12/Nov/2026:10:00:01 +0000] "GET /index.html HTTP/1.1" 200 512
+  10.0.0.7 - - [12/Nov/2026:10:00:02 +0000] "GET /cart HTTP/1.1" 404 128
+  10.0.0.9 - - [12/Nov/2026:10:00:03 +0000] "POST /login HTTP/1.1" 200 64
+  10.0.0.7 - - [12/Nov/2026:10:00:04 +0000] "GET /old-page HTTP/1.1" 404 128
+  192.168.1.20 - - [12/Nov/2026:10:00:05 +0000] "GET /missing.png HTTP/1.1" 404 128
+  10.0.0.5 - - [12/Nov/2026:10:00:06 +0000] "POST /cart/add HTTP/1.1" 201 32
+  10.0.0.12 - - [12/Nov/2026:10:00:07 +0000] "GET /404.html HTTP/1.1" 200 300
+  172.16.0.3 - - [12/Nov/2026:10:00:08 +0000] "GET /api/v1/items HTTP/1.1" 404 90
+  10.0.0.9 - - [12/Nov/2026:10:00:09 +0000] "POST /checkout HTTP/1.1" 500 12
+  LOG
+  sed -i 's/^  //' /var/log/shop/access.log
+  printf '# shop settings\nname=shop\nport=8080\n# turn off in production\ndebug=true\nworkers=4\n' > /etc/shop/app.conf
+task: |
+  1. In `/var/log/shop/access.log` the status code is the second-last field. Write every
+     **client IP** that received status **404** to `/root/404-ips.txt`: one IP per line, sorted,
+     **no duplicates**.
+  2. Write the **number** of requests that used the method `POST` to `/root/post-count.txt`
+     (only the number).
+  3. In `/etc/shop/app.conf` change `port=8080` to `port=9090` and `debug=true` to
+     `debug=false`. Keep all other lines.
+checks:
+  - name: /root/404-ips.txt has the 3 unique IPs with status 404, sorted
+    run: |
+      [ "$(grep -v '^$' /root/404-ips.txt | sed 's/[[:space:]]*$//')" = "$(printf '10.0.0.7\n172.16.0.3\n192.168.1.20')" ]
+  - name: /root/post-count.txt contains 3
+    run: '[ "$(tr -d "[:space:]" < /root/post-count.txt)" = 3 ]'
+  - name: app.conf has port=9090 and debug=false
+    run: |
+      grep -qx 'port=9090' /etc/shop/app.conf && grep -qx 'debug=false' /etc/shop/app.conf \
+        && ! grep -q 'port=8080' /etc/shop/app.conf
+  - name: The other lines of app.conf are kept
+    run: grep -qx 'name=shop' /etc/shop/app.conf && grep -qx 'workers=4' /etc/shop/app.conf
+    guard: true
+solution: |
+  awk '$(NF-1) == 404 {print $1}' /var/log/shop/access.log | sort -u > /root/404-ips.txt
+  # careful: grep 404 alone also matches "/404.html" with status 200
+  grep -c '"POST ' /var/log/shop/access.log > /root/post-count.txt
+  sed -i -e 's/^port=8080$/port=9090/' -e 's/^debug=true$/debug=false/' /etc/shop/app.conf
+  cat /root/404-ips.txt /root/post-count.txt /etc/shop/app.conf
+docs:
+  - https://www.gnu.org/software/sed/manual/sed.html
+  - https://www.gnu.org/software/gawk/manual/gawk.html

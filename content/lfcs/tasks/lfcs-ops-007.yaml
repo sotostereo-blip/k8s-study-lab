@@ -1,0 +1,36 @@
+id: lfcs-ops-007
+title: Search the journal and make it persistent
+domain: operations
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  logger -t payment-sync -p user.info "Sync started for batch 2026-11 (code PX-1000)"
+  logger -t payment-sync -p user.warning "Slow answer from bank, retry with code PX-2999"
+  logger -t payment-sync -p user.err "Sync failed for batch 2026-11: error code PX-4471"
+  logger -t payment-sync -p user.info "Sync retry scheduled (code PX-3000)"
+task: |
+  1. The program `payment-sync` writes messages to the system journal (with the tag
+     `payment-sync`). Find the message with priority **error** and write only its error code
+     (for example `PX-1234`) to `/root/payment-error.txt`.
+  2. At the moment the journal is kept only in memory (`/run/log/journal`), so it is lost at
+     reboot. Configure journald to store the journal **persistently** on disk
+     (`/var/log/journal`) and apply the change now.
+checks:
+  - name: /root/payment-error.txt contains PX-4471
+    run: '[ "$(tr -d "[:space:]" < /root/payment-error.txt)" = PX-4471 ]'
+  - name: The journal is written to /var/log/journal
+    run: ls /var/log/journal/*/system.journal >/dev/null 2>&1
+solution: |
+  journalctl -t payment-sync -p err --no-pager      # -t = syslog tag, -p err = error or worse
+  echo PX-4471 > /root/payment-error.txt
+  mkdir -p /etc/systemd/journald.conf.d
+  printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/persistent.conf
+  systemctl restart systemd-journald
+  journalctl --flush                                # move the logs from /run to /var
+  ls /var/log/journal/
+  journalctl --disk-usage
+  # With the default Storage=auto, just creating /var/log/journal also makes it persistent.
+docs:
+  - https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
+  - https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html

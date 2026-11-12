@@ -1,0 +1,56 @@
+id: lfcs-ops-005
+title: Use a local APT repository, install and hold a package
+domain: operations
+difficulty: 3
+minutes: 8
+environment: linux
+setup: |
+  b=$(mktemp -d)
+  mkdir -p "$b/labtool/DEBIAN" "$b/labtool/usr/local/bin" /srv/localrepo
+  printf 'Package: labtool\nVersion: 1.0\nArchitecture: all\nMaintainer: Lab <lab@lab.internal>\nDescription: Small tool for the LFCS lab\n' > "$b/labtool/DEBIAN/control"
+  printf '#!/bin/sh\necho "labtool 1.0"\n' > "$b/labtool/usr/local/bin/labtool"
+  chmod 755 "$b/labtool/usr/local/bin/labtool"
+  dpkg-deb -b "$b/labtool" /srv/localrepo/labtool_1.0_all.deb >/dev/null
+  (cd /srv/localrepo && apt-ftparchive packages . > Packages)
+  rm -rf "$b"
+task: |
+  The directory `/srv/localrepo` is a simple (flat) APT repository with the package `labtool`.
+
+  1. Add it as an APT source in a file under `/etc/apt/sources.list.d/`. The repository is not
+     signed, so mark it as **trusted**. The source line is: `file:/srv/localrepo ./`
+  2. Update the package lists and **install** `labtool`.
+  3. **Hold** `labtool`, so upgrades do not change it.
+  4. **Remove** the package `htop` (it is not needed on this server).
+checks:
+  - name: An APT source for file:/srv/localrepo exists in /etc/apt/sources.list.d/
+    run: grep -rqs 'file:/*srv/localrepo' /etc/apt/sources.list.d/
+  - name: labtool is installed
+    run: '[ "$(dpkg-query -W -f="\${db:Status-Status}" labtool 2>/dev/null)" = installed ]'
+  - name: labtool is on hold
+    run: |
+      out=$(apt-mark showhold 2>&1)
+      echo "$out" | grep -qx labtool
+  - name: htop is not installed
+    run: '[ "$(dpkg-query -W -f="\${db:Status-Status}" htop 2>/dev/null)" != installed ]'
+solution: |
+  echo 'deb [trusted=yes] file:/srv/localrepo ./' > /etc/apt/sources.list.d/localrepo.list
+  apt update
+  apt-cache policy labtool          # the candidate comes from file:/srv/localrepo
+  apt install -y labtool
+  apt-mark hold labtool
+  apt-mark showhold
+  apt remove -y htop                # "apt purge" also removes its config files
+  # deb822 format is also valid: /etc/apt/sources.list.d/localrepo.sources
+  #   Types: deb
+  #   URIs: file:/srv/localrepo
+  #   Suites: ./
+  #   Trusted: yes
+auto_solution: |
+  echo 'deb [trusted=yes] file:/srv/localrepo ./' > /etc/apt/sources.list.d/localrepo.list
+  apt-get update -qq -o Dir::Etc::sourcelist=sources.list.d/localrepo.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0
+  apt-get install -y -qq labtool
+  apt-mark hold labtool
+  apt-get remove -y -qq htop
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/sources.list.5.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/apt-mark.8.html

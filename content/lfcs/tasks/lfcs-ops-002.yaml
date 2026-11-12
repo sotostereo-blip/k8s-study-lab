@@ -1,0 +1,44 @@
+id: lfcs-ops-002
+title: Schedule jobs with cron
+domain: operations
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  useradd -m -s /bin/bash reporter
+  printf '#!/bin/bash\ndate >> /tmp/sales-report.log\n' > /usr/local/bin/sales-report.sh
+  chmod 755 /usr/local/bin/sales-report.sh
+task: |
+  1. The user `reporter` must run `/usr/local/bin/sales-report.sh` at **02:30** every
+     **Monday to Friday**. Use the personal crontab of `reporter`.
+  2. Create the system cron file `/etc/cron.d/tmp-cleanup` that runs this command **as root**
+     every **Sunday at 04:00**:
+     `find /tmp -name '*.tmp' -mtime +7 -delete`
+checks:
+  - name: The crontab of `reporter` runs sales-report.sh at 02:30, Monday-Friday
+    run: |
+      out=$(crontab -l -u reporter 2>&1)
+      echo "$out" | grep -qE '^\s*30\s+0?2\s+\*\s+\*\s+(1-5|[Mm][Oo][Nn]-[Ff][Rr][Ii]|1,2,3,4,5)\s+(/usr/local/bin/)?sales-report\.sh'
+  - name: /etc/cron.d/tmp-cleanup runs the find command as root on Sunday at 04:00
+    run: |
+      grep -qE '^\s*0+\s+0?4\s+\*\s+\*\s+(0|7|[Ss][Uu][Nn])\s+root\s+.*find\s+/tmp' /etc/cron.d/tmp-cleanup
+  - name: The cron service is running
+    run: systemctl is-active --quiet cron
+    guard: true
+solution: |
+  crontab -e -u reporter
+  # add the line:  minute hour day-of-month month day-of-week command
+  30 2 * * 1-5 /usr/local/bin/sales-report.sh
+
+  cat > /etc/cron.d/tmp-cleanup <<'CRON'
+  # files in /etc/cron.d have a USER field before the command
+  0 4 * * 0 root find /tmp -name '*.tmp' -mtime +7 -delete
+  CRON
+  crontab -l -u reporter
+  # File names in /etc/cron.d must not contain a dot. Logs: journalctl -u cron
+auto_solution: |
+  echo '30 2 * * 1-5 /usr/local/bin/sales-report.sh' | crontab -u reporter -
+  echo "0 4 * * 0 root find /tmp -name '*.tmp' -mtime +7 -delete" > /etc/cron.d/tmp-cleanup
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/crontab.5.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/cron.8.html

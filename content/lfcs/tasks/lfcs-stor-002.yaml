@@ -1,0 +1,55 @@
+id: lfcs-stor-002
+title: Grow an ext4 filesystem and change reserved blocks
+domain: storage
+difficulty: 3
+minutes: 8
+environment: linux
+setup: |
+  mkdir -p /srv/disks
+  truncate -s 64M /srv/disks/logs01.img
+  mkfs.ext4 -q -L LOGS01 /srv/disks/logs01.img
+  echo "keep this file" > /tmp/keep.txt
+  debugfs -w -R "write /tmp/keep.txt keep.txt" /srv/disks/logs01.img >/dev/null 2>&1
+  rm -f /tmp/keep.txt
+task: |
+  The image file `/srv/disks/logs01.img` holds an **ext4** filesystem (label `LOGS01`) of 64 MiB.
+  It is too small.
+
+  1. Make the image file **256 MiB** and **grow** the ext4 filesystem to use all the space.
+     The file `keep.txt` in the filesystem must not be lost.
+  2. Change the **reserved blocks** (space only root can use) to **1%** of the filesystem.
+  3. Mount the filesystem on `/mnt/logs01` (no fstab entry needed).
+checks:
+  - name: The ext4 filesystem is about 256 MiB
+    run: |
+      out=$(dumpe2fs -h /srv/disks/logs01.img 2>/dev/null)
+      bc=$(echo "$out" | awk -F: '/^Block count/{gsub(/ /,"",$2); print $2}')
+      bs=$(echo "$out" | awk -F: '/^Block size/{gsub(/ /,"",$2); print $2}')
+      [ $(( bc * bs )) -ge $(( 250 * 1024 * 1024 )) ]
+  - name: Reserved blocks are 1% of the block count
+    run: |
+      out=$(dumpe2fs -h /srv/disks/logs01.img 2>/dev/null)
+      bc=$(echo "$out" | awk -F: '/^Block count/{gsub(/ /,"",$2); print $2}')
+      rbc=$(echo "$out" | awk -F: '/^Reserved block count/{gsub(/ /,"",$2); print $2}')
+      [ $(( rbc * 1000 / bc )) -ge 9 ] && [ $(( rbc * 1000 / bc )) -le 11 ]
+  - name: The filesystem is mounted on /mnt/logs01 and keep.txt is there
+    run: '[ "$(findmnt -no FSTYPE /mnt/logs01)" = ext4 ] && grep -q "keep this file" /mnt/logs01/keep.txt'
+solution: |
+  truncate -s 256M /srv/disks/logs01.img    # a real disk: grow the partition or the LV first
+  e2fsck -f /srv/disks/logs01.img            # resize2fs wants a clean check when offline
+  resize2fs /srv/disks/logs01.img            # no size = use all the space
+  tune2fs -m 1 /srv/disks/logs01.img         # reserved blocks percentage
+  mkdir -p /mnt/logs01
+  mount -o loop /srv/disks/logs01.img /mnt/logs01
+  df -h /mnt/logs01; cat /mnt/logs01/keep.txt
+  # ext4 can also grow while mounted (online). For LVM: lvextend -r -L +1G vg/lv does both steps.
+auto_solution: |
+  truncate -s 256M /srv/disks/logs01.img
+  e2fsck -fy /srv/disks/logs01.img >/dev/null 2>&1 || true
+  resize2fs /srv/disks/logs01.img
+  tune2fs -m 1 /srv/disks/logs01.img
+  mkdir -p /mnt/logs01
+  mount -o loop /srv/disks/logs01.img /mnt/logs01
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/resize2fs.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/tune2fs.8.html

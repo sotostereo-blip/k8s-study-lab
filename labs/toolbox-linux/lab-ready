@@ -1,0 +1,8 @@
+#!/bin/bash
+# Exit 0 when systemd is up (running or degraded), the web terminal and sshd listen,
+# and root can log in to server2 with ssh.
+state=$(systemctl is-system-running 2>/dev/null)
+case "$state" in running|degraded) ;; *) exit 1 ;; esac
+systemctl is-active --quiet ttyd.service || exit 1
+systemctl is-active --quiet ssh.service || exit 1
+ssh -n -o BatchMode=yes -o ConnectTimeout=3 root@server2 'systemctl is-active --quiet ssh.service' >/dev/null 2>&1

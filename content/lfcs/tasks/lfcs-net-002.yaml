@@ -1,0 +1,44 @@
+id: lfcs-net-002
+title: Add IP addresses and a static route
+domain: networking
+difficulty: 2
+minutes: 7
+environment: linux
+task: |
+  Both servers are connected to the same network on interface `eth0`. Add a second private
+  network and a route (changes for the running system are enough; no reboot test):
+
+  1. On **this server**, add the address `192.168.150.10/24` to `eth0`.
+  2. On **server2** (`ssh server2`), add the address `192.168.150.20/24` to its `eth0`.
+     After this, `ping 192.168.150.20` works from this server.
+  3. On **this server**, add a static route to the network `10.99.0.0/16` through
+     `192.168.150.20` (server2 is the gateway).
+checks:
+  - name: eth0 on this server has 192.168.150.10/24
+    run: |
+      out=$(ip -4 addr show dev eth0 2>&1)
+      echo "$out" | grep -q 'inet 192.168.150.10/24'
+  - name: 192.168.150.20 (server2) answers ping
+    run: ping -c1 -W2 192.168.150.20 >/dev/null
+  - name: The route to 10.99.0.0/16 goes via 192.168.150.20
+    run: |
+      out=$(ip route show 10.99.0.0/16 2>&1)
+      echo "$out" | grep -q 'via 192.168.150.20'
+solution: |
+  ip addr add 192.168.150.10/24 dev eth0
+  ssh server2 ip addr add 192.168.150.20/24 dev eth0
+  ping -c2 192.168.150.20
+  ip route add 10.99.0.0/16 via 192.168.150.20
+  ip route                       # the routing table
+  ip route get 10.99.1.1         # which route would be used
+  # These changes are lost at reboot. On Ubuntu Server they are made permanent with netplan
+  # (/etc/netplan/*.yaml: addresses: and routes: - to: 10.99.0.0/16 via: 192.168.150.20),
+  # then "netplan try" or "netplan apply". (This lab uses Docker networking, so no netplan.)
+auto_solution: |
+  ip addr add 192.168.150.10/24 dev eth0
+  ssh -n server2 ip addr add 192.168.150.20/24 dev eth0
+  ip route add 10.99.0.0/16 via 192.168.150.20
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/ip-address.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/ip-route.8.html
+  - https://netplan.readthedocs.io/en/stable/netplan-yaml/

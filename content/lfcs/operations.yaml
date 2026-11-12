@@ -1,0 +1,517 @@
+domain: operations
+questions:
+  - id: lfcs-ops-001
+    difficulty: 1
+    type: single
+    question: "You run `sysctl -w net.ipv4.ip_forward=1`. What happens after the next reboot?"
+    options:
+      - id: a
+        text: "The value goes back to the default, unless a sysctl config file sets it"
+      - id: b
+        text: "The system does not boot until you run `sysctl --system` by hand"
+        why: "Boot does not depend on this setting. At boot, `systemd-sysctl` loads the files in `/etc/sysctl.d/` automatically."
+      - id: c
+        text: "The value is kept, because `sysctl -w` writes it to `/etc/sysctl.conf`"
+        why: "`sysctl -w` changes only the running kernel. It never edits a configuration file."
+      - id: d
+        text: "The value is kept, because the kernel saves `/proc/sys` on shutdown"
+        why: "`/proc/sys` is a virtual filesystem in memory. Nothing in it is saved when the system stops."
+    answer: [a]
+    explanation: |
+      `sysctl -w` (or writing to a file in `/proc/sys`) changes a kernel parameter at runtime
+      only. To keep it after a reboot, put `net.ipv4.ip_forward = 1` in a file such as
+      `/etc/sysctl.d/90-forward.conf`. At boot `systemd-sysctl.service` applies these files.
+      `sysctl --system` loads them by hand.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/sysctl.8.html
+      - https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html
+    glossary: [lx-sysctl]
+
+  - id: lfcs-ops-002
+    difficulty: 2
+    type: single
+    question: "Which file path shows the current value of the kernel parameter `vm.swappiness`?"
+    options:
+      - id: a
+        text: "`/proc/vm/swappiness.conf`"
+        why: "There is no such file. The dots in a sysctl name become slashes under `/proc/sys`, with no extension."
+      - id: b
+        text: "`/sys/kernel/vm/swappiness`"
+        why: "`/sys` (sysfs) shows devices and kernel objects. Kernel parameters for sysctl live under `/proc/sys`."
+      - id: c
+        text: "`/etc/sysctl.d/vm.swappiness`"
+        why: "`/etc/sysctl.d/` holds configuration files with any name ending in `.conf`. It does not show the current value."
+      - id: d
+        text: "`/proc/sys/vm/swappiness`"
+    answer: [d]
+    explanation: |
+      Every sysctl name maps to a file under `/proc/sys`: dots become slashes. So
+      `vm.swappiness` is `/proc/sys/vm/swappiness`. `cat` reads it, and writing to it (as root)
+      changes the running value, like `sysctl -w`.
+    docs:
+      - https://docs.kernel.org/admin-guide/sysctl/vm.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/sysctl.8.html
+    glossary: [lx-sysctl, lx-swap]
+
+  - id: lfcs-ops-003
+    difficulty: 1
+    type: single
+    question: "A service failed to start. Which command shows the **last log lines of only that service**?"
+    options:
+      - id: a
+        text: "`journalctl -k -n 50 nginx`"
+        why: "`-k` shows only kernel messages (like `dmesg`). A service name is not a valid filter there."
+      - id: b
+        text: "`systemctl logs nginx.service --tail 50`"
+        why: "`systemctl` has no `logs` command. `systemctl status` shows a few lines; the full log comes from `journalctl`."
+      - id: c
+        text: "`dmesg --unit nginx | tail -50`"
+        why: "`dmesg` prints the kernel ring buffer. It knows nothing about systemd units."
+      - id: d
+        text: "`journalctl -u nginx.service -n 50`"
+    answer: [d]
+    explanation: |
+      `journalctl -u <unit>` filters the journal by systemd unit, and `-n 50` shows the last 50
+      lines. Add `-f` to follow new lines, `-b` for the current boot only, or `-p err` for errors
+      only. `systemctl status <unit>` also shows the state and the most recent lines.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
+    glossary: [lx-journald, lx-systemd]
+
+  - id: lfcs-ops-004
+    difficulty: 2
+    type: single
+    question: "`systemctl status app.service` shows `Active: failed (Result: exit-code)` and `status=203/EXEC`. What is the most likely cause?"
+    options:
+      - id: a
+        text: "The program started but returned exit code 1 after a while"
+        why: "A normal non-zero exit shows `status=1/FAILURE`. The `203/EXEC` code is set by systemd itself, before the program runs."
+      - id: b
+        text: "The program ran out of memory and the OOM killer stopped it"
+        why: "An OOM kill shows `Result: oom-kill` or signal `KILL`. Code 203/EXEC means the program never started."
+      - id: c
+        text: "The file in `ExecStart=` does not exist or is not executable"
+      - id: d
+        text: "The unit is masked, so systemd refuses to start it"
+        why: "A masked unit cannot be started at all. `systemctl start` says `Unit is masked`; there is no exit status."
+    answer: [c]
+    explanation: |
+      Exit status 203/EXEC means systemd could not execute the command in `ExecStart=`: a wrong
+      path, a missing execute bit, or a bad interpreter in the `#!` line. Similar codes:
+      200/CHDIR (the `WorkingDirectory=` is missing) and 217/USER (the `User=` does not exist).
+      Check with `journalctl -u app.service`.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html
+    glossary: [lx-systemd, lx-unit-file]
+
+  - id: lfcs-ops-005
+    difficulty: 2
+    type: multiple
+    question: "A process does not react to `kill <PID>`. Which statements are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "SIGKILL (`kill -9`) cannot be caught; the kernel ends the process"
+      - id: b
+        text: "Plain `kill` sends SIGTERM, which a program can catch or ignore"
+      - id: c
+        text: "SIGHUP (`kill -1`) always ends a process faster than SIGKILL"
+        why: "Many daemons catch SIGHUP and only reload their configuration. Nothing is faster or stronger than SIGKILL."
+      - id: d
+        text: "A zombie process can be removed with `kill -9` on its own PID"
+        why: "A zombie has already exited; it only waits for its parent to read its status. Signals do nothing to it."
+    answer: [a, b]
+    explanation: |
+      `kill` sends SIGTERM (15) by default. The program can handle it to clean up, or ignore it.
+      SIGKILL (9) and SIGSTOP cannot be caught or ignored. A process in uninterruptible sleep
+      (state `D`, often waiting for disk or NFS) and zombies (state `Z`) do not go away with
+      signals: fix the I/O problem or the parent process.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man7/signal.7.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/kill.1.html
+    glossary: [lx-signal, lx-pid]
+
+  - id: lfcs-ops-006
+    difficulty: 1
+    type: single
+    question: "Which nice value gives a process the **lowest** CPU priority?"
+    options:
+      - id: a
+        text: "19"
+      - id: b
+        text: "-20"
+        why: "-20 is the highest priority. Only root can set negative nice values."
+      - id: c
+        text: "0"
+        why: "0 is the default nice value for new processes. It is in the middle of the range."
+      - id: d
+        text: "99"
+        why: "99 is a real-time priority value (for `chrt`), not a nice value. Nice values go from -20 to 19."
+    answer: [a]
+    explanation: |
+      Nice values go from -20 (most favourable) to 19 (least favourable). A "nicer" process
+      leaves more CPU to others. Start a program with `nice -n 19 cmd`, or change a running one
+      with `renice -n 19 -p <PID>`. Normal users can only make their processes nicer.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/nice.1.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/renice.1.html
+    glossary: [lx-nice]
+
+  - id: lfcs-ops-007
+    difficulty: 1
+    type: single
+    question: "What does this crontab line do? `*/10 8-17 * * 1-5 /opt/check.sh`"
+    options:
+      - id: a
+        text: "Runs once at 08:10 and once at 17:10, from January to May"
+        why: "The fifth field is the day of the week (1-5 = Monday-Friday). The month is the fourth field, here `*`."
+      - id: b
+        text: "Runs every 10 hours on weekdays, starting at 08:00"
+        why: "`*/10` is in the first field, the minute. It means every 10 minutes, not hours."
+      - id: c
+        text: "Runs at 10 minutes past every hour from the 8th to the 17th of the month"
+        why: "The third field is day of month and it is `*`. `8-17` is in the second field, the hour."
+      - id: d
+        text: "Runs every 10 minutes from 08:00 to 17:59, Monday to Friday"
+    answer: [d]
+    explanation: |
+      The five time fields are: minute, hour, day of month, month, day of week. `*/10` in the
+      minute field means 0, 10, 20... `8-17` covers the hours 08 to 17, and `1-5` is Monday to
+      Friday. The last run of each day is at 17:50.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/crontab.5.html
+    glossary: [lx-cron]
+
+  - id: lfcs-ops-008
+    difficulty: 2
+    type: single
+    question: "A systemd timer has `OnCalendar=daily` and `Persistent=true`. The server was off at midnight. What happens when it boots at 08:00?"
+    options:
+      - id: a
+        text: "The timer is marked as failed and must be reset by hand"
+        why: "A missed run is not an error. The timer stays active and simply catches up."
+      - id: b
+        text: "Nothing; the job waits until the next midnight"
+        why: "That is the behaviour without `Persistent=true`. With it, systemd remembers that a run was missed."
+      - id: c
+        text: "The service runs once for every day the server was off"
+        why: "systemd starts the service only once to catch up, not once per missed day."
+      - id: d
+        text: "The service runs soon after boot, because the last run was missed"
+    answer: [d]
+    explanation: |
+      `Persistent=true` stores the time of the last run on disk. If a run was missed while the
+      machine was off, the service starts once right after the timer is activated at boot. This
+      is like `anacron` for cron jobs. `systemctl list-timers` shows the last and the next run.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
+    glossary: [lx-timer]
+
+  - id: lfcs-ops-009
+    difficulty: 2
+    type: multiple
+    question: "Which commands run a job **once** at a later time? (Choose two.)"
+    options:
+      - id: a
+        text: "`nohup /opt/backup.sh --at 23:00 &`"
+        why: "`nohup` starts the program now and keeps it running after logout. It has no time option."
+      - id: b
+        text: "`systemd-run --on-calendar='2026-12-01 23:00' /opt/backup.sh`"
+      - id: c
+        text: "`crontab -r /opt/backup.sh 23:00`"
+        why: "`crontab -r` removes the whole crontab of the user. It does not schedule anything."
+      - id: d
+        text: "`echo '/opt/backup.sh' | at 23:00`"
+    answer: [b, d]
+    explanation: |
+      `at` runs a command once at a given time (`atq` lists jobs, `atrm` removes them). With
+      systemd, `systemd-run --on-calendar=...` (or `--on-active=30min`) creates a transient
+      timer and service for one run. Cron and normal timer units are for repeated jobs.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/at.1.html
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html
+    glossary: [lx-timer, lx-cron]
+
+  - id: lfcs-ops-010
+    difficulty: 1
+    type: single
+    question: "On Ubuntu, which command shows which package installed the file `/usr/bin/dig`?"
+    options:
+      - id: a
+        text: "`apt-cache policy /usr/bin/dig`"
+        why: "`apt-cache policy` shows installed and candidate versions of a package, not the owner of a file."
+      - id: b
+        text: "`dpkg -L /usr/bin/dig`"
+        why: "`dpkg -L` does the opposite: it takes a package name and lists the files of that package."
+      - id: c
+        text: "`dpkg -S /usr/bin/dig`"
+      - id: d
+        text: "`apt show /usr/bin/dig`"
+        why: "`apt show` takes a package name and prints its details. It does not search by file path."
+    answer: [c]
+    explanation: |
+      `dpkg -S <path>` searches the installed packages for a file, for example
+      `bind9-dnsutils: /usr/bin/dig`. `dpkg -L <package>` lists the files of a package. For files
+      of packages that are not installed, use `apt-file search` (package `apt-file`).
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/dpkg.1.html
+    glossary: [lx-apt]
+
+  - id: lfcs-ops-011
+    difficulty: 2
+    type: single
+    question: "What is the difference between `apt remove nginx` and `apt purge nginx`?"
+    options:
+      - id: a
+        text: "`purge` also deletes the package configuration files"
+      - id: b
+        text: "`purge` also removes every package that depends on nginx"
+        why: "Both commands remove packages that depend on the removed one. The difference is the config files."
+      - id: c
+        text: "`remove` only stops the service; `purge` deletes the files"
+        why: "`remove` deletes the program files too. Only the configuration files (for example in `/etc/nginx`) stay."
+      - id: d
+        text: "`purge` also deletes the downloaded `.deb` files in the cache"
+        why: "The package cache in `/var/cache/apt/archives` is cleaned by `apt clean` or `apt autoclean`."
+    answer: [a]
+    explanation: |
+      `apt remove` uninstalls the package but keeps its configuration files (state `rc` in
+      `dpkg -l`). `apt purge` (or `remove --purge`) deletes them too. `apt autoremove` removes
+      dependencies that were installed automatically and are no longer needed.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/apt.8.html
+    glossary: [lx-apt]
+
+  - id: lfcs-ops-012
+    difficulty: 3
+    type: single
+    question: "You add a third-party APT repository. Where should its signing key go, so it is trusted **only** for that repository?"
+    options:
+      - id: a
+        text: "Store it in `/etc/apt/keyrings/` and set `Signed-By` in the source"
+      - id: b
+        text: "Add `[trusted=yes]` to the source line; then no key is needed"
+        why: "`trusted=yes` turns off signature checks completely. Use it only for local test repositories."
+      - id: c
+        text: "Run `apt-key add` so the key goes into the global keyring"
+        why: "`apt-key` is deprecated, and a global key is trusted for every repository, which is less safe."
+      - id: d
+        text: "Put the key in `/etc/ssl/certs/` and run `update-ca-certificates`"
+        why: "That directory is for TLS certificate authorities. APT checks repository signatures with OpenPGP keys."
+    answer: [a]
+    explanation: |
+      The modern way is to save the key file (for example `/etc/apt/keyrings/vendor.gpg`) and
+      reference it in the source: `Signed-By: /etc/apt/keyrings/vendor.gpg` in a `.sources` file,
+      or `[signed-by=...]` in a one-line `.list` entry. Then the key is valid only for that
+      repository.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/sources.list.5.html
+      - https://documentation.ubuntu.com/server/explanation/software/third-party-repository-usage/
+    glossary: [lx-apt]
+
+  - id: lfcs-ops-013
+    difficulty: 2
+    type: single
+    question: "A server has a problem at boot. You want a root shell with **only the basic system** and no network services, to fix it. Which target do you boot into?"
+    options:
+      - id: a
+        text: "`multi-user.target`"
+        why: "This is the normal server target: all services and the network start."
+      - id: b
+        text: "`rescue.target`"
+      - id: c
+        text: "`network-online.target`"
+        why: "This target only means the network is up. Other units order themselves after it; you do not boot into it."
+      - id: d
+        text: "`graphical.target`"
+        why: "This is the full system with a desktop. It starts more services, not fewer."
+    answer: [b]
+    explanation: |
+      `rescue.target` mounts local filesystems, starts the basic system and gives a root shell
+      (single-user mode). `emergency.target` is even smaller: only the root filesystem, mounted
+      read-only. Add `systemd.unit=rescue.target` to the kernel line in GRUB, or run
+      `systemctl isolate rescue.target` on a running system.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.special.html
+      - https://www.freedesktop.org/software/systemd/man/latest/bootup.html
+    glossary: [lx-systemd-target, lx-grub]
+
+  - id: lfcs-ops-014
+    difficulty: 3
+    type: multiple
+    question: "After a power cut, the server stops at boot in **emergency mode** because an ext4 filesystem in `/etc/fstab` has errors. What are good next steps? (Choose two.)"
+    options:
+      - id: a
+        text: "Run `fsck` on the root filesystem while it is mounted read-write"
+        why: "Never repair a filesystem that is mounted read-write. fsck can damage it more."
+      - id: b
+        text: "Run `e2fsck` (fsck) on the **unmounted** device to repair it"
+      - id: c
+        text: "Run `mkfs.ext4` on the device to remove the errors"
+        why: "`mkfs` creates a new, empty filesystem. All data on the device would be lost."
+      - id: d
+        text: "Check `journalctl -xb` to see which mount unit failed"
+    answer: [b, d]
+    explanation: |
+      In emergency mode, read the boot log (`journalctl -xb`) to find the failed
+      `*.mount` unit and its device. Repair the filesystem while it is not mounted, for example
+      `e2fsck -f /dev/sdb1` (XFS: `xfs_repair`). Then `mount -a` and continue with `systemctl
+      default` or reboot. For a disk that is not needed at boot, the `nofail` option in fstab
+      avoids emergency mode.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/e2fsck.8.html
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.special.html
+    glossary: [lx-filesystem, lx-fstab, lx-systemd-target]
+
+  - id: lfcs-ops-015
+    difficulty: 2
+    type: single
+    question: "Which command lists **all** virtual machines defined in libvirt, including the ones that are shut off?"
+    options:
+      - id: a
+        text: "`virsh list`"
+        why: "Without options `virsh list` shows only the running domains."
+      - id: b
+        text: "`virsh list --all`"
+      - id: c
+        text: "`virt-install --list`"
+        why: "`virt-install` creates new virtual machines. It does not list existing ones."
+      - id: d
+        text: "`qemu-img list --all`"
+        why: "`qemu-img` works with disk image files (create, convert, info). It does not know libvirt domains."
+    answer: [b]
+    explanation: |
+      libvirt calls a virtual machine a **domain**. `virsh list --all` shows running and stopped
+      domains. Other useful commands: `virsh start`, `virsh shutdown`, `virsh destroy` (hard
+      stop), `virsh autostart` (start at host boot) and `virsh dominfo`.
+    docs:
+      - https://www.libvirt.org/manpages/virsh.html
+    glossary: [lx-libvirt, lx-vm]
+
+  - id: lfcs-ops-016
+    difficulty: 3
+    type: single
+    question: "You want the libvirt domain `web01` to start automatically when the host boots. Which command do you use?"
+    options:
+      - id: a
+        text: "`virsh define web01 --boot`"
+        why: "`virsh define` registers a domain from an XML file. It does not set the autostart flag."
+      - id: b
+        text: "`systemctl enable web01`"
+        why: "A virtual machine is not a systemd unit. systemd only starts the libvirt daemon."
+      - id: c
+        text: "`virsh start web01 --persistent`"
+        why: "`virsh start` boots the domain now only. There is no `--persistent` option for start."
+      - id: d
+        text: "`virsh autostart web01`"
+    answer: [d]
+    explanation: |
+      `virsh autostart <domain>` marks the domain to start when the libvirt daemon starts (at
+      host boot). `virsh autostart --disable <domain>` turns it off. The libvirt service itself
+      must be enabled in systemd.
+    docs:
+      - https://www.libvirt.org/manpages/virsh.html
+    glossary: [lx-libvirt, lx-vm]
+
+  - id: lfcs-ops-017
+    difficulty: 1
+    type: single
+    question: "Which command starts an nginx container in the background and maps port 8080 on the host to port 80 in the container?"
+    options:
+      - id: a
+        text: "`docker start -p 8080:80 nginx`"
+        why: "`docker start` starts an existing stopped container. Ports are set when the container is created."
+      - id: b
+        text: "`docker run -d -p 8080:80 nginx`"
+      - id: c
+        text: "`docker run -it --expose 8080 nginx`"
+        why: "`--expose` only documents a port; it does not publish it on the host. `-it` also keeps it in the foreground."
+      - id: d
+        text: "`docker run -d -p 80:8080 nginx`"
+        why: "The format is `HOST:CONTAINER`. This maps host port 80 to container port 8080, where nginx does not listen."
+    answer: [b]
+    explanation: |
+      `-d` runs the container detached (in the background) and `-p HOST:CONTAINER` publishes a
+      port. Podman uses the same options: `podman run -d -p 8080:80 nginx`. Check with
+      `docker ps` and `curl localhost:8080`.
+    docs:
+      - https://docs.docker.com/reference/cli/docker/container/run/
+    glossary: [lx-container-engine, container, image]
+
+  - id: lfcs-ops-018
+    difficulty: 2
+    type: single
+    question: "A container must always start again after the host reboots or the container crashes, unless you stop it yourself. Which `docker run` option do you add?"
+    options:
+      - id: a
+        text: "`--rm --detach`"
+        why: "`--rm` deletes the container when it exits, and `--detach` only runs it in the background. Neither restarts it."
+      - id: b
+        text: "`--restart=on-failure:3`"
+        why: "This restarts the container only after a non-zero exit, at most 3 times, and not after a host or daemon restart."
+      - id: c
+        text: "`--restart=no`"
+        why: "`no` is the default: the container is never restarted automatically."
+      - id: d
+        text: "`--restart=unless-stopped`"
+    answer: [d]
+    explanation: |
+      Restart policies: `no`, `on-failure[:max]`, `always` and `unless-stopped`.
+      `unless-stopped` restarts the container after crashes and after a daemon restart, but not
+      if you stopped it by hand. With Podman, the usual way is a systemd unit (Quadlet files).
+    docs:
+      - https://docs.docker.com/engine/containers/start-containers-automatically/
+    glossary: [lx-container-engine, container]
+
+  - id: lfcs-ops-019
+    difficulty: 2
+    type: single
+    question: "On a RHEL-family server, a web server cannot read files in `/srv/www`, but the normal permissions are correct. `getenforce` says `Enforcing`. What do you check first?"
+    options:
+      - id: a
+        text: "The `umask` of the web server user"
+        why: "The umask only affects new files. It cannot explain why existing files with correct permissions are blocked."
+      - id: b
+        text: "The AppArmor profile with `aa-status`"
+        why: "AppArmor is the default MAC system on Ubuntu, not on RHEL. `getenforce` is an SELinux command."
+      - id: c
+        text: "The SELinux context (label) of the files, for example with `ls -Z`"
+      - id: d
+        text: "The ACL of the files with `getfacl`, because SELinux uses ACLs"
+        why: "ACLs are part of normal discretionary permissions. SELinux uses its own security labels."
+    answer: [c]
+    explanation: |
+      SELinux is mandatory access control: even with correct permissions, a process with type
+      `httpd_t` can only read files with an allowed type, such as `httpd_sys_content_t`. Check
+      with `ls -Z`, fix the rule with `semanage fcontext -a -t httpd_sys_content_t
+      "/srv/www(/.*)?"`, then apply it with `restorecon -Rv /srv/www`. Denials are in the audit
+      log.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/semanage-fcontext.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/restorecon.8.html
+    glossary: [lx-selinux]
+
+  - id: lfcs-ops-020
+    difficulty: 3
+    type: multiple
+    question: "Which statements about SELinux modes are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "`setenforce 0` switches to permissive mode until the next reboot"
+      - id: b
+        text: "In permissive mode, SELinux logs denials but does not block them"
+      - id: c
+        text: "In permissive mode, SELinux blocks access but does not log it"
+        why: "It is the other way round: permissive mode logs what would be denied and allows it."
+      - id: d
+        text: "`setenforce 1` writes `SELINUX=enforcing` to `/etc/selinux/config`"
+        why: "`setenforce` changes only the running mode. The mode at boot comes from `/etc/selinux/config`."
+    answer: [a, b]
+    explanation: |
+      SELinux has three modes: enforcing (blocks and logs), permissive (only logs) and disabled.
+      `getenforce` shows the mode, `setenforce 0|1` changes it at runtime. The boot mode is
+      `SELINUX=` in `/etc/selinux/config`. Permissive mode is useful to find which rules a new
+      application needs.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/setenforce.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man5/selinux_config.5.html
+    glossary: [lx-selinux]

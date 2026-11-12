@@ -1,0 +1,36 @@
+id: lfcs-users-001
+title: Create a group and two user accounts
+domain: users
+difficulty: 1
+minutes: 5
+environment: linux
+task: |
+  A new development team starts today. On this server:
+
+  1. Create the group `devteam` with GID `3100`.
+  2. Create the user `maria` with UID `3101`, a home directory `/home/maria`, the login shell
+     `/bin/bash` and `devteam` as a **supplementary** group.
+  3. Create the user `tomas` with a home directory, `devteam` as a supplementary group, and an
+     account that **expires** on `2027-12-31` (he is a contractor).
+checks:
+  - name: Group `devteam` exists with GID 3100
+    run: '[ "$(getent group devteam | cut -d: -f3)" = 3100 ]'
+  - name: '`maria` has UID 3101, shell /bin/bash and owns /home/maria'
+    run: |
+      [ "$(id -u maria)" = 3101 ] && [ "$(getent passwd maria | cut -d: -f7)" = /bin/bash ] \
+        && [ "$(stat -c %U /home/maria)" = maria ]
+  - name: '`maria` and `tomas` are members of `devteam`'
+    run: id -nG maria | grep -qw devteam && id -nG tomas | grep -qw devteam
+  - name: The account of `tomas` expires on 2027-12-31
+    run: '[ "$(getent shadow tomas | cut -d: -f8)" = "$(( $(date -ud 2027-12-31 +%s) / 86400 ))" ]'
+solution: |
+  groupadd -g 3100 devteam
+  useradd -m -u 3101 -s /bin/bash -G devteam maria
+  useradd -m -s /bin/bash -G devteam -e 2027-12-31 tomas
+  id maria; id tomas
+  chage -l tomas            # "Account expires : Dec 31, 2027"
+  # -G sets supplementary groups. -g would change the PRIMARY group.
+  # For an existing user: usermod -aG devteam tomas  (-a = append, without it you replace the list)
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/useradd.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/groupadd.8.html

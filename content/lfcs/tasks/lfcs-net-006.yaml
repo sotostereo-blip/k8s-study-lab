@@ -1,0 +1,54 @@
+id: lfcs-net-006
+title: Load-balance two backends with an nginx reverse proxy
+domain: networking
+difficulty: 3
+minutes: 10
+environment: linux
+setup: |
+  for b in a b; do
+    mkdir -p /srv/backend-$b && echo "backend-$b" > /srv/backend-$b/index.html
+  done
+  systemd-run --quiet --unit=lab-backend-a python3 -m http.server 5001 --bind 127.0.0.1 --directory /srv/backend-a
+  systemd-run --quiet --unit=lab-backend-b python3 -m http.server 5002 --bind 127.0.0.1 --directory /srv/backend-b
+task: |
+  Two copies of an application run on this server: `127.0.0.1:5001` and `127.0.0.1:5002`.
+  nginx is installed but not running.
+
+  1. Configure nginx as a **reverse proxy** that listens on port `8090` and sends requests to
+     both backends in turn (**round robin**), using an `upstream` block named `shop_backend`.
+  2. Start nginx and enable it at boot.
+
+  Test: repeat `curl http://localhost:8090/` and you get `backend-a` and `backend-b`.
+checks:
+  - name: nginx is active and enabled
+    run: systemctl is-active --quiet nginx && [ "$(systemctl is-enabled nginx)" = enabled ]
+  - name: Requests to port 8090 reach both backends
+    run: |
+      out=$(for i in 1 2 3 4; do curl -s --max-time 3 http://localhost:8090/; done 2>&1)
+      echo "$out" | grep -q backend-a && echo "$out" | grep -q backend-b
+  - name: The nginx configuration has an upstream named shop_backend
+    run: |
+      out=$(nginx -T 2>&1)
+      echo "$out" | grep -qE 'upstream\s+shop_backend'
+solution: |
+  cat > /etc/nginx/conf.d/shop.conf <<'CONF'
+  upstream shop_backend {
+      server 127.0.0.1:5001;
+      server 127.0.0.1:5002;
+  }
+  server {
+      listen 8090;
+      location / {
+          proxy_pass http://shop_backend;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+      }
+  }
+  CONF
+  nginx -t                         # test the configuration
+  systemctl enable --now nginx     # after a change: systemctl reload nginx
+  for i in 1 2 3 4; do curl -s localhost:8090/; done
+  # Other balancing methods: least_conn; ip_hash; (put them inside the upstream block)
+docs:
+  - https://nginx.org/en/docs/http/ngx_http_upstream_module.html
+  - https://nginx.org/en/docs/http/load_balancing.html

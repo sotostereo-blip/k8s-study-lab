@@ -1,0 +1,19 @@
+# LFCS lab: two Ubuntu 24.04 servers with systemd as PID 1.
+#   toolbox = the main server (web terminal), server2 = a second host for SSH, networking and file copy.
+# systemd needs: privileged, the host cgroup namespace, tmpfs for /run and SIGRTMIN+3 to stop.
+x-systemd-host: &systemd-host
+  build: ../../toolbox-linux
+  image: k8s-study-lab/toolbox-linux:1
+  privileged: true
+  cgroup: host
+  tmpfs: ["/run", "/run/lock", "/tmp"]
+  stop_signal: SIGRTMIN+3
+  stop_grace_period: 20s
+services:
+  toolbox:
+    <<: *systemd-host
+    hostname: lfcs-1
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+  server2:
+    <<: *systemd-host
+    hostname: server2

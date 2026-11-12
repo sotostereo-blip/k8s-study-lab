@@ -1,0 +1,26 @@
+# Linux Foundation Certified System Administrator (LFCS).
+# Domains and weights from https://training.linuxfoundation.org/certification/linux-foundation-certified-sysadmin-lfcs/
+# Duration, passing score and number of tasks from
+# https://docs.linuxfoundation.org/tc-docs/certification/instructions-lfcs-and-lfce
+id: lfcs
+name: Linux Foundation Certified System Administrator (LFCS)
+format: >-
+  The real LFCS exam is hands-on (performance-based): 17-20 tasks that you solve on a Linux
+  command line in 2 hours. There are no multiple-choice questions in the real exam. This
+  multiple-choice bank is only for learning the concepts, the commands and the English words;
+  practise the real skills in the LFCS labs (they include a timed mock exam).
+exam_minutes: 120
+exam_questions: 40
+passing_score: 67
+facts_note: >-
+  Official (Linux Foundation): online, proctored, performance-based, 2 hours, 17-20 tasks,
+  passing score 67%, one free retake, certification valid 2 years, domain weights as below.
+  The exam is distribution-independent in the curriculum; the exam environment has been
+  Ubuntu-based (commonly reported), so the labs use Ubuntu 24.04. The number of questions
+  (40) for a timed practice session here is our choice; the real exam has no questions.
+domains:
+  - { id: operations, name: "Operations Deployment", weight: 25 }
+  - { id: networking, name: "Networking", weight: 25 }
+  - { id: storage, name: "Storage", weight: 20 }
+  - { id: essential, name: "Essential Commands", weight: 20 }
+  - { id: users, name: "Users and Groups", weight: 10 }

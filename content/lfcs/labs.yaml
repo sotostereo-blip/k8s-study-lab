@@ -1,0 +1,24 @@
+# Hands-on labs for the LFCS (Linux Foundation Certified System Administrator).
+# Domains and weights follow the public LFCS curriculum. The real exam is performance-based:
+# 17-20 tasks on a Linux command line in 2 hours. Each task lives in tasks/<id>.yaml.
+id: lfcs
+name: Linux Foundation Certified System Administrator
+exam_minutes: 120
+passing_score: 67
+intro: "two Ubuntu 24.04 servers (with systemd) in Docker"
+domains:
+  - { id: operations, name: "Operations Deployment", weight: 25 }
+  - { id: networking, name: "Networking", weight: 25 }
+  - { id: storage, name: "Storage", weight: 20 }
+  - { id: essential, name: "Essential Commands", weight: 20 }
+  - { id: users, name: "Users and Groups", weight: 10 }
+environments:
+  linux:
+    name: "Ubuntu 24.04 server with systemd + server2"
+    nodes: 0
+    label: "Linux"
+    tools: "You are root on `lfcs-1`. A second host: `ssh server2`"
+    ready: "lab-ready"
+    ready_timeout: 300
+mock: true
+mock_environment: linux   # all mock exam tasks run together on the same two servers

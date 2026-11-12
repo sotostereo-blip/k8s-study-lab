@@ -1,0 +1,47 @@
+id: lfcs-net-003
+title: Set up SSH key login between two servers
+domain: networking
+difficulty: 2
+minutes: 8
+environment: linux
+task: |
+  The user `deployer` must copy files from this server to `server2` without typing a password.
+
+  1. Create the user `deployer` (with a home directory and the shell `/bin/bash`) on **this
+     server** and on **server2**. As root you can already log in to server2: `ssh server2`.
+  2. As `deployer` on this server, create an **ed25519** key pair (no passphrase).
+  3. Allow this key to log in as `deployer` on server2.
+
+  Test it: `su - deployer -c 'ssh server2 whoami'` must print `deployer` without a password prompt.
+checks:
+  - name: deployer exists on both servers
+    run: id deployer >/dev/null 2>&1 && ssh -n -o BatchMode=yes server2 id deployer >/dev/null 2>&1
+  - name: deployer has an ed25519 key in ~/.ssh
+    run: ls /home/deployer/.ssh/id_ed25519.pub >/dev/null 2>&1 && grep -q '^ssh-ed25519 ' /home/deployer/.ssh/id_ed25519.pub
+  - name: deployer logs in to server2 with the key (no password)
+    run: '[ "$(su - deployer -c "ssh -n -o BatchMode=yes -o ConnectTimeout=5 server2 whoami" 2>/dev/null)" = deployer ]'
+solution: |
+  useradd -m -s /bin/bash deployer
+  ssh server2 useradd -m -s /bin/bash deployer
+  su - deployer
+    ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+    exit
+  # Usual way: give deployer a password on server2 (ssh server2 passwd deployer), then as deployer:
+  #   ssh-copy-id deployer@server2
+  # Without a password, copy the public key as root:
+  ssh server2 'install -d -m 700 -o deployer -g deployer /home/deployer/.ssh'
+  ssh server2 'cat >> /home/deployer/.ssh/authorized_keys' < /home/deployer/.ssh/id_ed25519.pub
+  ssh server2 'chown deployer:deployer /home/deployer/.ssh/authorized_keys; chmod 600 /home/deployer/.ssh/authorized_keys'
+  su - deployer -c 'ssh server2 whoami'
+  # sshd refuses keys when ~/.ssh or authorized_keys is writable by others (StrictModes).
+auto_solution: |
+  useradd -m -s /bin/bash deployer
+  ssh -n server2 useradd -m -s /bin/bash deployer
+  su - deployer -c "ssh-keygen -q -t ed25519 -N '' -f ~/.ssh/id_ed25519"
+  ssh -n server2 'install -d -m 700 -o deployer -g deployer /home/deployer/.ssh'
+  ssh server2 'cat >> /home/deployer/.ssh/authorized_keys' < /home/deployer/.ssh/id_ed25519.pub
+  ssh -n server2 'chown deployer:deployer /home/deployer/.ssh/authorized_keys; chmod 600 /home/deployer/.ssh/authorized_keys'
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man1/ssh-keygen.1.html
+  - https://manpages.ubuntu.com/manpages/noble/man1/ssh-copy-id.1.html
+  - https://documentation.ubuntu.com/server/how-to/security/openssh-server/

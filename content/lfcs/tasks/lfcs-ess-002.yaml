@@ -1,0 +1,39 @@
+id: lfcs-ess-002
+title: Create and extract compressed archives
+domain: essential
+difficulty: 1
+minutes: 5
+environment: linux
+setup: |
+  mkdir -p /srv/appconf/conf.d
+  echo "listen=0.0.0.0" > /srv/appconf/app.conf
+  echo "workers=4" > /srv/appconf/conf.d/workers.conf
+  tmp=$(mktemp -d)
+  mkdir -p "$tmp/css"
+  echo "<h1>site-v2</h1>" > "$tmp/index.html"
+  echo "body{}" > "$tmp/css/main.css"
+  mkdir -p /root/incoming
+  tar -cjf /root/incoming/site.tar.bz2 -C "$tmp" .
+  rm -rf "$tmp"
+task: |
+  1. Create a **gzip**-compressed tar archive `/root/backup/appconf.tar.gz` that contains the
+     directory `/srv/appconf` and everything in it.
+  2. The file `/root/incoming/site.tar.bz2` holds a website. Extract it into the directory
+     `/var/www/site` (create it), so that `/var/www/site/index.html` exists.
+checks:
+  - name: /root/backup/appconf.tar.gz is a gzip tar archive with srv/appconf/app.conf and conf.d/workers.conf
+    run: |
+      out=$(tar -tzf /root/backup/appconf.tar.gz 2>&1)
+      echo "$out" | grep -qE '(^|/)srv/appconf/app.conf$' && echo "$out" | grep -qE 'srv/appconf/conf.d/workers.conf$'
+  - name: /var/www/site/index.html and css/main.css come from site.tar.bz2
+    run: grep -q site-v2 /var/www/site/index.html && [ -f /var/www/site/css/main.css ]
+solution: |
+  mkdir -p /root/backup
+  tar -czvf /root/backup/appconf.tar.gz /srv/appconf    # tar removes the leading "/" from names
+  tar -tzf /root/backup/appconf.tar.gz                  # list the content
+  mkdir -p /var/www/site
+  tar -xjf /root/incoming/site.tar.bz2 -C /var/www/site
+  # z = gzip, j = bzip2, J = xz. Modern GNU tar also detects the type when extracting: tar -xf file
+docs:
+  - https://www.gnu.org/software/tar/manual/tar.html
+  - https://manpages.ubuntu.com/manpages/noble/man1/tar.1.html

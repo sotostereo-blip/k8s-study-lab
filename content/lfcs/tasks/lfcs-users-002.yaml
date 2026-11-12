@@ -1,0 +1,40 @@
+id: lfcs-users-002
+title: Lock an account and set a password policy
+domain: users
+difficulty: 2
+minutes: 5
+environment: linux
+setup: |
+  useradd -m -s /bin/bash olduser && echo 'olduser:Old-Pass-2024' | chpasswd
+  useradd -m -s /bin/bash analyst && echo 'analyst:Analyst-Pass-1' | chpasswd
+task: |
+  1. The user `olduser` left the company. **Lock** his password so he cannot log in with it,
+     but do not delete the account or its home directory.
+  2. Set the password aging policy of the user `analyst`:
+     - the password must be changed at least every **90** days
+     - after a change, it cannot be changed again for **1** day
+     - the user gets a warning **14** days before the password expires
+     - the user must change the password at the **next login**
+checks:
+  - name: The password of `olduser` is locked
+    run: '[ "$(passwd -S olduser | awk "{print \$2}")" = L ]'
+  - name: '`analyst` has min 1, max 90 and warn 14 days'
+    run: |
+      line=$(getent shadow analyst)
+      [ "$(echo "$line" | cut -d: -f4)" = 1 ] && [ "$(echo "$line" | cut -d: -f5)" = 90 ] && [ "$(echo "$line" | cut -d: -f6)" = 14 ]
+  - name: '`analyst` must change the password at the next login'
+    run: '[ "$(getent shadow analyst | cut -d: -f3)" = 0 ]'
+  - name: The account and home of `olduser` still exist
+    run: id olduser >/dev/null && [ -d /home/olduser ]
+    guard: true
+solution: |
+  usermod -L olduser            # or: passwd -l olduser  (adds "!" before the hash in /etc/shadow)
+  passwd -S olduser             # second field "L" = locked
+  chage -m 1 -M 90 -W 14 analyst
+  chage -d 0 analyst            # last change = day 0, so a new password is required at login
+  chage -l analyst
+  # Note: a locked password does not block SSH key logins. To block everything:
+  #   usermod -e 1 olduser   (expire the account)   or   usermod -s /usr/sbin/nologin olduser
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man1/chage.1.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/usermod.8.html

@@ -1,0 +1,39 @@
+id: lfcs-ess-007
+title: Find what fills a directory
+domain: essential
+difficulty: 1
+minutes: 5
+environment: linux
+setup: |
+  mkdir -p /srv/uploads/alice /srv/uploads/bob/2026 /srv/uploads/tmp/.cache
+  head -c 2M /dev/urandom > /srv/uploads/alice/photo1.jpg
+  head -c 3M /dev/urandom > /srv/uploads/bob/2026/video.mp4
+  head -c 24M /dev/zero > /srv/uploads/tmp/.cache/blob-7f3a.bin
+  head -c 1M /dev/urandom > /srv/uploads/tmp/session.dat
+task: |
+  The directory `/srv/uploads` uses much more space than expected.
+
+  1. Find the **subdirectory directly under** `/srv/uploads` that uses the most disk space and
+     write its name (only the name, for example `alice`) to `/root/biggest-dir.txt`.
+  2. Find the **largest single file** under `/srv/uploads` (it may be hidden) and **move** it to
+     `/root/quarantine/` (create the directory). Keep the file name.
+checks:
+  - name: /root/biggest-dir.txt contains `tmp`
+    run: grep -qxE '(/srv/uploads/)?tmp/?' /root/biggest-dir.txt
+  - name: The largest file is now in /root/quarantine/ and not in /srv/uploads
+    run: |
+      [ "$(stat -c %s /root/quarantine/blob-7f3a.bin)" = 25165824 ] && [ ! -e /srv/uploads/tmp/.cache/blob-7f3a.bin ]
+  - name: The other files are still in /srv/uploads
+    run: '[ -f /srv/uploads/alice/photo1.jpg ] && [ -f /srv/uploads/bob/2026/video.mp4 ]'
+    guard: true
+solution: |
+  du -sh /srv/uploads/* /srv/uploads/.[!.]* 2>/dev/null | sort -h    # biggest last
+  echo tmp > /root/biggest-dir.txt
+  find /srv/uploads -type f -printf '%s %p\n' | sort -n | tail -1   # find also shows hidden files
+  mkdir -p /root/quarantine
+  mv /srv/uploads/tmp/.cache/blob-7f3a.bin /root/quarantine/
+  df -h /                                                           # free space of the filesystem
+  # Tip: ls hides names that start with "."; use ls -a, du or find.
+docs:
+  - https://www.gnu.org/software/coreutils/manual/html_node/du-invocation.html
+  - https://www.gnu.org/software/coreutils/manual/html_node/df-invocation.html

@@ -1,0 +1,12 @@
+[ -f /etc/bash.bashrc ] && . /etc/bash.bashrc
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+export EDITOR=vim
+alias ll='ls -alF'
+PS1='\[\e[32m\]\u@\h\[\e[0m\]:\w\$ '
+if [ -n "$PS1" ] && [ -z "$LAB_MOTD_SHOWN" ] && [ "$(hostname)" != server2 ]; then
+  export LAB_MOTD_SHOWN=1
+  cat <<'MSG'
+LFCS lab: Ubuntu 24.04 with systemd. You are root on this server.
+A second host, server2, is reachable with: ssh server2
+MSG
+fi

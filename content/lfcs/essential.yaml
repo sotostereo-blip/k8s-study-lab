@@ -1,0 +1,412 @@
+domain: essential
+questions:
+  - id: lfcs-ess-001
+    difficulty: 1
+    type: single
+    question: "You changed `config.yaml` in a Git repository. Which commands save the change in the local history?"
+    options:
+      - id: a
+        text: "`git add config.yaml`, then `git commit -m \"Update config\"`"
+      - id: b
+        text: "`git stash`, then `git log`"
+        why: "`git stash` puts the change aside without committing it, and `git log` only shows history."
+      - id: c
+        text: "`git commit config.yaml --push`"
+        why: "There is no `--push` option for commit. Committing and pushing are separate steps."
+      - id: d
+        text: "`git push`, then `git commit -m \"Update config\"`"
+        why: "`git push` sends existing commits to a remote. There is no new commit to send yet."
+    answer: [a]
+    explanation: |
+      `git add` puts the change in the staging area (the index), and `git commit` records it as a
+      new commit. `git status` shows what is staged. `git push` later sends the commits to the
+      remote repository.
+    docs:
+      - https://git-scm.com/docs/git-commit
+      - https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository
+    glossary: [lx-git]
+
+  - id: lfcs-ess-002
+    difficulty: 2
+    type: multiple
+    question: "Which commands create a new local copy of a remote repository, or bring new commits from it into your current branch? (Choose two.)"
+    options:
+      - id: a
+        text: "`git init https://git.example.com/app.git`"
+        why: "`git init` creates a new empty repository. It does not download anything."
+      - id: b
+        text: "`git pull`"
+      - id: c
+        text: "`git tag origin main`"
+        why: "`git tag` creates a tag named `origin` here. It does not talk to the remote."
+      - id: d
+        text: "`git clone https://git.example.com/app.git`"
+    answer: [b, d]
+    explanation: |
+      `git clone` copies a remote repository with its full history. In an existing clone,
+      `git pull` runs `git fetch` (download) and then merges (or rebases) the remote branch into
+      the current branch. `git remote -v` shows the configured remotes.
+    docs:
+      - https://git-scm.com/docs/git-clone
+      - https://git-scm.com/docs/git-pull
+    glossary: [lx-git]
+
+  - id: lfcs-ess-003
+    difficulty: 1
+    type: single
+    question: "You created `/etc/systemd/system/myapp.service`. What must you run before systemd knows about the new unit?"
+    options:
+      - id: a
+        text: "`systemctl reload myapp.service`"
+        why: "`reload` asks a running service to reload its own configuration. The unit is not known yet."
+      - id: b
+        text: "`systemctl daemon-reload`"
+      - id: c
+        text: "`reboot`; systemd reads unit files only at boot"
+        why: "A reboot works, but it is not needed. `daemon-reload` reads all unit files at runtime."
+      - id: d
+        text: "`systemctl reset-failed`"
+        why: "`reset-failed` clears the failed state of units. It does not read new unit files."
+    answer: [b]
+    explanation: |
+      After you create or edit a unit file by hand, run `systemctl daemon-reload` so systemd
+      reads it again. Then `systemctl enable --now myapp.service`. `systemctl edit` runs the
+      reload for you.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemctl.html
+    glossary: [lx-systemd, lx-unit-file]
+
+  - id: lfcs-ess-004
+    difficulty: 2
+    type: single
+    question: "What does `WantedBy=multi-user.target` in the `[Install]` section of a unit do?"
+    options:
+      - id: a
+        text: "The unit can be started only by users who are logged in"
+        why: "`multi-user.target` is the normal non-graphical system state. It has nothing to do with logged-in users."
+      - id: b
+        text: "The unit starts only after `multi-user.target` has finished starting"
+        why: "Order is set with `After=` in the `[Unit]` section. `[Install]` is only used by enable and disable."
+      - id: c
+        text: "`systemctl enable` links the unit into `multi-user.target.wants/`, so it starts at boot"
+      - id: d
+        text: "The unit is stopped when someone switches to `multi-user.target`"
+        why: "`WantedBy=` adds a dependency so the target pulls the unit in; it never stops it."
+    answer: [c]
+    explanation: |
+      The `[Install]` section is read by `systemctl enable`. With `WantedBy=multi-user.target`
+      it creates a symlink in `/etc/systemd/system/multi-user.target.wants/`, so the unit is
+      started when the system reaches that target at boot. `systemctl disable` removes the link.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
+    glossary: [lx-unit-file, lx-systemd-target]
+
+  - id: lfcs-ess-005
+    difficulty: 3
+    type: single
+    question: "You must change one setting of `nginx.service` from the package. Why use `systemctl edit nginx.service` and not edit `/usr/lib/systemd/system/nginx.service`?"
+    options:
+      - id: a
+        text: "Units in `/usr/lib` are ignored when a file with the same name exists in `/run`"
+        why: "That is true, but `/run` is temporary. It is not the reason; the point is a permanent override in `/etc`."
+      - id: b
+        text: "`systemctl edit` also restarts the service at once"
+        why: "It only runs daemon-reload. You still restart the service yourself to apply the change."
+      - id: c
+        text: "Files in `/usr/lib/systemd/system` are read-only, even for root"
+        why: "Root can write there, but package upgrades replace those files and your change would be lost."
+      - id: d
+        text: "It creates a drop-in in `/etc`, which package updates do not overwrite"
+    answer: [d]
+    explanation: |
+      `systemctl edit nginx.service` creates
+      `/etc/systemd/system/nginx.service.d/override.conf`. Settings there override the vendor
+      unit, and the package can still update its own file. `systemctl cat nginx.service` shows
+      the unit with all drop-ins; `systemctl revert` removes your changes.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemctl.html
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
+    glossary: [lx-unit-file, lx-systemd]
+
+  - id: lfcs-ess-006
+    difficulty: 1
+    type: single
+    question: "`uptime` shows `load average: 7.80, 4.10, 1.20` on a server with 4 CPUs. What does it tell you?"
+    options:
+      - id: a
+        text: "The load is growing; over the last minute more work waited than 4 CPUs could do"
+      - id: b
+        text: "The server has used 7.8% of its CPU in the last minute"
+        why: "Load average is not a percentage. It counts runnable (and uninterruptible) tasks."
+      - id: c
+        text: "7 processes are zombies and must be killed"
+        why: "Zombies are not part of the load average, and the numbers are averages, not counts of processes."
+      - id: d
+        text: "The server rebooted 7 times in the last 15 minutes"
+        why: "`uptime` shows how long the system has run. The three numbers are load averages."
+    answer: [a]
+    explanation: |
+      The three numbers are the average load over 1, 5 and 15 minutes. Compare them with the
+      number of CPUs (`nproc`): a 1-minute value of 7.8 on 4 CPUs means tasks are waiting, and
+      a rising trend (1.2 → 4.1 → 7.8) means it is getting worse. Use `top` or `htop` to find the
+      busy processes.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/uptime.1.html
+    glossary: [lx-load-average]
+
+  - id: lfcs-ess-007
+    difficulty: 2
+    type: multiple
+    question: "Which commands help you find out **which process uses the most memory**? (Choose two.)"
+    options:
+      - id: a
+        text: "`ps aux --sort=-%mem | head`"
+      - id: b
+        text: "`top`, then press `M` to sort by memory"
+      - id: c
+        text: "`vmstat 1 5`"
+        why: "`vmstat` shows system-wide memory, swap and CPU numbers, not individual processes."
+      - id: d
+        text: "`free -h`"
+        why: "`free` shows total, used and available memory of the system, not per process."
+    answer: [a, b]
+    explanation: |
+      `ps aux --sort=-%mem` lists processes ordered by memory use (RSS). In `top`, `M` sorts by
+      memory and `P` by CPU. `free -h` and `vmstat` give the system picture: check `available`
+      memory and swap activity (`si`/`so`) to see if the system is short of RAM.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/ps.1.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/top.1.html
+    glossary: []
+
+  - id: lfcs-ess-008
+    difficulty: 2
+    type: single
+    question: "The kernel log shows `Out of memory: Killed process 2314 (java)`. What happened?"
+    options:
+      - id: a
+        text: "The OOM killer ended a process to free memory"
+      - id: b
+        text: "The user ran `kill -9 2314` by hand"
+        why: "This message comes from the kernel itself when the system runs out of memory."
+      - id: c
+        text: "The process crashed with a segmentation fault"
+        why: "A segfault is logged as `segfault at ...`. This message says memory ran out."
+      - id: d
+        text: "systemd stopped the service because its timeout expired"
+        why: "A timeout shows a systemd message like `start operation timed out`, not an out-of-memory line."
+    answer: [a]
+    explanation: |
+      When memory and swap are full, the kernel OOM killer picks a process (based on its
+      `oom_score`) and kills it. See it with `journalctl -k` or `dmesg`. Fixes: add RAM or swap,
+      reduce the application's memory, or limit it with `MemoryMax=` so only that service is
+      affected.
+    docs:
+      - https://docs.kernel.org/admin-guide/mm/concepts.html
+    glossary: [lx-oom-killer]
+
+  - id: lfcs-ess-009
+    difficulty: 2
+    type: single
+    question: "Which unit setting stops a service from using more than half of one CPU?"
+    options:
+      - id: a
+        text: "`LimitCPU=50%`"
+        why: "`LimitCPU=` is the rlimit for total CPU time in seconds. Reaching it kills the process."
+      - id: b
+        text: "`CPUQuota=50%`"
+      - id: c
+        text: "`Nice=50`"
+        why: "Nice values go from -20 to 19, and they only change priority; they do not set a hard limit."
+      - id: d
+        text: "`CPUAffinity=0.5`"
+        why: "`CPUAffinity=` lists the CPUs the service may run on. It takes CPU numbers, not fractions."
+    answer: [b]
+    explanation: |
+      `CPUQuota=50%` uses the cgroup CPU controller: the service gets at most 50% of one CPU
+      (200% would be two CPUs). Related settings: `MemoryMax=`, `TasksMax=` and `IOWeight=`.
+      Set them in a drop-in or with `systemctl set-property`.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html
+    glossary: [cgroups, lx-unit-file]
+
+  - id: lfcs-ess-010
+    difficulty: 3
+    type: multiple
+    question: "Which settings in a service unit limit **what** the service can access on the system? (Choose two.)"
+    options:
+      - id: a
+        text: "`PrivateTmp=yes`"
+      - id: b
+        text: "`ProtectSystem=strict`"
+      - id: c
+        text: "`TimeoutStartSec=30`"
+        why: "This only limits how long the start may take. It does not restrict file access."
+      - id: d
+        text: "`RemainAfterExit=yes`"
+        why: "`RemainAfterExit=` keeps a oneshot service active after it exits. It is not a security setting."
+    answer: [a, b]
+    explanation: |
+      systemd can sandbox services. `ProtectSystem=strict` mounts the whole filesystem read-only
+      for the service (except paths in `ReadWritePaths=`). `PrivateTmp=yes` gives it its own
+      `/tmp`. Others: `ProtectHome=`, `NoNewPrivileges=`, `User=`. `systemd-analyze security
+      <unit>` rates a unit.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html
+    glossary: [lx-unit-file]
+
+  - id: lfcs-ess-011
+    difficulty: 1
+    type: single
+    question: "`df -h` shows that `/` is 98% full. Which command shows the size of each directory directly under `/var`, biggest last?"
+    options:
+      - id: a
+        text: "`du -xsh /var/* | sort -h`"
+      - id: b
+        text: "`df -h /var/* | sort`"
+        why: "`df` reports whole filesystems, not directories, so every line would show the same filesystem."
+      - id: c
+        text: "`free -h /var`"
+        why: "`free` shows memory, not disk usage."
+      - id: d
+        text: "`ls -lS /var | tail`"
+        why: "`ls -l` shows the size of a directory entry (about 4 KiB), not the size of its content."
+    answer: [a]
+    explanation: |
+      `du -s` gives one total per argument, `-h` human-readable sizes, and `-x` stays on one
+      filesystem. `sort -h` sorts values like `12M` and `3G` correctly. Repeat inside the biggest
+      directory. Typical causes: logs (`journalctl --vacuum-size=200M`), package caches
+      (`apt clean`) and old backups.
+    docs:
+      - https://www.gnu.org/software/coreutils/manual/html_node/du-invocation.html
+    glossary: []
+
+  - id: lfcs-ess-012
+    difficulty: 3
+    type: single
+    question: "You deleted a 20 GB log file, but `df` still shows the space as used. `du` does not find the file. What is the likely reason?"
+    options:
+      - id: a
+        text: "The filesystem needs `fsck` to free the blocks"
+        why: "No repair is needed. The blocks are freed as soon as nothing uses the file any more."
+      - id: b
+        text: "`df` only updates its numbers once per hour"
+        why: "`df` asks the kernel for current numbers every time you run it."
+      - id: c
+        text: "A running process still has the file open"
+      - id: d
+        text: "The file is now in the trash folder of root"
+        why: "`rm` does not use a trash folder. The file name is removed at once."
+    answer: [c]
+    explanation: |
+      Space is freed only when the last process closes the file. `lsof +L1` (or
+      `lsof | grep deleted`) shows open files with no name. Restart the program (for example
+      `systemctl restart app`) or ask it to reopen its logs. Next time empty the file with
+      `truncate -s 0 file` instead of deleting it.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/lsof.8.html
+    glossary: []
+
+  - id: lfcs-ess-013
+    difficulty: 2
+    type: single
+    question: "Which command shows the subject, the issuer and the expiry dates of the certificate `server.crt`?"
+    options:
+      - id: a
+        text: "`openssl x509 -in server.crt -noout -text`"
+      - id: b
+        text: "`openssl req -new -in server.crt`"
+        why: "`openssl req -new` creates a new certificate signing request. It does not inspect a certificate."
+      - id: c
+        text: "`openssl rsa -in server.crt -check`"
+        why: "`openssl rsa` reads RSA private keys, not certificates."
+      - id: d
+        text: "`ssh-keygen -l -f server.crt`"
+        why: "`ssh-keygen` works with SSH keys. TLS (X.509) certificates are read with openssl."
+    answer: [a]
+    explanation: |
+      `openssl x509` displays and converts X.509 certificates. `-text` prints everything:
+      subject, issuer, validity dates and the Subject Alternative Names (or ask for single
+      fields with `-subject -issuer -dates`). `openssl x509 -checkend 86400` tells you if the
+      certificate expires within a day. For a remote server:
+      `openssl s_client -connect host:443 -servername host`.
+    docs:
+      - https://docs.openssl.org/3.0/man1/openssl-x509/
+    glossary: [tls, client-certificate]
+
+  - id: lfcs-ess-014
+    difficulty: 2
+    type: multiple
+    question: "A company CA must sign the certificate for `web.example.com`. Which steps are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "Use `openssl x509 -req -days 365` on the server to get the CA signature"
+        why: "That command signs a CSR with a key you have. On the server you do not have the CA key."
+      - id: b
+        text: "Create a private key and a CSR with `openssl req -new -newkey ...`"
+      - id: c
+        text: "Send only the CSR to the CA; the private key stays on the server"
+      - id: d
+        text: "Send the private key to the CA, so it can sign the certificate"
+        why: "The CA never needs the private key. Anyone who has it can impersonate the server."
+    answer: [b, c]
+    explanation: |
+      Create a key and a certificate signing request (CSR):
+      `openssl req -new -newkey rsa:2048 -nodes -keyout web.key -out web.csr -subj
+      "/CN=web.example.com"`. The CA signs the CSR and returns the certificate. To trust a
+      private CA on Ubuntu, copy its certificate to `/usr/local/share/ca-certificates/` and run
+      `update-ca-certificates`.
+    docs:
+      - https://docs.openssl.org/3.0/man1/openssl-req/
+      - https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store/
+    glossary: [lx-csr, certificate-authority, tls]
+
+  - id: lfcs-ess-015
+    difficulty: 1
+    type: single
+    question: "Which command finds all files under `/etc` that contain the text `PermitRootLogin`, and prints their names?"
+    options:
+      - id: a
+        text: "`find /etc -name PermitRootLogin`"
+        why: "`find -name` matches file names, not the text inside the files."
+      - id: b
+        text: "`locate PermitRootLogin /etc`"
+        why: "`locate` searches a database of file names. It does not read file content."
+      - id: c
+        text: "`grep -rl PermitRootLogin /etc`"
+      - id: d
+        text: "`cat /etc | grep PermitRootLogin`"
+        why: "`cat` cannot read a directory, so nothing is searched."
+    answer: [c]
+    explanation: |
+      `grep -r` searches recursively and `-l` prints only the names of matching files. Other
+      useful options: `-i` (ignore case), `-n` (line numbers), `-v` (lines that do not match) and
+      `-E` (extended regular expressions).
+    docs:
+      - https://www.gnu.org/software/grep/manual/grep.html
+    glossary: [lx-regex]
+
+  - id: lfcs-ess-016
+    difficulty: 2
+    type: single
+    question: "What does `sed -i 's/^#\\(Port 22\\)/\\1/' /etc/ssh/sshd_config` do?"
+    options:
+      - id: a
+        text: "It adds a `#` in front of every line that contains `Port 22`"
+        why: "The pattern matches a line that starts with `#`, and the replacement keeps only the captured text."
+      - id: b
+        text: "It removes the `#` in front of the line `#Port 22`, in place"
+      - id: c
+        text: "It deletes every line that starts with `#`"
+        why: "Deleting lines is done with the `d` command, like `sed '/^#/d'`. This is a substitution."
+      - id: d
+        text: "It prints the file with the change but does not save it"
+        why: "`-i` edits the file in place. Without `-i`, sed would only print the result."
+    answer: [b]
+    explanation: |
+      `s/old/new/` substitutes text. `^#` matches a `#` at the start of the line, `\(...\)`
+      captures `Port 22`, and `\1` puts the captured text back, without the `#`. `-i` writes the
+      result to the file. Use `-i.bak` to keep a backup copy.
+    docs:
+      - https://www.gnu.org/software/sed/manual/sed.html
+    glossary: [lx-regex]

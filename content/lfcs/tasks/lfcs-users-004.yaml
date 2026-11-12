@@ -1,0 +1,48 @@
+id: lfcs-users-004
+title: Allow a group to restart one service with sudo
+domain: users
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  groupadd webops
+  useradd -m -s /bin/bash -G webops wendy
+  useradd -m -s /bin/bash victor
+task: |
+  Members of the group `webops` (for example `wendy`) must be able to run **only** these two
+  commands as root with `sudo`, **without a password**:
+
+  - `/usr/bin/systemctl restart nginx`
+  - `/usr/bin/systemctl status nginx`
+
+  Put the rule in the file `/etc/sudoers.d/webops` (do not edit `/etc/sudoers`). The file must be
+  valid: `visudo -c` must not show errors. Other users, like `victor`, get no new rights.
+checks:
+  - name: /etc/sudoers.d/webops exists and the sudo configuration is valid
+    run: '[ -f /etc/sudoers.d/webops ] && visudo -c >/dev/null 2>&1'
+  - name: '`wendy` can run `systemctl restart nginx` and `systemctl status nginx` with sudo, without a password'
+    run: |
+      su - wendy -c 'sudo -n -l /usr/bin/systemctl restart nginx' >/dev/null 2>&1 \
+        && su - wendy -c 'sudo -n -l /usr/bin/systemctl status nginx' >/dev/null 2>&1
+  - name: '`wendy` cannot run a shell as root'
+    run: '! su - wendy -c "sudo -n -l /bin/bash" >/dev/null 2>&1'
+    guard: true
+  - name: '`victor` cannot restart nginx with sudo'
+    run: '! su - victor -c "sudo -n -l /usr/bin/systemctl restart nginx" >/dev/null 2>&1'
+    guard: true
+solution: |
+  visudo -f /etc/sudoers.d/webops     # visudo checks the syntax before it saves
+  # content:
+  %webops ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx
+
+  chmod 440 /etc/sudoers.d/webops
+  visudo -c
+  sudo -l -U wendy                    # list what wendy may run
+  # "%" means a group. Full paths are required. Files in /etc/sudoers.d with a "." or "~"
+  # in the name are ignored.
+auto_solution: |
+  echo '%webops ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx' > /etc/sudoers.d/webops
+  chmod 440 /etc/sudoers.d/webops
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/sudoers.5.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/visudo.8.html

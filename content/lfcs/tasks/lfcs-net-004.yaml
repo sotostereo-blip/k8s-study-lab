@@ -1,0 +1,51 @@
+id: lfcs-net-004
+title: Harden the SSH server on server2
+domain: networking
+difficulty: 3
+minutes: 8
+environment: linux
+task: |
+  Change the OpenSSH server configuration on **server2** (`ssh server2`). Use a file in
+  `/etc/ssh/sshd_config.d/` and do not lock yourself out (root logs in with a key).
+
+  1. sshd listens on port `22` **and** on port `2222`.
+  2. Password authentication is **disabled** (keys only).
+  3. At most **3** authentication attempts per connection.
+  4. A client has **30 seconds** to log in (`LoginGraceTime`).
+
+  Apply the changes without rebooting. Note: on Ubuntu 24.04 sshd is started by `ssh.socket`.
+checks:
+  - name: 'sshd on server2: PasswordAuthentication no, MaxAuthTries 3, LoginGraceTime 30'
+    run: |
+      out=$(ssh -n -o BatchMode=yes server2 sshd -T 2>&1)
+      echo "$out" | grep -qx 'passwordauthentication no' && echo "$out" | grep -qx 'maxauthtries 3' \
+        && echo "$out" | grep -qx 'logingracetime 30'
+  - name: Root can log in to server2 on port 2222 with the key
+    run: ssh -n -o BatchMode=yes -o ConnectTimeout=5 -p 2222 server2 true
+  - name: Root can still log in to server2 on port 22
+    run: ssh -n -o BatchMode=yes -o ConnectTimeout=5 server2 true
+    guard: true
+solution: |
+  ssh server2
+  cat > /etc/ssh/sshd_config.d/60-hardening.conf <<'CONF'
+  Port 22
+  Port 2222
+  PasswordAuthentication no
+  MaxAuthTries 3
+  LoginGraceTime 30
+  CONF
+  sshd -t                          # test the syntax before you apply it
+  # Ubuntu 24.04: ssh.socket listens, and a generator builds it from the Port lines.
+  systemctl daemon-reload
+  systemctl restart ssh.socket     # (with ssh.service only: systemctl restart ssh)
+  ss -ltn | grep -E ':22|:2222'
+  exit
+  ssh -p 2222 server2 true
+  # The first value wins for most options, so files in sshd_config.d (read at the top of
+  # sshd_config) override the main file. sshd -T prints the effective configuration.
+auto_solution: |
+  ssh -n server2 'printf "Port 22\nPort 2222\nPasswordAuthentication no\nMaxAuthTries 3\nLoginGraceTime 30\n" > /etc/ssh/sshd_config.d/60-hardening.conf && sshd -t && systemctl daemon-reload && systemctl restart ssh.socket'
+  sleep 2
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
+  - https://documentation.ubuntu.com/server/how-to/security/openssh-server/

@@ -1,0 +1,518 @@
+domain: networking
+questions:
+  - id: lfcs-net-001
+    difficulty: 1
+    type: single
+    question: "Which command shows the IPv4 and IPv6 addresses of all network interfaces?"
+    options:
+      - id: a
+        text: "`ip addr show`"
+      - id: b
+        text: "`hostname -f`"
+        why: "`hostname -f` prints the fully qualified host name. `hostname -I` would print addresses, but not per interface."
+      - id: c
+        text: "`ip route show`"
+        why: "`ip route` prints the routing table: networks and gateways, not interface addresses."
+      - id: d
+        text: "`ss -tulpn`"
+        why: "`ss` lists sockets (listening ports and connections). It does not list interface addresses."
+    answer: [a]
+    explanation: |
+      `ip addr show` (short: `ip a`) lists every interface with its state, MAC address and
+      IPv4/IPv6 addresses. `ip -br a` gives a short table. The old command `ifconfig` (package
+      `net-tools`) is deprecated.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/ip-address.8.html
+    glossary: []
+
+  - id: lfcs-net-002
+    difficulty: 2
+    type: single
+    question: "On Ubuntu Server, where do you configure a **permanent** static IP address for an interface?"
+    options:
+      - id: a
+        text: "In a YAML file in `/etc/netplan/`, then run `netplan apply`"
+      - id: b
+        text: "With `ip addr add`, which saves the address for the next boot"
+        why: "`ip addr add` changes only the running system. The address is lost at reboot."
+      - id: c
+        text: "In `/etc/sysconfig/network-scripts/ifcfg-eth0`"
+        why: "This path is from old RHEL-family systems. Ubuntu does not read it."
+      - id: d
+        text: "In `/etc/network/interfaces`, then run `ifup`"
+        why: "That is the old ifupdown method. Ubuntu Server uses netplan by default since 18.04."
+    answer: [a]
+    explanation: |
+      Netplan reads YAML files in `/etc/netplan/` and creates the configuration for the
+      backend (systemd-networkd on servers, NetworkManager on desktops). Example:
+      `addresses: [192.168.1.10/24]` and `routes: [{to: default, via: 192.168.1.1}]`.
+      `netplan try` applies it and rolls back if you lose the connection.
+    docs:
+      - https://netplan.readthedocs.io/en/stable/netplan-yaml/
+      - https://documentation.ubuntu.com/server/explanation/networking/configuring-networks/
+    glossary: [lx-netplan]
+
+  - id: lfcs-net-003
+    difficulty: 2
+    type: single
+    question: "`ping 8.8.8.8` works, but `ping example.com` says `Temporary failure in name resolution`. Where is the problem most likely?"
+    options:
+      - id: a
+        text: "The DNS configuration (resolver)"
+      - id: b
+        text: "The firewall blocks ICMP packets"
+        why: "ICMP to 8.8.8.8 works, so ICMP is not blocked. The error message is about names."
+      - id: c
+        text: "The network interface is down"
+        why: "With the interface down, no address at all would be reachable."
+      - id: d
+        text: "The default route is missing"
+        why: "Without a default route, `ping 8.8.8.8` would also fail. The IP connection works."
+    answer: [a]
+    explanation: |
+      When IP addresses work but names do not, check name resolution: `resolvectl status` (with
+      systemd-resolved), `/etc/resolv.conf`, `/etc/nsswitch.conf` and `/etc/hosts`. Test a DNS
+      server directly with `dig @1.1.1.1 example.com`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/resolvectl.1.html
+      - https://manpages.ubuntu.com/manpages/noble/man5/resolv.conf.5.html
+    glossary: [coredns]
+
+  - id: lfcs-net-004
+    difficulty: 2
+    type: single
+    question: "You add `10.0.0.50 db01` to `/etc/hosts`. `ping db01` uses 10.0.0.50, but `dig db01` finds nothing. Why?"
+    options:
+      - id: a
+        text: "`/etc/hosts` is only read after a reboot"
+        why: "The file is read on every lookup. The ping already shows that the entry works."
+      - id: b
+        text: "`ping` uses a cache, so the entry is not really active"
+        why: "The entry is active. ping resolves names with the system resolver (NSS), which reads `/etc/hosts`."
+      - id: c
+        text: "`dig` asks DNS servers directly and does not read `/etc/hosts`"
+      - id: d
+        text: "`dig` needs the name with a final dot: `db01.`"
+        why: "A final dot only makes the name absolute. The DNS server still does not know `db01`."
+    answer: [c]
+    explanation: |
+      Programs like `ping`, `ssh` and `curl` resolve names through NSS, which follows the
+      `hosts:` line of `/etc/nsswitch.conf` (usually `files` then `dns`). `dig`, `host` and
+      `nslookup` are DNS tools: they only ask DNS servers. To test what programs really get, use
+      `getent hosts db01`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/nsswitch.conf.5.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/getent.1.html
+    glossary: [lx-nsswitch, lx-hostname]
+
+  - id: lfcs-net-005
+    difficulty: 1
+    type: single
+    question: "Which command changes the host name permanently on a systemd system?"
+    options:
+      - id: a
+        text: "`hostname web01`"
+        why: "`hostname NAME` changes the name only until the next reboot."
+      - id: b
+        text: "`sysctl -w kernel.hostname=web01`"
+        why: "This changes the running kernel value only. It is lost at reboot."
+      - id: c
+        text: "`echo web01 > /proc/sys/kernel/hostname`"
+        why: "Writing to `/proc/sys` is the same as `sysctl -w`: a runtime change only."
+      - id: d
+        text: "`hostnamectl set-hostname web01`"
+    answer: [d]
+    explanation: |
+      `hostnamectl set-hostname web01` sets the running name and writes `/etc/hostname`, so
+      it stays after a reboot. Also add the name to `/etc/hosts` if programs need to resolve it.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/hostnamectl.html
+    glossary: [lx-hostname]
+
+  - id: lfcs-net-006
+    difficulty: 2
+    type: single
+    question: "Which command lists all **listening TCP** ports with the process that owns each one?"
+    options:
+      - id: a
+        text: "`ss -ltnp`"
+      - id: b
+        text: "`ss -atu`"
+        why: "`-a` shows all sockets (also established ones), `-u` adds UDP, and there is no `-p` for the process."
+      - id: c
+        text: "`ping -p 1-65535 localhost`"
+        why: "`ping -p` sets a pattern for the packet data. ping uses ICMP, which has no ports."
+      - id: d
+        text: "`ip -s link`"
+        why: "`ip -s link` shows traffic counters per interface, not ports."
+    answer: [a]
+    explanation: |
+      `ss -l` (listening), `-t` (TCP), `-n` (numbers, no name lookups) and `-p` (process; needs
+      root for other users' processes). Add `-u` for UDP. Older systems use `netstat -ltnp`, and
+      `lsof -i -P -n` gives similar output.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/ss.8.html
+    glossary: []
+
+  - id: lfcs-net-007
+    difficulty: 3
+    type: multiple
+    question: "Users report that a web site on port 443 of `web01` does not answer. Which commands help you find the cause? (Choose two.)"
+    options:
+      - id: a
+        text: "On web01: `ip route flush all` to reset the routes"
+        why: "This deletes the routing table and cuts the server off the network. It is not a diagnostic command."
+      - id: b
+        text: "From the client: `ping -p 443 web01` to test the port"
+        why: "ping uses ICMP and cannot test a TCP port. `-p` sets a data pattern."
+      - id: c
+        text: "On web01: `ss -ltn` to see if anything listens on port 443"
+      - id: d
+        text: "From the client: `nc -zv web01 443` to test the TCP connection"
+    answer: [c, d]
+    explanation: |
+      Work layer by layer: is the service running and listening (`systemctl status`, `ss -ltn`)?
+      Can the client open a TCP connection (`nc -zv`, `curl -v`)? Is a firewall in the way
+      (`nft list ruleset`, `ufw status`)? `tcpdump -i eth0 port 443` shows if packets arrive at
+      all.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/ss.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/nc_openbsd.1.html
+    glossary: []
+
+  - id: lfcs-net-008
+    difficulty: 2
+    type: single
+    question: "Which command shows each router (hop) that packets pass on the way to a host?"
+    options:
+      - id: a
+        text: "`ip neigh show 10.20.0.5`"
+        why: "`ip neigh` shows the neighbour (ARP/NDP) cache for directly connected hosts only."
+      - id: b
+        text: "`traceroute 10.20.0.5`"
+      - id: c
+        text: "`dig +trace 10.20.0.5`"
+        why: "`dig +trace` follows DNS delegation from the root servers. It does not trace network hops."
+      - id: d
+        text: "`arp -a 10.20.0.5`"
+        why: "The ARP table maps IP addresses to MAC addresses on the local network. It shows no routers on the path."
+    answer: [b]
+    explanation: |
+      `traceroute` (or `tracepath`, or `mtr` for a live view) sends packets with a growing TTL.
+      Each router that drops a packet answers, so you see every hop and where the path stops.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/traceroute.db.1.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/tracepath.8.html
+    glossary: []
+
+  - id: lfcs-net-009
+    difficulty: 2
+    type: single
+    question: "Which command adds a temporary route so traffic to `10.50.0.0/16` goes through the router `192.168.1.254`?"
+    options:
+      - id: a
+        text: "`ip route add 10.50.0.0/16 via 192.168.1.254`"
+      - id: b
+        text: "`route add 192.168.1.254 gw 10.50.0.0`"
+        why: "The order is reversed: the network is the destination and the router is the gateway."
+      - id: c
+        text: "`ip route add default 10.50.0.0/16 192.168.1.254`"
+        why: "`default` means 0.0.0.0/0, all destinations. The syntax is also wrong: it needs `via`."
+      - id: d
+        text: "`ip addr add 10.50.0.0/16 dev 192.168.1.254`"
+        why: "`ip addr add` assigns an address to an interface. `dev` needs an interface name, not an IP."
+    answer: [a]
+    explanation: |
+      `ip route add <network> via <gateway>` adds a static route until reboot. Check it with
+      `ip route` or `ip route get 10.50.1.1`. To make it permanent on Ubuntu, add it under
+      `routes:` in the netplan file.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/ip-route.8.html
+      - https://netplan.readthedocs.io/en/stable/netplan-yaml/
+    glossary: [lx-static-route, lx-netplan]
+
+  - id: lfcs-net-010
+    difficulty: 1
+    type: single
+    question: "On Ubuntu 24.04, which service keeps the system clock in sync with NTP servers by default?"
+    options:
+      - id: a
+        text: "`systemd-resolved`"
+        why: "systemd-resolved is the DNS resolver. It has nothing to do with time."
+      - id: b
+        text: "`ntpdate`"
+        why: "`ntpdate` is an old one-time tool. It is not a service that keeps the clock in sync."
+      - id: c
+        text: "`hwclock`"
+        why: "`hwclock` reads or sets the hardware (RTC) clock. It does not talk to NTP servers."
+      - id: d
+        text: "`systemd-timesyncd`"
+    answer: [d]
+    explanation: |
+      Ubuntu uses `systemd-timesyncd`, a simple SNTP client. `timedatectl` shows if the clock is
+      synchronized; `timedatectl timesync-status` shows the server. If you install `chrony`
+      (a full NTP client and server), it replaces timesyncd.
+    docs:
+      - https://documentation.ubuntu.com/server/explanation/networking/about-time-synchronisation/
+      - https://www.freedesktop.org/software/systemd/man/latest/timedatectl.html
+    glossary: [lx-ntp]
+
+  - id: lfcs-net-011
+    difficulty: 2
+    type: single
+    question: "Which `chronyc` command shows the time sources and which one is used now?"
+    options:
+      - id: a
+        text: "`chronyc reload pool`"
+        why: "This is not the command to list sources. Sources are configured in `/etc/chrony/chrony.conf`."
+      - id: b
+        text: "`chronyc settime`"
+        why: "`settime` sets the time by hand (for isolated systems). It does not list sources."
+      - id: c
+        text: "`chronyc sources -v`"
+      - id: d
+        text: "`chronyc makestep`"
+        why: "`makestep` corrects the clock at once instead of slowly. It does not list sources."
+    answer: [c]
+    explanation: |
+      `chronyc sources -v` lists the servers; `^*` marks the one in use. `chronyc tracking` shows
+      the offset of the local clock. Servers and pools are set with `server` or `pool` lines in
+      `/etc/chrony/chrony.conf` (Ubuntu) or `/etc/chrony.conf` (RHEL).
+    docs:
+      - https://chrony-project.org/doc/4.5/chronyc.html
+    glossary: [lx-ntp]
+
+  - id: lfcs-net-012
+    difficulty: 1
+    type: single
+    question: "How do you create an SSH key pair and copy the public key to `admin@web01`, so you can log in without a password?"
+    options:
+      - id: a
+        text: "`ssh-add admin@web01`, then `ssh-keygen -R web01`"
+        why: "`ssh-add` loads keys into the agent and `ssh-keygen -R` removes a host from known_hosts."
+      - id: b
+        text: "`ssh -keygen admin@web01`"
+        why: "There is no such option. Keys are created with the separate tool `ssh-keygen`."
+      - id: c
+        text: "`ssh-keygen -t ed25519`, then copy `~/.ssh/id_ed25519` to web01"
+        why: "That is the private key. It must never leave your machine; only the `.pub` file is copied."
+      - id: d
+        text: "`ssh-keygen -t ed25519`, then `ssh-copy-id admin@web01`"
+    answer: [d]
+    explanation: |
+      `ssh-keygen` creates `~/.ssh/id_ed25519` (private) and `~/.ssh/id_ed25519.pub` (public).
+      `ssh-copy-id` appends the public key to `~/.ssh/authorized_keys` of the remote user, using
+      a password one last time. The private key stays on your machine.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/ssh-keygen.1.html
+      - https://manpages.ubuntu.com/manpages/noble/man1/ssh-copy-id.1.html
+    glossary: [lx-ssh, lx-ssh-key]
+
+  - id: lfcs-net-013
+    difficulty: 2
+    type: multiple
+    question: "Key login fails with `Permission denied (publickey)`, but the key is in `~/.ssh/authorized_keys`. Which causes are possible? (Choose two.)"
+    options:
+      - id: a
+        text: "The server's `PasswordAuthentication` is set to `no`"
+        why: "That setting only disables passwords. Key authentication still works."
+      - id: b
+        text: "The home directory or `~/.ssh` is writable by other users"
+      - id: c
+        text: "The client's `known_hosts` file has no entry for the server"
+        why: "A missing known_hosts entry only makes ssh ask to trust the host key. It does not cause a publickey denial."
+      - id: d
+        text: "`authorized_keys` belongs to root instead of the user"
+    answer: [b, d]
+    explanation: |
+      With `StrictModes yes` (the default), sshd ignores keys if the home directory, `~/.ssh`
+      or `authorized_keys` is writable by others or owned by another user. Use
+      `chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/authorized_keys` and correct ownership. The server log
+      (`journalctl -u ssh`) shows the reason.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/sshd.8.html
+    glossary: [lx-ssh, lx-ssh-key]
+
+  - id: lfcs-net-014
+    difficulty: 3
+    type: single
+    question: "On Ubuntu 24.04 you add `Port 2222` to a file in `/etc/ssh/sshd_config.d/` and run `systemctl restart ssh`. sshd still listens only on port 22. Why?"
+    options:
+      - id: a
+        text: "Files in `sshd_config.d` are ignored; only `sshd_config` is read"
+        why: "The default `sshd_config` includes `/etc/ssh/sshd_config.d/*.conf` at the top, so these files are read."
+      - id: b
+        text: "The new port is only used after `sshd -t` is run once"
+        why: "`sshd -t` only tests the configuration. It never applies anything."
+      - id: c
+        text: "Ports above 1024 need the `AllowHighPorts yes` option"
+        why: "There is no such option. sshd can listen on any port, but it needs a restart of the right unit."
+      - id: d
+        text: "`ssh.socket` listens; run `systemctl daemon-reload` and restart `ssh.socket`"
+    answer: [d]
+    explanation: |
+      Ubuntu 22.10 and later start sshd with socket activation: `ssh.socket` owns the listening
+      port. A systemd generator reads the `Port` and `ListenAddress` lines when you run
+      `systemctl daemon-reload`; then `systemctl restart ssh.socket` applies the new port.
+      Always test with `sshd -t` first.
+    docs:
+      - https://documentation.ubuntu.com/server/how-to/security/openssh-server/
+      - https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
+    glossary: [lx-ssh, lx-socket-activation]
+
+  - id: lfcs-net-015
+    difficulty: 2
+    type: single
+    question: "Which command copies the local directory `site/` to `/var/www/` on `web01` and sends only files that changed?"
+    options:
+      - id: a
+        text: "`ssh web01 cp -r site/ /var/www/`"
+        why: "This runs `cp` on web01, where the local `site/` directory does not exist."
+      - id: b
+        text: "`rsync -av site/ web01:/var/www/site/`"
+      - id: c
+        text: "`sftp -r site/ web01:/var/www/`"
+        why: "`sftp` is an interactive file transfer client. It does not compare files and skip unchanged ones."
+      - id: d
+        text: "`scp -r site/ web01:/var/www/site/ --changed`"
+        why: "`scp` always copies every file and has no `--changed` option."
+    answer: [b]
+    explanation: |
+      `rsync` compares source and destination and transfers only the differences, over SSH by
+      default. `-a` (archive) keeps permissions, times and links; `-v` is verbose. A trailing
+      `/` on the source copies the content of the directory. Add `--delete` to remove extra
+      files on the destination.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/rsync.1.html
+    glossary: [lx-ssh]
+
+  - id: lfcs-net-016
+    difficulty: 1
+    type: single
+    question: "You enable ufw on a remote server for the first time. What must you do **before** `ufw enable`?"
+    options:
+      - id: a
+        text: "Allow SSH, for example `ufw allow OpenSSH` or `ufw allow 22/tcp`"
+      - id: b
+        text: "Run `ufw default allow incoming` to keep all ports open"
+        why: "That would make the firewall almost useless. The safe way is default deny plus explicit allow rules."
+      - id: c
+        text: "Flush all nftables rules with `nft flush ruleset`"
+        why: "ufw manages its own rules. Flushing the ruleset is not needed and can break other rules (Docker, for example)."
+      - id: d
+        text: "Stop sshd, so ufw can bind to port 22"
+        why: "ufw does not bind to ports; it writes packet filter rules. Stopping sshd would cut your access."
+    answer: [a]
+    explanation: |
+      The default ufw policy denies incoming traffic. If you enable it over SSH without an allow
+      rule for SSH, you lock yourself out. Add `ufw allow OpenSSH` (an application profile) or
+      `ufw allow 22/tcp` first, then `ufw enable` and `ufw status verbose`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/ufw.8.html
+      - https://documentation.ubuntu.com/server/how-to/security/firewalls/
+    glossary: [lx-ufw]
+
+  - id: lfcs-net-017
+    difficulty: 3
+    type: single
+    question: "With nftables, which rule redirects incoming TCP traffic on port 80 to local port 8080?"
+    options:
+      - id: a
+        text: "In a `filter` table, input chain: `tcp dport 80 accept to 8080`"
+        why: "The filter table only accepts or drops packets. Changing the destination port needs a NAT chain."
+      - id: b
+        text: "In a `nat` table, prerouting chain: `tcp dport 80 redirect to :8080`"
+      - id: c
+        text: "In a `filter` table, output chain: `tcp dport 8080 dnat to :80`"
+        why: "This has the ports reversed, and DNAT belongs in a NAT chain, not a filter chain."
+      - id: d
+        text: "In a `nat` table, postrouting chain: `tcp sport 8080 masquerade`"
+        why: "Masquerade changes the source address of outgoing packets. It does not redirect ports."
+    answer: [b]
+    explanation: |
+      Port redirection is destination NAT. In nftables you need a table with a chain of
+      `type nat hook prerouting`, and a rule like `tcp dport 80 redirect to :8080`. To send
+      traffic to another host use `dnat to 10.0.0.5:8080` (and enable `net.ipv4.ip_forward`).
+      `masquerade` in postrouting is source NAT for outgoing traffic.
+    docs:
+      - https://wiki.nftables.org/wiki-nftables/index.php/Performing_Network_Address_Translation_(NAT)
+    glossary: [iptables, lx-nat]
+
+  - id: lfcs-net-018
+    difficulty: 2
+    type: multiple
+    question: "Which statements about Linux bridge and bonding devices are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "A bridge connects interfaces like a virtual switch, for example for VMs"
+      - id: b
+        text: "A bond needs a router between its member interfaces"
+        why: "Members of a bond work together as one logical link to the same switch. No routing is involved."
+      - id: c
+        text: "A bond joins several NICs into one, for failover or more bandwidth"
+      - id: d
+        text: "A bridge always encrypts the traffic between its ports"
+        why: "A bridge forwards Ethernet frames like a switch. It does not encrypt anything."
+    answer: [a, c]
+    explanation: |
+      A bridge (`br0`) forwards frames between its ports, so virtual machines or containers can
+      join the physical network. A bond (`bond0`) combines NICs with a mode such as
+      `active-backup` (failover) or `802.3ad` (LACP). On Ubuntu both are defined in netplan
+      under `bridges:` and `bonds:`.
+    docs:
+      - https://netplan.readthedocs.io/en/stable/netplan-yaml/
+      - https://docs.kernel.org/networking/bonding.html
+    glossary: [lx-bridge, lx-bond, lx-netplan]
+
+  - id: lfcs-net-019
+    difficulty: 2
+    type: single
+    question: "In nginx, which directive sends requests from a `location` block to a backend application?"
+    options:
+      - id: a
+        text: "`proxy_pass http://127.0.0.1:3000;`"
+      - id: b
+        text: "`root http://127.0.0.1:3000;`"
+        why: "`root` sets a local directory for static files. It cannot point to another server."
+      - id: c
+        text: "`return 301 http://127.0.0.1:3000;`"
+        why: "This sends a redirect to the client, which then connects to the backend itself. It is not a proxy."
+      - id: d
+        text: "`listen 127.0.0.1:3000;`"
+        why: "`listen` sets where nginx itself accepts connections. It does not forward requests."
+    answer: [a]
+    explanation: |
+      A reverse proxy receives the client request and makes a new request to the backend.
+      In nginx: `location / { proxy_pass http://127.0.0.1:3000; }`. Headers such as
+      `proxy_set_header Host $host;` pass the original host name. Test with `nginx -t` and
+      apply with `systemctl reload nginx`.
+    docs:
+      - https://nginx.org/en/docs/http/ngx_http_proxy_module.html
+    glossary: [lx-reverse-proxy]
+
+  - id: lfcs-net-020
+    difficulty: 3
+    type: single
+    question: "An nginx `upstream` block lists three servers. With no balancing method set, how are requests shared?"
+    options:
+      - id: a
+        text: "Round robin: each request goes to the next server in turn"
+      - id: b
+        text: "Each client IP always goes to the same server"
+        why: "That is the `ip_hash` method, which you must set explicitly."
+      - id: c
+        text: "The server with the fewest active connections gets the request"
+        why: "That is the `least_conn` method, which you must set explicitly."
+      - id: d
+        text: "All requests go to the first server; the others are backups"
+        why: "That only happens with the `backup` parameter on the other servers. The default spreads the load."
+    answer: [a]
+    explanation: |
+      The default method in nginx is weighted round robin (all weights are 1 unless you set
+      `weight=`). Other methods: `least_conn`, `ip_hash` and `hash`. Servers that fail are
+      skipped for a while (`max_fails`, `fail_timeout`).
+    docs:
+      - https://nginx.org/en/docs/http/load_balancing.html
+      - https://nginx.org/en/docs/http/ngx_http_upstream_module.html
+    glossary: [lx-reverse-proxy]

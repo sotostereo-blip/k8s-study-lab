@@ -1,0 +1,60 @@
+id: lfcs-ops-003
+title: Replace a cron job with a systemd timer
+domain: operations
+difficulty: 2
+minutes: 8
+environment: linux
+setup: |
+  cat > /usr/local/bin/cache-prune.sh <<'SH'
+  #!/bin/bash
+  echo "cache pruned at $(date +%FT%T)" >> /var/log/cache-prune.log
+  SH
+  chmod 755 /usr/local/bin/cache-prune.sh
+task: |
+  Run `/usr/local/bin/cache-prune.sh` with systemd instead of cron:
+
+  1. Create `cache-prune.service` (type **oneshot**) that runs the script.
+  2. Create `cache-prune.timer` that starts the service **every 15 minutes**.
+  3. Enable and start the timer.
+  4. Run the service once by hand now, so `/var/log/cache-prune.log` is created.
+checks:
+  - name: cache-prune.timer is active and enabled
+    run: systemctl is-active --quiet cache-prune.timer && [ "$(systemctl is-enabled cache-prune.timer)" = enabled ]
+  - name: The timer fires every 15 minutes (OnCalendar=*:0/15 or OnUnitActiveSec=15min)
+    run: |
+      out=$(systemctl show cache-prune.timer -p TimersCalendar -p TimersMonotonic 2>&1)
+      echo "$out" | grep -qE '\*:00/15:00|\*:0/15|OnUnit(Active|Inactive)USec=15min'
+  - name: cache-prune.service is a oneshot service that runs the script
+    run: |
+      [ "$(systemctl show -p Type --value cache-prune.service)" = oneshot ] \
+        && systemctl show -p ExecStart --value cache-prune.service | grep -q cache-prune.sh
+  - name: The service has run (/var/log/cache-prune.log exists)
+    run: '[ -s /var/log/cache-prune.log ]'
+solution: |
+  cat > /etc/systemd/system/cache-prune.service <<'UNIT'
+  [Unit]
+  Description=Prune the cache
+
+  [Service]
+  Type=oneshot
+  ExecStart=/usr/local/bin/cache-prune.sh
+  UNIT
+  cat > /etc/systemd/system/cache-prune.timer <<'UNIT'
+  [Unit]
+  Description=Prune the cache every 15 minutes
+
+  [Timer]
+  OnCalendar=*:0/15
+  Persistent=true
+
+  [Install]
+  WantedBy=timers.target
+  UNIT
+  systemctl daemon-reload
+  systemctl enable --now cache-prune.timer
+  systemctl start cache-prune.service
+  systemctl list-timers cache-prune.timer
+  systemd-analyze calendar '*:0/15'     # check a calendar expression
+docs:
+  - https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
+  - https://www.freedesktop.org/software/systemd/man/latest/systemd.time.html

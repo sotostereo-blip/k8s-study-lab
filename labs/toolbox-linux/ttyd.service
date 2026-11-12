@@ -1,0 +1,14 @@
+[Unit]
+Description=Web terminal for the lab (ttyd on port 7681)
+After=network.target
+# server2 has no web terminal: the student reaches it with ssh.
+ConditionHost=!server2
+
+[Service]
+Environment=HOME=/root TERM=xterm-256color
+WorkingDirectory=/root
+ExecStart=/usr/bin/ttyd -W -p 7681 -t fontSize=14 -t titleFixed="lfcs lab" /bin/bash -l
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

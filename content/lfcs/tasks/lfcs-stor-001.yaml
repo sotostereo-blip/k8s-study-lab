@@ -1,0 +1,42 @@
+id: lfcs-stor-001
+title: Create an XFS filesystem and mount it at boot
+domain: storage
+difficulty: 2
+minutes: 7
+environment: linux
+setup: |
+  mkdir -p /srv/disks
+  truncate -s 320M /srv/disks/data01.img
+task: |
+  This lab has no spare disk, so the "disk" is the image file `/srv/disks/data01.img`
+  (a loop device makes a file look like a disk).
+
+  1. Create an **XFS** filesystem with the label `DATA01` on `/srv/disks/data01.img`.
+  2. Mount it on `/mnt/data01`.
+  3. Add a line to `/etc/fstab` so it is mounted at boot. Use the image file as the device and
+     the mount option `loop`. Check the line with `mount -a` (or `findmnt --verify`).
+checks:
+  - name: /srv/disks/data01.img has an XFS filesystem with label DATA01
+    run: |
+      [ "$(blkid -o value -s TYPE /srv/disks/data01.img)" = xfs ] && [ "$(blkid -o value -s LABEL /srv/disks/data01.img)" = DATA01 ]
+  - name: An XFS filesystem is mounted on /mnt/data01
+    run: '[ "$(findmnt -no FSTYPE /mnt/data01)" = xfs ]'
+  - name: /etc/fstab mounts /srv/disks/data01.img on /mnt/data01 with the loop option
+    run: |
+      out=$(findmnt --fstab -n -o SOURCE,OPTIONS --target /mnt/data01 2>&1)
+      echo "$out" | grep -qE '^(/srv/disks/data01\.img|LABEL=DATA01)\s' && echo "$out" | grep -qw loop
+solution: |
+  mkfs.xfs -L DATA01 /srv/disks/data01.img
+  mkdir -p /mnt/data01
+  echo '/srv/disks/data01.img  /mnt/data01  xfs  loop,defaults  0  0' >> /etc/fstab
+  systemctl daemon-reload          # systemd builds mount units from /etc/fstab
+  mount -a                         # mounts everything in fstab that is not mounted yet
+  findmnt /mnt/data01
+  df -hT /mnt/data01
+  # On a real disk: create a partition (fdisk/parted), mkfs.xfs /dev/sdb1, and use
+  # UUID=... (from blkid) in fstab instead of the device name.
+  # Do not use the minimum XFS size (300M) for real data; grow XFS with xfs_growfs (it cannot shrink).
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/mkfs.xfs.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/losetup.8.html

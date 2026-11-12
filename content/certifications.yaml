@@ -39,6 +39,13 @@ certifications:
     exam: terraform
     track: terraform
     description: Multiple choice exam, plus hands-on labs with Terraform and a local AWS emulator.
+  - id: lfcs
+    name: Linux Foundation Certified System Administrator
+    short: LFCS
+    area: Linux and containers
+    exam: lfcs
+    track: lfcs
+    description: Hands-on Linux administration on Ubuntu servers with systemd (labs and mock exam), plus a concept question bank.
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

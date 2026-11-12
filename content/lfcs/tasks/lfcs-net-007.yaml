@@ -1,0 +1,42 @@
+id: lfcs-net-007
+title: Find the port a program listens on
+domain: networking
+difficulty: 1
+minutes: 4
+environment: linux
+setup: |
+  port=$((20000 + RANDOM % 9000))
+  ssh server2 "bash -s $port" <<'S2'
+  cat > /usr/local/bin/status-daemon <<'PY'
+  #!/usr/bin/python3
+  import socket, sys
+  s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+  s.bind(("0.0.0.0", int(sys.argv[1]))); s.listen()
+  while True:
+      c, _ = s.accept(); c.sendall(b"status: green\n"); c.close()
+  PY
+  chmod 755 /usr/local/bin/status-daemon
+  mkdir -p /var/lib/lab && echo "$1" > /var/lib/lab/.status-port
+  systemd-run --quiet --unit=lab-status-daemon /usr/local/bin/status-daemon "$1"
+  S2
+task: |
+  A monitoring program called `status-daemon` runs on **server2**. Nobody remembers which TCP
+  port it uses.
+
+  Find the TCP port where `status-daemon` listens on server2 and write only the port number to
+  `/root/status-port.txt` on **this** server.
+checks:
+  - name: /root/status-port.txt contains the port of status-daemon
+    run: |
+      want=$(ssh -n -o BatchMode=yes server2 cat /var/lib/lab/.status-port)
+      [ -n "$want" ] && [ "$(tr -d '[:space:]' < /root/status-port.txt)" = "$want" ]
+solution: |
+  ssh server2 ss -ltnp | grep status-daemon     # -l listening, -t TCP, -n numbers, -p process
+  # other ways: ssh server2 lsof -i -P -n | grep LISTEN     /    netstat -ltnp
+  echo 2xxxx > /root/status-port.txt            # the port you found
+auto_solution: |
+  out=$(ssh -n server2 ss -ltnpH)
+  echo "$out" | grep status-daemon | awk '{print $4}' | awk -F: '{print $NF}' | head -1 > /root/status-port.txt
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/ss.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/lsof.8.html

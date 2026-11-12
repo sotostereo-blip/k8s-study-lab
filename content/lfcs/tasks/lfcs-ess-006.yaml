@@ -1,0 +1,66 @@
+id: lfcs-ess-006
+title: Limit memory and CPU of a service with a drop-in
+domain: essential
+difficulty: 3
+minutes: 7
+environment: linux
+setup: |
+  printf '#!/bin/bash\nwhile true; do sleep 3; done\n' > /usr/local/bin/cruncher.sh
+  chmod 755 /usr/local/bin/cruncher.sh
+  cat > /etc/systemd/system/cruncher.service <<'UNIT'
+  [Unit]
+  Description=Number cruncher
+
+  [Service]
+  ExecStart=/usr/local/bin/cruncher.sh
+
+  [Install]
+  WantedBy=multi-user.target
+  UNIT
+  systemctl daemon-reload
+  systemctl enable --now cruncher.service
+  mkdir -p /var/lib/lab && sha256sum /etc/systemd/system/cruncher.service > /var/lib/lab/cruncher.sha
+task: |
+  The service `cruncher.service` sometimes uses too many resources. **Without editing**
+  `/etc/systemd/system/cruncher.service` (use a **drop-in** / override), limit it to:
+
+  - at most **256M** of memory (`MemoryMax`)
+  - at most **20%** of one CPU (`CPUQuota`)
+  - at most **50** tasks (processes and threads)
+
+  The service must be running with the new limits.
+checks:
+  - name: cruncher.service has MemoryMax=256M, CPUQuota=20% and TasksMax=50
+    run: |
+      [ "$(systemctl show -p MemoryMax --value cruncher.service)" = 268435456 ] \
+        && [ "$(systemctl show -p CPUQuotaPerSecUSec --value cruncher.service)" = 200ms ] \
+        && [ "$(systemctl show -p TasksMax --value cruncher.service)" = 50 ]
+  - name: The limits come from a drop-in file
+    run: '[ -n "$(systemctl show -p DropInPaths --value cruncher.service)" ]'
+  - name: cruncher.service is active
+    run: systemctl is-active --quiet cruncher.service
+    guard: true
+  - name: The original unit file was not edited
+    run: sha256sum -c --quiet /var/lib/lab/cruncher.sha
+    guard: true
+solution: |
+  systemctl edit cruncher.service      # opens an editor; it creates
+                                       # /etc/systemd/system/cruncher.service.d/override.conf
+  # content:
+  [Service]
+  MemoryMax=256M
+  CPUQuota=20%
+  TasksMax=50
+
+  systemctl restart cruncher.service   # (systemctl edit already runs daemon-reload)
+  systemctl show cruncher.service -p MemoryMax -p CPUQuotaPerSecUSec -p TasksMax
+  systemctl cat cruncher.service       # shows the unit file and its drop-ins
+  # Also valid: systemctl set-property cruncher.service MemoryMax=256M CPUQuota=20% TasksMax=50
+auto_solution: |
+  mkdir -p /etc/systemd/system/cruncher.service.d
+  printf '[Service]\nMemoryMax=256M\nCPUQuota=20%%\nTasksMax=50\n' > /etc/systemd/system/cruncher.service.d/override.conf
+  systemctl daemon-reload
+  systemctl restart cruncher.service
+docs:
+  - https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html
+  - https://www.freedesktop.org/software/systemd/man/latest/systemctl.html

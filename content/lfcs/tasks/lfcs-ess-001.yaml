@@ -1,0 +1,47 @@
+id: lfcs-ess-001
+title: Find large files and delete old logs
+domain: essential
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  mkdir -p /srv/media/video /srv/media/archive/2025 /srv/media/docs /srv/media/logs
+  truncate -s 3M /srv/media/video/intro.mp4
+  truncate -s 5M /srv/media/archive/2025/backup.iso
+  truncate -s 2M /srv/media/docs/manual.pdf
+  truncate -s 500K /srv/media/video/teaser.mp4
+  truncate -s 10K /srv/media/docs/notes.txt
+  for f in app1 app2 app3; do echo "old $f" > /srv/media/logs/$f.log; touch -d '45 days ago' /srv/media/logs/$f.log; done
+  echo "today" > /srv/media/logs/today.log
+  echo "old but not a log" > /srv/media/docs/history.txt; touch -d '60 days ago' /srv/media/docs/history.txt
+task: |
+  The directory `/srv/media` is getting full.
+
+  1. Write the **absolute paths** of all regular files under `/srv/media` that are **larger
+     than 1 MiB** to `/root/large-media.txt`, one path per line, sorted alphabetically.
+  2. Delete every file under `/srv/media` whose name ends in `.log` and that was **modified more
+     than 30 days ago**. Do not delete other files.
+checks:
+  - name: /root/large-media.txt lists exactly the three files larger than 1 MiB, sorted
+    run: |
+      expected='/srv/media/archive/2025/backup.iso
+      /srv/media/docs/manual.pdf
+      /srv/media/video/intro.mp4'
+      [ "$(sed 's/[[:space:]]*$//' /root/large-media.txt | grep -v '^$')" = "$(echo "$expected" | sed 's/^ *//')" ]
+  - name: The .log files older than 30 days are deleted
+    run: '[ -z "$(ls /srv/media/logs/app*.log 2>/dev/null)" ]'
+  - name: today.log, history.txt and the media files are still there
+    run: |
+      [ -f /srv/media/logs/today.log ] && [ -f /srv/media/docs/history.txt ] \
+        && [ -f /srv/media/video/teaser.mp4 ] && [ -f /srv/media/video/intro.mp4 ]
+    guard: true
+solution: |
+  find /srv/media -type f -size +1M | sort > /root/large-media.txt
+  cat /root/large-media.txt
+  find /srv/media -type f -name '*.log' -mtime +30 -print     # look first
+  find /srv/media -type f -name '*.log' -mtime +30 -delete    # then delete
+  # -size +1M means "more than 1 MiB" (sizes are rounded up to whole MiB, so 500K is not +1M).
+  # -mtime +30 means "modified more than 30 days ago".
+docs:
+  - https://www.gnu.org/software/findutils/manual/html_mono/find.html
+  - https://manpages.ubuntu.com/manpages/noble/man1/find.1.html

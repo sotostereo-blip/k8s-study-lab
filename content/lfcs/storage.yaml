@@ -1,0 +1,411 @@
+domain: storage
+questions:
+  - id: lfcs-stor-001
+    difficulty: 1
+    type: single
+    question: "What is the correct order to create an LVM logical volume on a new disk `/dev/sdb`?"
+    options:
+      - id: a
+        text: "`mkfs.ext4 /dev/sdb`, then `pvcreate`, then `lvcreate`"
+        why: "The filesystem goes on the logical volume at the end, not on the raw disk before LVM."
+      - id: b
+        text: "`lvcreate`, then `vgcreate`, then `pvcreate /dev/sdb`"
+        why: "This is the reverse order. A logical volume needs a volume group, and a volume group needs physical volumes."
+      - id: c
+        text: "`pvcreate /dev/sdb`, then `vgcreate`, then `lvcreate`"
+      - id: d
+        text: "`vgcreate /dev/sdb`, then `lvcreate`; `pvcreate` is not needed"
+        why: "Recent `vgcreate` can initialise disks itself, but the LVM layers stay the same: PV, then VG, then LV."
+    answer: [c]
+    explanation: |
+      LVM has three layers. A physical volume (PV) is a disk or partition: `pvcreate /dev/sdb`.
+      A volume group (VG) pools PVs: `vgcreate vgdata /dev/sdb`. A logical volume (LV) is cut
+      from the VG: `lvcreate -n lvweb -L 5G vgdata`. Then create a filesystem on
+      `/dev/vgdata/lvweb` and mount it.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/lvm.8.html
+      - https://documentation.ubuntu.com/server/explanation/storage/about-lvm/
+    glossary: [lx-lvm]
+
+  - id: lfcs-stor-002
+    difficulty: 2
+    type: single
+    question: "The logical volume `/dev/vgdata/lvweb` has an ext4 filesystem mounted on `/srv/web`. Which command grows it by 2 GiB **and** grows the filesystem in one step?"
+    options:
+      - id: a
+        text: "`vgextend -L +2G vgdata lvweb`"
+        why: "`vgextend` adds physical volumes to a volume group. It does not change a logical volume."
+      - id: b
+        text: "`lvextend -r -L +2G /dev/vgdata/lvweb`"
+      - id: c
+        text: "`lvextend -L 2G /dev/vgdata/lvweb`"
+        why: "`-L 2G` sets the total size to 2 GiB (it could even be smaller), and without `-r` the filesystem is not resized."
+      - id: d
+        text: "`resize2fs -L +2G /dev/vgdata/lvweb`"
+        why: "`resize2fs` resizes only the filesystem. The logical volume must grow first."
+    answer: [b]
+    explanation: |
+      `lvextend -L +2G` adds 2 GiB to the LV (`-l +100%FREE` uses all free space in the VG).
+      `-r` (`--resizefs`) also runs the right tool for the filesystem: `resize2fs` for ext4 or
+      `xfs_growfs` for XFS. Both can grow while mounted. The VG needs enough free space; check
+      with `vgs`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/lvextend.8.html
+    glossary: [lx-lvm, lx-filesystem]
+
+  - id: lfcs-stor-003
+    difficulty: 2
+    type: multiple
+    question: "The volume group `vgdata` is full. You add a new disk `/dev/sdc`. Which commands make its space available to `vgdata`? (Choose two.)"
+    options:
+      - id: a
+        text: "`vgextend vgdata /dev/sdc`"
+      - id: b
+        text: "`lvcreate vgdata /dev/sdc`"
+        why: "`lvcreate` makes a new logical volume. It does not add a disk to the group."
+      - id: c
+        text: "`pvcreate /dev/sdc`"
+      - id: d
+        text: "`mount /dev/sdc /dev/vgdata`"
+        why: "`/dev/vgdata` is a directory of device nodes, not a mount point, and you never mount a PV."
+    answer: [a, c]
+    explanation: |
+      First turn the disk into a physical volume with `pvcreate /dev/sdc`, then add it to the
+      group with `vgextend vgdata /dev/sdc`. `vgs` then shows more free space (VFree), and you
+      can grow logical volumes with `lvextend`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/vgextend.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/pvcreate.8.html
+    glossary: [lx-lvm]
+
+  - id: lfcs-stor-004
+    difficulty: 3
+    type: single
+    question: "You need to make an XFS filesystem **smaller**. What is true?"
+    options:
+      - id: a
+        text: "Run `lvreduce -r`; LVM shrinks XFS safely"
+        why: "`lvreduce -r` needs a filesystem that can shrink. For XFS it fails, and shrinking the LV alone destroys data."
+      - id: b
+        text: "Unmount it and run `resize2fs` with the new size"
+        why: "`resize2fs` is for ext2/3/4 only. It does not understand XFS."
+      - id: c
+        text: "XFS cannot shrink; back up, create a smaller one and restore"
+      - id: d
+        text: "Run `xfs_growfs -D` with a smaller size while it is mounted"
+        why: "`xfs_growfs` can only grow a filesystem. A smaller size is refused."
+    answer: [c]
+    explanation: |
+      XFS supports growing (`xfs_growfs`, online) but not shrinking. To make it smaller, back up
+      the data (for example `xfsdump` or `tar`), recreate a smaller LV and filesystem, and
+      restore. ext4 can shrink, but only when it is unmounted.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/xfs_growfs.8.html
+    glossary: [lx-filesystem, lx-lvm]
+
+  - id: lfcs-stor-005
+    difficulty: 1
+    type: single
+    question: "Which command shows the UUID and the filesystem type of every block device?"
+    options:
+      - id: a
+        text: "`free -m`"
+        why: "`free` shows memory and swap usage, not block devices."
+      - id: b
+        text: "`blkid`"
+      - id: c
+        text: "`du -sh /dev/*`"
+        why: "`du` measures the disk usage of files and directories, not device properties."
+      - id: d
+        text: "`df -h`"
+        why: "`df` shows used and free space of mounted filesystems. It does not show UUIDs."
+    answer: [b]
+    explanation: |
+      `blkid` prints the UUID, label and type of each device. `lsblk -f` shows the same as a
+      tree with mount points. Use `UUID=...` in `/etc/fstab`, because device names like
+      `/dev/sdb1` can change between boots.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/blkid.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/lsblk.8.html
+    glossary: [lx-fstab]
+
+  - id: lfcs-stor-006
+    difficulty: 2
+    type: single
+    question: "What do the six fields of this `/etc/fstab` line mean? `UUID=1b2c... /data xfs defaults 0 2`"
+    options:
+      - id: a
+        text: "Device, mount point, type, options, boot order, retries"
+        why: "Mount order at boot comes from the mount points and dependencies, not from the last fields."
+      - id: b
+        text: "Device, mount point, type, owner, size, priority"
+        why: "fstab has no owner or size fields. The last two numbers are for dump and the fsck pass."
+      - id: c
+        text: "Device, mount point, type, options, dump, fsck order"
+      - id: d
+        text: "Mount point, device, options, type, fsck order, dump"
+        why: "The order is wrong. The device comes first, then the mount point, the type and the options."
+    answer: [c]
+    explanation: |
+      The fields are: device (`UUID=`, `LABEL=` or a path), mount point, filesystem type,
+      mount options, dump flag (usually 0) and fsck pass (0 = never check, 1 = root, 2 = other
+      filesystems). After editing, run `systemctl daemon-reload` and `mount -a`, or check with
+      `findmnt --verify`.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html
+    glossary: [lx-fstab]
+
+  - id: lfcs-stor-007
+    difficulty: 2
+    type: multiple
+    question: "An external disk is in `/etc/fstab`. If it is missing at boot, the system must still start normally. Which options help? (Choose two.)"
+    options:
+      - id: a
+        text: "`x-systemd.device-timeout=10s`"
+      - id: b
+        text: "`errors=remount-ro`"
+        why: "This ext4 option reacts to filesystem errors on a mounted filesystem. It does not help when the disk is absent."
+      - id: c
+        text: "`nofail`"
+      - id: d
+        text: "`noexec`"
+        why: "`noexec` forbids running programs from the filesystem. It does nothing for a missing device."
+    answer: [a, c]
+    explanation: |
+      `nofail` tells systemd that boot does not depend on this mount, so a missing disk does
+      not cause emergency mode. `x-systemd.device-timeout=` limits how long systemd waits for
+      the device (the default is 90 seconds).
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html
+      - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html
+    glossary: [lx-fstab]
+
+  - id: lfcs-stor-008
+    difficulty: 1
+    type: single
+    question: "Which commands create and activate a swap file of 2 GiB?"
+    options:
+      - id: a
+        text: "`sysctl -w vm.swapfile=/swapfile size=2G`"
+        why: "There is no such kernel parameter. Swap files are set up with `mkswap` and `swapon`."
+      - id: b
+        text: "`dd if=/dev/zero of=/swapfile; swapon -a`"
+        why: "`dd` without `count` never stops, and `mkswap` is missing, so `swapon` would refuse the file."
+      - id: c
+        text: "`fallocate -l 2G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile`"
+      - id: d
+        text: "`truncate -s 2G /swapfile; mkfs.ext4 /swapfile; mount /swapfile`"
+        why: "Swap is not an ext4 filesystem and is not mounted. It needs `mkswap` and `swapon`."
+    answer: [c]
+    explanation: |
+      Create the file, allow only root to read it, write the swap signature with `mkswap`, and
+      activate it with `swapon`. For boot, add `/swapfile none swap sw 0 0` to `/etc/fstab`.
+      `swapon --show` and `free -h` show active swap.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/mkswap.8.html
+      - https://manpages.ubuntu.com/manpages/noble/man8/swapon.8.html
+    glossary: [lx-swap]
+
+  - id: lfcs-stor-009
+    difficulty: 2
+    type: single
+    question: "Which line in `/etc/fstab` mounts the NFS export `nfs01:/exports/home` on `/home` at boot?"
+    options:
+      - id: a
+        text: "`//nfs01/exports/home  /home  cifs  defaults  0 0`"
+        why: "`//server/share` with type `cifs` is for SMB (Windows) shares, not NFS."
+      - id: b
+        text: "`nfs01:/exports/home  /home  nfs  defaults,_netdev  0 0`"
+      - id: c
+        text: "`/home  nfs01:/exports/home  nfs  defaults  0 0`"
+        why: "The order is reversed. The remote source comes first, then the local mount point."
+      - id: d
+        text: "`nfs01:/exports/home  /home  ext4  nfs  0 2`"
+        why: "The type must be `nfs`. A network filesystem is never checked by fsck, so the last field is 0."
+    answer: [b]
+    explanation: |
+      An NFS entry is `server:/path  mountpoint  nfs  options  0 0`. `_netdev` marks it as a
+      network filesystem, so it waits for the network (systemd also detects NFS by type). The
+      client needs the package `nfs-common`. On the server, exports are listed in `/etc/exports`
+      and applied with `exportfs -ra`.
+    docs:
+      - https://documentation.ubuntu.com/server/how-to/networking/install-nfs/
+      - https://manpages.ubuntu.com/manpages/noble/man5/nfs.5.html
+    glossary: [lx-nfs, lx-fstab]
+
+  - id: lfcs-stor-010
+    difficulty: 3
+    type: single
+    question: "You want `/mnt/archive` to be mounted **only when someone accesses it**, and unmounted after 10 minutes without use. Which `/etc/fstab` options do this with systemd?"
+    options:
+      - id: a
+        text: "`defaults,nofail,x-systemd.device-timeout=10min`"
+        why: "`nofail` only makes boot ignore a missing device, and the timeout limits how long systemd waits for it. It still mounts at boot."
+      - id: b
+        text: "`auto,x-systemd.requires=network.target,sync`"
+        why: "`auto` mounts it at boot, which we do not want, and nothing unmounts it when it is idle."
+      - id: c
+        text: "`noauto,x-systemd.automount,x-systemd.idle-timeout=10min`"
+      - id: d
+        text: "`noauto,user,x-systemd.mount-timeout=10min`"
+        why: "`noauto` skips the mount at boot and `user` lets users mount it, but nothing mounts it on access. The timeout only limits the mount command."
+    answer: [c]
+    explanation: |
+      `x-systemd.automount` makes systemd create an automount unit: the real mount happens on
+      first access. `x-systemd.idle-timeout=` unmounts it when it is not used. The classic
+      alternative is `autofs` with `/etc/auto.master` and map files.
+    docs:
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.automount.html
+      - https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html
+    glossary: [lx-automount, lx-fstab]
+
+  - id: lfcs-stor-011
+    difficulty: 1
+    type: single
+    question: "What is `/proc`?"
+    options:
+      - id: a
+        text: "A virtual filesystem with process and kernel information, created in memory"
+      - id: b
+        text: "A directory where installed programs keep their configuration"
+        why: "Configuration files belong in `/etc`. `/proc` is generated by the kernel."
+      - id: c
+        text: "A partition on disk where the kernel keeps its program files"
+        why: "The kernel image is in `/boot`. `/proc` uses no disk space at all."
+      - id: d
+        text: "A swap area that the kernel uses for processes"
+        why: "Swap is a separate partition or file. `/proc` is a view of kernel data."
+    answer: [a]
+    explanation: |
+      `/proc` (procfs) and `/sys` (sysfs) are virtual filesystems: the kernel creates their
+      content on demand. `/proc/<PID>/` describes one process, `/proc/meminfo` and
+      `/proc/cpuinfo` describe the system, and `/proc/sys/` holds the sysctl parameters.
+    docs:
+      - https://docs.kernel.org/filesystems/proc.html
+    glossary: [lx-virtual-filesystem]
+
+  - id: lfcs-stor-012
+    difficulty: 2
+    type: single
+    question: "`df -h` shows 40% free on `/var`, but you get `No space left on device` when you create files. What do you check next?"
+    options:
+      - id: a
+        text: "The size of the files with `ls -l /var`"
+        why: "The free space is already known from `df`. The problem is something other than bytes."
+      - id: b
+        text: "Free inodes with `df -i`"
+      - id: c
+        text: "The swap usage with `free -h`"
+        why: "Swap is memory space. It has nothing to do with creating files on `/var`."
+      - id: d
+        text: "The routing table with `ip route`"
+        why: "Network routes do not affect a local filesystem."
+    answer: [b]
+    explanation: |
+      Every file needs an inode. Millions of small files (cache, mail, sessions) can use all
+      inodes while blocks are still free. `df -i` shows inode usage. Find the directory with
+      many files (for example `find /var -xdev -type f | cut -d/ -f2-3 | sort | uniq -c | sort
+      -n`) and clean it.
+    docs:
+      - https://www.gnu.org/software/coreutils/manual/html_node/df-invocation.html
+    glossary: [lx-inode]
+
+  - id: lfcs-stor-013
+    difficulty: 2
+    type: single
+    question: "Which tool shows the read/write load and utilisation of each disk, every 2 seconds?"
+    options:
+      - id: a
+        text: "`lsblk -io 2`"
+        why: "`lsblk` lists block devices and their layout. It does not measure load."
+      - id: b
+        text: "`vmstat -d 0`"
+        why: "`vmstat -d` prints disk counters since boot, and `0` is not a valid interval."
+      - id: c
+        text: "`top -d 2 -disk`"
+        why: "`top` shows CPU and memory per process. It has no per-disk view."
+      - id: d
+        text: "`iostat -dx 2`"
+    answer: [d]
+    explanation: |
+      `iostat -dx 2` (package `sysstat`) prints extended statistics per device: reads and writes
+      per second, wait time (`await`) and `%util`. `iotop` shows which processes do the I/O, and
+      `pidstat -d` gives per-process numbers too.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man1/iostat.1.html
+    glossary: [lx-iostat]
+
+  - id: lfcs-stor-014
+    difficulty: 3
+    type: multiple
+    question: "You create a software RAID 1 with `mdadm` from `/dev/sdb` and `/dev/sdc`. Which statements are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "RAID 1 replaces backups, because the data exists twice"
+        why: "A mirror also copies deletions and corruption at once. RAID protects against disk failure, not data loss."
+      - id: b
+        text: "The usable size is the sum of both disks"
+        why: "That is RAID 0 (striping). RAID 1 mirrors the data, so the usable size is one disk."
+      - id: c
+        text: "`cat /proc/mdstat` shows the state and the sync progress"
+      - id: d
+        text: "The array keeps working if one of the two disks fails"
+    answer: [c, d]
+    explanation: |
+      `mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdb /dev/sdc` builds a mirror.
+      It survives one failed disk. Check with `cat /proc/mdstat` or `mdadm --detail /dev/md0`,
+      and save the array in `/etc/mdadm/mdadm.conf` so it assembles at boot.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/mdadm.8.html
+      - https://docs.kernel.org/admin-guide/md.html
+    glossary: [lx-raid]
+
+  - id: lfcs-stor-015
+    difficulty: 2
+    type: single
+    question: "You want to make a disk image file `disk.img` look like a block device, so you can partition and format it. What do you use?"
+    options:
+      - id: a
+        text: "A loop device: `losetup -fP --show disk.img`"
+      - id: b
+        text: "A symbolic link: `ln -s disk.img /dev/sdz`"
+        why: "A link in `/dev` is still a regular file. The kernel does not treat it as a block device."
+      - id: c
+        text: "A bind mount: `mount --bind disk.img /dev/sdz`"
+        why: "A bind mount shows a file or directory in a second place. It does not create a block device."
+      - id: d
+        text: "A tmpfs mount: `mount -t tmpfs disk.img /mnt`"
+        why: "tmpfs is a RAM filesystem. It ignores the file named as source."
+    answer: [a]
+    explanation: |
+      A loop device (`/dev/loopN`) maps a file to a block device. `losetup -f --show` uses the
+      first free device and prints its name; `-P` scans for partitions. `mount -o loop disk.img
+      /mnt` does it automatically for a filesystem image. `losetup -d` detaches it.
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/losetup.8.html
+    glossary: [lx-loop-device]
+
+  - id: lfcs-stor-016
+    difficulty: 1
+    type: single
+    question: "Which command creates an ext4 filesystem with the label `BACKUP` on `/dev/sdb1`?"
+    options:
+      - id: a
+        text: "`mkfs.ext4 -L BACKUP /dev/sdb1`"
+      - id: b
+        text: "`e2label /dev/sdb1 ext4 BACKUP`"
+        why: "`e2label` only reads or changes the label of an existing ext filesystem."
+      - id: c
+        text: "`fdisk -t ext4 -L BACKUP /dev/sdb1`"
+        why: "`fdisk` edits partition tables. It does not create filesystems."
+      - id: d
+        text: "`mount -t ext4 -L BACKUP /dev/sdb1`"
+        why: "`mount` attaches an existing filesystem. It does not create one."
+    answer: [a]
+    explanation: |
+      `mkfs.ext4` (or `mkfs -t ext4`) creates the filesystem, and `-L` sets the label. For XFS
+      it is `mkfs.xfs -L`. Change the label later with `e2label` or `tune2fs -L` (ext4) and
+      `xfs_admin -L` (XFS).
+    docs:
+      - https://manpages.ubuntu.com/manpages/noble/man8/mke2fs.8.html
+    glossary: [lx-filesystem]

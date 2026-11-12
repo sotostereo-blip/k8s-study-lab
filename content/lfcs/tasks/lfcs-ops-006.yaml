@@ -1,0 +1,58 @@
+id: lfcs-ops-006
+title: Fix a service that does not start
+domain: operations
+difficulty: 3
+minutes: 8
+environment: linux
+setup: |
+  mkdir -p /opt/inventory/www
+  echo "inventory-ok" > /opt/inventory/www/index.html
+  cat > /etc/systemd/system/inventory-api.service <<'UNIT'
+  [Unit]
+  Description=Inventory API (static files on port 8085)
+  After=network.target
+
+  [Service]
+  WorkingDirectory=/opt/inventry/www
+  ExecStart=/usr/bin/python -m http.server 8085
+  Restart=no
+
+  [Install]
+  WantedBy=multi-user.target
+  UNIT
+  systemctl daemon-reload
+  systemctl start inventory-api.service || true
+task: |
+  The service `inventory-api.service` must serve the files in `/opt/inventory/www` on TCP port
+  `8085`, but it does not start.
+
+  1. Find out **why** it fails (use `systemctl status` and `journalctl`).
+  2. Fix the unit so the service runs and answers on `http://localhost:8085/`.
+  3. Make sure the service also starts **at boot**.
+checks:
+  - name: inventory-api.service is active and enabled
+    run: systemctl is-active --quiet inventory-api.service && [ "$(systemctl is-enabled inventory-api.service)" = enabled ]
+  - name: http://localhost:8085/ returns the page from /opt/inventory/www
+    run: |
+      out=$(curl -s --max-time 3 http://localhost:8085/ 2>&1)
+      echo "$out" | grep -q inventory-ok
+solution: |
+  systemctl status inventory-api.service
+  journalctl -u inventory-api.service -n 20 --no-pager
+  # Two problems:
+  #   "Changing to the requested working directory failed: No such file or directory" -> typo /opt/inventry
+  #   /usr/bin/python does not exist on Ubuntu 24.04 -> use /usr/bin/python3
+  systemctl edit --full inventory-api.service
+  #   WorkingDirectory=/opt/inventory/www
+  #   ExecStart=/usr/bin/python3 -m http.server 8085
+  systemctl daemon-reload
+  systemctl enable --now inventory-api.service
+  curl http://localhost:8085/
+auto_solution: |
+  sed -i -e 's#/opt/inventry/www#/opt/inventory/www#' -e 's#/usr/bin/python #/usr/bin/python3 #' /etc/systemd/system/inventory-api.service
+  systemctl daemon-reload
+  systemctl enable --now inventory-api.service
+  sleep 2
+docs:
+  - https://www.freedesktop.org/software/systemd/man/latest/systemctl.html
+  - https://www.freedesktop.org/software/systemd/man/latest/journalctl.html

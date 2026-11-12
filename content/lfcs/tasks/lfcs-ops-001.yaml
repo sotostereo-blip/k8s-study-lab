@@ -1,0 +1,33 @@
+id: lfcs-ops-001
+title: Set kernel parameters now and at boot
+domain: operations
+difficulty: 1
+minutes: 5
+environment: linux
+task: |
+  This server will accept many network connections. Set these kernel parameters:
+
+  - `net.core.somaxconn` = `8192`
+  - `net.ipv4.tcp_keepalive_time` = `600`
+
+  The new values must be active **now** and must also be applied **at every boot** (use a file
+  in `/etc/sysctl.d/`).
+checks:
+  - name: net.core.somaxconn is 8192 and net.ipv4.tcp_keepalive_time is 600 now
+    run: '[ "$(sysctl -n net.core.somaxconn)" = 8192 ] && [ "$(sysctl -n net.ipv4.tcp_keepalive_time)" = 600 ]'
+  - name: Both values are set in a file under /etc/sysctl.d/ (or /etc/sysctl.conf)
+    run: |
+      files=$(ls /etc/sysctl.conf /etc/sysctl.d/*.conf 2>/dev/null)
+      cat $files | grep -qE '^\s*net[./]core[./]somaxconn\s*=\s*8192\s*$' \
+        && cat $files | grep -qE '^\s*net[./]ipv4[./]tcp_keepalive_time\s*=\s*600\s*$'
+solution: |
+  cat > /etc/sysctl.d/90-lab-network.conf <<'CONF'
+  net.core.somaxconn = 8192
+  net.ipv4.tcp_keepalive_time = 600
+  CONF
+  sysctl -p /etc/sysctl.d/90-lab-network.conf    # or: sysctl --system (loads all files)
+  sysctl net.core.somaxconn net.ipv4.tcp_keepalive_time
+  # sysctl -w name=value changes the running kernel only; it is lost at reboot.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/sysctl.8.html
+  - https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html

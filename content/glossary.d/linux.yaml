@@ -1,0 +1,272 @@
+# Linux system administration glossary (LFCS). Shown when you click a highlighted term.
+terms:
+- id: lx-systemd
+  term: systemd
+  match: [systemd, systemctl]
+  definition: The init system and service manager of most Linux distributions. It runs as PID 1, starts services and controls them with `systemctl`.
+  es: Sistema de arranque y gestor de servicios de Linux; se controla con systemctl.
+- id: lx-unit-file
+  term: Unit file
+  match: [unit file, unit files, drop-in, drop-ins, override.conf]
+  definition: A text file that describes something systemd manages (a service, timer, mount, socket...). A drop-in is an extra file that changes some settings of a unit.
+  es: Archivo de unidad de systemd; un drop-in es un archivo extra que sobrescribe ajustes.
+- id: lx-systemd-target
+  term: systemd target
+  match: [target unit, multi-user.target, rescue.target, emergency.target, rescue mode, emergency mode]
+  definition: A unit that groups other units and represents a system state, like the normal server state (multi-user.target) or a minimal repair shell (rescue.target).
+  es: Unidad de systemd que agrupa otras y representa un estado del sistema (normal, rescate...).
+- id: lx-timer
+  term: systemd timer
+  match: [systemd timer, systemd timers, timer unit, OnCalendar]
+  definition: A `.timer` unit that starts a matching service at given times or intervals. It is the systemd alternative to cron.
+  es: Temporizador de systemd; arranca un servicio en horarios o intervalos (alternativa a cron).
+- id: lx-journald
+  term: systemd journal
+  match: [journalctl, systemd journal, systemd-journald]
+  definition: The logging system of systemd. `systemd-journald` collects log messages from the kernel and services; `journalctl` reads them.
+  es: Registro (logs) de systemd; se consulta con journalctl.
+- id: lx-cron
+  term: cron
+  match: [cron, crontab, crontabs]
+  definition: The classic Linux scheduler. It runs commands at times written in a crontab, with five time fields (minute, hour, day of month, month, day of week).
+  es: Programador de tareas clásico de Linux; las tareas se escriben en un crontab.
+- id: lx-pid
+  term: PID
+  match: [PID, PIDs, process ID]
+  definition: Process ID, the number the kernel gives to each running process. PID 1 is the init system.
+  es: Identificador numérico de un proceso.
+- id: lx-signal
+  term: Signal
+  match: [SIGTERM, SIGKILL, SIGHUP, SIGSTOP]
+  definition: A short message the kernel delivers to a process, for example SIGTERM (please stop) or SIGKILL (stop now, cannot be caught). Sent with `kill`.
+  es: Señal enviada a un proceso (por ejemplo SIGTERM o SIGKILL) con kill.
+- id: lx-nice
+  term: Nice value
+  match: [nice value, nice values, niceness, renice]
+  definition: The CPU priority hint of a process, from -20 (highest priority) to 19 (lowest). Set with `nice` and `renice`.
+  es: Valor de prioridad de CPU de un proceso (-20 alta, 19 baja).
+- id: lx-apt
+  term: APT
+  match: [APT, dpkg, deb package, .deb]
+  definition: The package manager of Debian and Ubuntu. `apt` downloads and installs `.deb` packages from repositories; `dpkg` is the lower-level tool.
+  es: Gestor de paquetes de Debian/Ubuntu (apt, dpkg).
+- id: lx-sysctl
+  term: sysctl
+  match: [sysctl, kernel parameter, kernel parameters]
+  definition: A tool and interface to read and change kernel parameters at runtime (files under /proc/sys). Files in /etc/sysctl.d/ apply them at boot.
+  es: Herramienta para ver y cambiar parámetros del kernel en tiempo de ejecución.
+- id: lx-grub
+  term: GRUB
+  match: [GRUB, boot loader]
+  definition: The boot loader on most Linux systems. It loads the kernel and lets you change the kernel command line at boot.
+  es: Gestor de arranque que carga el kernel.
+- id: lx-filesystem
+  term: Filesystem
+  match: [filesystem, filesystems, ext4, XFS]
+  definition: The structure that stores files and directories on a disk or partition, for example ext4 or XFS. Created with mkfs and attached with mount.
+  es: Sistema de archivos (ext4, XFS...).
+- id: lx-fstab
+  term: fstab
+  match: [fstab, /etc/fstab]
+  definition: The file `/etc/fstab` lists the filesystems to mount at boot, with device, mount point, type and options.
+  es: Archivo que lista los sistemas de archivos que se montan al arrancar.
+- id: lx-lvm
+  term: LVM
+  match: [LVM, logical volume, logical volumes, volume group, volume groups, physical volume, physical volumes]
+  definition: Logical Volume Manager. It pools disks (physical volumes) into volume groups and cuts flexible logical volumes from them, which can grow later.
+  es: Gestor de volúmenes lógicos; agrupa discos y crea volúmenes redimensionables.
+- id: lx-swap
+  term: Swap
+  match: [swap, swap space, swap file]
+  definition: Disk space (a partition or file) the kernel uses as extra memory when RAM is full. Set up with mkswap and swapon.
+  es: Espacio en disco usado como memoria adicional.
+- id: lx-nfs
+  term: NFS
+  match: [NFS, Network File System]
+  definition: A protocol to share directories over the network. A server exports a directory and clients mount it like a local filesystem.
+  es: Sistema de archivos en red para compartir directorios.
+- id: lx-automount
+  term: Automount
+  match: [automount, automounter, autofs]
+  definition: Mounting a filesystem only when someone first accesses it, and unmounting it when idle. Done by autofs or systemd automount units.
+  es: Montaje automático al acceder al directorio.
+- id: lx-virtual-filesystem
+  term: Virtual filesystem
+  match: [virtual filesystem, procfs, sysfs]
+  definition: A filesystem whose content the kernel creates in memory, such as /proc and /sys. It uses no disk space.
+  es: Sistema de archivos virtual generado por el kernel (/proc, /sys).
+- id: lx-inode
+  term: Inode
+  match: [inode, inodes]
+  definition: The data structure that stores the metadata of one file (owner, permissions, size, block locations). A filesystem has a fixed number of them.
+  es: Estructura que guarda los metadatos de un archivo.
+- id: lx-iostat
+  term: iostat
+  match: [iostat, iotop]
+  definition: A tool (package sysstat) that shows disk input/output statistics per device, such as reads, writes, wait time and utilisation.
+  es: Herramienta que muestra estadísticas de E/S de disco.
+- id: lx-raid
+  term: RAID
+  match: [RAID, mdadm, RAID 1]
+  definition: Combining several disks for redundancy or speed. On Linux, software RAID is managed with mdadm.
+  es: Combinación de discos para redundancia o velocidad (mdadm).
+- id: lx-loop-device
+  term: Loop device
+  match: [loop device, loop devices, losetup]
+  definition: A virtual block device (/dev/loopN) that makes a regular file look like a disk.
+  es: Dispositivo de bloque virtual que hace que un archivo parezca un disco.
+- id: lx-libvirt
+  term: libvirt
+  match: [libvirt, virsh, KVM]
+  definition: A toolkit and daemon to manage virtual machines (domains) on KVM/QEMU and other hypervisors. `virsh` is its command-line tool.
+  es: Herramientas para gestionar máquinas virtuales (virsh).
+- id: lx-vm
+  term: Virtual machine
+  match: [virtual machine, virtual machines, VM, VMs]
+  definition: A full computer emulated in software, with its own kernel, running on a host's hypervisor.
+  es: Máquina virtual.
+- id: lx-container-engine
+  term: Container engine
+  match: [container engine, container engines, Podman]
+  definition: Software that builds, runs and manages containers on a host, such as Docker or Podman.
+  es: Motor de contenedores (Docker, Podman).
+- id: lx-selinux
+  term: SELinux
+  match: [SELinux, getenforce, setenforce, SELinux context, SELinux contexts, SELinux label]
+  definition: Security-Enhanced Linux, a mandatory access control system that labels files and processes and allows only the access its policy permits.
+  es: Control de acceso obligatorio basado en etiquetas (RHEL y derivados).
+- id: lx-netplan
+  term: Netplan
+  match: [netplan]
+  definition: The network configuration tool of Ubuntu. It reads YAML files in /etc/netplan/ and configures systemd-networkd or NetworkManager.
+  es: Herramienta de configuración de red de Ubuntu (archivos YAML).
+- id: lx-hostname
+  term: Host name
+  match: [host name, hostname, /etc/hosts]
+  definition: The name of a computer on the network. Names can be mapped to addresses locally in /etc/hosts.
+  es: Nombre del equipo; /etc/hosts asigna nombres a IPs localmente.
+- id: lx-nsswitch
+  term: Name Service Switch
+  match: [NSS, nsswitch.conf, Name Service Switch]
+  definition: The system that decides where Linux looks up users, groups and host names (files, DNS, LDAP...), configured in /etc/nsswitch.conf.
+  es: Mecanismo que define dónde se buscan usuarios, grupos y nombres de host.
+- id: lx-static-route
+  term: Static route
+  match: [static route, static routes, default route]
+  definition: A route added by an administrator that tells the kernel which gateway to use for a destination network.
+  es: Ruta configurada a mano hacia una red a través de un gateway.
+- id: lx-ntp
+  term: NTP
+  match: [NTP, chrony, chronyc, timesyncd, time synchronization]
+  definition: Network Time Protocol, used to keep clocks correct. Clients include chrony and systemd-timesyncd.
+  es: Protocolo para sincronizar la hora (chrony, timesyncd).
+- id: lx-ssh
+  term: SSH
+  match: [SSH, OpenSSH, sshd]
+  definition: Secure Shell, an encrypted protocol for remote login and file transfer. OpenSSH provides the client `ssh` and the server `sshd`.
+  es: Protocolo cifrado para acceso remoto y transferencia de archivos.
+- id: lx-ssh-key
+  term: SSH key pair
+  match: [key pair, key pairs, authorized_keys, public key, private key]
+  definition: A private key (kept secret on the client) and a public key (copied to ~/.ssh/authorized_keys on servers) used to log in without a password.
+  es: Par de claves (privada y pública) para iniciar sesión sin contraseña.
+- id: lx-socket-activation
+  term: Socket activation
+  match: [socket activation, ssh.socket]
+  definition: systemd listens on a port itself and starts the service only when a connection arrives, passing the socket to it.
+  es: systemd escucha en el puerto y arranca el servicio cuando llega una conexión.
+- id: lx-ufw
+  term: ufw
+  match: [ufw, Uncomplicated Firewall]
+  definition: Uncomplicated Firewall, the simple firewall front end of Ubuntu. It writes iptables/nftables rules for you.
+  es: Cortafuegos sencillo de Ubuntu.
+- id: lx-nat
+  term: NAT
+  match: [NAT, DNAT, SNAT, masquerade, port redirection]
+  definition: Network Address Translation, changing the source or destination address/port of packets, for example to redirect a port or share one public address.
+  es: Traducción de direcciones de red (redirección de puertos, enmascaramiento).
+- id: lx-bridge
+  term: Network bridge
+  match: [network bridge, bridge device, bridge devices]
+  definition: A virtual switch in the kernel that connects several network interfaces at the Ethernet level, often used for virtual machines.
+  es: Puente de red; switch virtual entre interfaces.
+- id: lx-bond
+  term: Bonding
+  match: [bonding, bond device, bond devices]
+  definition: Joining several network interfaces into one logical interface for failover or more bandwidth.
+  es: Agregación de varias interfaces de red en una.
+- id: lx-reverse-proxy
+  term: Reverse proxy
+  match: [reverse proxy, reverse proxies, load balancer, load balancers, upstream block]
+  definition: A server, such as nginx, that receives client requests and forwards them to one or more backend servers, which can spread the load.
+  es: Proxy inverso; recibe peticiones y las reenvía a servidores internos.
+- id: lx-git
+  term: Git
+  match: [Git, git commit, branch, branches]
+  definition: A distributed version control system that records changes to files as commits, with branches, merges and tags.
+  es: Sistema de control de versiones distribuido.
+- id: lx-load-average
+  term: Load average
+  match: [load average, load averages]
+  definition: The average number of tasks that are running or waiting for CPU (or uninterruptible I/O) over 1, 5 and 15 minutes.
+  es: Carga media del sistema en 1, 5 y 15 minutos.
+- id: lx-oom-killer
+  term: OOM killer
+  match: [OOM killer, out of memory]
+  definition: The kernel function that kills a process when the system runs out of memory and swap.
+  es: Función del kernel que mata procesos cuando se acaba la memoria.
+- id: lx-csr
+  term: CSR
+  match: [CSR, CSRs, certificate signing request, certificate signing requests]
+  definition: A file with a public key and identity details that you send to a certificate authority, which returns a signed certificate.
+  es: Solicitud de firma de certificado que se envía a una CA.
+- id: lx-regex
+  term: Regular expression
+  match: [regular expression, regular expressions, regex]
+  definition: A pattern that describes text, used by grep, sed and awk to find or replace matching strings.
+  es: Expresión regular; patrón para buscar texto.
+- id: lx-shadow
+  term: Shadow file
+  match: [/etc/shadow, password aging, shadow file]
+  definition: The file /etc/shadow, readable only by root, that stores password hashes and password aging data of local users.
+  es: Archivo que guarda los hashes de contraseña y su caducidad.
+- id: lx-supplementary-group
+  term: Supplementary group
+  match: [supplementary group, supplementary groups, primary group]
+  definition: An extra group a user belongs to, in addition to the primary group that new files get by default.
+  es: Grupo secundario de un usuario (además del grupo principal).
+- id: lx-acl
+  term: ACL
+  match: [ACL, ACLs, setfacl, getfacl, default ACL]
+  definition: Access Control List, extra permission entries for specific users or groups on a file, beyond owner, group and others.
+  es: Lista de control de acceso; permisos extra para usuarios o grupos concretos.
+- id: lx-sudo
+  term: sudo
+  match: [sudo, sudoers, visudo]
+  definition: A tool that lets permitted users run commands as root or another user, following the rules in /etc/sudoers and /etc/sudoers.d/.
+  es: Permite ejecutar comandos como root según las reglas de sudoers.
+- id: lx-pam
+  term: PAM
+  match: [PAM, pam_limits, Pluggable Authentication Modules]
+  definition: Pluggable Authentication Modules, the framework that handles login, passwords and session setup (for example limits) for many programs.
+  es: Módulos de autenticación que gestionan el inicio de sesión.
+- id: lx-ulimit
+  term: Resource limit
+  match: [ulimit, resource limit, resource limits, nproc, nofile]
+  definition: A per-process limit, such as the number of open files (nofile) or processes (nproc), with a soft value and a hard maximum.
+  es: Límite de recursos por proceso (archivos abiertos, procesos).
+- id: lx-ldap
+  term: LDAP
+  match: [LDAP, SSSD]
+  definition: Lightweight Directory Access Protocol, used for central directories of users and groups. On clients, SSSD connects it to NSS and PAM.
+  es: Protocolo de directorio central de usuarios; SSSD lo integra en el cliente.
+- id: lx-login-shell
+  term: Login shell
+  match: [login shell, login shells, /etc/profile.d]
+  definition: The shell started when a user logs in (console, SSH, `su -`). It reads /etc/profile, /etc/profile.d/*.sh and ~/.profile.
+  es: Shell de inicio de sesión; lee /etc/profile y ~/.profile.
+- id: lx-environment-variable
+  term: Environment variable
+  match: [environment variable, environment variables]
+  definition: A named value, such as PATH or HOME, that a process passes to the programs it starts.
+  es: Variable de entorno.
