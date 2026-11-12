@@ -1,0 +1,45 @@
+id: dca-orch-001
+title: Run a replicated service with a published port
+domain: orchestration
+difficulty: 1
+minutes: 6
+environment: docker
+setup: |
+  [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init >/dev/null
+task: |
+  This engine is already a one-node **swarm** manager (`docker node ls`).
+
+  Create a swarm service `web-front`:
+  - image `nginx:1.27-alpine`, **3 replicas**;
+  - publish port **8080** on the swarm (routing mesh) to port 80 of the tasks;
+  - the service has the label `tier=front`.
+
+  Check it from the terminal: `curl http://docker:8080/`.
+checks:
+  - name: Service `web-front` is replicated with 3 replicas
+    run: '[ "$(docker service inspect -f "{{.Spec.Mode.Replicated.Replicas}}" web-front)" = 3 ]'
+  - name: 3 tasks of `web-front` are running
+    run: |
+      out=$(docker service ps web-front --filter desired-state=running --format '{{.CurrentState}}') || exit 1
+      [ "$(echo "$out" | grep -c '^Running')" = 3 ]
+  - name: Port 8080 is published to target port 80
+    run: |
+      out=$(docker service inspect web-front) || exit 1
+      echo "$out" | jq -e '[.[0].Endpoint.Ports[]? | select(.PublishedPort == 8080 and .TargetPort == 80)] | length == 1' >/dev/null
+  - name: The service has the label `tier=front`
+    run: '[ "$(docker service inspect -f "{{index .Spec.Labels \"tier\"}}" web-front)" = front ]'
+  - name: http://docker:8080/ answers with nginx
+    run: |
+      out=$(curl -s -m 5 http://docker:8080/) || exit 1
+      echo "$out" | grep -qi 'welcome to nginx'
+solution: |
+  docker service create --name web-front --replicas 3 \
+    --publish published=8080,target=80 --label tier=front nginx:1.27-alpine
+  docker service ls
+  docker service ps web-front
+  curl -s http://docker:8080/ | head -5
+  # Change the number of replicas later: docker service scale web-front=5
+docs:
+  - https://docs.docker.com/engine/swarm/services/
+  - https://docs.docker.com/reference/cli/docker/service/create/
+  - https://docs.docker.com/engine/swarm/ingress/

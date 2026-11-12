@@ -1,0 +1,64 @@
+id: dca-img-004
+title: Clean up old and dangling images safely
+domain: images
+difficulty: 2
+minutes: 8
+environment: docker
+setup: |
+  mkdir -p /lab/cleanup && cd /lab/cleanup
+  # two old builds without a tag (dangling), then the current one with a tag
+  for v in 1 2 3; do
+    printf 'FROM alpine:3.20\nLABEL lab.task=cleanup\nRUN echo build-%s > /v\n' "$v" > Dockerfile
+    if [ "$v" = 3 ]; then docker build -q -t cleanup/app:latest . >/dev/null; else docker build -q . >/dev/null; fi
+  done
+  printf 'FROM alpine:3.20\nLABEL lab.task=cleanup lab.cleanup=yes\nRUN echo tmp-a > /t\n' > Dockerfile
+  docker build -q -t cleanup/tmp-a:1 . >/dev/null
+  printf 'FROM alpine:3.20\nLABEL lab.task=cleanup lab.cleanup=yes\nRUN echo tmp-b > /t\n' > Dockerfile
+  docker build -q -t cleanup/tmp-b:1 . >/dev/null
+  printf 'FROM alpine:3.20\nLABEL lab.task=cleanup\nRUN echo keep > /k\n' > Dockerfile
+  docker build -q -t cleanup/keep:1 . >/dev/null
+  rm Dockerfile
+  docker create --name cleanup-old cleanup/tmp-a:1 true >/dev/null
+task: |
+  The images of the `cleanup` project (they all have the label `lab.task=cleanup`) use too much
+  disk space. Clean them up:
+
+  1. Remove the **dangling** images of this project (old builds of `cleanup/app` that have
+     no tag).
+  2. Remove **every image with the label `lab.cleanup=yes`**. One of them is used by the
+     stopped container `cleanup-old`, which is not needed any more: remove it too.
+  3. **Keep** `cleanup/keep:1` and `cleanup/app:latest`, and do not remove images of other
+     projects (so `docker image prune -a` or `docker system prune -a` is **not** a good idea here).
+
+  Tip: `docker image ls` and `docker image prune` accept `--filter`.
+checks:
+  - name: No dangling images with the label `lab.task=cleanup` remain
+    run: |
+      out=$(docker image ls -q --filter dangling=true --filter label=lab.task=cleanup) || exit 1
+      [ -z "$out" ]
+  - name: No images with the label `lab.cleanup=yes` remain
+    run: |
+      out=$(docker image ls -q --filter label=lab.cleanup=yes) || exit 1
+      [ -z "$out" ]
+  - name: The container `cleanup-old` was removed
+    run: '! docker container inspect cleanup-old >/dev/null 2>&1'
+  - name: '`cleanup/keep:1` and `cleanup/app:latest` still exist'
+    run: docker image inspect cleanup/keep:1 cleanup/app:latest >/dev/null
+    guard: true
+  - name: The base image `alpine:3.20` still exists (other projects use it)
+    run: docker image inspect alpine:3.20 >/dev/null
+    guard: true
+solution: |
+  docker image ls --filter label=lab.task=cleanup
+  docker image ls --filter dangling=true
+  # 1. dangling images of this project only
+  docker image prune -f --filter label=lab.task=cleanup
+  # 2. the stopped container first, then the labelled images
+  docker rm cleanup-old
+  docker image rm $(docker image ls -q --filter label=lab.cleanup=yes | sort -u)
+  docker image ls --filter label=lab.task=cleanup
+  # `docker image prune -a` would also delete cleanup/keep:1 (no container uses it).
+docs:
+  - https://docs.docker.com/engine/manage-resources/pruning/
+  - https://docs.docker.com/reference/cli/docker/image/prune/
+  - https://docs.docker.com/reference/cli/docker/image/ls/#filter

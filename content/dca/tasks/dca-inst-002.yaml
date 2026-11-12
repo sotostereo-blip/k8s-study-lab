@@ -1,0 +1,45 @@
+id: dca-inst-002
+title: Resource limits and restart policies
+domain: install
+difficulty: 2
+minutes: 8
+environment: docker
+setup: |
+  docker run -d --name old-worker alpine:3.20 sleep 1d >/dev/null
+  docker inspect -f '{{.Id}}' old-worker > /var/tmp/dca-inst-002.id
+task: |
+  1. Start a container `limited-worker` from `alpine:3.20` with the command `sleep 1d` and:
+     - a memory limit of **128 MiB** and **no swap** on top of it;
+     - at most **half a CPU**;
+     - at most **100 processes** (PIDs);
+     - the restart policy **`unless-stopped`**.
+  2. The running container `old-worker` has no limits. **Without re-creating it**, change it to:
+     - memory limit **256 MiB**;
+     - restart policy **`on-failure`** with at most **5** retries.
+checks:
+  - name: '`limited-worker`: memory 128 MiB, memory+swap 128 MiB'
+    run: '[ "$(docker inspect -f "{{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}" limited-worker)" = "134217728 134217728" ]'
+  - name: '`limited-worker`: 0.5 CPU and pids limit 100'
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig}}' limited-worker) || exit 1
+      echo "$out" | jq -e '(.NanoCpus == 500000000 or (.CpuQuota > 0 and (.CpuQuota / .CpuPeriod) == 0.5)) and .PidsLimit == 100' >/dev/null
+  - name: '`limited-worker` has restart policy unless-stopped and is running'
+    run: '[ "$(docker inspect -f "{{.HostConfig.RestartPolicy.Name}} {{.State.Running}}" limited-worker)" = "unless-stopped true" ]'
+  - name: '`old-worker`: memory 256 MiB and restart on-failure:5'
+    run: '[ "$(docker inspect -f "{{.HostConfig.Memory}} {{.HostConfig.RestartPolicy.Name}}:{{.HostConfig.RestartPolicy.MaximumRetryCount}}" old-worker)" = "268435456 on-failure:5" ]'
+  - name: '`old-worker` is the same container, still running'
+    run: '[ "$(docker inspect -f "{{.Id}} {{.State.Running}}" old-worker)" = "$(cat /var/tmp/dca-inst-002.id) true" ]'
+    guard: true
+solution: |
+  docker run -d --name limited-worker \
+    --memory 128m --memory-swap 128m --cpus 0.5 --pids-limit 100 \
+    --restart unless-stopped alpine:3.20 sleep 1d
+  docker stats --no-stream limited-worker
+  # change a running container in place
+  docker update --memory 256m --memory-swap 512m --restart on-failure:5 old-worker
+  docker inspect -f '{{.HostConfig.Memory}} {{.HostConfig.RestartPolicy}}' old-worker
+  # --memory-swap is memory + swap: equal to --memory means no swap at all.
+docs:
+  - https://docs.docker.com/engine/containers/resource_constraints/
+  - https://docs.docker.com/engine/containers/start-containers-automatically/
+  - https://docs.docker.com/reference/cli/docker/container/update/

@@ -1,0 +1,71 @@
+id: dca-img-002
+title: Non-root image with a HEALTHCHECK
+domain: images
+difficulty: 2
+minutes: 10
+environment: docker
+setup: |
+  mkdir -p /lab/api && cd /lab/api
+  cat > app.py <<'PY'
+  from http.server import BaseHTTPRequestHandler, HTTPServer
+
+  class Handler(BaseHTTPRequestHandler):
+      def do_GET(self):
+          body = b"ok\n" if self.path == "/health" else b"hello from api\n"
+          self.send_response(200)
+          self.end_headers()
+          self.wfile.write(body)
+
+  HTTPServer(("", 8000), Handler).serve_forever()
+  PY
+task: |
+  The folder `/lab/api` has a small Python web app `app.py`. It listens on port 8000 and
+  answers `ok` on `/health`. Write `/lab/api/Dockerfile` for it:
+
+  1. Base image `python:3.12-alpine`; copy `app.py` into the image and run it with `python`.
+  2. Create a user `app` with UID **10001** and run the app as this user (not root).
+  3. Document port 8000 with `EXPOSE`.
+  4. Add a `HEALTHCHECK` that calls `http://127.0.0.1:8000/health` **every 5 seconds**
+     (tip: the image has `wget` from BusyBox; it has no `curl`).
+
+  Build the image `lab/api:1.0` and start a container `api-health` from it. Wait until
+  Docker reports the container as **healthy**.
+checks:
+  - name: The image `lab/api:1.0` runs as a non-root user
+    run: |
+      u=$(docker image inspect -f '{{.Config.User}}' lab/api:1.0) || exit 1
+      [ -n "$u" ] && [ "${u%%:*}" != root ] && [ "${u%%:*}" != 0 ]
+  - name: The image has a HEALTHCHECK with an interval of 5 seconds
+    run: |
+      out=$(docker image inspect -f '{{json .Config.Healthcheck}}' lab/api:1.0) || exit 1
+      echo "$out" | jq -e '(.Test | length > 0) and .Test[0] != "NONE" and .Interval == 5000000000' >/dev/null
+  - name: The image exposes port 8000
+    run: |
+      out=$(docker image inspect -f '{{json .Config.ExposedPorts}}' lab/api:1.0) || exit 1
+      echo "$out" | jq -e 'has("8000/tcp")' >/dev/null
+  - name: Container `api-health` runs as UID 10001
+    run: '[ "$(docker exec api-health id -u)" = 10001 ]'
+  - name: Container `api-health` is healthy
+    run: '[ "$(docker inspect -f "{{.State.Health.Status}}" api-health)" = healthy ]'
+solution: |
+  cd /lab/api
+  cat > Dockerfile <<'DF'
+  FROM python:3.12-alpine
+  # -D: no password; -u: fixed UID, so file permissions and policies can rely on it
+  RUN adduser -D -u 10001 app
+  WORKDIR /app
+  COPY app.py .
+  USER app
+  EXPOSE 8000
+  HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8000/health || exit 1
+  CMD ["python", "app.py"]
+  DF
+  docker build -t lab/api:1.0 .
+  docker run -d --name api-health lab/api:1.0
+  docker ps --filter name=api-health      # STATUS shows (health: starting), then (healthy)
+  docker inspect -f '{{json .State.Health}}' api-health | jq
+docs:
+  - https://docs.docker.com/reference/dockerfile/#healthcheck
+  - https://docs.docker.com/reference/dockerfile/#user
+  - https://docs.docker.com/build/building/best-practices/

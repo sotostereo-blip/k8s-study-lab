@@ -1,0 +1,300 @@
+domain: storage
+questions:
+- id: dca-stor-001
+  difficulty: 1
+  type: multiple
+  question: "A database container is removed and created again. Which kinds of storage keep its data? (Choose two.)"
+  options:
+  - id: a
+    text: "A named volume mounted at the data folder"
+  - id: b
+    text: "A tmpfs mount at the data folder"
+    why: "tmpfs lives in memory. Data is lost when the container stops."
+  - id: c
+    text: "A bind mount of a host folder at the data folder"
+  - id: d
+    text: "The writable container layer"
+    why: "The container layer is deleted with the container."
+  answer: [a, c]
+  explanation: |
+    Volumes and bind mounts live outside the container, so the data stays when the container is
+    removed. Volumes are managed by Docker and are the preferred way to persist data:
+    `docker run -v pgdata:/var/lib/postgresql/data postgres`. The container layer and tmpfs are lost.
+  docs:
+  - https://docs.docker.com/engine/storage/volumes/
+  glossary: [volume, copy-on-write]
+
+- id: dca-stor-002
+  difficulty: 2
+  type: multiple
+  question: "Which statements compare volumes and bind mounts correctly? (Choose two.)"
+  options:
+  - id: a
+    text: "Volumes cannot be shared between containers"
+    why: "Several containers can mount the same volume, read-write or read-only."
+  - id: b
+    text: "Docker manages volumes in its own storage area; bind mounts use any host path"
+  - id: c
+    text: "Volume drivers can store data on remote systems, such as NFS or cloud storage"
+  - id: d
+    text: "A bind mount is copied into the image at build time"
+    why: "Mounts exist only at run time. Images never include bind-mounted data."
+  answer: [b, c]
+  explanation: |
+    Volumes live under /var/lib/docker/volumes (with the local driver), are created and listed with
+    `docker volume`, and work on Linux and Windows. Bind mounts depend on the folder structure of the
+    host, which is useful for development but less portable.
+  docs:
+  - https://docs.docker.com/engine/storage/
+  - https://docs.docker.com/engine/storage/bind-mounts/
+  glossary: [volume, bind-mount]
+
+- id: dca-stor-003
+  difficulty: 2
+  type: single
+  question: "Where are image layers and the container's writable layer stored on a Linux Docker host?"
+  options:
+  - id: a
+    text: "Inside the registry the image came from"
+    why: "The registry keeps a copy, but containers run from local layers."
+  - id: b
+    text: "Under `/var/lib/docker` (or the containerd store), handled by the storage driver"
+  - id: c
+    text: "In the home folder of the user who ran `docker pull`"
+    why: "The engine stores data, not the CLI user."
+  - id: d
+    text: "In /tmp, so they are cleaned at reboot"
+    why: "Images survive reboots. They are in Docker's data root."
+  answer: [b]
+  explanation: |
+    The storage driver (overlay2, or the containerd overlayfs snapshotter) stacks the read-only image
+    layers and adds a thin writable layer for each container. Files you change are copied up to that
+    layer (copy-on-write). The data root can be changed with `data-root` in daemon.json.
+  docs:
+  - https://docs.docker.com/engine/storage/drivers/
+  - https://docs.docker.com/engine/storage/drivers/overlayfs-driver/
+  glossary: [storage-driver, image-layer, copy-on-write]
+
+- id: dca-stor-004
+  difficulty: 2
+  type: single
+  question: "A container changes a large file that comes from its image. What happens on disk with overlay2?"
+  options:
+  - id: a
+    text: "The whole file is copied up to the container layer, and the change is made there"
+  - id: b
+    text: "Only the changed bytes are stored in a diff file"
+    why: "overlay2 works at the file level, not at the block level."
+  - id: c
+    text: "The write fails because image files are read-only"
+    why: "The write works, thanks to copy-on-write."
+  - id: d
+    text: "The file in the image layer is changed for all containers"
+    why: "Image layers are read-only. Other containers keep seeing the original."
+  answer: [a]
+  explanation: |
+    overlay2 copies the whole file the first time it is written. This can be slow for big files.
+    Write-heavy data (databases, logs) should go to volumes, which bypass the storage driver.
+  docs:
+  - https://docs.docker.com/engine/storage/drivers/#the-copy-on-write-cow-strategy
+  glossary: [copy-on-write, storage-driver]
+
+- id: dca-stor-005
+  difficulty: 2
+  type: single
+  question: "Which command shows how much disk space images, containers, volumes and the build cache use?"
+  options:
+  - id: a
+    text: "`docker volume ls --size`"
+    why: "`volume ls` has no size flag; `docker system df -v` shows volume sizes."
+  - id: b
+    text: "`docker info --disk`"
+    why: "`docker info` has no `--disk` flag."
+  - id: c
+    text: "`du -sh /var/lib/docker` inside a container"
+    why: "A container does not see the host data root."
+  - id: d
+    text: "`docker system df`"
+  answer: [d]
+  explanation: |
+    `docker system df` gives a summary with reclaimable space; `-v` gives details per object. Then
+    clean with `docker image prune`, `docker container prune`, `docker volume prune` or
+    `docker builder prune`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/system/df/
+  - https://docs.docker.com/engine/manage-resources/pruning/
+  glossary: [volume, build-cache]
+
+- id: dca-stor-006
+  difficulty: 2
+  type: single
+  question: "What does `docker volume prune` remove in current Docker versions (Engine 23 and later)?"
+  options:
+  - id: a
+    text: "Only volumes that are older than seven days"
+    why: "There is no default age rule."
+  - id: b
+    text: "Only anonymous volumes that no container uses, unless you add `--all`"
+  - id: c
+    text: "Every volume on the host, also the ones that containers use"
+    why: "Docker never removes volumes that a container uses."
+  - id: d
+    text: "Unused volumes and the bind-mounted folders of the host"
+    why: "Docker does not manage bind-mount folders and never deletes them."
+  answer: [b]
+  explanation: |
+    Since API 1.42, `docker volume prune` removes only unused anonymous volumes. `--all` (`-a`) also
+    removes unused named volumes. Removed data cannot be restored, so check first with
+    `docker volume ls --filter dangling=true`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/volume/prune/
+  glossary: [volume, dangling-image]
+
+- id: dca-stor-007
+  difficulty: 2
+  type: single
+  question: "Which command mounts the volume `config` read-only at `/etc/app` in a new container?"
+  options:
+  - id: a
+    text: "`docker run --mount type=volume,source=config,target=/etc/app,readonly alpine`"
+  - id: b
+    text: "`docker run --volume-ro config /etc/app alpine`"
+    why: "There is no `--volume-ro` flag."
+  - id: c
+    text: "`docker run -v config:/etc/app:rw alpine`"
+    why: "`rw` means read-write, which is the default."
+  - id: d
+    text: "`docker run --read-only -v config:/etc/app alpine`"
+    why: "`--read-only` makes the root filesystem read-only. Mounted volumes stay writable."
+  answer: [a]
+  explanation: |
+    With `--mount` add `readonly` (or `ro`); with `-v` add `:ro` (`-v config:/etc/app:ro`).
+    `--mount` is more explicit and is required for some options, such as volume driver options.
+  docs:
+  - https://docs.docker.com/engine/storage/volumes/#use-a-read-only-volume
+  glossary: [volume]
+
+- id: dca-stor-008
+  difficulty: 3
+  type: single
+  question: "Which is a typical use of block storage compared with object storage?"
+  options:
+  - id: a
+    text: "Object storage for a database data folder that needs low-latency random writes"
+    why: "Object storage is accessed by whole objects over an API. Databases need block or file storage."
+  - id: b
+    text: "Block storage to share one volume between many hosts at the same time"
+    why: "Most block devices attach to one host at a time. Shared access needs file storage (NFS) or object storage."
+  - id: c
+    text: "Block storage for a database volume; object storage for files accessed over HTTP, like backups or images"
+  - id: d
+    text: "They are the same thing with different names"
+    why: "They differ in access method: block devices vs objects over an API."
+  answer: [c]
+  explanation: |
+    Block storage (EBS, iSCSI, local disks) looks like a disk, has low latency and suits databases.
+    Object storage (S3 and similar) stores whole objects with metadata over HTTP; it is cheap and
+    scales well for backups, logs and static files. File storage (NFS) sits between them.
+  docs:
+  - https://docs.docker.com/engine/storage/volumes/
+  - https://kubernetes.io/docs/concepts/storage/volumes/
+  glossary: [volume, csi]
+
+- id: dca-stor-009
+  difficulty: 2
+  type: single
+  question: "A container needs a scratch folder for secret temporary files that must never be written to disk. Which mount fits?"
+  options:
+  - id: a
+    text: "A bind mount of /tmp from the host"
+    why: "Host /tmp is normally on disk, and it is shared with the host."
+  - id: b
+    text: "The container writable layer"
+    why: "The writable layer is on disk under the data root."
+  - id: c
+    text: "A tmpfs mount"
+  - id: d
+    text: "A named volume"
+    why: "A volume is written to disk on the host."
+  answer: [c]
+  explanation: |
+    `--tmpfs /scratch` or `--mount type=tmpfs,target=/scratch,tmpfs-size=64m` keeps data in host
+    memory only. It disappears when the container stops and cannot be shared between containers.
+  docs:
+  - https://docs.docker.com/engine/storage/tmpfs/
+  glossary: [tmpfs-mount]
+
+- id: dca-stor-010
+  difficulty: 3
+  type: single
+  question: "In Kubernetes, how does a Pod usually get persistent storage from a StorageClass?"
+  options:
+  - id: a
+    text: "The Pod mounts the StorageClass directly as one of its volumes"
+    why: "A StorageClass is a template for provisioning, not a volume itself."
+  - id: b
+    text: "The node copies the data into the container image at start"
+    why: "Images are never changed to store data."
+  - id: c
+    text: "It uses a PVC; the StorageClass makes a PV through a CSI driver"
+  - id: d
+    text: "The Pod gets an emptyDir volume that survives node failure"
+    why: "emptyDir is deleted with the Pod and is tied to its node."
+  answer: [c]
+  explanation: |
+    A PVC asks for size and access mode. If it names a StorageClass, the CSI driver of that class
+    creates a PV dynamically and binds it to the claim. The Pod lists the PVC under `volumes`.
+  docs:
+  - https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  - https://kubernetes.io/docs/concepts/storage/storage-classes/
+  glossary: [pvc, persistent-volume, storage-class, csi]
+
+- id: dca-stor-011
+  difficulty: 2
+  type: single
+  question: "A swarm service uses a volume with the `local` driver. One of its tasks moves from node1 to node2. What does it see?"
+  options:
+  - id: a
+    text: "A new, empty local volume on node2; the data on node1 stays there"
+  - id: b
+    text: "A read-only copy of the data from node1"
+    why: "Nothing is copied. Each node has its own local volume."
+  - id: c
+    text: "The same data, because swarm copies volumes between nodes"
+    why: "Swarm does not replicate local volumes."
+  - id: d
+    text: "The task fails because local volumes are not allowed in services"
+    why: "Local volumes are allowed. They just stay on one node."
+  answer: [a]
+  explanation: |
+    Local volumes live on one host. For data that must follow tasks across nodes, use a volume
+    driver for shared storage (NFS, cloud block storage with a plugin, Swarm CSI volumes), or pin the
+    service to one node with a constraint.
+  docs:
+  - https://docs.docker.com/engine/storage/volumes/#share-data-between-machines
+  glossary: [volume, swarm-task]
+
+- id: dca-stor-012
+  difficulty: 1
+  type: single
+  question: "Which command removes images, stopped containers, unused networks and the dangling build cache in one step?"
+  options:
+  - id: a
+    text: "`docker volume prune --all`"
+    why: "That removes unused volumes only."
+  - id: b
+    text: "`docker system prune`"
+  - id: c
+    text: "`docker rm -f $(docker ps -aq)`"
+    why: "That force-removes all containers, also running ones, and nothing else."
+  - id: d
+    text: "`docker image prune -a`"
+    why: "That removes only images."
+  answer: [b]
+  explanation: |
+    `docker system prune` removes stopped containers, unused networks, dangling images and dangling
+    build cache. `-a` also removes all unused images, and `--volumes` also removes unused anonymous
+    volumes. It asks for confirmation unless you add `-f`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/system/prune/
+  glossary: [dangling-image, build-cache]

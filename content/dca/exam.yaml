@@ -1,0 +1,26 @@
+# Docker Certified Associate (DCA), run by Mirantis since 2019/2020 (Docker sold Docker Enterprise).
+# Official page: https://training.mirantis.com/certification/dca-certification-exam/
+# Study guide v1.5 (January 2025): https://a.storyblok.com/f/146871/x/2001ce939c/docker-study-guide_v1-5-jan-2025.pdf
+id: dca
+name: Docker Certified Associate (DCA)
+format: multiple-choice
+exam_minutes: 90
+exam_questions: 55
+passing_score: 65
+facts_note: >-
+  Official (Mirantis, study guide v1.5, January 2025): 55 questions in 90 minutes, 13 classic
+  multiple-choice items and 42 DOMC (Discrete Option Multiple Choice) items, where the options
+  appear one at a time and you answer YES or NO to each. Domain weights are official. The
+  passing score is NOT published ("Docker does not publish exam passing scores"); 65% is used
+  here. Price: USD 199 per attempt. The study guide still names old Docker Enterprise products
+  (UCP, DTR, devicemapper); today they are Mirantis Kubernetes Engine (MKE) and Mirantis Secure
+  Registry (MSR), and devicemapper was removed in Docker Engine 25. This bank uses the classic
+  multiple-choice format and current Docker Engine behavior (Engine 29), so it is also useful
+  for Docker skills in general.
+domains:
+  - { id: orchestration, name: "Orchestration", weight: 25 }
+  - { id: images, name: "Image Creation, Management, and Registry", weight: 20 }
+  - { id: install, name: "Installation and Configuration", weight: 15 }
+  - { id: networking, name: "Networking", weight: 15 }
+  - { id: security, name: "Security", weight: 15 }
+  - { id: storage, name: "Storage and Volumes", weight: 10 }

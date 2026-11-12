@@ -1,0 +1,58 @@
+id: dca-orch-005
+title: Rolling update with a hostname template
+domain: orchestration
+difficulty: 3
+minutes: 12
+environment: docker
+setup: |
+  [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init >/dev/null
+  mkdir -p /lab/roll
+  for v in 1 2; do
+    printf 'FROM busybox:1.36\nRUN echo "roll v%s" > /version\nCMD ["sleep", "86400"]\n' "$v" > /lab/roll/Dockerfile
+    docker build -q -t "registry:5000/lab/roll:$v" /lab/roll >/dev/null
+    docker push -q "registry:5000/lab/roll:$v" >/dev/null
+  done
+  rm /lab/roll/Dockerfile
+  docker service create -d -q --name api-roll --replicas 4 registry:5000/lab/roll:1 >/dev/null
+task: |
+  The service `api-roll` runs 4 tasks of `registry:5000/lab/roll:1`.
+  Version 2 is in the registry as `registry:5000/lab/roll:2`.
+
+  1. Change the update settings of `api-roll`: update **2 tasks at a time**, wait **5 seconds**
+     between batches, and **roll back** automatically if an update fails.
+  2. Give each task a hostname built with a **template**: `<service name>-<task slot>`
+     (for example `api-roll-3`).
+  3. Roll out `registry:5000/lab/roll:2` to all 4 tasks.
+checks:
+  - name: Update config is parallelism 2, delay 5s, failure action rollback
+    run: |
+      out=$(docker service inspect api-roll) || exit 1
+      echo "$out" | jq -e '.[0].Spec.UpdateConfig | .Parallelism == 2 and .Delay == 5000000000 and .FailureAction == "rollback"' >/dev/null
+  - name: The hostname is the template `{{.Service.Name}}-{{.Task.Slot}}`
+    run: |
+      out=$(docker service inspect api-roll) || exit 1
+      echo "$out" | jq -e '.[0].Spec.TaskTemplate.ContainerSpec.Hostname | gsub(" "; "") == "{{.Service.Name}}-{{.Task.Slot}}"' >/dev/null
+  - name: The service image is `registry:5000/lab/roll:2`
+    run: |
+      img=$(docker service inspect -f '{{.Spec.TaskTemplate.ContainerSpec.Image}}' api-roll) || exit 1
+      case "$img" in registry:5000/lab/roll:2|registry:5000/lab/roll:2@*) ;; *) exit 1;; esac
+  - name: 4 running tasks use version 2 and have hostnames like `api-roll-<slot>`
+    run: |
+      ids=$(docker ps -q --filter label=com.docker.swarm.service.name=api-roll) || exit 1
+      [ "$(echo "$ids" | grep -c .)" = 4 ] || exit 1
+      for id in $ids; do
+        [ "$(docker exec "$id" cat /version)" = "roll v2" ] || exit 1
+        docker exec "$id" hostname | grep -Eqx 'api-roll-[0-9]+' || exit 1
+      done
+solution: |
+  docker service update \
+    --update-parallelism 2 --update-delay 5s --update-failure-action rollback \
+    --hostname '{{.Service.Name}}-{{.Task.Slot}}' \
+    --image registry:5000/lab/roll:2 api-roll
+  docker service ps api-roll                       # old tasks Shutdown, new ones Running
+  docker service inspect --pretty api-roll
+  # Go back to the previous spec if needed: docker service rollback api-roll
+docs:
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/
+  - https://docs.docker.com/engine/swarm/services/#create-services-using-templates
+  - https://docs.docker.com/reference/cli/docker/service/update/

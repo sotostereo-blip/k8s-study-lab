@@ -1,0 +1,602 @@
+domain: images
+questions:
+- id: dca-img-001
+  difficulty: 1
+  type: single
+  question: "Which Dockerfile instruction must normally come first (only `ARG`, comments and parser directives may come before it)?"
+  options:
+  - id: a
+    text: "`LABEL`"
+    why: "`LABEL` adds metadata to the image of a stage, so it comes after `FROM`."
+  - id: b
+    text: "`WORKDIR`"
+    why: "`WORKDIR` sets the folder for later instructions, inside a stage that `FROM` started."
+  - id: c
+    text: "`FROM`"
+  - id: d
+    text: "`RUN`"
+    why: "`RUN` executes a command in a build stage. A stage must exist first, and `FROM` starts it."
+  answer: [c]
+  explanation: |
+    `FROM` starts a build stage and sets its base image. Only parser directives (`# syntax=`),
+    comments and `ARG` (to parameterize `FROM` itself) can come before it.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#from
+  glossary: [dockerfile]
+
+- id: dca-img-002
+  difficulty: 2
+  type: multiple
+  question: "Which things can `ADD` do in a Dockerfile that `COPY` cannot? (Choose two.)"
+  options:
+  - id: a
+    text: "Extract a local tar archive into the image"
+  - id: b
+    text: "Download a file from a remote URL"
+  - id: c
+    text: "Set the owner of the copied files with `--chown`"
+    why: "Both `COPY` and `ADD` accept `--chown` and `--chmod`."
+  - id: d
+    text: "Copy files from an earlier build stage with `--from`"
+    why: "Only `COPY` supports `--from`. `ADD` reads from the build context, URLs and Git."
+  answer: [a, b]
+  explanation: |
+    `COPY` copies files from the build context (or another stage). `ADD` does the same and also
+    fetches URLs and Git repositories, and extracts local tar files. Docker recommends `COPY` when
+    you do not need these extras, because it is more predictable.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#add
+  - https://docs.docker.com/build/building/best-practices/#add-or-copy
+  glossary: [dockerfile, build-context]
+
+- id: dca-img-003
+  difficulty: 2
+  type: single
+  question: "A Dockerfile has `ENTRYPOINT [\"ping\"]` and `CMD [\"localhost\"]`. What runs with `docker run img example.com`?"
+  options:
+  - id: a
+    text: "`ping localhost`"
+    why: "CMD is only the default. When you give arguments, the default is not used."
+  - id: b
+    text: "`example.com`"
+    why: "Arguments replace CMD, not ENTRYPOINT. To replace the entrypoint you need `--entrypoint`."
+  - id: c
+    text: "`ping example.com`"
+  - id: d
+    text: "`ping localhost example.com`"
+    why: "Arguments of `docker run` replace CMD completely. They are not added after it."
+  answer: [c]
+  explanation: |
+    With exec-form ENTRYPOINT and CMD, the container runs ENTRYPOINT + CMD. CMD gives default
+    arguments; arguments after the image name in `docker run` replace CMD. This pattern makes an
+    image behave like a command.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#understand-how-cmd-and-entrypoint-interact
+  glossary: [entrypoint, cmd-instruction]
+
+- id: dca-img-004
+  difficulty: 2
+  type: single
+  question: "What does `EXPOSE 8080` in a Dockerfile do?"
+  options:
+  - id: a
+    text: "It makes the app inside the container listen on 8080"
+    why: "The app chooses its port. EXPOSE only says which port the image author expects."
+  - id: b
+    text: "It documents the port; it does not publish it on the host"
+  - id: c
+    text: "It opens port 8080 in the host firewall"
+    why: "EXPOSE never changes the host. It is only metadata in the image."
+  - id: d
+    text: "It publishes port 8080 on the host when the container starts"
+    why: "Publishing needs `-p` (or `-P` to publish all exposed ports to random host ports)."
+  answer: [b]
+  explanation: |
+    EXPOSE is metadata for people and tools. `docker run -P` publishes all exposed ports to random
+    host ports; `-p 80:8080` publishes one port explicitly, with or without EXPOSE.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#expose
+  - https://docs.docker.com/engine/network/port-publishing/
+  glossary: [published-port, dockerfile]
+
+- id: dca-img-005
+  difficulty: 2
+  type: multiple
+  question: "Which changes make a Dockerfile build faster or the image smaller? (Choose three.)"
+  options:
+  - id: a
+    text: "Put `apt-get update` and `apt-get install` in two separate `RUN` instructions"
+    why: "Separate RUN lines can reuse an old cached `apt-get update` and add a layer. Docker recommends one RUN with both."
+  - id: b
+    text: "Use `ADD` with a URL instead of `COPY` for local files"
+    why: "ADD has no benefit for local files and can break caching. Use COPY for local files."
+  - id: c
+    text: "Add a `.dockerignore` file that leaves out `.git`, logs and local builds"
+  - id: d
+    text: "Use a multi-stage build and copy only the results to the final stage"
+  - id: e
+    text: "Copy dependency files and install them before copying the rest of the code"
+  answer: [c, d, e]
+  explanation: |
+    Order instructions from least to most often changed, so the build cache is reused. Multi-stage
+    builds leave build tools out of the final image. A `.dockerignore` makes the build context
+    smaller and avoids sending secrets or large files to the builder.
+  docs:
+  - https://docs.docker.com/build/building/best-practices/
+  - https://docs.docker.com/build/cache/
+  glossary: [build-cache, multi-stage-build, dockerignore]
+
+- id: dca-img-006
+  difficulty: 2
+  type: single
+  question: "In a multi-stage Dockerfile, how does the final stage get the file `/out/app` from a stage named `build`?"
+  options:
+  - id: a
+    text: "`FROM build COPY /out/app /app`"
+    why: "That is not valid Dockerfile syntax. You copy from another stage with `COPY --from`."
+  - id: b
+    text: "`ADD build:/out/app /app`"
+    why: "ADD reads from the build context or URLs. The stage syntax is `--from=`."
+  - id: c
+    text: "`VOLUME /out/app` in the build stage"
+    why: "VOLUME declares a mount point for containers. It does not share files between build stages."
+  - id: d
+    text: "`COPY --from=build /out/app /app`"
+  answer: [d]
+  explanation: |
+    `COPY --from=<stage name or number>` copies files from an earlier stage (or from any image, like
+    `COPY --from=nginx:1.27 ...`). Only what you copy ends up in the final image.
+  docs:
+  - https://docs.docker.com/build/building/multi-stage/
+  - https://docs.docker.com/reference/dockerfile/#copy---from
+  glossary: [multi-stage-build]
+
+- id: dca-img-007
+  difficulty: 1
+  type: single
+  question: "Which command lists only the IDs of all local images?"
+  options:
+  - id: a
+    text: "`docker ps -q`"
+    why: "`docker ps` lists containers, not images."
+  - id: b
+    text: "`docker image ls --digests`"
+    why: "`--digests` adds a DIGEST column; it still shows the full table."
+  - id: c
+    text: "`docker image inspect --all`"
+    why: "`docker image inspect` needs image names and has no `--all` flag."
+  - id: d
+    text: "`docker image ls -q`"
+  answer: [d]
+  explanation: |
+    `-q`/`--quiet` prints only IDs. It is useful in scripts, for example
+    `docker image rm $(docker image ls -q --filter dangling=true)`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/ls/
+  glossary: [image]
+
+- id: dca-img-008
+  difficulty: 2
+  type: single
+  question: "What does `docker image prune` remove by default?"
+  options:
+  - id: a
+    text: "Images older than 24 hours"
+    why: "Age is only used if you add a filter like `--filter until=24h`."
+  - id: b
+    text: "Only dangling images (no tag and not used by a container)"
+  - id: c
+    text: "All images that no running container uses"
+    why: "That needs `-a/--all`. Without it, only dangling images are removed."
+  - id: d
+    text: "Images, stopped containers, networks and the build cache"
+    why: "That is closer to `docker system prune`."
+  answer: [b]
+  explanation: |
+    `docker image prune` deletes dangling images. `docker image prune -a` deletes every image not
+    used by any container, which can remove images you still need. Filters like
+    `--filter label=...` and `--filter until=...` limit what is removed.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/prune/
+  - https://docs.docker.com/engine/manage-resources/pruning/
+  glossary: [dangling-image]
+
+- id: dca-img-009
+  difficulty: 2
+  type: single
+  question: "`docker image rm app:1` fails with `image is being used by stopped container`. What is the clean way to remove the image?"
+  options:
+  - id: a
+    text: "Remove the stopped container first, then the image"
+  - id: b
+    text: "Restart the Docker Engine, then remove the image"
+    why: "A restart does not remove containers. The stopped container still uses the image."
+  - id: c
+    text: "Use `docker image prune`; it ignores stopped containers"
+    why: "Prune never removes images used by containers, also stopped ones."
+  - id: d
+    text: "Delete the image folder under /var/lib/docker by hand"
+    why: "Never edit Docker's data folder by hand. It corrupts the engine state."
+  answer: [a]
+  explanation: |
+    Docker keeps images that any container (running or stopped) uses. Remove the container with
+    `docker rm`, then the image with `docker image rm`. `docker image rm -f` removes only the tag
+    in this case, leaving the image data in use.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/rm/
+  glossary: [image, container]
+
+- id: dca-img-010
+  difficulty: 2
+  type: single
+  question: "Which command prints only the creation date of the image `nginx:1.27-alpine`?"
+  options:
+  - id: a
+    text: "`docker image history --date nginx:1.27-alpine`"
+    why: "`history` has no `--date` flag. It shows when each layer was created."
+  - id: b
+    text: "`docker image inspect --format '{{.Created}}' nginx:1.27-alpine`"
+  - id: c
+    text: "`docker image inspect nginx:1.27-alpine | grep date`"
+    why: "The JSON field is called `Created`, so this grep finds nothing useful."
+  - id: d
+    text: "`docker image ls --filter created nginx:1.27-alpine`"
+    why: "`created` is not a filter. Filters choose images; `--format` chooses fields."
+  answer: [b]
+  explanation: |
+    `--format` (or `-f`) with a Go template extracts fields from the inspect JSON. Other examples:
+    `{{.Config.Cmd}}`, `{{.Architecture}}`, `{{json .Config.Labels}}`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/inspect/
+  - https://docs.docker.com/engine/cli/formatting/
+  glossary: [image]
+
+- id: dca-img-011
+  difficulty: 1
+  type: single
+  question: "Which command lists the local images whose repository is `nginx`?"
+  options:
+  - id: a
+    text: "`docker image ls --filter name=nginx`"
+    why: "`name` is not an image filter. You can pass the repository as an argument, or use `--filter reference=nginx`."
+  - id: b
+    text: "`docker image history nginx`"
+    why: "`history` shows the layers of one image."
+  - id: c
+    text: "`docker image ls nginx`"
+  - id: d
+    text: "`docker search nginx`"
+    why: "`docker search` looks for images on Docker Hub, not on the local engine."
+  answer: [c]
+  explanation: |
+    `docker image ls [REPOSITORY[:TAG]]` filters by repository. The `reference` filter accepts
+    wildcards, for example `--filter reference='nginx:1.*'`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/ls/#filter
+  glossary: [image, image-tag]
+
+- id: dca-img-012
+  difficulty: 1
+  type: single
+  question: "You built `app:latest` and need the same image as `registry.example.com/team/app:1.4`. What does `docker tag app:latest registry.example.com/team/app:1.4` do?"
+  options:
+  - id: a
+    text: "It uploads the image to the registry"
+    why: "Uploading is `docker push`. Tag only changes local names."
+  - id: b
+    text: "It adds a second name that points to the same image ID"
+  - id: c
+    text: "It copies the image layers into a new image"
+    why: "Tagging copies nothing. Both names point to the same image."
+  - id: d
+    text: "It renames the image and removes `app:latest`"
+    why: "The old tag stays. Remove it with `docker image rm app:latest` if you want."
+  answer: [b]
+  explanation: |
+    A tag is a reference to an image. The registry host and repository in the name tell
+    `docker push` where to send it. Without a host, Docker uses Docker Hub (`docker.io`).
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/tag/
+  glossary: [image-tag, registry, docker-hub]
+
+- id: dca-img-013
+  difficulty: 2
+  type: single
+  question: "Which command shows the layers of an image and the instruction that created each one?"
+  options:
+  - id: a
+    text: "`docker image ls --tree <image>`"
+    why: "`--tree` shows image variants per platform, not the instructions behind the layers."
+  - id: b
+    text: "`docker image history <image>`"
+  - id: c
+    text: "`docker image layers <image>`"
+    why: "There is no `docker image layers` command."
+  - id: d
+    text: "`docker container diff <image>`"
+    why: "`diff` shows file changes of a container compared with its image."
+  answer: [b]
+  explanation: |
+    `docker image history` lists each layer (newest first) with its size and the instruction that
+    made it. `--no-trunc` shows the full commands. Layer digests are in
+    `docker image inspect -f '{{json .RootFS.Layers}}'`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/history/
+  glossary: [image-layer]
+
+- id: dca-img-014
+  difficulty: 3
+  type: single
+  question: "You need an image with a single layer that holds the whole filesystem of a container. Which commands do it?"
+  options:
+  - id: a
+    text: "`docker build --squash-all .`"
+    why: "There is no `--squash-all` flag. The old experimental `--squash` is not supported by BuildKit."
+  - id: b
+    text: "`docker commit <container> flat:1`"
+    why: "commit adds one new layer on top of all the layers of the original image."
+  - id: c
+    text: "`docker save <image> | docker load`"
+    why: "save and load keep every layer and all metadata; they do not flatten."
+  - id: d
+    text: "`docker export <container> | docker import - flat:1`"
+  answer: [d]
+  explanation: |
+    `docker export` writes the container filesystem as one tar file, without history or metadata.
+    `docker import` makes a new image with one layer from it. Settings such as CMD or ENV are lost;
+    add them again with `--change 'CMD [...]'`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/container/export/
+  - https://docs.docker.com/reference/cli/docker/image/import/
+  glossary: [image-layer]
+
+- id: dca-img-015
+  difficulty: 2
+  type: single
+  question: "What is the difference between `docker save` and `docker export`?"
+  options:
+  - id: a
+    text: "They are the same; `export` is the old name"
+    why: "They work on different objects: images for save, containers for export."
+  - id: b
+    text: "`save` writes an image with all layers and metadata; `export` writes a container filesystem"
+  - id: c
+    text: "`save` uploads to a registry; `export` writes a local file"
+    why: "Both write a tar archive. Neither talks to a registry."
+  - id: d
+    text: "`export` keeps the layers; `save` flattens them"
+    why: "It is the other way round. `save` keeps layers; `export` produces one flat filesystem."
+  answer: [b]
+  explanation: |
+    `docker save` and `docker load` move images (layers, tags, config) between hosts without a
+    registry. `docker export` and `docker import` work with a container filesystem and lose image
+    history and settings.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/save/
+  - https://docs.docker.com/reference/cli/docker/container/export/
+  glossary: [image, image-layer]
+
+- id: dca-img-016
+  difficulty: 2
+  type: single
+  question: "You run a private registry with `docker run -d -p 5000:5000 --name registry registry:2`. Which push works from the same host without extra settings?"
+  options:
+  - id: a
+    text: "`docker push 192.168.1.10:5000/app:1` from another host"
+    why: "Docker trusts plain HTTP only for localhost. Other hosts need TLS or an insecure-registries setting."
+  - id: b
+    text: "`docker push app:1 --registry localhost:5000`"
+    why: "`docker push` has no `--registry` flag. The registry is part of the image name."
+  - id: c
+    text: "`docker push registry/app:1`"
+    why: "Without a host and port, the name means the Docker Hub repository `registry/app`."
+  - id: d
+    text: "`docker push localhost:5000/app:1` after tagging the image with that name"
+  answer: [d]
+  explanation: |
+    Tag the image with the registry host and port (`docker tag app:1 localhost:5000/app:1`), then
+    push. Docker allows HTTP for registries on 127.0.0.0/8. For other addresses use TLS, or add the
+    registry to `insecure-registries` in daemon.json (not for production).
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/push/
+  - https://distribution.github.io/distribution/about/deploying/
+  glossary: [registry, image-tag]
+
+- id: dca-img-017
+  difficulty: 1
+  type: single
+  question: "Which command stores credentials so the Docker CLI can push to `registry.example.com`?"
+  options:
+  - id: a
+    text: "`docker trust signer add registry.example.com`"
+    why: "That adds a signer for content trust. It does not log in to a registry."
+  - id: b
+    text: "`docker registry add registry.example.com`"
+    why: "There is no such command to save credentials."
+  - id: c
+    text: "`docker push --user me registry.example.com/app:1`"
+    why: "`docker push` has no `--user` flag. Log in first."
+  - id: d
+    text: "`docker login registry.example.com`"
+  answer: [d]
+  explanation: |
+    `docker login` asks for a user name and password (or token) and stores them in a credential
+    helper or in `~/.docker/config.json`. Without a server name it logs in to Docker Hub.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/login/
+  glossary: [registry, docker-cli]
+
+- id: dca-img-018
+  difficulty: 1
+  type: single
+  question: "Which command looks for images on Docker Hub from the command line?"
+  options:
+  - id: a
+    text: "`docker image ls redis`"
+    why: "That lists local images only."
+  - id: b
+    text: "`docker pull --list redis`"
+    why: "`docker pull` has no `--list` flag. It downloads one image."
+  - id: c
+    text: "`docker hub find redis`"
+    why: "There is no `docker hub` command in the standard CLI."
+  - id: d
+    text: "`docker search redis`"
+  answer: [d]
+  explanation: |
+    `docker search` queries Docker Hub and shows name, description, stars and whether the image is
+    official. Filters such as `--filter is-official=true` narrow the results.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/search/
+  glossary: [docker-hub]
+
+- id: dca-img-019
+  difficulty: 2
+  type: single
+  question: "A pipeline must always deploy exactly the image it tested, even if somebody pushes the same tag again. How should it refer to the image?"
+  options:
+  - id: a
+    text: "By digest, for example `app@sha256:...`"
+  - id: b
+    text: "By a tag with the date in it"
+    why: "Any tag can be overwritten by a new push. Only the digest is fixed to the content."
+  - id: c
+    text: "By the tag `latest`"
+    why: "`latest` is just a normal tag that moves to whatever was pushed last."
+  - id: d
+    text: "By the image ID shown in `docker image ls`"
+    why: "The local image ID is not how registries address content. Pull by manifest digest."
+  answer: [a]
+  explanation: |
+    A digest is a hash of the image manifest, so it always means the same content. Tags are
+    mutable pointers. `docker image ls --digests` and `docker buildx imagetools inspect` show digests.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/image/pull/#pull-an-image-by-digest-immutable-identifier
+  glossary: [digest, image-tag]
+
+- id: dca-img-020
+  difficulty: 3
+  type: single
+  question: "You deleted a manifest from a private `registry:2` with the HTTP API, but disk use did not go down. Why?"
+  options:
+  - id: a
+    text: "The registry stores images in the client's /var/lib/docker"
+    why: "A registry has its own storage (a folder, S3...). It is separate from client engines."
+  - id: b
+    text: "The registry keeps every manifest for 30 days before it deletes it"
+    why: "There is no built-in 30-day retention in the open source registry."
+  - id: c
+    text: "Deletes only work through `docker image rm` on the client"
+    why: "`docker image rm` only removes local images; it never changes a registry."
+  - id: d
+    text: "Blobs are only freed when garbage collection runs on the registry"
+  answer: [d]
+  explanation: |
+    Deleting a manifest (it needs `REGISTRY_STORAGE_DELETE_ENABLED=true`) only removes the
+    reference. Layer blobs stay until you run `registry garbage-collect <config>`, best while the
+    registry is read-only. MSR (DTR) has scheduled garbage collection for the same reason.
+  docs:
+  - https://distribution.github.io/distribution/about/garbage-collection/
+  - https://distribution.github.io/distribution/spec/api/
+  glossary: [registry, msr]
+
+- id: dca-img-021
+  difficulty: 2
+  type: multiple
+  question: "How do you build an image with the tag `web:2` from the folder `./site` using the file `Dockerfile.prod`? (Choose two.)"
+  options:
+  - id: a
+    text: "`docker image build --name web:2 ./site`"
+    why: "There is no `--name` flag for builds, and it would use `Dockerfile`, not `Dockerfile.prod`."
+  - id: b
+    text: "`docker build -t web:2 -f site/Dockerfile.prod ./site`"
+  - id: c
+    text: "`docker buildx build --tag web:2 --file site/Dockerfile.prod --load ./site`"
+  - id: d
+    text: "`docker build -t web:2 site/Dockerfile.prod`"
+    why: "The last argument is the build context (a folder or URL), not the Dockerfile. Use `-f` for the file."
+  answer: [b, c]
+  explanation: |
+    `docker build` (an alias of `docker buildx build`) takes the context path as the argument,
+    `-t` for the tag and `-f` for a Dockerfile with another name or place. `--load` puts the result
+    in the local image store.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/buildx/build/
+  - https://docs.docker.com/build/concepts/context/
+  glossary: [build-context, buildkit, dockerfile]
+
+- id: dca-img-022
+  difficulty: 2
+  type: single
+  question: "What happens to the build cache when you change one line in an early `RUN` instruction?"
+  options:
+  - id: a
+    text: "Nothing; RUN steps are never cached"
+    why: "RUN steps are cached by their command text. A changed command invalidates the cache."
+  - id: b
+    text: "Only that step is built again; later steps stay cached"
+    why: "Each layer depends on the one below. When a layer changes, all later layers must be rebuilt."
+  - id: c
+    text: "That step and every step after it are built again"
+  - id: d
+    text: "The whole cache is deleted, also for other images"
+    why: "Other images keep their cache. Only the steps after the change are invalid."
+  answer: [c]
+  explanation: |
+    Docker checks the cache step by step. Once one step is invalid, all following steps run again.
+    That is why stable steps (base image, dependencies) go first and code that changes often goes last.
+  docs:
+  - https://docs.docker.com/build/cache/
+  - https://docs.docker.com/build/cache/invalidation/
+  glossary: [build-cache, image-layer]
+
+- id: dca-img-023
+  difficulty: 3
+  type: multiple
+  question: "Which statements about `ARG` and `ENV` in a Dockerfile are true? (Choose two.)"
+  options:
+  - id: a
+    text: "`ARG` is the safe way to pass passwords to a build"
+    why: "Build arguments can be seen in the image history. Use secret mounts (`RUN --mount=type=secret`) instead."
+  - id: b
+    text: "`ENV` values are kept in the image and visible in running containers"
+  - id: c
+    text: "`ENV` values cannot be changed with `docker run`"
+    why: "`docker run -e NAME=value` overrides them."
+  - id: d
+    text: "`ARG` values exist only during the build unless you copy them into `ENV`"
+  answer: [b, d]
+  explanation: |
+    `ARG` defines build-time variables (`docker build --build-arg`). `ENV` sets environment
+    variables stored in the image config, used by later build steps and by containers. Never put
+    secrets in either: use BuildKit secret mounts.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#arg
+  - https://docs.docker.com/reference/dockerfile/#env
+  - https://docs.docker.com/build/building/secrets/
+  glossary: [dockerfile, buildkit]
+
+- id: dca-img-024
+  difficulty: 2
+  type: single
+  question: "What does `docker commit` do?"
+  options:
+  - id: a
+    text: "It pushes the changes of a container to a Git repository"
+    why: "`docker commit` has nothing to do with Git. It makes a local image."
+  - id: b
+    text: "It saves the memory state of a running container"
+    why: "It only saves the filesystem changes and config, not processes or memory."
+  - id: c
+    text: "It creates a new image from the changes in a container"
+  - id: d
+    text: "It writes the image to the registry after a build"
+    why: "Writing to a registry is `docker push`."
+  answer: [c]
+  explanation: |
+    `docker commit <container> <image>` saves the container's writable layer as a new layer on top
+    of its image. It is handy for debugging, but a Dockerfile is better: it is repeatable and
+    documents every step.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/container/commit/
+  glossary: [copy-on-write, image-layer]

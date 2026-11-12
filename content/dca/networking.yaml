@@ -1,0 +1,447 @@
+domain: networking
+questions:
+- id: dca-net-001
+  difficulty: 2
+  type: single
+  question: "In the Container Network Model (CNM), what are the three main building blocks?"
+  options:
+  - id: a
+    text: "Image, layer and volume"
+    why: "These are storage concepts, not networking ones."
+  - id: b
+    text: "Bridge, host and none"
+    why: "These are built-in network drivers, not the parts of the model."
+  - id: c
+    text: "Sandbox, endpoint and network"
+  - id: d
+    text: "Pod, Service and Ingress"
+    why: "These are Kubernetes objects, not parts of Docker's CNM."
+  answer: [c]
+  explanation: |
+    A sandbox holds the network stack of a container (interfaces, routes, DNS). An endpoint joins a
+    sandbox to a network. A network is a group of endpoints that can talk directly. Network drivers
+    and IPAM drivers implement the model.
+  docs:
+  - https://github.com/moby/moby/blob/master/daemon/libnetwork/docs/design.md
+  - https://docs.docker.com/engine/network/
+  glossary: [cnm, ipam, network-driver]
+
+- id: dca-net-002
+  difficulty: 1
+  type: single
+  question: "Which network driver should you use so that containers on several swarm nodes can talk to each other directly?"
+  options:
+  - id: a
+    text: "`host`"
+    why: "`host` removes network isolation on one host. It does not connect hosts."
+  - id: b
+    text: "`overlay`"
+  - id: c
+    text: "`none`"
+    why: "`none` gives the container only a loopback interface."
+  - id: d
+    text: "`bridge`"
+    why: "A bridge network exists on one host only. Containers on other hosts cannot join it."
+  answer: [b]
+  explanation: |
+    Overlay networks span all nodes of a swarm. Traffic between hosts is carried in VXLAN tunnels.
+    Swarm services use them; add `--attachable` so standalone containers can join too.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/overlay/
+  glossary: [overlay-network, network-driver]
+
+- id: dca-net-003
+  difficulty: 1
+  type: single
+  question: "Two containers run on the default `bridge` network. Why can they not reach each other by container name?"
+  options:
+  - id: a
+    text: "Containers on the same bridge network cannot talk to each other at all"
+    why: "They can talk by IP address. Only name resolution is missing."
+  - id: b
+    text: "Name resolution works only on overlay networks in swarm mode"
+    why: "User-defined bridge networks also have the embedded DNS server."
+  - id: c
+    text: "Both containers must publish their ports before they can talk"
+    why: "Publishing is for traffic from outside. Containers on the same network reach each other's ports directly."
+  - id: d
+    text: "Only user-defined networks have automatic DNS for container names"
+  answer: [d]
+  explanation: |
+    On user-defined networks, the embedded DNS server (127.0.0.11) resolves container names and
+    aliases. The default bridge only offers the old `--link` option. Create a network with
+    `docker network create app-net` and run the containers with `--network app-net`.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/bridge/#differences-between-user-defined-bridges-and-the-default-bridge
+  glossary: [bridge-network, coredns]
+
+- id: dca-net-004
+  difficulty: 2
+  type: single
+  question: "Which command creates a bridge network `dev` with the subnet 10.10.0.0/24 and the gateway 10.10.0.1?"
+  options:
+  - id: a
+    text: "`docker network create dev --ip-range 10.10.0.1`"
+    why: "`--ip-range` is a range inside the subnet for containers, not the gateway, and the subnet is missing."
+  - id: b
+    text: "`docker network add dev --cidr 10.10.0.0/24`"
+    why: "There is no `docker network add` command and no `--cidr` flag."
+  - id: c
+    text: "`docker run --network-create dev --subnet 10.10.0.0/24`"
+    why: "`docker run` cannot create networks."
+  - id: d
+    text: "`docker network create -d bridge --subnet 10.10.0.0/24 --gateway 10.10.0.1 dev`"
+  answer: [d]
+  explanation: |
+    `docker network create` takes the driver (`-d`), and IPAM options `--subnet`, `--gateway` and
+    `--ip-range`. Then `docker run --network dev --ip 10.10.0.20 ...` can give a fixed IP.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/network/create/
+  glossary: [bridge-network, ipam]
+
+- id: dca-net-005
+  difficulty: 1
+  type: single
+  question: "What does `docker run -p 8080:80 nginx` do?"
+  options:
+  - id: a
+    text: "It makes nginx listen on both 8080 and 80"
+    why: "It does not change the app. Docker forwards host port 8080 to container port 80."
+  - id: b
+    text: "It publishes port 8080 only to other containers"
+    why: "Containers on a network do not need published ports. Publishing is for clients outside."
+  - id: c
+    text: "It maps port 8080 on the host to port 80 in the container"
+  - id: d
+    text: "It maps port 80 on the host to port 8080 in the container"
+    why: "The order is host:container. The host port comes first."
+  answer: [c]
+  explanation: |
+    `-p [host IP:]host port:container port[/protocol]`. Without a host IP, the port listens on all
+    host interfaces. `-p 127.0.0.1:8080:80` limits it to the loopback interface.
+  docs:
+  - https://docs.docker.com/engine/network/port-publishing/
+  glossary: [published-port]
+
+- id: dca-net-006
+  difficulty: 1
+  type: multiple
+  question: "A container was started with `-P`. Which commands show the host ports where it can be reached? (Choose two.)"
+  options:
+  - id: a
+    text: "`docker image inspect <image>`"
+    why: "The image shows exposed ports, not the random host ports chosen at run time."
+  - id: b
+    text: "`docker logs <container>`"
+    why: "Logs show the app output, not Docker's port mappings."
+  - id: c
+    text: "`docker ps` (the PORTS column)"
+  - id: d
+    text: "`docker port <container>`"
+  answer: [c, d]
+  explanation: |
+    `-P` publishes all exposed ports to random high host ports. `docker port <container>` prints
+    the mappings, and the PORTS column of `docker ps` shows them too.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/container/port/
+  glossary: [published-port]
+
+- id: dca-net-007
+  difficulty: 2
+  type: single
+  question: "A swarm service publishes port 8080 in the default (ingress) mode on a 3-node swarm. Its only task runs on node1. What happens when a client calls node3:8080?"
+  options:
+  - id: a
+    text: "Swarm moves the task to node3 first"
+    why: "Swarm does not move tasks because of traffic."
+  - id: b
+    text: "The connection is refused, because node3 has no task"
+    why: "That is the behavior of `mode=host`. In ingress mode every node listens."
+  - id: c
+    text: "The client gets an HTTP redirect to node1"
+    why: "The routing mesh works at the network level (IPVS), not with HTTP redirects."
+  - id: d
+    text: "The routing mesh forwards the request to the task on node1"
+  answer: [d]
+  explanation: |
+    In ingress mode, the published port is open on every node, and the routing mesh load-balances
+    requests to any running task. External load balancers can therefore target any node.
+  docs:
+  - https://docs.docker.com/engine/swarm/ingress/
+  glossary: [routing-mesh]
+
+- id: dca-net-008
+  difficulty: 3
+  type: multiple
+  question: "Which statements about `mode=host` publishing in a swarm service are true? (Choose two.)"
+  options:
+  - id: a
+    text: "Two tasks on the same node cannot both use the same host port"
+  - id: b
+    text: "It is the default mode for `--publish`"
+    why: "The default is ingress mode."
+  - id: c
+    text: "Traffic is load-balanced over all tasks in the swarm"
+    why: "That is ingress mode. Host mode sends traffic only to the task on that node."
+  - id: d
+    text: "The port is only open on nodes where a task of the service runs"
+  answer: [a, d]
+  explanation: |
+    With `--publish published=8080,target=80,mode=host`, each node that runs a task opens the port
+    for that task only. It skips the routing mesh, which helps when you need the client IP or your
+    own load balancer. Combine it with a global service or `--replicas-max-per-node 1`.
+  docs:
+  - https://docs.docker.com/engine/swarm/ingress/#bypass-the-routing-mesh
+  - https://docs.docker.com/engine/swarm/services/#publish-a-services-ports-directly-on-the-swarm-node
+  glossary: [routing-mesh, published-port]
+
+- id: dca-net-009
+  difficulty: 2
+  type: multiple
+  question: "Which settings choose the DNS servers that containers use? (Choose two.)"
+  options:
+  - id: a
+    text: "`docker run --dns 10.0.0.53 ...` for one container"
+  - id: b
+    text: "`\"dns\": [\"10.0.0.53\"]` in daemon.json for all containers"
+  - id: c
+    text: "`docker run --env DNS=10.0.0.53 ...`"
+    why: "An environment variable does not change how the resolver works."
+  - id: d
+    text: "`docker run --add-host dns:10.0.0.53 ...`"
+    why: "`--add-host` adds a line to /etc/hosts. It does not change the DNS server."
+  answer: [a, b]
+  explanation: |
+    `--dns`, `--dns-search` and `--dns-option` change resolution for one container. For all
+    containers, set `"dns": ["10.0.0.53"]` in daemon.json. On user-defined networks the embedded DNS
+    server forwards external names to these servers.
+  docs:
+  - https://docs.docker.com/engine/network/#dns-services
+  - https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file
+  glossary: [coredns, daemon-json]
+
+- id: dca-net-010
+  difficulty: 2
+  type: single
+  question: "When does the `host` network driver make sense?"
+  options:
+  - id: a
+    text: "When the container must have no network at all"
+    why: "That is the `none` driver."
+  - id: b
+    text: "When containers on many hosts must share one network"
+    why: "That is the overlay driver."
+  - id: c
+    text: "When you want each container to have its own MAC address on the LAN"
+    why: "That is macvlan."
+  - id: d
+    text: "When an app needs the host network stack directly, for many ports or best performance"
+  answer: [d]
+  explanation: |
+    With `--network host` the container shares the host's network namespace: no NAT, no port
+    publishing (`-p` is ignored), and port conflicts with the host are possible. It also removes
+    network isolation, so use it only when needed.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/host/
+  glossary: [network-driver, host-namespaces]
+
+- id: dca-net-011
+  difficulty: 2
+  type: single
+  question: "A legacy monitoring tool must see each container as its own device on the physical LAN, with its own MAC address. Which driver fits?"
+  options:
+  - id: a
+    text: "`macvlan`"
+  - id: b
+    text: "`overlay`"
+    why: "Overlay networks are virtual networks between swarm nodes, not on the physical LAN."
+  - id: c
+    text: "`bridge`"
+    why: "Bridge containers are hidden behind the host IP with NAT."
+  - id: d
+    text: "`none`"
+    why: "`none` has no external network."
+  answer: [a]
+  explanation: |
+    macvlan gives each container a MAC address and an IP on a physical network (parent interface).
+    The network must allow several MAC addresses on one port (promiscuous mode). ipvlan is similar
+    but shares the host MAC.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/macvlan/
+  glossary: [macvlan]
+
+- id: dca-net-012
+  difficulty: 3
+  type: single
+  question: "Inside an overlay network, a client container resolves the name `api` of a swarm service. What address does it get by default?"
+  options:
+  - id: a
+    text: "A random task IP that changes on every request"
+    why: "That is close to DNS round robin (`--endpoint-mode dnsrr`), which is not the default."
+  - id: b
+    text: "The IP address of the manager node"
+    why: "Managers do not proxy service traffic. The name maps to a VIP on the overlay network."
+  - id: c
+    text: "The published port of the ingress network"
+    why: "Inside the overlay network you use the service name and the target port, not published ports."
+  - id: d
+    text: "A virtual IP (VIP) that swarm load-balances to the tasks"
+  answer: [d]
+  explanation: |
+    The default endpoint mode is `vip`: the service name resolves to one virtual IP, and IPVS
+    spreads connections across healthy tasks. `tasks.<service>` resolves to the IPs of all tasks.
+    `--endpoint-mode dnsrr` returns task IPs directly.
+  docs:
+  - https://docs.docker.com/engine/swarm/networking/#configure-service-discovery
+  - https://docs.docker.com/engine/swarm/key-concepts/#load-balancing
+  glossary: [overlay-network, swarm-service]
+
+- id: dca-net-013
+  difficulty: 2
+  type: single
+  question: "How do you connect the running container `web` to the network `backend` without stopping it?"
+  options:
+  - id: a
+    text: "`docker network create backend --container web`"
+    why: "`network create` makes networks; it does not attach containers."
+  - id: b
+    text: "`docker update --network backend web`"
+    why: "`docker update` changes resources and restart policy, not networks."
+  - id: c
+    text: "`docker restart --network backend web`"
+    why: "`docker restart` has no network option, and it stops the container."
+  - id: d
+    text: "`docker network connect backend web`"
+  answer: [d]
+  explanation: |
+    `docker network connect [--alias name] [--ip addr] <network> <container>` adds an interface at
+    run time. `docker network disconnect` removes it. A container can be on many networks.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/network/connect/
+  glossary: [container, bridge-network]
+
+- id: dca-net-014
+  difficulty: 2
+  type: multiple
+  question: "Two containers on the same user-defined network cannot talk. Which commands help to find the problem? (Choose three.)"
+  options:
+  - id: a
+    text: "`docker image prune` to clean old images"
+    why: "Images have no effect on networking between running containers."
+  - id: b
+    text: "`docker logs <server>` to check that the app listens and has no errors"
+  - id: c
+    text: "`docker network inspect <network>` to see which containers are attached"
+  - id: d
+    text: "`docker exec <client> nslookup <server>` to test name resolution"
+  - id: e
+    text: "`docker swarm init` to enable DNS"
+    why: "DNS on user-defined bridges works without swarm."
+  answer: [b, c, d]
+  explanation: |
+    Check that both containers are on the network, that the name resolves, and that the server
+    listens on the right port and address (an app on 127.0.0.1 inside the container is not
+    reachable from others). The engine logs help when the problem is in Docker itself.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/network/inspect/
+  - https://docs.docker.com/reference/cli/docker/container/logs/
+  glossary: [bridge-network, logs]
+
+- id: dca-net-015
+  difficulty: 2
+  type: single
+  question: "In Kubernetes, which Service type makes an application reachable on a fixed port of every node?"
+  options:
+  - id: a
+    text: "`ExternalName`"
+    why: "ExternalName only returns a DNS CNAME to an outside name."
+  - id: b
+    text: "`NodePort`"
+  - id: c
+    text: "`Headless`"
+    why: "Headless (clusterIP: None) gives Pod IPs by DNS; it opens no node port."
+  - id: d
+    text: "`ClusterIP`"
+    why: "ClusterIP is reachable only inside the cluster."
+  answer: [b]
+  explanation: |
+    A NodePort Service opens a port (30000-32767 by default) on every node and forwards to the
+    Pods. It also gets a ClusterIP. It is like the swarm routing mesh. ClusterIP is the default
+    type, for traffic inside the cluster.
+  docs:
+  - https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+  glossary: [service, pod]
+
+- id: dca-net-016
+  difficulty: 2
+  type: single
+  question: "In the Kubernetes network model, which statement is true?"
+  options:
+  - id: a
+    text: "Every Pod gets its own IP, and Pods can reach each other without NAT"
+  - id: b
+    text: "Kubernetes uses Docker's CNM drivers for every cluster"
+    why: "Kubernetes uses CNI plugins (Calico, Cilium, Flannel...), not CNM."
+  - id: c
+    text: "All Pods on a node share the node IP and use different ports"
+    why: "Each Pod has its own IP. Containers inside one Pod share that IP."
+  - id: d
+    text: "Pods can only talk through NodePort Services"
+    why: "Pods reach each other directly by Pod IP; Services add stable names and load balancing."
+  answer: [a]
+  explanation: |
+    Kubernetes requires a flat network: each Pod has a unique IP, and all Pods can talk to all Pods
+    without NAT. A CNI plugin implements it. Containers in one Pod share the network namespace and
+    talk over localhost.
+  docs:
+  - https://kubernetes.io/docs/concepts/services-networking/
+  glossary: [pod, cni]
+
+- id: dca-net-017
+  difficulty: 3
+  type: single
+  question: "You create an overlay network with `--opt encrypted`. What changes?"
+  options:
+  - id: a
+    text: "Containers need TLS certificates to join the network"
+    why: "Containers do nothing special. The engines handle the IPsec tunnels."
+  - id: b
+    text: "Swarm management traffic becomes encrypted; before it was plain text"
+    why: "Management traffic between nodes is always encrypted with mutual TLS. The option is for app data."
+  - id: c
+    text: "Only traffic to published ports is encrypted"
+    why: "It encrypts VXLAN traffic of that overlay between nodes, not published ports."
+  - id: d
+    text: "Data traffic between nodes on that network is encrypted with IPsec"
+  answer: [d]
+  explanation: |
+    Swarm control traffic always uses mutual TLS. Overlay data traffic is not encrypted by default;
+    `--opt encrypted` adds IPsec (ESP) tunnels between nodes, with keys rotated by the managers.
+    It costs some performance and needs IP protocol 50 open.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network
+  glossary: [overlay-network, mtls]
+
+- id: dca-net-018
+  difficulty: 1
+  type: single
+  question: "Which network does a container join when you run it without `--network`, on a host that is not in a swarm?"
+  options:
+  - id: a
+    text: "The `host` network"
+    why: "Host networking must be asked for with `--network host`."
+  - id: b
+    text: "The `ingress` network"
+    why: "Ingress exists only in swarm mode and is used for published service ports."
+  - id: c
+    text: "The default `bridge` network"
+  - id: d
+    text: "No network; it gets only loopback"
+    why: "That is `--network none`."
+  answer: [c]
+  explanation: |
+    Without `--network`, a container joins the default bridge network (`docker0`). Docker Compose
+    instead creates a project network (`<project>_default`) for its services.
+  docs:
+  - https://docs.docker.com/engine/network/drivers/bridge/
+  glossary: [bridge-network]

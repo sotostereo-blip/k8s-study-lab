@@ -1,0 +1,46 @@
+id: dca-net-001
+title: Container DNS on a user-defined bridge network
+domain: networking
+difficulty: 2
+minutes: 8
+environment: docker
+setup: |
+  docker run -d --name net-db busybox:1.36 sh -c 'mkdir -p /www && echo db-ok > /www/index.html && httpd -f -p 80 -h /www' >/dev/null
+  docker run -d --name net-app busybox:1.36 sleep 1d >/dev/null
+task: |
+  Two containers run on the **default** bridge network: `net-db` (a small web server on port 80)
+  and `net-app`. From `net-app`, the name `net-db` does not resolve:
+  `docker exec net-app wget -qO- http://net-db/` fails.
+
+  1. Create a **user-defined bridge** network `app-net` with the subnet `10.30.0.0/24`.
+  2. Connect both containers to `app-net` (do not re-create them). Give `net-db` the extra
+     network alias `database` on this network.
+  3. Check that `net-app` can reach both `http://net-db/` and `http://database/`.
+checks:
+  - name: Network `app-net` is a bridge network with subnet 10.30.0.0/24
+    run: |
+      out=$(docker network inspect app-net) || exit 1
+      echo "$out" | jq -e '.[0].Driver == "bridge" and ([.[0].IPAM.Config[]?.Subnet] | index("10.30.0.0/24") != null)' >/dev/null
+  - name: '`net-app` reaches http://net-db/ by name'
+    run: |
+      out=$(docker exec net-app wget -qO- -T 3 http://net-db/ 2>&1)
+      [ "$out" = db-ok ]
+  - name: '`net-app` reaches http://database/ (network alias)'
+    run: |
+      out=$(docker exec net-app wget -qO- -T 3 http://database/ 2>&1)
+      [ "$out" = db-ok ]
+  - name: The original containers were kept (not re-created)
+    run: '[ "$(docker inspect -f "{{.Config.Cmd}}" net-app)" = "[sleep 1d]" ] && docker inspect net-db >/dev/null'
+    guard: true
+solution: |
+  docker network create --driver bridge --subnet 10.30.0.0/24 app-net
+  docker network connect app-net net-app
+  docker network connect --alias database app-net net-db
+  docker exec net-app wget -qO- http://net-db/
+  docker exec net-app wget -qO- http://database/
+  # The default "bridge" network has no embedded DNS for container names;
+  # user-defined networks do (DNS server 127.0.0.11 inside the container).
+docs:
+  - https://docs.docker.com/engine/network/drivers/bridge/
+  - https://docs.docker.com/reference/cli/docker/network/connect/
+  - https://docs.docker.com/engine/network/#dns-services

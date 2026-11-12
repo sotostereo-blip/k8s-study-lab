@@ -1,0 +1,33 @@
+id: dca-stor-001
+title: Keep data in a named volume
+domain: storage
+difficulty: 1
+minutes: 6
+environment: docker
+task: |
+  1. Create a named volume `orders-data` with the label `app=orders`.
+  2. Use a short-lived container (`alpine:3.20`) to write the text `order-42` to the file
+     `orders.txt` at the root of the volume. The container can be removed after that.
+  3. Start a long-running container `orders-reader` (`alpine:3.20`, command `sleep 1d`) that
+     mounts `orders-data` at `/data` **read-only**.
+checks:
+  - name: Volume `orders-data` uses the local driver and has the label app=orders
+    run: '[ "$(docker volume inspect -f "{{.Driver}} {{index .Labels \"app\"}}" orders-data)" = "local orders" ]'
+  - name: '`orders-reader` mounts `orders-data` at /data read-only'
+    run: |
+      out=$(docker inspect -f '{{json .Mounts}}' orders-reader) || exit 1
+      echo "$out" | jq -e '[.[] | select(.Type == "volume" and .Name == "orders-data" and .Destination == "/data" and .RW == false)] | length == 1' >/dev/null
+  - name: '`orders-reader` is running and reads `order-42` from /data/orders.txt'
+    run: |
+      out=$(docker exec orders-reader cat /data/orders.txt 2>&1) || exit 1
+      echo "$out" | grep -qx 'order-42'
+solution: |
+  docker volume create --label app=orders orders-data
+  docker run --rm -v orders-data:/data alpine:3.20 sh -c 'echo order-42 > /data/orders.txt'
+  docker run -d --name orders-reader -v orders-data:/data:ro alpine:3.20 sleep 1d
+  # same with --mount: --mount type=volume,source=orders-data,target=/data,readonly
+  docker exec orders-reader cat /data/orders.txt
+  docker volume inspect orders-data       # Mountpoint: /var/lib/docker/volumes/orders-data/_data
+docs:
+  - https://docs.docker.com/engine/storage/volumes/
+  - https://docs.docker.com/reference/cli/docker/volume/create/

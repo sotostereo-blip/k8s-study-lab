@@ -1,0 +1,451 @@
+domain: install
+questions:
+- id: dca-inst-001
+  difficulty: 1
+  type: single
+  question: "On Ubuntu, what is the recommended way to install Docker Engine for production?"
+  options:
+  - id: a
+    text: "Add Docker's apt repository and install `docker-ce` and its packages"
+  - id: b
+    text: "Install the `docker.io` snap and never update it"
+    why: "Docker documents its own apt repository. Not updating is a security risk."
+  - id: c
+    text: "Download Docker Desktop for Linux on each server"
+    why: "Docker Desktop is a desktop app with a VM. Servers run Docker Engine."
+  - id: d
+    text: "Run the convenience script `get.docker.com` on every server"
+    why: "Docker says the convenience script is for test and development, not for production."
+  answer: [a]
+  explanation: |
+    Set up the Docker apt repository (GPG key + source), then install `docker-ce`,
+    `docker-ce-cli`, `containerd.io`, `docker-buildx-plugin` and `docker-compose-plugin`. You get
+    updates with normal package upgrades, and you can pin a version.
+  docs:
+  - https://docs.docker.com/engine/install/ubuntu/
+  - https://docs.docker.com/engine/install/
+  glossary: [docker-engine]
+
+- id: dca-inst-002
+  difficulty: 1
+  type: single
+  question: "On a systemd Linux host, how do you make the Docker Engine start at boot?"
+  options:
+  - id: a
+    text: "`docker run --restart always docker`"
+    why: "Restart policies are for containers, and they need the engine to be running first."
+  - id: b
+    text: "Add `\"start-on-boot\": true` to daemon.json"
+    why: "There is no such daemon.json option. Boot start is a job of the init system."
+  - id: c
+    text: "`sudo systemctl enable docker.service containerd.service`"
+  - id: d
+    text: "`sudo dockerd --boot`"
+    why: "dockerd has no `--boot` flag."
+  answer: [c]
+  explanation: |
+    systemd starts enabled units at boot. `systemctl enable --now docker` enables and starts it at
+    once. `systemctl disable docker` stops the start at boot.
+  docs:
+  - https://docs.docker.com/engine/install/linux-postinstall/#configure-docker-to-start-on-boot-with-systemd
+  glossary: [docker-engine]
+
+- id: dca-inst-003
+  difficulty: 1
+  type: single
+  question: "A user gets `permission denied ... /var/run/docker.sock` when running `docker ps`. What is the usual fix on Linux?"
+  options:
+  - id: a
+    text: "Set `DOCKER_HOST=tcp://localhost:2375` without TLS"
+    why: "An open TCP socket without TLS lets anyone on the network control the host."
+  - id: b
+    text: "Reinstall Docker with the `--user` option"
+    why: "There is no such install option. Socket access is controlled by group membership."
+  - id: c
+    text: "Run `chmod 777 /var/run/docker.sock`"
+    why: "This gives every local user root-level power over the host. It is a big security hole."
+  - id: d
+    text: "Add the user to the `docker` group and log in again"
+  answer: [d]
+  explanation: |
+    The Docker socket belongs to the `docker` group. `sudo usermod -aG docker $USER` and a new login
+    fix it. Remember that members of the `docker` group have root-level privileges on the host.
+    Rootless mode is an option for users without this power.
+  docs:
+  - https://docs.docker.com/engine/install/linux-postinstall/
+  - https://docs.docker.com/engine/security/#docker-daemon-attack-surface
+  glossary: [docker-engine, rootless-mode]
+
+- id: dca-inst-004
+  difficulty: 2
+  type: single
+  question: "Where do you set engine-wide options, such as the default logging driver or registry mirrors, on Linux?"
+  options:
+  - id: a
+    text: "In a `LABEL` of every image"
+    why: "Labels are metadata. They do not configure the engine."
+  - id: b
+    text: "In `/var/lib/docker/engine.conf`"
+    why: "/var/lib/docker holds data, not configuration. There is no engine.conf file."
+  - id: c
+    text: "In `~/.docker/config.json` of each user"
+    why: "That file configures the CLI (credentials, contexts, formats), not the engine."
+  - id: d
+    text: "In `/etc/docker/daemon.json`, then restart the engine"
+  answer: [d]
+  explanation: |
+    daemon.json holds dockerd options in JSON, for example `log-driver`, `log-opts`,
+    `storage-driver`, `registry-mirrors`, `insecure-registries`, `dns`, `live-restore`. The same
+    option must not be set both in the file and as a dockerd flag.
+  docs:
+  - https://docs.docker.com/engine/daemon/
+  - https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file
+  glossary: [daemon-json, docker-engine]
+
+- id: dca-inst-005
+  difficulty: 2
+  type: single
+  question: "Docker does not start after you edited daemon.json. Which first step helps most?"
+  options:
+  - id: a
+    text: "Read the engine logs, for example `journalctl -xeu docker.service`"
+  - id: b
+    text: "Run `docker system prune -a` to free disk space for the engine"
+    why: "The CLI cannot talk to an engine that is not running, and pruning would not fix the config."
+  - id: c
+    text: "Delete /var/lib/docker and start the engine again with a clean data folder"
+    why: "That deletes all images, containers and volumes, and does not fix a config error."
+  - id: d
+    text: "Reinstall the docker-ce package to restore the default configuration"
+    why: "daemon.json survives a reinstall. Read the error first; it is often a JSON syntax error or a duplicate option."
+  answer: [a]
+  explanation: |
+    dockerd logs the reason it stops (invalid JSON, an option set twice, a bad storage driver).
+    `dockerd --validate --config-file /etc/docker/daemon.json` also checks the file. Running
+    `dockerd --debug` in the foreground shows details.
+  docs:
+  - https://docs.docker.com/engine/daemon/troubleshoot/
+  - https://docs.docker.com/engine/daemon/logs/
+  glossary: [daemon-json, docker-engine]
+
+- id: dca-inst-006
+  difficulty: 2
+  type: multiple
+  question: "Which logging drivers write container logs to files on the Docker host as their main job? (Choose two.)"
+  options:
+  - id: a
+    text: "`json-file`"
+  - id: b
+    text: "`none`"
+    why: "`none` turns logging off. Nothing is stored, and `docker logs` shows nothing."
+  - id: c
+    text: "`syslog`"
+    why: "`syslog` sends each line to a syslog server. Docker keeps only a small local cache (dual logging)."
+  - id: d
+    text: "`local`"
+  answer: [a, d]
+  explanation: |
+    `json-file` (the default) and `local` store logs on the host, so `docker logs` reads them.
+    `local` uses a compact format and rotates by default. Remote drivers (syslog, fluentd, gelf,
+    splunk, awslogs...) ship logs away; since Engine 20.10 a local "dual logging" cache still lets
+    `docker logs` work with them.
+  docs:
+  - https://docs.docker.com/engine/logging/configure/
+  - https://docs.docker.com/engine/logging/drivers/local/
+  - https://docs.docker.com/engine/logging/dual-logging/
+  glossary: [logging-driver]
+
+- id: dca-inst-007
+  difficulty: 2
+  type: single
+  question: "Which daemon.json setting makes `journald` the default logging driver for new containers?"
+  options:
+  - id: a
+    text: "`{ \"logging\": { \"driver\": \"journald\" } }`"
+    why: "That looks like a compose file key. daemon.json uses `log-driver` and `log-opts`."
+  - id: b
+    text: "`{ \"default-log\": \"journald\" }`"
+    why: "There is no `default-log` option."
+  - id: c
+    text: "`{ \"log-driver\": \"journald\" }`"
+  - id: d
+    text: "`{ \"log-opts\": { \"type\": \"journald\" } }`"
+    why: "`log-opts` holds options for the driver, not the driver name."
+  answer: [c]
+  explanation: |
+    `log-driver` sets the default driver and `log-opts` its options. After a restart, only new
+    containers use it; existing ones keep their settings. One container can override it with
+    `docker run --log-driver`.
+  docs:
+  - https://docs.docker.com/engine/logging/configure/#configure-the-default-logging-driver
+  - https://docs.docker.com/engine/logging/drivers/journald/
+  glossary: [logging-driver, daemon-json]
+
+- id: dca-inst-008
+  difficulty: 2
+  type: single
+  question: "Which Linux kernel features does Docker use to isolate containers and to limit their resources?"
+  options:
+  - id: a
+    text: "SELinux for isolation and iptables for limits"
+    why: "SELinux adds access control and iptables handles networking. Neither is the core isolation or limit tool."
+  - id: b
+    text: "Namespaces for isolation and cgroups for resource limits"
+  - id: c
+    text: "cgroups for isolation and namespaces for resource limits"
+    why: "It is the other way round: namespaces isolate what a process sees; cgroups limit what it uses."
+  - id: d
+    text: "Virtual machines for isolation and swap for limits"
+    why: "Containers share the host kernel; they are not virtual machines."
+  answer: [b]
+  explanation: |
+    Linux namespaces (PID, net, mnt, uts, ipc, user) give each container its own view of the
+    system. Control groups (cgroups) limit and measure CPU, memory, I/O and PIDs.
+  docs:
+  - https://docs.docker.com/engine/security/#kernel-namespaces
+  - https://docs.docker.com/engine/security/#control-groups
+  glossary: [linux-namespaces, cgroups]
+
+- id: dca-inst-009
+  difficulty: 2
+  type: multiple
+  question: "Which `docker run` options set a hard limit for memory or CPU? (Choose two.)"
+  options:
+  - id: a
+    text: "`--memory-reservation 512m`"
+    why: "A reservation is a soft limit. Docker only enforces it when the host is low on memory."
+  - id: b
+    text: "`--cpu-shares 512`"
+    why: "cpu-shares is a relative weight (default 1024). It matters only when CPUs are busy and is not a limit."
+  - id: c
+    text: "`--cpus 1.5`"
+  - id: d
+    text: "`--memory 512m`"
+  answer: [c, d]
+  explanation: |
+    `--memory` sets a hard memory limit; going over it kills the process (OOM). `--cpus` limits how
+    much CPU time the container gets. Reservations and shares only matter when resources are short.
+    `docker update` can change these values on a running container.
+  docs:
+  - https://docs.docker.com/engine/containers/resource_constraints/
+  glossary: [limit, cgroups]
+
+- id: dca-inst-010
+  difficulty: 2
+  type: single
+  question: "Which restart policy restarts a container after a crash and after the engine restarts, but not after you stopped it with `docker stop`?"
+  options:
+  - id: a
+    text: "`no`"
+    why: "`no` (the default) never restarts the container."
+  - id: b
+    text: "`on-failure`"
+    why: "`on-failure` restarts only on a non-zero exit code; it does not start the container again after an engine restart if it had exited cleanly."
+  - id: c
+    text: "`unless-stopped`"
+  - id: d
+    text: "`always`"
+    why: "`always` also starts a manually stopped container again when the engine restarts."
+  answer: [c]
+  explanation: |
+    `unless-stopped` acts like `always`, except that a container you stopped by hand stays stopped,
+    also after the engine restarts. `on-failure[:N]` restarts only after errors, at most N times.
+  docs:
+  - https://docs.docker.com/engine/containers/start-containers-automatically/
+  glossary: [restart-policy]
+
+- id: dca-inst-011
+  difficulty: 3
+  type: single
+  question: "You must upgrade the Docker Engine on a host without stopping its containers. Which daemon option helps?"
+  options:
+  - id: a
+    text: "`\"userns-remap\": \"default\"`"
+    why: "That remaps users for security. It does not keep containers alive."
+  - id: b
+    text: "`\"restart\": \"unless-stopped\"`"
+    why: "That is a container restart policy, not a daemon option. The containers would still stop and restart."
+  - id: c
+    text: "`\"experimental\": true`"
+    why: "Experimental only turns on new features. It does not keep containers running."
+  - id: d
+    text: "`\"live-restore\": true`"
+  answer: [d]
+  explanation: |
+    With live restore, containers keep running while dockerd is down or restarting. It works for
+    patch upgrades of the engine. It does not apply to swarm services (swarm mode ignores it).
+  docs:
+  - https://docs.docker.com/engine/daemon/live-restore/
+  glossary: [live-restore, daemon-json]
+
+- id: dca-inst-012
+  difficulty: 2
+  type: single
+  question: "What is the default storage driver for Docker Engine on current Linux distributions?"
+  options:
+  - id: a
+    text: "`vfs`"
+    why: "vfs does no copy-on-write. It is slow and meant for testing only."
+  - id: b
+    text: "`aufs`"
+    why: "aufs was removed too (Engine 24). It was the default only on old Ubuntu versions."
+  - id: c
+    text: "`overlay2`"
+  - id: d
+    text: "`devicemapper`"
+    why: "devicemapper was deprecated and removed in Docker Engine 25."
+  answer: [c]
+  explanation: |
+    overlay2 is the preferred driver on all supported Linux distributions. New installs of Engine
+    29 use the containerd image store with the overlayfs snapshotter, which works the same way.
+    `docker info` shows the active driver.
+  docs:
+  - https://docs.docker.com/engine/storage/drivers/select-storage-driver/
+  - https://docs.docker.com/engine/storage/containerd/
+  glossary: [storage-driver, devicemapper]
+
+- id: dca-inst-013
+  difficulty: 3
+  type: single
+  question: "The CLI must talk to a remote Docker Engine over the network securely. What is the right setup?"
+  options:
+  - id: a
+    text: "A user name and password in daemon.json"
+    why: "The Docker API has no built-in user/password login. It uses TLS client certificates or SSH."
+  - id: b
+    text: "Mutual TLS: dockerd with `--tlsverify` on port 2376 and client certificates"
+  - id: c
+    text: "dockerd on `tcp://0.0.0.0:2375` behind a firewall rule for the admin network"
+    why: "Port 2375 is plain, unauthenticated HTTP. Anyone who reaches it gets root on the host."
+  - id: d
+    text: "Copy `/var/run/docker.sock` to the client machine"
+    why: "A Unix socket is a local file. Copying it does not connect to a remote engine."
+  answer: [b]
+  explanation: |
+    Protect remote access with mutual TLS: the daemon checks client certificates signed by your CA
+    (`--tlsverify --tlscacert --tlscert --tlskey`), and the client checks the server. Another simple
+    option is SSH: `DOCKER_HOST=ssh://user@host`.
+  docs:
+  - https://docs.docker.com/engine/security/protect-access/
+  glossary: [client-certificate, mtls, docker-engine]
+
+- id: dca-inst-014
+  difficulty: 2
+  type: single
+  question: "Your engine must pull from a private registry `reg.corp:5000` that uses a certificate from an internal CA. Where do you put the CA certificate on Linux?"
+  options:
+  - id: a
+    text: "Nowhere; add the registry to `insecure-registries` instead"
+    why: "That turns off certificate checks. Adding the CA keeps TLS secure."
+  - id: b
+    text: "`/etc/docker/certs.d/reg.corp:5000/ca.crt`"
+  - id: c
+    text: "In the image, under `/usr/local/share/ca-certificates`"
+    why: "That changes what programs inside containers trust, not the engine that pulls images."
+  - id: d
+    text: "`~/.docker/ca.pem` of the user who runs `docker pull`"
+    why: "Pulls are done by the engine, not by the CLI. The engine reads certs.d."
+  answer: [b]
+  explanation: |
+    For each registry, dockerd reads `/etc/docker/certs.d/<host>:<port>/`: `ca.crt` to trust the
+    server, and optionally `client.cert` and `client.key` for client-certificate authentication.
+  docs:
+  - https://docs.docker.com/engine/security/certificates/
+  glossary: [certificate-authority, registry, client-certificate]
+
+- id: dca-inst-015
+  difficulty: 2
+  type: single
+  question: "How do you back up a swarm so you can restore its state (services, secrets, Raft data)?"
+  options:
+  - id: a
+    text: "Run `docker swarm backup` on any worker node of the cluster"
+    why: "There is no `docker swarm backup` command, and workers do not have the Raft data."
+  - id: b
+    text: "Stop Docker on one manager and copy `/var/lib/docker/swarm`, then start Docker again"
+  - id: c
+    text: "Export every service and its tasks to a tar file with `docker save`"
+    why: "`docker save` writes images, not swarm objects."
+  - id: d
+    text: "Copy `/etc/docker/daemon.json` from every node to a safe place"
+    why: "daemon.json is engine configuration. The swarm state lives in the Raft data."
+  answer: [b]
+  explanation: |
+    The Raft logs and keys are in `/var/lib/docker/swarm` on managers. Stop the engine (on a manager
+    that is not the leader, if possible), copy the folder, start the engine again. If autolock is on,
+    you also need the unlock key to restore.
+  docs:
+  - https://docs.docker.com/engine/swarm/admin_guide/#back-up-the-swarm
+  glossary: [raft, manager-node, autolock]
+
+- id: dca-inst-016
+  difficulty: 2
+  type: single
+  question: "Which hardware advice does Docker give for swarm managers in production?"
+  options:
+  - id: a
+    text: "An odd number of managers spread over failure zones, kept free of app work"
+  - id: b
+    text: "Give every manager a GPU so the scheduler can place tasks more quickly"
+    why: "Scheduling needs little power. Stable network, CPU and fast disks matter more."
+  - id: c
+    text: "Run all managers on one big server so Raft traffic stays fast and local"
+    why: "One server is one point of failure. Managers should be spread over zones."
+  - id: d
+    text: "Use only one manager, because two or more managers can split the votes"
+    why: "One manager has no fault tolerance. Odd numbers like 3 or 5 avoid split votes."
+  answer: [a]
+  explanation: |
+    Managers hold the cluster state. Spread 3, 5 or 7 managers over availability zones, give them
+    static IPs, and consider draining them so app tasks do not starve the managers of resources.
+  docs:
+  - https://docs.docker.com/engine/swarm/admin_guide/
+  glossary: [manager-node, quorum]
+
+- id: dca-inst-017
+  difficulty: 2
+  type: single
+  question: "In MKE (formerly UCP), how do you give a user's docker CLI the same permissions the user has in the web UI?"
+  options:
+  - id: a
+    text: "Share the admin password with the user"
+    why: "Sharing passwords breaks auditing and gives too many rights."
+  - id: b
+    text: "Add the user to the `docker` group on every node"
+    why: "That gives full root-level access to each engine and skips MKE RBAC."
+  - id: c
+    text: "Download that user's client bundle and load its environment script"
+  - id: d
+    text: "Copy `/var/lib/docker` from a manager"
+    why: "That is engine data, not credentials, and it must never be copied this way."
+  answer: [c]
+  explanation: |
+    A client bundle has certificates for one user plus scripts (`env.sh`) that set DOCKER_HOST and
+    the TLS files, and a kubeconfig. Every request is then checked against that user's MKE roles.
+  docs:
+  - https://docs.mirantis.com/mke/3.8/ops/access-cluster/download-configure-client-bundle.html
+  glossary: [client-bundle, mke, rbac]
+
+- id: dca-inst-018
+  difficulty: 3
+  type: multiple
+  question: "In MKE (UCP), how is access control organized? (Choose two.)"
+  options:
+  - id: a
+    text: "Every user is an administrator until a team is created"
+    why: "New users get no or limited access; admins must grant rights."
+  - id: b
+    text: "A grant joins a subject (user, team or organization), a role and a resource set"
+  - id: c
+    text: "Permissions are set with Linux file modes on the managers"
+    why: "MKE RBAC is in the application, not in host file modes."
+  - id: d
+    text: "Users can be grouped into teams inside organizations"
+  answer: [b, d]
+  explanation: |
+    MKE RBAC uses grants: subject + role (a set of allowed operations) + resource set (a
+    collection for Swarm, or a namespace for Kubernetes). Teams and organizations make it easy to
+    give the same access to many users; they can also sync from LDAP/AD.
+  docs:
+  - https://docs.mirantis.com/mke/3.8/ops/authorize-rolebased-access.html
+  glossary: [mke, rbac]

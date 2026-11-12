@@ -1,0 +1,70 @@
+id: dca-img-001
+title: Turn a big image into a small multi-stage build
+domain: images
+difficulty: 2
+minutes: 10
+environment: docker
+setup: |
+  mkdir -p /lab/site-build && cd /lab/site-build
+  cat > gen.py <<'PY'
+  import pathlib
+  out = pathlib.Path("/out")
+  out.mkdir(exist_ok=True)
+  pages = ["home", "about", "contact"]
+  html = "<h1>DCA site</h1><ul>" + "".join(f"<li>{p}</li>" for p in pages) + "</ul>\n"
+  (out / "index.html").write_text(html)
+  PY
+  cat > Dockerfile <<'DF'
+  FROM python:3.12-alpine
+  WORKDIR /src
+  COPY gen.py .
+  RUN python gen.py && mkdir -p /usr/share/site && cp /out/index.html /usr/share/site/
+  EXPOSE 8000
+  CMD ["python", "-m", "http.server", "8000", "--directory", "/usr/share/site"]
+  DF
+task: |
+  The folder `/lab/site-build` has a script `gen.py` that **generates** a static web site in `/out`,
+  and a `Dockerfile` that ships the whole Python runtime only to serve one HTML file.
+
+  1. Rewrite `/lab/site-build/Dockerfile` as a **multi-stage build**:
+     - a first stage based on `python:3.12-alpine` runs `gen.py`;
+     - the final stage is based on `nginx:1.27-alpine` and only gets the generated files,
+       copied to `/usr/share/nginx/html/`.
+  2. Build the image `lab/site:2.0`.
+  3. Start a container `site-web` from `lab/site:2.0` (no published port is needed).
+
+  The final image must **not** contain Python.
+checks:
+  - name: The image `lab/site:2.0` exists
+    run: docker image inspect lab/site:2.0 >/dev/null
+  - name: The image serves the generated page from `/usr/share/nginx/html/index.html`
+    run: |
+      out=$(docker run --rm --entrypoint cat lab/site:2.0 /usr/share/nginx/html/index.html 2>&1)
+      echo "$out" | grep -q 'DCA site' && echo "$out" | grep -q '<li>contact</li>'
+  - name: The final image has no Python (only the build stage had it)
+    run: docker run --rm --entrypoint sh lab/site:2.0 -c '! command -v python3 && ! command -v python'
+  - name: Container `site-web` runs `lab/site:2.0` and answers on port 80
+    run: |
+      [ "$(docker inspect -f '{{.Config.Image}} {{.State.Running}}' site-web)" = "lab/site:2.0 true" ] || exit 1
+      out=$(docker exec site-web wget -qO- http://127.0.0.1/ 2>&1)
+      echo "$out" | grep -q 'DCA site'
+solution: |
+  cd /lab/site-build
+  cat > Dockerfile <<'DF'
+  # Stage 1: has Python, only used to generate the files
+  FROM python:3.12-alpine AS build
+  WORKDIR /src
+  COPY gen.py .
+  RUN python gen.py
+
+  # Stage 2: the image we ship. Only the result of stage 1 is copied in.
+  FROM nginx:1.27-alpine
+  COPY --from=build /out/ /usr/share/nginx/html/
+  DF
+  docker build -t lab/site:2.0 .
+  docker run -d --name site-web lab/site:2.0
+  docker image ls lab/site            # much smaller than a python-based image
+  # Build only one stage (for debugging): docker build --target build -t lab/site:build .
+docs:
+  - https://docs.docker.com/build/building/multi-stage/
+  - https://docs.docker.com/reference/dockerfile/#copy---from

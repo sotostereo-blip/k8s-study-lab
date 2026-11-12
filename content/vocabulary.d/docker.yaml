@@ -1,0 +1,122 @@
+# Everyday exam English found in the Docker (DCA) questions and labs.
+words:
+  - id: trust
+    word: trust
+    match: [trust, trusts, trusted]
+    definition: "To believe that something is safe or correct and accept it."
+    example: "Docker trusts plain HTTP only for a registry on localhost."
+    es: "confiar (en), dar por válido"
+  - id: rotate
+    word: rotate
+    match: [rotate, rotated, rotates, rotation, rotating]
+    definition: "To replace a key, token or log file with a new one, often on a regular schedule."
+    example: "Rotate the worker join token after it was shared by mistake."
+    es: "rotar, renovar (claves, tokens, logs)"
+  - id: pending
+    word: pending
+    match: [pending]
+    definition: "Waiting for something to happen; not started or not finished yet."
+    example: "The tasks stay pending because no node matches the constraint."
+    es: "pendiente, en espera"
+  - id: behind
+    word: behind
+    match: [behind]
+    definition: "At the back of something, or hidden by something else."
+    example: "Containers on a bridge network are hidden behind the host IP address."
+    es: "detrás de"
+  - id: by-hand
+    word: by hand
+    match: [by hand]
+    definition: "Done by a person, not automatically by a tool."
+    example: "Never edit the files in /var/lib/docker by hand."
+    es: "a mano, manualmente"
+  - id: at-once
+    word: at once
+    match: [at once]
+    definition: "Immediately; or all at the same time."
+    example: "The change is visible at once, because it is the same file."
+    es: "de inmediato; a la vez"
+  - id: in-place
+    word: in place
+    match: [in place]
+    definition: "Without moving or replacing the whole thing; changed where it is."
+    example: "Stack deploy updates the existing services in place."
+    es: "en el sitio, sin recrear"
+  - id: readable
+    word: readable
+    match: [readable]
+    definition: "Easy to read and understand for people."
+    example: "With --pretty, service inspect prints a readable summary."
+    es: "legible"
+  - id: leak
+    word: leak
+    match: [leak, leaks, leaked]
+    definition: "When secret information becomes known to people who should not have it."
+    example: "Rotate the unlock key too if it leaks."
+    es: "filtrarse (información), fuga"
+  - id: stolen
+    word: stolen
+    match: [stolen, steal, steals]
+    definition: "Taken without permission (past participle of steal)."
+    example: "Autolock means stolen disks do not reveal the secrets."
+    es: "robado"
+  - id: starve
+    word: starve
+    match: [starve, starves, starved]
+    definition: "To not give something enough of what it needs, such as CPU or memory."
+    example: "App tasks should not starve the managers of resources."
+    es: "privar de recursos, dejar sin"
+  - id: handy
+    word: handy
+    match: [handy]
+    definition: "Useful and easy to use."
+    example: "docker commit is handy for debugging, but a Dockerfile is better."
+    es: "práctico, útil"
+  - id: repeatable
+    word: repeatable
+    match: [repeatable]
+    definition: "Can be done again in exactly the same way, with the same result."
+    example: "A Dockerfile is repeatable and documents every step."
+    es: "reproducible, repetible"
+  - id: intent
+    word: intent
+    match: [intent]
+    definition: "What someone wants or plans to do; the purpose."
+    example: "Fix the service, but keep the intent of the team."
+    es: "intención, propósito"
+  - id: pasted
+    word: pasted
+    match: [paste, pasted, pastes]
+    definition: "Put text that you copied into another place."
+    example: "A worker join token was pasted in a public chat."
+    es: "pegado (copiar y pegar)"
+  - id: typed
+    word: typed
+    match: [typed]
+    definition: "Written with a keyboard (past of type)."
+    example: "Someone typed the memory reservation as 500G instead of 64M."
+    es: "tecleado, escrito"
+  - id: short-lived
+    word: short-lived
+    match: [short-lived]
+    definition: "Existing or running only for a short time."
+    example: "Use a short-lived container to write a file to the volume."
+    es: "de corta duración"
+  - id: long-running
+    word: long-running
+    match: [long-running]
+    definition: "Running for a long time without stopping."
+    example: "Start a long-running container that mounts the volume read-only."
+    es: "de larga duración, que se mantiene en ejecución"
+  - id: point-of-failure
+    word: point of failure
+    match: [point of failure]
+    definition: "One part of a system that stops everything if it breaks."
+    example: "One server is one point of failure."
+    es: "punto de fallo"
+  - id: fetch
+    word: fetch
+    match: [fetch, fetches, fetched]
+    definition: "To go and get something and bring it back."
+    example: "ADD also fetches URLs and Git repositories."
+    es: "obtener, traer, descargar"

@@ -1,0 +1,40 @@
+id: dca-img-005
+title: Make a single-layer image from a container
+domain: images
+difficulty: 3
+minutes: 8
+environment: docker
+setup: |
+  docker run --name flat-src alpine:3.20 sh -c 'mkdir -p /app && echo "flat v1" > /app/version && echo "see version" > /app/notes' >/dev/null
+task: |
+  The stopped container `flat-src` has files in `/app` that a team wants as an image.
+  Their tool only accepts images with **one layer**.
+
+  Create the image `lab/flat:1` from the **filesystem of the container** `flat-src` so that:
+  - the image has exactly **one layer**;
+  - running it with no arguments prints the content of `/app/version` (`flat v1`).
+
+  Tip: `docker commit` adds a layer on top of the base image layers. Look for another
+  pair of commands.
+checks:
+  - name: The image `lab/flat:1` exists
+    run: docker image inspect lab/flat:1 >/dev/null
+  - name: '`lab/flat:1` has exactly one layer'
+    run: '[ "$(docker image inspect -f "{{len .RootFS.Layers}}" lab/flat:1)" = 1 ]'
+  - name: '`docker run --rm lab/flat:1` prints `flat v1`'
+    run: |
+      out=$(docker run --rm lab/flat:1 2>&1)
+      [ "$out" = "flat v1" ]
+  - name: The container `flat-src` still exists
+    run: docker container inspect flat-src >/dev/null
+    guard: true
+solution: |
+  # export = the container's whole filesystem as one tar; import = a new image with one layer.
+  # Image settings (CMD, ENV...) are not exported, so set them again with --change.
+  docker export flat-src | docker import --change 'CMD ["cat", "/app/version"]' - lab/flat:1
+  docker image history lab/flat:1
+  docker image inspect -f '{{len .RootFS.Layers}}' lab/flat:1    # 1
+  docker run --rm lab/flat:1
+docs:
+  - https://docs.docker.com/reference/cli/docker/container/export/
+  - https://docs.docker.com/reference/cli/docker/image/import/

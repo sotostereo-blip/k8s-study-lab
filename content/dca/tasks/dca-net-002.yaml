@@ -1,0 +1,41 @@
+id: dca-net-002
+title: Publish ports and find the port of a container
+domain: networking
+difficulty: 1
+minutes: 6
+environment: docker
+setup: |
+  docker run -d --name mystery-web -P nginx:1.27-alpine >/dev/null
+  mkdir -p /lab/answers
+task: |
+  1. The container `mystery-web` was started with `-P` (publish all exposed ports to random
+     host ports). Find the **host port** mapped to its port `80/tcp` and write only the number
+     to `/lab/answers/mystery-port.txt`.
+  2. Start a container `pub-web` from `nginx:1.27-alpine` that publishes container port 80 on
+     host port **8081**. Check it with `curl http://docker:8081/`.
+checks:
+  - name: '`/lab/answers/mystery-port.txt` has the host port of `mystery-web` 80/tcp'
+    run: |
+      want=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "80/tcp") 0).HostPort}}' mystery-web) || exit 1
+      got=$(tr -d ' \n\r' < /lab/answers/mystery-port.txt) || exit 1
+      [ -n "$want" ] && [ "$got" = "$want" ]
+  - name: '`pub-web` publishes container port 80 on host port 8081'
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig.PortBindings}}' pub-web) || exit 1
+      echo "$out" | jq -e '."80/tcp"[]? | select(.HostPort == "8081")' >/dev/null
+  - name: http://docker:8081/ answers with nginx
+    run: |
+      out=$(curl -s -m 5 http://docker:8081/) || exit 1
+      echo "$out" | grep -qi 'welcome to nginx'
+  - name: '`mystery-web` is still running'
+    run: '[ "$(docker inspect -f "{{.State.Running}}" mystery-web)" = true ]'
+    guard: true
+solution: |
+  docker port mystery-web 80/tcp          # e.g. 0.0.0.0:32768 and [::]:32768
+  docker port mystery-web 80/tcp | head -1 | awk -F: '{print $NF}' > /lab/answers/mystery-port.txt
+  docker run -d --name pub-web -p 8081:80 nginx:1.27-alpine
+  sleep 1; curl -s http://docker:8081/ | head -4
+  # -p 127.0.0.1:8081:80 would publish only on the loopback interface of the host.
+docs:
+  - https://docs.docker.com/engine/network/port-publishing/
+  - https://docs.docker.com/reference/cli/docker/container/port/

@@ -1,0 +1,86 @@
+id: dca-orch-003
+title: Deploy a compose file as a swarm stack
+domain: orchestration
+difficulty: 2
+minutes: 10
+environment: docker
+setup: |
+  [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init >/dev/null
+  mkdir -p /lab/shop
+  cat > /lab/shop/compose.yaml <<'YAML'
+  services:
+    web:
+      image: nginx:1.27-alpine
+      ports:
+        - "8084:80"
+      networks: [frontend, backend]
+    api:
+      image: busybox:1.36
+      command: ["httpd", "-f", "-p", "8000", "-h", "/tmp"]
+      networks: [backend]
+  networks:
+    frontend: {}
+    backend: {}
+  YAML
+task: |
+  The developers run `/lab/shop/compose.yaml` with `docker compose`. Run it on the swarm instead.
+
+  1. Edit the file so that, **when deployed as a stack**:
+     - `web` runs **2 replicas**, updated one task at a time (`parallelism: 1`);
+     - `api` runs 1 replica and only on **manager** nodes (placement constraint).
+  2. Deploy it as a stack named **`shop`**.
+
+  Then check `docker stack services shop` and `curl http://docker:8084/`.
+checks:
+  - name: Stack `shop` exists with the services `shop_web` and `shop_api`
+    run: |
+      out=$(docker stack services shop --format '{{.Name}}') || exit 1
+      echo "$out" | grep -qx shop_web && echo "$out" | grep -qx shop_api
+  - name: '`shop_web` has 2 replicas and update parallelism 1'
+    run: |
+      out=$(docker service inspect shop_web) || exit 1
+      echo "$out" | jq -e '.[0].Spec.Mode.Replicated.Replicas == 2 and .[0].Spec.UpdateConfig.Parallelism == 1' >/dev/null
+  - name: '`shop_api` only runs on manager nodes'
+    run: |
+      out=$(docker service inspect shop_api) || exit 1
+      echo "$out" | jq -e '[.[0].Spec.TaskTemplate.Placement.Constraints[]? | gsub(" "; "")] | index("node.role==manager") != null' >/dev/null
+  - name: 2 tasks of `shop_web` are running
+    run: |
+      out=$(docker service ps shop_web --filter desired-state=running --format '{{.CurrentState}}') || exit 1
+      [ "$(echo "$out" | grep -c '^Running')" = 2 ]
+  - name: The stack network `shop_backend` uses the overlay driver
+    run: '[ "$(docker network inspect -f "{{.Driver}}" shop_backend)" = overlay ]'
+  - name: http://docker:8084/ answers
+    run: curl -sf -m 5 -o /dev/null http://docker:8084/
+solution: |
+  cat > /lab/shop/compose.yaml <<'YAML'
+  services:
+    web:
+      image: nginx:1.27-alpine
+      ports:
+        - "8084:80"
+      networks: [frontend, backend]
+      deploy:
+        replicas: 2
+        update_config:
+          parallelism: 1
+    api:
+      image: busybox:1.36
+      command: ["httpd", "-f", "-p", "8000", "-h", "/tmp"]
+      networks: [backend]
+      deploy:
+        replicas: 1
+        placement:
+          constraints: [node.role == manager]
+  networks:
+    frontend: {}
+    backend: {}
+  YAML
+  docker stack deploy -c /lab/shop/compose.yaml shop
+  docker stack services shop
+  docker stack ps shop
+  # Change the file and run the same deploy command again to update the stack.
+docs:
+  - https://docs.docker.com/engine/swarm/stack-deploy/
+  - https://docs.docker.com/reference/cli/docker/stack/deploy/
+  - https://docs.docker.com/reference/compose-file/deploy/

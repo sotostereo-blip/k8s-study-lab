@@ -1,0 +1,53 @@
+id: dca-inst-003
+title: Debug a container that exits at start
+domain: install
+difficulty: 2
+minutes: 8
+environment: docker
+setup: |
+  mkdir -p /lab/report /lab/answers && cd /lab/report
+  cat > start.sh <<'SH'
+  #!/bin/sh
+  if [ -z "$DB_HOST" ]; then
+    echo "ERROR: DB_HOST is not set" >&2
+    exit 3
+  fi
+  echo "report service connected to $DB_HOST"
+  exec sleep 86400
+  SH
+  chmod +x start.sh
+  printf 'FROM alpine:3.20\nCOPY start.sh /start.sh\nENTRYPOINT ["/start.sh"]\n' > Dockerfile
+  docker build -q -t lab/report:1 . >/dev/null
+  docker run -d --name report-job lab/report:1 >/dev/null
+task: |
+  The container `report-job` (image `lab/report:1`) stops right after it starts.
+
+  1. Find its **exit code** and write only the number to `/lab/answers/report-exit-code.txt`.
+  2. Find the reason in its output and fix it: run a new container, also called `report-job`,
+     from the same image, with what it needs. The database host is **`db.internal`**.
+  3. The new container must restart **always** if it stops.
+checks:
+  - name: '`/lab/answers/report-exit-code.txt` has the exit code of the failed container'
+    run: '[ "$(tr -d " \n\r" < /lab/answers/report-exit-code.txt)" = 3 ]'
+  - name: '`report-job` runs `lab/report:1` with DB_HOST=db.internal'
+    run: |
+      out=$(docker inspect report-job) || exit 1
+      echo "$out" | jq -e '.[0].Config.Image == "lab/report:1" and .[0].State.Running == true and (.[0].Config.Env | index("DB_HOST=db.internal") != null)' >/dev/null
+  - name: '`report-job` has the restart policy always'
+    run: '[ "$(docker inspect -f "{{.HostConfig.RestartPolicy.Name}}" report-job)" = always ]'
+  - name: The logs show the connection message
+    run: |
+      out=$(docker logs report-job 2>&1)
+      echo "$out" | grep -q 'connected to db.internal'
+solution: |
+  docker ps -a --filter name=report-job          # STATUS: Exited (3)
+  docker inspect -f '{{.State.ExitCode}}' report-job > /lab/answers/report-exit-code.txt
+  docker logs report-job                          # ERROR: DB_HOST is not set
+  docker rm report-job
+  docker run -d --name report-job -e DB_HOST=db.internal --restart always lab/report:1
+  docker logs report-job
+  # Other useful tools: docker inspect -f '{{json .State}}', docker events, docker run -it --entrypoint sh
+docs:
+  - https://docs.docker.com/reference/cli/docker/container/logs/
+  - https://docs.docker.com/reference/cli/docker/inspect/
+  - https://docs.docker.com/engine/containers/start-containers-automatically/

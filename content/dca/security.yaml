@@ -1,0 +1,447 @@
+domain: security
+questions:
+- id: dca-sec-001
+  difficulty: 1
+  type: single
+  question: "Which environment variable makes the Docker CLI pull and run only signed image tags (Docker Content Trust)?"
+  options:
+  - id: a
+    text: "`DOCKER_SIGNED_ONLY=true`"
+    why: "There is no such variable."
+  - id: b
+    text: "`DOCKER_TLS_VERIFY=1`"
+    why: "That makes the CLI use TLS to the engine. It does not check image signatures."
+  - id: c
+    text: "`DOCKER_CONTENT_TRUST=1`"
+  - id: d
+    text: "`DOCKER_BUILDKIT=1`"
+    why: "That selects the BuildKit builder. It has nothing to do with signatures."
+  answer: [c]
+  explanation: |
+    With `DOCKER_CONTENT_TRUST=1`, `docker pull`, `run`, `build` and `push` work only with signed
+    tags (Notary). Push then signs the tag. You can also use `--disable-content-trust` per command.
+  docs:
+  - https://docs.docker.com/engine/security/trust/
+  glossary: [content-trust, image-signing]
+
+- id: dca-sec-002
+  difficulty: 2
+  type: single
+  question: "With Docker Content Trust, which command signs and pushes the tag `reg.example.com/app:1.0`?"
+  options:
+  - id: a
+    text: "`docker image tag --signed reg.example.com/app:1.0`"
+    why: "`docker tag` has no `--signed` option. Signing is done by `docker trust`."
+  - id: b
+    text: "`docker trust sign reg.example.com/app:1.0`"
+  - id: c
+    text: "`docker sign reg.example.com/app:1.0`"
+    why: "There is no `docker sign` command."
+  - id: d
+    text: "`docker build --sign -t reg.example.com/app:1.0 .`"
+    why: "`docker build` has no `--sign` option."
+  answer: [b]
+  explanation: |
+    `docker trust sign` signs a tag and pushes it if needed. The first time, it creates a root key
+    and a repository key. `docker trust inspect --pretty` shows the signers of a repository.
+  docs:
+  - https://docs.docker.com/engine/security/trust/
+  - https://docs.docker.com/reference/cli/docker/trust/sign/
+  glossary: [content-trust, image-signing]
+
+- id: dca-sec-003
+  difficulty: 2
+  type: multiple
+  question: "Which security features does Docker Engine apply to containers by default on Linux? (Choose three.)"
+  options:
+  - id: a
+    text: "Separate namespaces for PID, network and mounts"
+  - id: b
+    text: "A reduced set of Linux capabilities"
+  - id: c
+    text: "A read-only root filesystem"
+    why: "The root filesystem is writable by default. Use `--read-only` to change that."
+  - id: d
+    text: "A default seccomp profile that blocks dangerous system calls"
+  - id: e
+    text: "User namespace remapping of root to an unprivileged user"
+    why: "userns-remap must be turned on in the daemon config. By default root in the container is root on the host (with fewer capabilities)."
+  answer: [a, b, d]
+  explanation: |
+    By default containers get their own namespaces, a limited capability set, the default seccomp
+    profile and (where available) the `docker-default` AppArmor profile. User namespaces and a
+    read-only filesystem are extra hardening you must enable.
+  docs:
+  - https://docs.docker.com/engine/security/
+  - https://docs.docker.com/engine/security/seccomp/
+  glossary: [seccomp, linux-capabilities, linux-namespaces]
+
+- id: dca-sec-004
+  difficulty: 2
+  type: single
+  question: "Why is `--privileged` dangerous for a container?"
+  options:
+  - id: a
+    text: "It gives all capabilities and host devices and lifts seccomp/AppArmor limits"
+  - id: b
+    text: "It publishes every exposed port of the container on the host"
+    why: "Port publishing is done with `-p` or `-P`."
+  - id: c
+    text: "It only lets the container use more CPU and memory than other containers"
+    why: "CPU is controlled by cgroup limits. Privileged mode is about kernel privileges and devices."
+  - id: d
+    text: "It makes the container process run as a normal user instead of root"
+    why: "It does the opposite. It gives the container almost full root power on the host."
+  answer: [a]
+  explanation: |
+    A privileged container can do almost anything the host root can, such as mounting host disks.
+    Prefer adding only the needed capabilities with `--cap-add`, and use `--privileged` only for
+    special cases (for example Docker in Docker).
+  docs:
+  - https://docs.docker.com/engine/containers/run/#runtime-privilege-and-linux-capabilities
+  glossary: [privileged-container, linux-capabilities]
+
+- id: dca-sec-005
+  difficulty: 2
+  type: single
+  question: "A web server container must bind port 80 as a non-root user, and needs no other privilege. What is the most secure option?"
+  options:
+  - id: a
+    text: "`--privileged --user app`"
+    why: "Privileged mode gives every capability and device. Far more than needed."
+  - id: b
+    text: "`--cap-add SYS_ADMIN --user app`"
+    why: "SYS_ADMIN is a very broad capability, close to root. It is not needed to bind low ports."
+  - id: c
+    text: "`--cap-drop ALL --cap-add NET_BIND_SERVICE`"
+  - id: d
+    text: "`--user root --cap-drop NET_RAW`"
+    why: "Root with one capability dropped still has many more privileges than needed."
+  answer: [c]
+  explanation: |
+    Start from nothing (`--cap-drop ALL`) and add only what the app needs. NET_BIND_SERVICE allows
+    binding ports below 1024. Least privilege limits the damage if the app is attacked.
+  docs:
+  - https://docs.docker.com/engine/containers/run/#runtime-privilege-and-linux-capabilities
+  glossary: [linux-capabilities, least-privilege]
+
+- id: dca-sec-006
+  difficulty: 2
+  type: multiple
+  question: "Which ways make a container run as a non-root user? (Choose two.)"
+  options:
+  - id: a
+    text: "`docker run --user 1000:1000 ...`"
+  - id: b
+    text: "A `LABEL user=app` instruction in the Dockerfile"
+    why: "Labels are metadata. They do not change the user."
+  - id: c
+    text: "A `USER app` instruction in the Dockerfile"
+  - id: d
+    text: "An `ENV USER=app` instruction in the Dockerfile"
+    why: "That only sets a variable. The process still runs as root."
+  answer: [a, c]
+  explanation: |
+    `USER` sets the default user for later instructions and for containers; create the user first
+    (`adduser`/`useradd`). `docker run --user` (or `user:` in compose) overrides it at run time.
+  docs:
+  - https://docs.docker.com/reference/dockerfile/#user
+  - https://docs.docker.com/build/building/best-practices/#user
+  glossary: [dockerfile, security-context]
+
+- id: dca-sec-007
+  difficulty: 2
+  type: single
+  question: "What does the daemon option `userns-remap` do?"
+  options:
+  - id: a
+    text: "It makes the Docker daemon itself run without root"
+    why: "That is rootless mode. With userns-remap the daemon still runs as root."
+  - id: b
+    text: "It maps root in containers to an unprivileged UID range on the host"
+  - id: c
+    text: "It renames users inside images"
+    why: "Images are not changed. Only the UID mapping between container and host changes."
+  - id: d
+    text: "It removes all users except root from containers"
+    why: "It does nothing like that. It changes how container UIDs map to host UIDs."
+  answer: [b]
+  explanation: |
+    With `"userns-remap": "default"`, Docker creates the user `dockremap` and maps container UID 0 to
+    a high UID from /etc/subuid. If a process escapes, it is not root on the host. Some features
+    (like `--privileged` or host namespaces) need extra care with it.
+  docs:
+  - https://docs.docker.com/engine/security/userns-remap/
+  glossary: [userns-remap, linux-namespaces]
+
+- id: dca-sec-008
+  difficulty: 2
+  type: single
+  question: "How is the traffic between swarm nodes (managers and workers) protected by default?"
+  options:
+  - id: a
+    text: "With SSH tunnels that swarm opens between all pairs of nodes"
+    why: "Swarm does not use SSH."
+  - id: b
+    text: "Mutual TLS, with the managers as CA and automatic certificate rotation"
+  - id: c
+    text: "With a shared password that you write in daemon.json on each node"
+    why: "Swarm uses certificates, not passwords."
+  - id: d
+    text: "It is not protected; you must build a VPN between all the nodes"
+    why: "Swarm control traffic is encrypted and authenticated out of the box."
+  answer: [b]
+  explanation: |
+    `docker swarm init` creates a root CA (or uses an external one). Each node gets a certificate
+    to identify itself and its role; certificates rotate every 90 days by default
+    (`docker swarm update --cert-expiry`). Communication between nodes uses mutual TLS.
+  docs:
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/pki/
+  glossary: [mtls, certificate-authority, swarm-mode]
+
+- id: dca-sec-009
+  difficulty: 2
+  type: single
+  question: "A swarm manager join token was shared by mistake. What should you do first?"
+  options:
+  - id: a
+    text: "`docker swarm join-token --rotate manager`"
+  - id: b
+    text: "`docker swarm leave --force` on all managers"
+    why: "That destroys the swarm. Rotating the token stops new joins with the old one."
+  - id: c
+    text: "Delete the worker token with `docker swarm join-token -q worker`"
+    why: "`-q` only prints the token. The leaked one is the manager token."
+  - id: d
+    text: "Restart Docker on the managers"
+    why: "Restarting does not change the token."
+  answer: [a]
+  explanation: |
+    Rotating creates a new token; the old one stops working for new joins. Nodes that already joined
+    are not affected. Also check `docker node ls` for unknown nodes and remove them.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/swarm/join-token/
+  - https://docs.docker.com/engine/swarm/join-nodes/
+  glossary: [join-token, manager-node]
+
+- id: dca-sec-010
+  difficulty: 2
+  type: single
+  question: "What does swarm autolock protect?"
+  options:
+  - id: a
+    text: "The images in the local image store of each manager"
+    why: "Autolock is about swarm Raft data, not images."
+  - id: b
+    text: "The keys that encrypt the Raft logs on disk, after a manager restarts"
+  - id: c
+    text: "Running containers from being stopped by other users"
+    why: "It does not change container permissions."
+  - id: d
+    text: "The data traffic of overlay networks between nodes"
+    why: "That is `--opt encrypted` on overlay networks."
+  answer: [b]
+  explanation: |
+    Raft data (including secrets) is always encrypted at rest. Autolock also protects the key: a
+    restarted manager stays locked until `docker swarm unlock` gets the unlock key, so stolen disks
+    do not reveal secrets.
+  docs:
+  - https://docs.docker.com/engine/swarm/swarm_manager_locking/
+  glossary: [autolock, raft, encryption-at-rest]
+
+- id: dca-sec-011
+  difficulty: 2
+  type: multiple
+  question: "Which statements about swarm secrets are true? (Choose two.)"
+  options:
+  - id: a
+    text: "They can be changed in place with `docker secret update`"
+    why: "Secrets are immutable. Create a new secret and update the service to use it (rotation)."
+  - id: b
+    text: "They are visible as plain text in `docker service inspect`"
+    why: "Inspect shows only the secret name and ID, never the value."
+  - id: c
+    text: "They are sent only to nodes that run a task of a service with access to them"
+  - id: d
+    text: "They are mounted in memory at `/run/secrets/<name>` inside tasks that use them"
+  answer: [c, d]
+  explanation: |
+    Secrets are encrypted in the Raft log and over the network, and only nodes that need them get
+    them. Inside the container they are files on a tmpfs. To rotate, create `db_pass_v2`, then
+    `docker service update --secret-rm db_pass --secret-add source=db_pass_v2,target=db_pass`.
+  docs:
+  - https://docs.docker.com/engine/swarm/secrets/
+  glossary: [docker-secret, tmpfs-mount]
+
+- id: dca-sec-012
+  difficulty: 2
+  type: single
+  question: "How can a team check an image for known vulnerabilities (CVEs) before they deploy it?"
+  options:
+  - id: a
+    text: "Run `docker image inspect` and read the security labels of the image"
+    why: "Labels are free metadata. They do not list vulnerabilities."
+  - id: b
+    text: "Sign the image with Docker Content Trust before every push"
+    why: "Signing proves who published an image. It does not check its packages for CVEs."
+  - id: c
+    text: "Scan it with a scanner such as `docker scout cves` or the MSR scanner"
+  - id: d
+    text: "Run the container with `--read-only` and check that it starts"
+    why: "A read-only filesystem reduces risk at run time but does not find vulnerabilities."
+  answer: [c]
+  explanation: |
+    Image scanners compare the packages of an image (its SBOM) with CVE databases. Docker Scout,
+    Trivy and the MSR scanner do this. Scanning is about content; signing is about origin. Use both.
+  docs:
+  - https://docs.docker.com/scout/
+  - https://docs.docker.com/reference/cli/docker/scout/cves/
+  glossary: [image-scanning, cve, docker-scout]
+
+- id: dca-sec-013
+  difficulty: 3
+  type: single
+  question: "In MKE (UCP), what is the difference between manager and worker nodes?"
+  options:
+  - id: a
+    text: "There is no difference; MKE has no roles"
+    why: "MKE nodes have manager or worker roles, as in swarm."
+  - id: b
+    text: "Managers run the MKE control plane and swarm managers; workers run user workloads"
+  - id: c
+    text: "Managers can only run Kubernetes, workers only Swarm"
+    why: "Both orchestrators share the same nodes. The role is about the control plane."
+  - id: d
+    text: "Workers store the MKE database and managers only run containers"
+    why: "It is the other way round. The control plane and its data run on managers."
+  answer: [b]
+  explanation: |
+    MKE managers run the MKE controller, the swarm managers, the Kubernetes control plane and
+    etcd. Workers run the workloads. For high availability, use 3 or 5 managers and keep user
+    workloads off the managers.
+  docs:
+  - https://docs.mirantis.com/mke/3.8/
+  glossary: [mke, manager-node, worker-node]
+
+- id: dca-sec-014
+  difficulty: 2
+  type: single
+  question: "Which option makes the root filesystem of a container read-only, while the app can still write to `/tmp`?"
+  options:
+  - id: a
+    text: "`docker run --security-opt readonly ...`"
+    why: "There is no `readonly` security option."
+  - id: b
+    text: "`docker run --user nobody ...`"
+    why: "A non-root user still has write access to some paths. This does not make the filesystem read-only."
+  - id: c
+    text: "`docker run --volume /:/:ro ...`"
+    why: "You cannot mount over the container root this way."
+  - id: d
+    text: "`docker run --read-only --tmpfs /tmp ...`"
+  answer: [d]
+  explanation: |
+    `--read-only` mounts the container root as read-only, so attackers cannot change binaries.
+    Paths that need writes get a tmpfs or a volume. In compose files use `read_only: true` and `tmpfs:`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/container/run/#read-only
+  - https://docs.docker.com/engine/storage/tmpfs/
+  glossary: [tmpfs-mount]
+
+- id: dca-sec-015
+  difficulty: 3
+  type: single
+  question: "What does `--security-opt no-new-privileges` prevent?"
+  options:
+  - id: a
+    text: "The container from opening network connections"
+    why: "It does not affect networking."
+  - id: b
+    text: "Docker from pulling a new version of the image"
+    why: "It is about process privileges, not image pulls."
+  - id: c
+    text: "The container from writing to volumes"
+    why: "Write access is controlled by mounts and file permissions."
+  - id: d
+    text: "Processes gaining more privileges, for example through setuid binaries"
+  answer: [d]
+  explanation: |
+    It sets the Linux `no_new_privs` flag: `setuid`/`setgid` programs and file capabilities cannot
+    raise privileges. It is cheap hardening for almost every container.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/container/run/#security-opt
+  glossary: [privilege-escalation]
+
+- id: dca-sec-016
+  difficulty: 2
+  type: single
+  question: "Why is it a risk to mount `/var/run/docker.sock` into a container?"
+  options:
+  - id: a
+    text: "Logs of the container are no longer saved"
+    why: "Logging is not related to the socket mount."
+  - id: b
+    text: "The container can control the Docker Engine and so gets root access to the host"
+  - id: c
+    text: "The socket uses too much memory inside the container"
+    why: "The socket is just a file. The risk is what it allows, not its size."
+  - id: d
+    text: "The container stops when the host reboots"
+    why: "That has nothing to do with the socket."
+  answer: [b]
+  explanation: |
+    With the socket, a process can start a privileged container that mounts the host root
+    filesystem. Give socket access only to trusted tools, or use a proxy that allows only some API
+    calls, or rootless Docker.
+  docs:
+  - https://docs.docker.com/engine/security/#docker-daemon-attack-surface
+  glossary: [docker-engine, container-breakout]
+
+- id: dca-sec-017
+  difficulty: 3
+  type: single
+  question: "How can MKE (UCP) users log in with their company accounts?"
+  options:
+  - id: a
+    text: "Integrate MKE with LDAP or Active Directory and sync users and teams"
+  - id: b
+    text: "Add each user to `/etc/passwd` on all managers"
+    why: "MKE users are not host users. Host accounts do not give MKE access."
+  - id: c
+    text: "Put the users in a swarm secret"
+    why: "Secrets store data for services, not identities for MKE."
+  - id: d
+    text: "Use `docker login` with the AD password against each node"
+    why: "`docker login` authenticates to registries, not to MKE nodes."
+  answer: [a]
+  explanation: |
+    MKE can use LDAP/AD (or SAML) for authentication. Admins map groups to MKE teams, and RBAC
+    grants give those teams their roles. Users then download client bundles with their own identity.
+  docs:
+  - https://docs.mirantis.com/mke/3.8/ops/administer-cluster/integrate-with-LDAP-directory/configure-ldap-integration.html
+  glossary: [mke, authentication]
+
+- id: dca-sec-018
+  difficulty: 2
+  type: single
+  question: "MKE and MSR are installed with self-signed certificates. Users want their browsers and engines to trust them. What should the admin do?"
+  options:
+  - id: a
+    text: "Restart MKE to generate new self-signed certificates"
+    why: "New self-signed certificates have the same trust problem."
+  - id: b
+    text: "Replace them with certificates signed by the company CA (external certificates)"
+  - id: c
+    text: "Turn off TLS on MKE and MSR"
+    why: "That removes encryption and authentication. Never do that."
+  - id: d
+    text: "Tell every user to add MKE to `insecure-registries`"
+    why: "That skips checks instead of making them pass, and MKE is not a registry."
+  answer: [b]
+  explanation: |
+    Both products accept your own certificates (cert, key and CA) during install or later in
+    their settings. Engines that pull from MSR also need the CA in `/etc/docker/certs.d/<msr host>/`.
+  docs:
+  - https://docs.mirantis.com/mke/3.8/
+  - https://docs.docker.com/engine/security/certificates/
+  glossary: [mke, msr, certificate-authority, tls]

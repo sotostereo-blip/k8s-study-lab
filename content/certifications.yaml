@@ -46,6 +46,13 @@ certifications:
     exam: lfcs
     track: lfcs
     description: Hands-on Linux administration on Ubuntu servers with systemd (labs and mock exam), plus a concept question bank.
+  - id: dca
+    name: Docker Certified Associate
+    short: DCA
+    area: Linux and containers
+    exam: dca
+    track: dca
+    description: Multiple choice exam (Mirantis), plus hands-on labs on a real Docker Engine with Swarm, Compose and a local registry.
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

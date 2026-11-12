@@ -1,0 +1,69 @@
+id: dca-img-003
+title: Tag and push images to a private registry, delete an old one
+domain: images
+difficulty: 2
+minutes: 12
+environment: docker
+setup: |
+  mkdir -p /lab/tools /lab/legacy
+  cat > /lab/tools/Dockerfile <<'DF'
+  FROM busybox:1.36
+  RUN echo "tools 2.1" > /VERSION
+  CMD ["cat", "/VERSION"]
+  DF
+  cat > /lab/legacy/Dockerfile <<'DF'
+  FROM busybox:1.36
+  RUN echo "legacy, do not use" > /VERSION
+  CMD ["cat", "/VERSION"]
+  DF
+  docker build -q -t registry:5000/team/legacy:old /lab/legacy >/dev/null
+  docker push -q registry:5000/team/legacy:old >/dev/null
+  docker image rm registry:5000/team/legacy:old >/dev/null
+task: |
+  A private registry runs at `registry:5000` (plain HTTP; the engine already trusts it).
+
+  1. Build an image from `/lab/tools` and push it to the registry as **both**
+     `registry:5000/team/tools:2.1` and `registry:5000/team/tools:latest` (the same image).
+  2. The repository `team/legacy` has a tag `old` that must not be used any more.
+     **Delete** it from the registry (the registry allows deletes through its HTTP API).
+
+  Tip: the registry API is at `http://registry:5000/v2/` (try `/v2/_catalog` and
+  `/v2/<repo>/tags/list`).
+checks:
+  - name: The registry has the tags `2.1` and `latest` in `team/tools`
+    run: |
+      out=$(curl -sf http://registry:5000/v2/team/tools/tags/list) || exit 1
+      echo "$out" | jq -e '(.tags // []) | (index("2.1") != null and index("latest") != null)' >/dev/null
+  - name: '`2.1` and `latest` point to the same manifest digest'
+    run: |
+      acc='Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json'
+      dig() { curl -sfI -H "$acc" "http://registry:5000/v2/team/tools/manifests/$1" | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}'; }
+      a=$(dig 2.1); b=$(dig latest); [ -n "$a" ] && [ "$a" = "$b" ]
+  - name: The pushed image prints `tools 2.1`
+    run: |
+      out=$(docker run --rm --pull always registry:5000/team/tools:2.1 2>&1)
+      echo "$out" | grep -q 'tools 2.1'
+  - name: The tag `old` is gone from `team/legacy`
+    run: |
+      out=$(curl -s http://registry:5000/v2/team/legacy/tags/list)
+      ! echo "$out" | jq -e '(.tags // []) | index("old") != null' >/dev/null
+solution: |
+  cd /lab/tools
+  docker build -t registry:5000/team/tools:2.1 .
+  docker tag registry:5000/team/tools:2.1 registry:5000/team/tools:latest
+  docker push registry:5000/team/tools:2.1
+  docker push registry:5000/team/tools:latest       # or: docker push --all-tags registry:5000/team/tools
+  curl -s http://registry:5000/v2/team/tools/tags/list
+
+  # Delete a tag: find the manifest digest, then DELETE the manifest by digest
+  ACCEPT='Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json'
+  DIGEST=$(curl -sI -H "$ACCEPT" http://registry:5000/v2/team/legacy/manifests/old \
+    | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}')
+  curl -s -X DELETE "http://registry:5000/v2/team/legacy/manifests/$DIGEST"
+  curl -s http://registry:5000/v2/team/legacy/tags/list
+  # Disk space comes back only after garbage collection on the registry host:
+  #   registry garbage-collect /etc/docker/registry/config.yml
+docs:
+  - https://docs.docker.com/reference/cli/docker/image/push/
+  - https://docs.docker.com/reference/cli/docker/image/tag/
+  - https://distribution.github.io/distribution/spec/api/

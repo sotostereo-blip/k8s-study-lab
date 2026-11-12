@@ -1,0 +1,305 @@
+# Docker glossary (Docker Certified Associate). Shown when you click a highlighted term.
+# Shared terms such as container, image, registry, volume, label, replica and digest live in glossary.yaml.
+terms:
+- id: docker-engine
+  term: "Docker Engine"
+  match: [Docker Engine, dockerd, Docker daemon]
+  definition: "The server part of Docker (the `dockerd` daemon). It builds images and runs containers, networks and volumes, and offers the Docker API."
+  es: "Parte servidor de Docker (el demonio `dockerd`) que construye imágenes y ejecuta contenedores."
+- id: docker-cli
+  term: "Docker CLI"
+  match: [Docker CLI, docker client, Docker client]
+  definition: "The `docker` command. It sends requests to the Docker Engine API, on the same host or on a remote one (DOCKER_HOST, contexts)."
+  es: "El comando `docker`; envía peticiones a la API del Docker Engine, local o remoto."
+- id: daemon-json
+  term: "daemon.json"
+  match: [daemon.json]
+  definition: "The configuration file of the Docker Engine, usually `/etc/docker/daemon.json` on Linux. Changes need a restart (or a reload for some options)."
+  es: "Archivo de configuración del Docker Engine (normalmente /etc/docker/daemon.json)."
+- id: dockerfile
+  term: "Dockerfile"
+  match: [Dockerfile, Dockerfiles]
+  definition: "A text file with instructions (FROM, RUN, COPY, CMD...) that tells Docker how to build an image, step by step."
+  es: "Archivo de texto con instrucciones para construir una imagen."
+- id: image-layer
+  term: "Image layer"
+  match: [image layer, image layers, layer, layers]
+  definition: "A read-only set of file changes. An image is a stack of layers; instructions such as RUN, COPY and ADD each add one."
+  es: "Capa de imagen; conjunto de cambios de archivos de solo lectura. Una imagen es una pila de capas."
+- id: multi-stage-build
+  term: "Multi-stage build"
+  match: [multi-stage build, multi-stage builds, multi-stage]
+  definition: "A Dockerfile with several FROM stages. Later stages copy only the files they need from earlier ones, so the final image stays small."
+  es: "Build con varias etapas FROM; la imagen final solo copia lo necesario y queda pequeña."
+- id: build-context
+  term: "Build context"
+  match: [build context]
+  definition: "The set of files sent to the builder with `docker build` (usually a folder). COPY and ADD can only use files from it."
+  es: "Conjunto de archivos que se envía al builder en `docker build`."
+- id: dockerignore
+  term: ".dockerignore"
+  match: [.dockerignore]
+  definition: "A file in the build context that lists files and folders to leave out of the build context, like a .gitignore."
+  es: "Archivo que excluye archivos del contexto de build."
+- id: build-cache
+  term: "Build cache"
+  match: [build cache, layer cache]
+  definition: "Saved results of earlier build steps. If an instruction and its inputs did not change, Docker reuses the cached layer instead of running it again."
+  es: "Caché de build; Docker reutiliza capas si la instrucción y sus entradas no cambian."
+- id: buildkit
+  term: "BuildKit"
+  match: [BuildKit, buildx, Buildx]
+  definition: "The default build engine of Docker. `docker buildx` is the CLI plugin that drives it (multi-platform builds, cache export, builders)."
+  es: "Motor de build por defecto de Docker; `docker buildx` es su plugin de CLI."
+- id: image-tag
+  term: "Image tag"
+  match: [image tag, image tags, tag, tags, tagged]
+  definition: "A human-friendly name for one version of an image in a repository, for example `nginx:1.27-alpine`. A tag can be moved to another image; a digest cannot."
+  es: "Etiqueta legible de una versión de imagen (p. ej. nginx:1.27-alpine); puede moverse."
+- id: dangling-image
+  term: "Dangling image"
+  match: [dangling image, dangling images, dangling]
+  definition: "An image with no tag (shown as `<none>`), usually an old build whose tag moved to a newer image. `docker image prune` removes them."
+  es: "Imagen sin etiqueta (<none>), normalmente un build antiguo."
+- id: docker-hub
+  term: "Docker Hub"
+  match: [Docker Hub]
+  definition: "Docker's public registry service, the default registry of the Docker CLI (`docker.io`)."
+  es: "Registro público de Docker, el registro por defecto (docker.io)."
+- id: entrypoint
+  term: "ENTRYPOINT"
+  match: [ENTRYPOINT, entrypoint]
+  definition: "The Dockerfile instruction that sets the program a container always runs. CMD (or the arguments of `docker run`) is passed to it as arguments."
+  es: "Instrucción que fija el programa que el contenedor ejecuta siempre; CMD le pasa argumentos."
+- id: cmd-instruction
+  term: "CMD"
+  match: [CMD]
+  definition: "The Dockerfile instruction that sets the default command or default arguments of a container. Arguments of `docker run` replace it."
+  es: "Instrucción que fija el comando o argumentos por defecto; `docker run` puede sustituirlos."
+- id: healthcheck
+  term: "HEALTHCHECK"
+  match: [HEALTHCHECK, health check, health checks, healthcheck]
+  definition: "A command Docker runs inside a container at an interval to test it. The container becomes `healthy` or `unhealthy`; swarm replaces unhealthy tasks."
+  es: "Comando que Docker ejecuta periódicamente dentro del contenedor para comprobar su salud."
+- id: restart-policy
+  term: "Restart policy"
+  match: [restart policy, restart policies]
+  definition: "The rule that tells the Docker Engine when to restart a container that stops: no, on-failure[:max], always or unless-stopped."
+  es: "Política de reinicio de un contenedor: no, on-failure, always o unless-stopped."
+- id: logging-driver
+  term: "Logging driver"
+  match: [logging driver, logging drivers, log driver, json-file, journald]
+  definition: "The plugin that receives the output of a container and stores or ships it (json-file, local, journald, syslog, fluentd, splunk, awslogs...)."
+  es: "Plugin que recibe la salida de un contenedor y la guarda o envía."
+- id: docker-compose
+  term: "Docker Compose"
+  match: [Docker Compose, compose file, compose files, compose.yaml]
+  definition: "A tool (`docker compose`) that defines and runs a multi-container application from one YAML file (services, networks, volumes)."
+  es: "Herramienta que define y ejecuta aplicaciones multicontenedor desde un archivo YAML."
+- id: swarm-mode
+  term: "Swarm mode"
+  match: [swarm mode, swarm, swarms, Docker Swarm]
+  definition: "The orchestrator built into the Docker Engine. Several engines form a swarm (cluster) that runs services across nodes."
+  es: "Orquestador integrado en Docker Engine; varios motores forman un clúster (swarm)."
+- id: swarm-service
+  term: "Swarm service"
+  match: [swarm service, swarm services]
+  definition: "The desired state of an application in a swarm (image, replicas, ports, networks). The managers create tasks (containers) to reach it."
+  es: "Estado deseado de una aplicación en swarm; los managers crean tareas (contenedores) para cumplirlo."
+- id: swarm-task
+  term: "Swarm task"
+  match: [swarm task, swarm tasks]
+  definition: "The unit of scheduling in a swarm. One task is one container plus the commands to run it, placed on one node."
+  es: "Unidad de planificación en swarm: un contenedor asignado a un nodo."
+- id: manager-node
+  term: "Manager node"
+  match: [manager node, manager nodes, managers]
+  definition: "A swarm node that keeps the cluster state with Raft, schedules tasks and serves the swarm API. Managers can also run tasks."
+  es: "Nodo manager; guarda el estado del swarm con Raft y planifica tareas."
+- id: worker-node
+  term: "Worker node"
+  match: [worker node, worker nodes, workers]
+  definition: "A swarm node that only runs the tasks it receives from the managers. It has no vote in Raft."
+  es: "Nodo worker; solo ejecuta las tareas que le asignan los managers."
+- id: raft
+  term: "Raft"
+  match: [Raft, Raft log]
+  definition: "The consensus algorithm swarm managers use to agree on the cluster state. A change is accepted when a majority (quorum) of managers stores it."
+  es: "Algoritmo de consenso de los managers de swarm."
+- id: quorum
+  term: "Quorum"
+  match: [quorum]
+  definition: "A majority of the managers, (N/2)+1. Without quorum the swarm cannot change its state (no new services or updates), but running tasks keep running."
+  es: "Mayoría de managers necesaria para cambiar el estado del clúster."
+- id: docker-stack
+  term: "Stack"
+  match: [stack, stacks, docker stack]
+  certs: [dca]
+  definition: "A group of swarm services, networks, secrets and configs deployed together from one compose file with `docker stack deploy`."
+  es: "Grupo de servicios de swarm desplegados juntos desde un archivo compose."
+- id: global-service
+  term: "Global service"
+  match: [global service, global services, global mode]
+  definition: "A swarm service that runs exactly one task on every node that matches its constraints, also on nodes added later."
+  es: "Servicio de swarm con una tarea en cada nodo que cumple las restricciones."
+- id: replicated-service
+  term: "Replicated service"
+  match: [replicated service, replicated services, replicated mode]
+  definition: "A swarm service with a fixed number of tasks (replicas) that the scheduler spreads over the available nodes."
+  es: "Servicio de swarm con un número fijo de réplicas."
+- id: placement-constraint
+  term: "Placement constraint"
+  match: [placement constraint, placement constraints]
+  definition: "A rule such as `node.role==manager` or `node.labels.zone==edge` that limits the nodes where swarm may place the tasks of a service."
+  es: "Regla que limita en qué nodos se colocan las tareas de un servicio."
+- id: service-template
+  term: "Service template"
+  match: [template, templates]
+  certs: [dca]
+  definition: "Go template placeholders such as `{{.Task.Slot}}` or `{{.Node.Hostname}}` that `docker service create` accepts in --hostname, --mount and --env."
+  es: "Marcadores de plantilla Go que se pueden usar en algunas opciones de los servicios."
+- id: join-token
+  term: "Join token"
+  match: [join token, join tokens]
+  definition: "A secret string a node needs to join a swarm. There is one for workers and one for managers; you can rotate them."
+  es: "Token secreto para unir un nodo al swarm (uno para workers y otro para managers)."
+- id: autolock
+  term: "Swarm autolock"
+  match: [autolock, unlock key]
+  definition: "A swarm option that keeps the Raft data keys encrypted after a manager restarts, until someone runs `docker swarm unlock` with the unlock key."
+  es: "Opción que bloquea un manager reiniciado hasta que se introduce la clave de desbloqueo."
+- id: docker-secret
+  term: "Docker secret"
+  match: [Docker secret, Docker secrets, swarm secret, swarm secrets]
+  definition: "Sensitive data (password, key) stored encrypted in the swarm Raft log and mounted only into the tasks that need it, at /run/secrets/<name>."
+  es: "Dato sensible cifrado en el swarm y montado solo en las tareas que lo usan."
+- id: docker-config
+  term: "Docker config"
+  match: [Docker config, Docker configs, swarm config, swarm configs]
+  definition: "Non-sensitive configuration data stored in the swarm and mounted as a file into the tasks of a service, without building it into the image."
+  es: "Configuración no sensible guardada en el swarm y montada como archivo en las tareas."
+- id: routing-mesh
+  term: "Routing mesh"
+  match: [routing mesh, ingress network, ingress mode]
+  definition: "The swarm load balancer. A port published in ingress mode is open on every node, and traffic goes to any running task of the service."
+  es: "Balanceador de swarm: un puerto publicado está abierto en todos los nodos."
+- id: cnm
+  term: "Container Network Model"
+  match: [Container Network Model, CNM]
+  definition: "Docker's network design with three parts (sandbox, endpoint, network) and pluggable network and IPAM drivers."
+  es: "Modelo de red de Docker (sandbox, endpoint, red) con drivers enchufables."
+- id: ipam
+  term: "IPAM"
+  match: [IPAM]
+  definition: "IP Address Management. The driver that gives subnets, gateways and IP addresses to Docker networks and containers."
+  es: "Gestión de direcciones IP de las redes Docker."
+- id: network-driver
+  term: "Network driver"
+  match: [network driver, network drivers]
+  definition: "The plugin that implements a Docker network type: bridge, host, overlay, macvlan, ipvlan or none."
+  es: "Plugin que implementa un tipo de red Docker (bridge, host, overlay...)."
+- id: bridge-network
+  term: "Bridge network"
+  match: [bridge network, bridge networks, user-defined bridge, default bridge]
+  definition: "A network on one host that connects containers through a Linux bridge. User-defined bridges also give DNS between container names."
+  es: "Red en un solo host que conecta contenedores mediante un bridge de Linux."
+- id: overlay-network
+  term: "Overlay network"
+  match: [overlay network, overlay networks, overlay driver, overlay]
+  definition: "A network that spans all nodes of a swarm (VXLAN tunnels), so tasks and attachable containers on different hosts can talk to each other."
+  es: "Red que abarca todos los nodos de un swarm mediante túneles VXLAN."
+- id: macvlan
+  term: "macvlan"
+  match: [macvlan, ipvlan]
+  definition: "Network drivers that give a container an address on the physical network, so it looks like a separate machine to legacy systems."
+  es: "Drivers que dan al contenedor una dirección de la red física."
+- id: published-port
+  term: "Published port"
+  match: [published port, published ports, port mapping, publish a port]
+  definition: "A host port forwarded to a container port (`-p 8080:80`), so clients outside the container network can reach the app."
+  es: "Puerto del host redirigido a un puerto del contenedor."
+- id: bind-mount
+  term: "Bind mount"
+  match: [bind mount, bind mounts, bind-mount, bind-mounts]
+  definition: "A file or folder of the host mounted into a container by its host path. The host controls it; Docker does not manage it."
+  es: "Archivo o carpeta del host montado en el contenedor por su ruta."
+- id: tmpfs-mount
+  term: "tmpfs mount"
+  match: [tmpfs, tmpfs mount]
+  definition: "A mount that lives only in the host memory. Data disappears when the container stops; good for temporary or sensitive files."
+  es: "Montaje en memoria; los datos desaparecen al parar el contenedor."
+- id: storage-driver
+  term: "Storage driver"
+  match: [storage driver, storage drivers, graph driver, overlay2, snapshotter]
+  definition: "The component that stores image layers and the writable container layer on disk. On Linux the default is overlay2 (or the containerd overlayfs snapshotter)."
+  es: "Componente que guarda capas de imagen y la capa escribible; por defecto overlay2."
+- id: copy-on-write
+  term: "Copy-on-write"
+  match: [copy-on-write, CoW, writable layer, container layer]
+  definition: "A file from a read-only layer is copied up to the container's writable layer the first time the container changes it."
+  es: "Un archivo se copia a la capa escribible la primera vez que el contenedor lo modifica."
+- id: devicemapper
+  term: "devicemapper"
+  match: [devicemapper, direct-lvm, loop-lvm]
+  definition: "An old block-based storage driver (direct-lvm in production). It was deprecated and removed in Docker Engine 25.0."
+  es: "Driver de almacenamiento antiguo basado en bloques; eliminado en Docker Engine 25."
+- id: linux-namespaces
+  term: "Linux namespaces"
+  match: [Linux namespaces, kernel namespaces, PID namespace, network namespace]
+  definition: "A kernel feature that gives a process its own view of system resources (PIDs, network, mounts, users...). Containers are built on it."
+  es: "Función del kernel que aísla la vista de recursos de un proceso; base de los contenedores."
+- id: userns-remap
+  term: "User namespace remapping"
+  match: [userns-remap, user namespace remapping]
+  definition: "A daemon option that maps root in the container to an unprivileged user on the host."
+  es: "Opción que mapea root del contenedor a un usuario sin privilegios en el host."
+- id: rootless-mode
+  term: "Rootless mode"
+  match: [rootless mode, rootless Docker, rootless]
+  definition: "Running the Docker daemon and containers as a normal user, without root on the host."
+  es: "Ejecutar el demonio de Docker y los contenedores sin root."
+- id: seccomp
+  term: "seccomp"
+  match: [seccomp, seccomp profile]
+  definition: "A Linux kernel filter for system calls. Docker applies a default seccomp profile that blocks dangerous calls."
+  es: "Filtro de llamadas al sistema del kernel; Docker aplica un perfil por defecto."
+- id: apparmor
+  term: "AppArmor"
+  match: [AppArmor]
+  definition: "Linux security modules that limit what a program may access. Docker loads a default AppArmor profile (docker-default) for containers."
+  es: "Módulos de seguridad de Linux que limitan a qué puede acceder un programa."
+- id: content-trust
+  term: "Docker Content Trust"
+  match: [Docker Content Trust, content trust, DCT, Notary]
+  definition: "Image signing in Docker based on Notary. With DOCKER_CONTENT_TRUST=1 the client only pulls and runs signed tags."
+  es: "Firma de imágenes en Docker basada en Notary."
+- id: mke
+  term: "Mirantis Kubernetes Engine"
+  match: [Mirantis Kubernetes Engine, MKE, UCP, Universal Control Plane]
+  definition: "The enterprise container platform (formerly Docker UCP) that manages Swarm and Kubernetes with a web UI, RBAC and client bundles."
+  es: "Plataforma empresarial (antes Docker UCP) que gestiona Swarm y Kubernetes."
+- id: msr
+  term: "Mirantis Secure Registry"
+  match: [Mirantis Secure Registry, MSR, DTR, Docker Trusted Registry]
+  definition: "The private enterprise registry (formerly Docker Trusted Registry) with image scanning, signing, promotion and garbage collection."
+  es: "Registro privado empresarial (antes Docker Trusted Registry)."
+- id: client-bundle
+  term: "Client bundle"
+  match: [client bundle, client bundles]
+  definition: "A zip from MKE/UCP with a user's certificates and environment scripts, so the docker CLI and kubectl act with that user's permissions."
+  es: "Paquete con certificados y scripts para usar la CLI con los permisos de un usuario de MKE."
+- id: live-restore
+  term: "Live restore"
+  match: [live restore, live-restore]
+  definition: "A daemon option that keeps containers running while dockerd stops or restarts (for example during an upgrade)."
+  es: "Opción que mantiene los contenedores en marcha mientras dockerd se reinicia."
+- id: docker-scout
+  term: "Docker Scout"
+  match: [Docker Scout]
+  definition: "Docker's tool to analyze images: it lists packages (SBOM) and known vulnerabilities and suggests better base images."
+  es: "Herramienta de Docker que analiza imágenes y sus vulnerabilidades."
+- id: domc
+  term: "DOMC"
+  match: [DOMC, Discrete Option Multiple Choice]
+  definition: "An exam item type in which options appear one at a time and you answer YES or NO to each, until the item is decided."
+  es: "Tipo de pregunta donde las opciones aparecen de una en una y se responde SÍ o NO."

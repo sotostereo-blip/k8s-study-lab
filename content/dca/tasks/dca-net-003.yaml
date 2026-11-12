@@ -1,0 +1,47 @@
+id: dca-net-003
+title: Service and container on an attachable overlay network
+domain: networking
+difficulty: 3
+minutes: 10
+environment: docker
+setup: |
+  [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init >/dev/null
+task: |
+  1. Create an **overlay** network `ov-backend` that standalone containers can also join
+     (**attachable**).
+  2. Create a swarm service `ov-api` with **2 replicas** on `ov-backend`, image `busybox:1.36`,
+     command: `sh -c 'mkdir -p /www && echo api-ok > /www/index.html && httpd -f -p 8000 -h /www'`.
+     Do not publish any port.
+  3. Start a standalone container `ov-client` (`alpine:3.20`, command `sleep 1d`) on `ov-backend`.
+  4. Check that `ov-client` reaches the service by name: `http://ov-api:8000/`.
+checks:
+  - name: '`ov-backend` is an attachable overlay network with swarm scope'
+    run: |
+      out=$(docker network inspect ov-backend) || exit 1
+      echo "$out" | jq -e '.[0].Driver == "overlay" and .[0].Attachable == true and .[0].Scope == "swarm"' >/dev/null
+  - name: Service `ov-api` has 2 running tasks and is attached to `ov-backend`
+    run: |
+      nid=$(docker network inspect -f '{{.Id}}' ov-backend) || exit 1
+      out=$(docker service inspect ov-api) || exit 1
+      echo "$out" | jq -e --arg n "$nid" '[.[0].Spec.TaskTemplate.Networks[]?.Target] | index($n) != null' >/dev/null || exit 1
+      ps=$(docker service ps ov-api --filter desired-state=running --format '{{.CurrentState}}') || exit 1
+      [ "$(echo "$ps" | grep -c '^Running')" = 2 ]
+  - name: '`ov-api` publishes no port'
+    run: |
+      out=$(docker service inspect ov-api) || exit 1
+      echo "$out" | jq -e '(.[0].Spec.EndpointSpec.Ports // []) | length == 0' >/dev/null
+  - name: '`ov-client` reaches http://ov-api:8000/'
+    run: |
+      out=$(docker exec ov-client wget -qO- -T 3 http://ov-api:8000/ 2>&1)
+      [ "$out" = api-ok ]
+solution: |
+  docker network create --driver overlay --attachable ov-backend
+  docker service create --name ov-api --replicas 2 --network ov-backend busybox:1.36 \
+    sh -c 'mkdir -p /www && echo api-ok > /www/index.html && httpd -f -p 8000 -h /www'
+  docker run -d --name ov-client --network ov-backend alpine:3.20 sleep 1d
+  docker exec ov-client wget -qO- http://ov-api:8000/
+  # "ov-api" resolves to a virtual IP (VIP); swarm load-balances it over the 2 tasks.
+  docker exec ov-client nslookup tasks.ov-api   # the IPs of the tasks themselves
+docs:
+  - https://docs.docker.com/engine/network/drivers/overlay/
+  - https://docs.docker.com/engine/swarm/networking/

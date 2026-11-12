@@ -1,0 +1,759 @@
+domain: orchestration
+questions:
+- id: dca-orch-001
+  difficulty: 1
+  type: single
+  question: "You run `docker swarm init` on a host with one network interface. What is true right after the command succeeds?"
+  options:
+  - id: a
+    text: "The host is in swarm mode only after you also run `docker swarm join`"
+    why: "`docker swarm join` is for other nodes that join an existing swarm. The node that runs `init` is already in swarm mode."
+  - id: b
+    text: "The host is a manager, but it cannot run any tasks itself"
+    why: "Managers run tasks by default. You can stop that with `docker node update --availability drain`, but it is not the default."
+  - id: c
+    text: "The host is a manager node and the leader of a new one-node swarm"
+  - id: d
+    text: "The host is a worker node waiting for a manager to accept it"
+    why: "`docker swarm init` creates a new swarm. The first node is always a manager; workers join later with `docker swarm join`."
+  answer: [c]
+  explanation: |
+    `docker swarm init` turns the engine into swarm mode and creates a new swarm. The node becomes a
+    manager and, as the only manager, the Raft leader. It prints the command (with the worker join
+    token) that other nodes use to join. Managers can also run tasks unless you drain them.
+  docs:
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/create-swarm/
+  - https://docs.docker.com/reference/cli/docker/swarm/init/
+  glossary: [swarm-mode, manager-node, join-token]
+
+- id: dca-orch-002
+  difficulty: 2
+  type: single
+  question: "A swarm has 5 manager nodes. How many managers can fail at the same time while the swarm still keeps quorum?"
+  options:
+  - id: a
+    text: "1"
+    why: "With 5 managers, the majority is 3, so 2 can fail. One failure is the limit for a swarm of 3 managers."
+  - id: b
+    text: "3"
+    why: "If 3 of 5 managers fail, only 2 remain. That is not a majority of 5, so quorum is lost."
+  - id: c
+    text: "2"
+  - id: d
+    text: "4"
+    why: "One manager out of 5 is far from a majority. The swarm cannot change its state without quorum."
+  answer: [c]
+  explanation: |
+    Raft needs a majority of managers: (N/2)+1. With N = 5 the majority is 3, so the swarm tolerates
+    (N-1)/2 = 2 failed managers. This is why Docker recommends an odd number of managers (3, 5 or 7).
+  docs:
+  - https://docs.docker.com/engine/swarm/admin_guide/#add-manager-nodes-for-fault-tolerance
+  - https://docs.docker.com/engine/swarm/raft/
+  glossary: [quorum, raft, manager-node]
+
+- id: dca-orch-003
+  difficulty: 2
+  type: single
+  question: "Why is a swarm with 4 managers not better than a swarm with 3 managers for fault tolerance?"
+  options:
+  - id: a
+    text: "A swarm cannot have more than 3 managers"
+    why: "There is no limit of 3. Docker suggests up to 7 managers; more managers only slow down Raft writes."
+  - id: b
+    text: "With 4 managers, two leaders are elected at once"
+    why: "Raft always elects one leader. An even number of managers does not create two leaders."
+  - id: c
+    text: "The fourth manager becomes a worker automatically"
+    why: "Docker never changes the role of a node by itself. You promote or demote nodes with `docker node promote/demote`."
+  - id: d
+    text: "Both tolerate the loss of only one manager"
+  answer: [d]
+  explanation: |
+    Quorum with 4 managers is 3, so only 1 manager can fail, the same as with 3 managers. An even
+    number adds Raft traffic and no extra fault tolerance. Use an odd number of managers.
+  docs:
+  - https://docs.docker.com/engine/swarm/admin_guide/#add-manager-nodes-for-fault-tolerance
+  glossary: [quorum, manager-node]
+
+- id: dca-orch-004
+  difficulty: 3
+  type: single
+  question: "A 3-manager swarm loses 2 managers for one hour. What happens to the services that already run?"
+  options:
+  - id: a
+    text: "Running tasks continue, but you cannot create, update or scale services"
+  - id: b
+    text: "All tasks stop until quorum comes back"
+    why: "Tasks are containers on the nodes. They keep running without quorum; only management actions are blocked."
+  - id: c
+    text: "The remaining manager becomes the leader and works as usual"
+    why: "One manager out of 3 is not a majority, so it cannot commit changes to the Raft log, even as the only one left."
+  - id: d
+    text: "The workers elect a new manager from among themselves"
+    why: "Workers do not take part in Raft and are never promoted automatically."
+  answer: [a]
+  explanation: |
+    Without quorum the swarm keeps running existing tasks, but the managers cannot accept changes:
+    no new services, updates, scaling or node joins. To recover, bring managers back, or as a last
+    resort run `docker swarm init --force-new-cluster` on a healthy manager.
+  docs:
+  - https://docs.docker.com/engine/swarm/admin_guide/#recover-from-losing-the-quorum
+  glossary: [quorum, swarm-service, manager-node]
+
+- id: dca-orch-005
+  difficulty: 1
+  type: single
+  question: "What is the main difference between `docker run` and `docker service create`?"
+  options:
+  - id: a
+    text: "`docker run` works only with local images; services can pull from registries"
+    why: "Both can pull images from a registry. The difference is who manages the containers afterwards."
+  - id: b
+    text: "They are the same command; `service create` is an older alias"
+    why: "They are different commands. A service is a swarm object; `docker run` creates a single standalone container."
+  - id: c
+    text: "`docker run` starts one container; `docker service create` declares a desired state that swarm keeps"
+  - id: d
+    text: "`docker service create` builds the image before it starts the containers"
+    why: "Swarm services never build images. You build and push first, then the service uses the image."
+  answer: [c]
+  explanation: |
+    `docker run` creates and starts one container on the local engine. `docker service create`
+    tells the swarm managers what you want (image, replicas, ports...). The managers create tasks
+    and replace them if they fail, so the real state keeps matching the desired state.
+  docs:
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/
+  - https://docs.docker.com/engine/swarm/key-concepts/
+  glossary: [swarm-service, swarm-task, container]
+
+- id: dca-orch-006
+  difficulty: 1
+  type: single
+  question: "Which command changes the service `api` from 2 to 6 replicas?"
+  options:
+  - id: a
+    text: "`docker service replicas api 6`"
+    why: "There is no `docker service replicas` command. Use `scale` or `update --replicas`."
+  - id: b
+    text: "`docker service create --replicas 6 api`"
+    why: "`create` makes a new service. The service `api` already exists, so this would fail."
+  - id: c
+    text: "`docker stack scale api 6`"
+    why: "`docker stack` has no `scale` subcommand. Scale the service, or change the stack file and deploy again."
+  - id: d
+    text: "`docker service scale api=6`"
+  answer: [d]
+  explanation: |
+    `docker service scale api=6` (or `docker service update --replicas 6 api`) changes the desired
+    number of replicas. Swarm then starts 4 more tasks. Scaling only works for replicated services.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/service/scale/
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/scale-service/
+  glossary: [replica, swarm-service, replicated-service]
+
+- id: dca-orch-007
+  difficulty: 1
+  type: single
+  question: "A team wants exactly one monitoring agent on every node of the swarm, also on nodes added later. Which service mode fits?"
+  options:
+  - id: a
+    text: "A replicated service with as many replicas as nodes"
+    why: "A replicated service does not follow the number of nodes. New nodes would not get a task, and two tasks could land on one node."
+  - id: b
+    text: "A global service"
+  - id: c
+    text: "A replicated-job service"
+    why: "Jobs run tasks to completion and then stop. An agent must run all the time."
+  - id: d
+    text: "A standalone container started with `--restart always` on one manager"
+    why: "A container on one node does not reach the other nodes, and swarm does not manage it."
+  answer: [b]
+  explanation: |
+    A global service (`--mode global`) runs one task on every available node that meets its
+    constraints. When a node joins, swarm starts a task on it automatically.
+  docs:
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/#replicated-and-global-services
+  glossary: [global-service, replicated-service]
+
+- id: dca-orch-008
+  difficulty: 2
+  type: single
+  question: "Which command adds the label `ssd=true` to the node `node2`, so that services can use it in placement constraints?"
+  options:
+  - id: a
+    text: "Add `\"labels\": [\"ssd=true\"]` to the swarm config with `docker swarm update`"
+    why: "`docker swarm update` changes cluster settings, not the labels of one node. Engine labels live in daemon.json on each host."
+  - id: b
+    text: "`docker service update --label-add ssd=true node2`"
+    why: "That command changes labels of a service named node2. Placement uses node labels."
+  - id: c
+    text: "`docker node update --label-add ssd=true node2`"
+  - id: d
+    text: "`docker node label node2 ssd=true`"
+    why: "There is no `docker node label` command. Labels are changed with `docker node update`."
+  answer: [c]
+  explanation: |
+    Node labels are set by a manager with `docker node update --label-add key=value <node>`.
+    A service can then use `--constraint node.labels.ssd==true`. Workers cannot change their own
+    node labels, which makes them safer for placement than engine labels.
+  docs:
+  - https://docs.docker.com/engine/swarm/manage-nodes/#add-or-remove-label-metadata
+  - https://docs.docker.com/reference/cli/docker/node/update/
+  glossary: [label, node, placement-constraint]
+
+- id: dca-orch-009
+  difficulty: 2
+  type: multiple
+  question: "Which of these are valid placement constraints for `docker service create --constraint`? (Choose two.)"
+  options:
+  - id: a
+    text: "`node.labels.zone!=edge`"
+  - id: b
+    text: "`node.role==manager`"
+  - id: c
+    text: "`container.name==web`"
+    why: "Constraints match node attributes (node.id, node.hostname, node.role, node.labels, engine.labels, node.platform). Container names are not one of them."
+  - id: d
+    text: "`node.cpus>=4`"
+    why: "Constraints support only `==` and `!=`. To need CPU, use resource reservations such as `--reserve-cpu`."
+  answer: [a, b]
+  explanation: |
+    Placement constraints compare node attributes with `==` or `!=`. Common ones are `node.role`,
+    `node.hostname`, `node.labels.<key>`, `engine.labels.<key>` and `node.platform.os`. Several
+    `--constraint` flags must all be true.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/service/create/#constraint
+  glossary: [placement-constraint, node]
+
+- id: dca-orch-010
+  difficulty: 2
+  type: single
+  question: "You need each task of the service `web` to have a hostname like `web-1`, `web-2`... Which option does it?"
+  options:
+  - id: a
+    text: "`--hostname \"{{.Service.Name}}-{{.Task.Slot}}\"`"
+  - id: b
+    text: "`--hostname \"web-$SLOT\"`"
+    why: "`$SLOT` is a shell variable, expanded once on your machine. Swarm uses Go templates, not shell variables."
+  - id: c
+    text: "`--name \"web-{{.Task.ID}}\"`"
+    why: "`--name` is the service name and cannot be a template. `.Task.ID` is a long random ID, not a number."
+  - id: d
+    text: "`--env HOSTNAME=web-{{.Node.ID}}`"
+    why: "This sets a variable, not the hostname, and the node ID is not the slot number."
+  answer: [a]
+  explanation: |
+    `docker service create` accepts Go templates in `--hostname`, `--mount` and `--env`. Useful
+    placeholders: `{{.Service.Name}}`, `{{.Task.Slot}}`, `{{.Task.ID}}`, `{{.Node.Hostname}}`.
+  docs:
+  - https://docs.docker.com/engine/swarm/services/#create-services-using-templates
+  - https://docs.docker.com/reference/cli/docker/service/create/#create-services-using-templates
+  glossary: [service-template, swarm-task]
+
+- id: dca-orch-011
+  difficulty: 2
+  type: single
+  question: "The tasks of a service stay in the state `Pending`. Which command shows the error message from the scheduler, such as `no suitable node`?"
+  options:
+  - id: a
+    text: "`docker service ps --no-trunc <service>`"
+  - id: b
+    text: "`docker container inspect <service>`"
+    why: "A service is not a container. And a pending task has no container to inspect."
+  - id: c
+    text: "`docker events --since 1m` on a worker"
+    why: "Workers do not schedule tasks, and events do not show the scheduler reason. `docker service ps` does."
+  - id: d
+    text: "`docker service logs <service>`"
+    why: "Logs come from containers. A pending task has no container yet, so there are no logs."
+  answer: [a]
+  explanation: |
+    `docker service ps` lists the tasks with their state and the ERROR column. With `--no-trunc`
+    you see the full message, for example `no suitable node (scheduling constraints not satisfied)`
+    or `insufficient resources`. Then check constraints, reservations, node availability and the image.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/service/ps/
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/#pending-services
+  glossary: [swarm-task, swarm-service]
+
+- id: dca-orch-012
+  difficulty: 3
+  type: multiple
+  question: "A replicated service has tasks that never leave `Pending`. Which causes are possible? (Choose three.)"
+  options:
+  - id: a
+    text: "A constraint uses a node label that no node has"
+  - id: b
+    text: "All nodes are drained"
+  - id: c
+    text: "The service publishes no ports"
+    why: "Publishing ports is optional. Many services, such as workers or databases on overlay networks, publish none."
+  - id: d
+    text: "The image has no `HEALTHCHECK` instruction"
+    why: "A health check is optional. Without one, tasks are considered running as soon as the container starts."
+  - id: e
+    text: "The service reserves more memory than any node has"
+  answer: [a, b, e]
+  explanation: |
+    A task stays pending when the scheduler finds no node that can take it: nodes are drained or
+    paused, constraints or placement preferences match nothing, or resource reservations are too
+    big. Health checks and ports do not block scheduling.
+  docs:
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/#pending-services
+  - https://docs.docker.com/engine/swarm/manage-nodes/#change-node-availability
+  glossary: [swarm-task, placement-constraint]
+
+- id: dca-orch-013
+  difficulty: 1
+  type: single
+  question: "Which command deploys the file `app.yaml` to a swarm as the stack `shop`?"
+  options:
+  - id: a
+    text: "`docker service create --stack app.yaml shop`"
+    why: "`docker service create` has no `--stack` option. Stacks are managed with `docker stack`."
+  - id: b
+    text: "`docker swarm deploy app.yaml --name shop`"
+    why: "There is no `docker swarm deploy` command."
+  - id: c
+    text: "`docker stack deploy -c app.yaml shop`"
+  - id: d
+    text: "`docker compose -f app.yaml up -d shop`"
+    why: "`docker compose up` runs standalone containers on one engine. It does not create swarm services."
+  answer: [c]
+  explanation: |
+    `docker stack deploy -c <compose file> <stack name>` creates or updates all services, networks,
+    secrets and configs of the file as swarm objects. Names get the stack prefix, for example
+    `shop_web`. Run the same command again to apply changes.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/stack/deploy/
+  - https://docs.docker.com/engine/swarm/stack-deploy/
+  glossary: [docker-stack, docker-compose]
+
+- id: dca-orch-014
+  difficulty: 2
+  type: single
+  question: "In a compose file deployed with `docker stack deploy`, where do you set the number of replicas of a service?"
+  options:
+  - id: a
+    text: "In the `command:` of the service, as `--replicas 3`"
+    why: "`command` is the command run inside the container. It does not configure the swarm."
+  - id: b
+    text: "In the `x-replicas` extension field"
+    why: "`x-` fields are free extension fields that Docker ignores. They do not change the deployment."
+  - id: c
+    text: "Under `scale:` at the top level of the file"
+    why: "There is no top-level `scale` key. Replica settings belong to each service."
+  - id: d
+    text: "Under `deploy: replicas:` of the service"
+  answer: [d]
+  explanation: |
+    The `deploy` section holds swarm settings: `replicas`, `mode` (replicated or global),
+    `placement`, `resources`, `restart_policy`, `update_config` and `rollback_config`.
+  docs:
+  - https://docs.docker.com/reference/compose-file/deploy/
+  glossary: [docker-compose, docker-stack, replica]
+
+- id: dca-orch-015
+  difficulty: 3
+  type: single
+  question: "A compose file has `build: ./api` and no `image:` for the service `api`. What happens with `docker stack deploy`?"
+  options:
+  - id: a
+    text: "The deploy fails because `build` is not valid YAML in compose files"
+    why: "`build` is valid for `docker compose`. `docker stack deploy` just does not use it."
+  - id: b
+    text: "The stack builds the image on every node before it starts the tasks"
+    why: "Stacks never build images. Every node must be able to pull the image from a registry."
+  - id: c
+    text: "The stack builds the image once on the manager and copies it to the workers"
+    why: "Swarm does not copy images between nodes. Nodes pull from a registry."
+  - id: d
+    text: "The `build` key is ignored; the service needs an `image` that nodes can pull"
+  answer: [d]
+  explanation: |
+    `docker stack deploy` does not support `build`. Build and push the image first (for example
+    with `docker compose build` and `docker compose push`), and set `image:` to a registry name that
+    all nodes can pull.
+  docs:
+  - https://docs.docker.com/engine/swarm/stack-deploy/
+  glossary: [docker-stack, image, registry]
+
+- id: dca-orch-016
+  difficulty: 2
+  type: single
+  question: "Which `docker service update` options make a rolling update replace 2 tasks at a time and wait 10 seconds between batches?"
+  options:
+  - id: a
+    text: "`--update-order 2 --update-monitor 10s`"
+    why: "`--update-order` is `start-first` or `stop-first`, and `--update-monitor` is how long to watch each task for failure."
+  - id: b
+    text: "`--rollback-parallelism 2 --rollback-delay 10s`"
+    why: "These options control rollbacks, not normal updates."
+  - id: c
+    text: "`--replicas 2 --restart-delay 10s`"
+    why: "`--replicas` changes the number of tasks, and `--restart-delay` is for restarting failed tasks, not for updates."
+  - id: d
+    text: "`--update-parallelism 2 --update-delay 10s`"
+  answer: [d]
+  explanation: |
+    Update behavior is set with `--update-parallelism` (tasks per batch), `--update-delay` (wait
+    between batches), `--update-failure-action` (pause, continue or rollback), `--update-monitor`
+    and `--update-order`.
+  docs:
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/
+  - https://docs.docker.com/reference/cli/docker/service/update/
+  glossary: [rolling-update, swarm-service]
+
+- id: dca-orch-017
+  difficulty: 2
+  type: single
+  question: "An update of the service `web` to a new image breaks the application. What is the fastest way to go back to the previous service definition?"
+  options:
+  - id: a
+    text: "`docker service rm web` and create it again"
+    why: "Removing the service causes downtime and you must remember every option. Rollback restores the previous spec at once."
+  - id: b
+    text: "`docker service rollback web`"
+  - id: c
+    text: "`docker stack rollback web`"
+    why: "There is no `docker stack rollback` command."
+  - id: d
+    text: "`docker image rm` the new image on every node"
+    why: "Removing images does not change the service spec. Swarm would pull the image again."
+  answer: [b]
+  explanation: |
+    Swarm keeps the previous spec of a service. `docker service rollback web` (or
+    `docker service update --rollback web`) returns to it. With `--update-failure-action rollback`
+    this can also happen automatically when tasks fail during the update.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/service/rollback/
+  glossary: [rollback, swarm-service]
+
+- id: dca-orch-018
+  difficulty: 2
+  type: single
+  question: "You must do maintenance on the node `node3`. How do you move its tasks to other nodes and keep new tasks away from it?"
+  options:
+  - id: a
+    text: "`docker swarm leave` on another manager"
+    why: "`docker swarm leave` removes the node where you run it from the swarm. It is not a maintenance tool."
+  - id: b
+    text: "`docker node update --availability drain node3`"
+  - id: c
+    text: "`docker node demote node3`"
+    why: "Demote turns a manager into a worker. A worker still runs tasks."
+  - id: d
+    text: "`docker node update --availability pause node3`"
+    why: "Pause stops new tasks on the node, but existing tasks keep running there."
+  answer: [b]
+  explanation: |
+    Availability `drain` stops the tasks on the node and the managers start them on other nodes.
+    `pause` only blocks new tasks. Set it back with `--availability active` after the maintenance.
+  docs:
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/drain-node/
+  - https://docs.docker.com/engine/swarm/manage-nodes/#change-node-availability
+  glossary: [drain, node]
+
+- id: dca-orch-019
+  difficulty: 1
+  type: single
+  question: "How does a new node join an existing swarm as a worker?"
+  options:
+  - id: a
+    text: "You copy `/var/lib/docker/swarm` from a manager to the new node"
+    why: "That folder holds the node identity and Raft data. Copying it would break the swarm."
+  - id: b
+    text: "It runs `docker swarm join --token <worker token> <manager IP>:2377`"
+  - id: c
+    text: "A manager runs `docker node add <IP of the new node>`"
+    why: "There is no `docker node add`. The new node itself must run `docker swarm join`."
+  - id: d
+    text: "It runs `docker swarm init --join <manager IP>`"
+    why: "`init` creates a new swarm. It has no `--join` option."
+  answer: [b]
+  explanation: |
+    On a manager, `docker swarm join-token worker` prints the full join command. The new node runs
+    it and connects to a manager on TCP port 2377. The manager join token is different and gives
+    the manager role.
+  docs:
+  - https://docs.docker.com/engine/swarm/join-nodes/
+  - https://docs.docker.com/reference/cli/docker/swarm/join-token/
+  glossary: [join-token, worker-node]
+
+- id: dca-orch-020
+  difficulty: 2
+  type: multiple
+  question: "Which network ports must be open between swarm nodes? (Choose three.)"
+  options:
+  - id: a
+    text: "TCP 2375 for the unencrypted Docker API"
+    why: "Swarm does not use the Docker API port between nodes. Exposing 2375 is a security risk."
+  - id: b
+    text: "TCP 5000 for the swarm image cache"
+    why: "Swarm has no image cache port. 5000 is only the usual port of a private registry."
+  - id: c
+    text: "TCP 2377 for cluster management"
+  - id: d
+    text: "TCP and UDP 7946 for node communication"
+  - id: e
+    text: "UDP 4789 for overlay network (VXLAN) traffic"
+  answer: [c, d, e]
+  explanation: |
+    Swarm uses TCP 2377 (management, to managers), TCP/UDP 7946 (gossip between nodes) and UDP 4789
+    (VXLAN data of overlay networks). With encrypted overlays, IP protocol 50 (ESP) is also needed.
+  docs:
+  - https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts
+  - https://docs.docker.com/engine/network/drivers/overlay/
+  glossary: [swarm-mode, overlay-network]
+
+- id: dca-orch-021
+  difficulty: 2
+  type: single
+  question: "What does `docker service inspect --pretty web` show?"
+  options:
+  - id: a
+    text: "The service settings in a readable list instead of JSON"
+  - id: b
+    text: "Only the image digest and nothing else"
+    why: "It shows many settings: mode, replicas, update config, image, ports, networks, mounts and more."
+  - id: c
+    text: "The live CPU and memory use of each task"
+    why: "Live resource usage comes from `docker stats` on each node, not from service inspect."
+  - id: d
+    text: "The logs of all tasks of the service, with colors"
+    why: "Logs come from `docker service logs`."
+  answer: [a]
+  explanation: |
+    `docker service inspect` prints the full JSON object. With `--pretty` it prints a short,
+    human-readable summary. With `--format` you can extract one value, for example
+    `--format '{{.Spec.Mode.Replicated.Replicas}}'`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/service/inspect/
+  glossary: [swarm-service]
+
+- id: dca-orch-022
+  difficulty: 2
+  type: single
+  question: "Which command prints only the IP address of the container `db` on all its networks?"
+  options:
+  - id: a
+    text: "`docker inspect -f '{{.HostConfig.NetworkMode}}' db`"
+    why: "This prints the network mode (for example `bridge` or a network name), not the IP address."
+  - id: b
+    text: "`docker network inspect -f '{{json .IPAM.Config}}' bridge`"
+    why: "This prints the subnet and gateway of a network, not the address of one container."
+  - id: c
+    text: "`docker container ls --filter name=db --format '{{.Ports}}'`"
+    why: "This prints the published ports of the container, not its IP address."
+  - id: d
+    text: "`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' db`"
+  answer: [d]
+  explanation: |
+    `docker inspect` returns JSON. The `-f/--format` flag takes a Go template; `range` loops over
+    the networks map, and `.IPAddress` is the address on each network. `{{json .X}}` prints a part
+    as JSON, which works well with `jq`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/inspect/
+  - https://docs.docker.com/engine/cli/formatting/
+  glossary: [container]
+
+- id: dca-orch-023
+  difficulty: 2
+  type: single
+  question: "A swarm service needs to read files from an NFS share on every node where its tasks run. What is the right approach?"
+  options:
+  - id: a
+    text: "Use `--mount type=volume` with a volume driver or local driver options for NFS"
+  - id: b
+    text: "Put the files in a swarm secret"
+    why: "Secrets are for small sensitive data (max 500 KB), not for a shared file system."
+  - id: c
+    text: "Use `docker cp` to copy the files into each task after it starts"
+    why: "Tasks are replaced at any time. Copied files would be lost, and swarm does not do this for you."
+  - id: d
+    text: "Use a bind mount of `/mnt/nfs` that exists only on the manager"
+    why: "Tasks run on many nodes. A bind mount works only if the path exists on every node."
+  answer: [a]
+  explanation: |
+    A volume with NFS options (for example `--mount 'type=volume,source=data,target=/data,volume-driver=local,volume-opt=type=nfs,volume-opt=device=:/export,"volume-opt=o=addr=10.0.0.5"'`)
+    is created on each node where a task runs, and all of them mount the same share.
+  docs:
+  - https://docs.docker.com/engine/storage/volumes/#create-a-service-which-creates-an-nfs-volume
+  - https://docs.docker.com/engine/swarm/services/#give-a-service-access-to-volumes-or-bind-mounts
+  glossary: [volume, swarm-service, bind-mount]
+
+- id: dca-orch-024
+  difficulty: 2
+  type: single
+  question: "What is a swarm task?"
+  options:
+  - id: a
+    text: "A cron job that the managers run every minute"
+    why: "Tasks are not scheduled jobs. Swarm has replicated and global jobs, but a task is any scheduled unit of a service."
+  - id: b
+    text: "A group of services deployed from one file"
+    why: "That is a stack."
+  - id: c
+    text: "One container plus the commands to run it, scheduled on one node"
+  - id: d
+    text: "A setting that limits CPU for a service"
+    why: "That is a resource limit or reservation."
+  answer: [c]
+  explanation: |
+    A service creates tasks. Each task is placed on one node and runs exactly one container. If the
+    container dies, the task is not restarted: swarm creates a new task to keep the desired number.
+  docs:
+  - https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/#services-tasks-and-containers
+  glossary: [swarm-task, swarm-service]
+
+- id: dca-orch-025
+  difficulty: 2
+  type: single
+  question: "A containerized app must call a legacy database that runs on a normal server outside Docker, at `db.corp.local`. What is usually enough?"
+  options:
+  - id: a
+    text: "Let the container connect out by DNS name or IP; outbound traffic is NATed by the host"
+  - id: b
+    text: "Publish the database port on the container with `-p 5432:5432`"
+    why: "Publishing opens a port for incoming traffic to the container. The container is the client here."
+  - id: c
+    text: "Convert the legacy server into a swarm worker first"
+    why: "Not needed. Containers can reach outside systems through the host network stack."
+  - id: d
+    text: "Put the legacy server in the same overlay network with `docker network connect`"
+    why: "Only containers and swarm tasks can join Docker networks. A normal server cannot."
+  answer: [a]
+  explanation: |
+    Containers on bridge or overlay networks can open outbound connections; the host masquerades
+    (NAT) the traffic. Make sure DNS works (use `--dns` or `--add-host` if needed) and that
+    firewalls allow it. When the legacy system must see the container as a separate host on the
+    LAN, a macvlan network is an option.
+  docs:
+  - https://docs.docker.com/engine/network/
+  - https://docs.docker.com/engine/network/drivers/macvlan/
+  glossary: [bridge-network, macvlan]
+
+- id: dca-orch-026
+  difficulty: 1
+  type: single
+  question: "In Kubernetes, which object keeps a given number of identical Pods running and supports rolling updates?"
+  options:
+  - id: a
+    text: "A Deployment"
+  - id: b
+    text: "A Service"
+    why: "A Service gives Pods a stable address. It does not create Pods."
+  - id: c
+    text: "A Namespace"
+    why: "A Namespace groups objects. It does not run Pods."
+  - id: d
+    text: "A ConfigMap"
+    why: "A ConfigMap holds configuration data for Pods."
+  answer: [a]
+  explanation: |
+    A Deployment manages a ReplicaSet that keeps `replicas` Pods running. Changing the Pod template
+    starts a rolling update. It is similar to a replicated swarm service.
+  docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  glossary: [deployment, pod, replicaset, rolling-update]
+
+- id: dca-orch-027
+  difficulty: 2
+  type: multiple
+  question: "How can a Kubernetes Pod get values from a ConfigMap? (Choose two.)"
+  options:
+  - id: a
+    text: "As files, by mounting the ConfigMap as a volume"
+  - id: b
+    text: "As environment variables with `env.valueFrom.configMapKeyRef` or `envFrom`"
+  - id: c
+    text: "As a layer added to the container image when the Pod starts"
+    why: "Images are never changed at run time. Configuration is injected as variables or files."
+  - id: d
+    text: "As a label of the Pod that Kubernetes fills in at start"
+    why: "Labels are metadata you write. Kubernetes does not copy ConfigMap data into labels."
+  answer: [a, b]
+  explanation: |
+    Pods use ConfigMaps (and Secrets) as environment variables, as command arguments built from
+    variables, or as files in a volume. Mounted files are updated when the ConfigMap changes;
+    environment variables are not.
+  docs:
+  - https://kubernetes.io/docs/concepts/configuration/configmap/
+  - https://kubernetes.io/docs/concepts/configuration/secret/
+  glossary: [configmap, secret, pod, volume]
+
+- id: dca-orch-028
+  difficulty: 2
+  type: single
+  question: "In a compose file, `web` has `depends_on: [db]`. What does Compose do by default?"
+  options:
+  - id: a
+    text: "It puts `web` and `db` in the same container"
+    why: "Each service gets its own containers. depends_on only controls order."
+  - id: b
+    text: "It restarts `web` every time `db` writes data"
+    why: "depends_on is about start and stop order, not about data changes."
+  - id: c
+    text: "It starts `db` before `web`, but does not wait for `db` to be ready"
+  - id: d
+    text: "It waits until `db` passes its health check, then starts `web`"
+    why: "That needs the long syntax `condition: service_healthy`. The short form only orders the start."
+  answer: [c]
+  explanation: |
+    Short `depends_on` makes Compose create and start dependencies first (and stop them last).
+    To wait for readiness, use `depends_on: {db: {condition: service_healthy}}` together with a
+    health check on `db`.
+  docs:
+  - https://docs.docker.com/compose/how-tos/startup-order/
+  - https://docs.docker.com/reference/compose-file/services/#depends_on
+  glossary: [docker-compose, healthcheck]
+
+- id: dca-orch-029
+  difficulty: 1
+  type: single
+  question: "Which command lists the services of the stack `shop` with their replica counts?"
+  options:
+  - id: a
+    text: "`docker service ps shop`"
+    why: "`docker service ps` takes a service name and lists its tasks. `shop` is a stack."
+  - id: b
+    text: "`docker compose ps shop`"
+    why: "`docker compose ps` lists containers of a Compose project, not swarm services."
+  - id: c
+    text: "`docker stack services shop`"
+  - id: d
+    text: "`docker stack ls shop`"
+    why: "`docker stack ls` lists stacks and their number of services. It takes no stack name."
+  answer: [c]
+  explanation: |
+    `docker stack services <stack>` lists the services of a stack (mode, replicas, image, ports).
+    `docker stack ps <stack>` lists their tasks. `docker stack rm <stack>` removes everything.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/stack/services/
+  - https://docs.docker.com/reference/cli/docker/stack/
+  glossary: [docker-stack, swarm-service]
+
+- id: dca-orch-030
+  difficulty: 3
+  type: multiple
+  question: "You run `docker stack deploy -c app.yaml shop` again after editing the file. Which statements are true? (Choose two.)"
+  options:
+  - id: a
+    text: "The whole stack is deleted and created again"
+    why: "Stack deploy updates the existing services in place, with their rolling update settings."
+  - id: b
+    text: "Only services whose definition changed are updated"
+  - id: c
+    text: "Services that you removed from the file stay unless you add `--prune`"
+  - id: d
+    text: "The command fails because the stack already exists"
+    why: "Deploying to an existing stack is the normal way to update it."
+  answer: [b, c]
+  explanation: |
+    `docker stack deploy` is declarative: it compares the file with the existing services and
+    updates the changed ones (as a rolling update). Services no longer in the file are kept,
+    unless you use `--prune`.
+  docs:
+  - https://docs.docker.com/reference/cli/docker/stack/deploy/
+  - https://docs.docker.com/engine/swarm/stack-deploy/
+  glossary: [docker-stack, rolling-update]

@@ -1,0 +1,25 @@
+# Hands-on labs for the Docker Certified Associate (DCA, Mirantis). The real exam is multiple
+# choice (with DOMC items), but these tasks build the skills behind it on a real Docker Engine.
+# Domains and weights follow the official DCA study guide v1.5 (January 2025).
+id: dca
+name: Docker Certified Associate
+exam_minutes: 90
+passing_score: 65
+intro: "a Docker Engine (Docker in Docker)"
+domains:
+  - { id: orchestration, name: "Orchestration", weight: 25 }
+  - { id: images, name: "Image Creation, Management, and Registry", weight: 20 }
+  - { id: install, name: "Installation and Configuration", weight: 15 }
+  - { id: networking, name: "Networking", weight: 15 }
+  - { id: security, name: "Security", weight: 15 }
+  - { id: storage, name: "Storage and Volumes", weight: 10 }
+environments:
+  docker:
+    name: "Docker Engine 29 (Docker in Docker) + local registry"
+    nodes: 0
+    label: "Docker"
+    tools: "`docker` CLI with compose and buildx (alias `d`). Engine host: `docker`, registry: `registry:5000`, work folder: `/lab`"
+    ready: "lab-ready"
+    ready_timeout: 300
+mock: true
+mock_environment: docker   # all mock exam tasks run together on one engine (one-node swarm)

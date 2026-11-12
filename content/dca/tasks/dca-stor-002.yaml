@@ -1,0 +1,36 @@
+id: dca-stor-002
+title: Serve host files with a read-only bind mount
+domain: storage
+difficulty: 1
+minutes: 6
+environment: docker
+setup: |
+  mkdir -p /lab/docs-site
+  echo '<h1>Docs v1</h1>' > /lab/docs-site/index.html
+task: |
+  The folder `/lab/docs-site` on the Docker host has a small web site.
+  (In this lab, `/lab` is shared between your terminal and the Docker host.)
+
+  1. Start a container `docs-web` from `nginx:1.27-alpine` that publishes port **8082** and
+     **bind-mounts** `/lab/docs-site` to `/usr/share/nginx/html` **read-only**.
+  2. Change `/lab/docs-site/index.html` on the host to `<h1>Docs v2</h1>`, **without** restarting
+     or re-creating the container, and check `curl http://docker:8082/`.
+checks:
+  - name: '`docs-web` bind-mounts /lab/docs-site to /usr/share/nginx/html read-only'
+    run: |
+      out=$(docker inspect -f '{{json .Mounts}}' docs-web) || exit 1
+      echo "$out" | jq -e '[.[] | select(.Type == "bind" and (.Source | rtrimstr("/")) == "/lab/docs-site" and .Destination == "/usr/share/nginx/html" and .RW == false)] | length == 1' >/dev/null
+  - name: http://docker:8082/ shows Docs v2
+    run: |
+      out=$(curl -s -m 5 http://docker:8082/) || exit 1
+      echo "$out" | grep -q 'Docs v2'
+  - name: The container cannot write to the site folder
+    run: 'docker inspect docs-web >/dev/null && ! docker exec docs-web sh -c "echo x > /usr/share/nginx/html/hack.html" 2>/dev/null'
+solution: |
+  docker run -d --name docs-web -p 8082:80 \
+    -v /lab/docs-site:/usr/share/nginx/html:ro nginx:1.27-alpine
+  # same with --mount: --mount type=bind,source=/lab/docs-site,target=/usr/share/nginx/html,readonly
+  echo '<h1>Docs v2</h1>' > /lab/docs-site/index.html
+  sleep 1; curl -s http://docker:8082/   # the change is visible at once: it is the same file
+docs:
+  - https://docs.docker.com/engine/storage/bind-mounts/

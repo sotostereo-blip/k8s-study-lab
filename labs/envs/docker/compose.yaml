@@ -1,0 +1,31 @@
+# Docker lab (DCA): a Docker Engine running inside Docker (docker:dind) + a terminal with the docker CLI.
+# The toolbox talks to the inner engine over tcp://docker:2375 (no TLS, private lab network only).
+# /lab is shared by the toolbox and the engine at the same path, so bind mounts like
+# `-v /lab/site:/usr/share/nginx/html` and compose files under /lab work as on a normal host.
+# Every lab starts empty: `compose down -v` removes the engine data and /lab.
+services:
+  docker:
+    build: ../../dind
+    image: k8s-study-lab/dind-docker:1
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - engine:/var/lib/docker
+      - lab:/lab
+  registry:
+    image: registry:2.8.3          # local registry for push/pull tasks: registry:5000 (HTTP)
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+  toolbox:
+    build: ../../toolbox-docker
+    image: k8s-study-lab/toolbox-docker:1
+    depends_on: [docker, registry]
+    environment:
+      DOCKER_HOST: tcp://docker:2375
+    volumes:
+      - lab:/lab
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+volumes:
+  engine: {}
+  lab: {}

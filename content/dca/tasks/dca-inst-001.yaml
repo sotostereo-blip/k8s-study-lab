@@ -1,0 +1,40 @@
+id: dca-inst-001
+title: Configure the logging driver of a container
+domain: install
+difficulty: 1
+minutes: 6
+environment: docker
+setup: |
+  mkdir -p /lab/answers
+task: |
+  1. Find the **default logging driver** of this Docker Engine and write only its name to
+     `/lab/answers/default-log-driver.txt`.
+  2. Start a container `log-app` from `busybox:1.36` that prints a line every second
+     (`sh -c 'while true; do date; sleep 1; done'`). Its logs must use the `json-file` driver
+     with **rotation**: at most **3 files** of **5m** each.
+  3. Check that `docker logs log-app` shows the lines.
+checks:
+  - name: '`/lab/answers/default-log-driver.txt` has the default logging driver'
+    run: '[ "$(tr -d " \n\r" < /lab/answers/default-log-driver.txt)" = "$(docker info --format "{{.LoggingDriver}}")" ]'
+  - name: '`log-app` uses json-file with max-size 5m and max-file 3'
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig.LogConfig}}' log-app) || exit 1
+      echo "$out" | jq -e '.Type == "json-file" and .Config["max-size"] == "5m" and .Config["max-file"] == "3"' >/dev/null
+  - name: '`log-app` is running and `docker logs` shows output'
+    run: |
+      [ "$(docker inspect -f '{{.State.Running}}' log-app)" = true ] || exit 1
+      out=$(docker logs --tail 3 log-app 2>&1)
+      [ -n "$out" ]
+solution: |
+  docker info --format '{{.LoggingDriver}}' > /lab/answers/default-log-driver.txt   # json-file
+  docker run -d --name log-app \
+    --log-driver json-file --log-opt max-size=5m --log-opt max-file=3 \
+    busybox:1.36 sh -c 'while true; do date; sleep 1; done'
+  docker logs --tail 5 log-app
+  docker inspect -f '{{json .HostConfig.LogConfig}}' log-app
+  # Engine-wide default: /etc/docker/daemon.json
+  #   { "log-driver": "local", "log-opts": { "max-size": "10m" } }   then restart dockerd
+  # (new containers only; existing containers keep their logging settings).
+docs:
+  - https://docs.docker.com/engine/logging/configure/
+  - https://docs.docker.com/engine/logging/drivers/json-file/

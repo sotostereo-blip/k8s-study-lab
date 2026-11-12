@@ -1,0 +1,48 @@
+id: dca-sec-001
+title: Run a hardened container
+domain: security
+difficulty: 2
+minutes: 8
+environment: docker
+task: |
+  Start a container `hardened` from `alpine:3.20` with the command `sleep 1d`. It must:
+
+  - run as UID **1000** and GID **1000** (not root);
+  - have a **read-only** root filesystem, with a writable **tmpfs** at `/tmp`;
+  - drop **all** Linux capabilities;
+  - not be able to gain new privileges (`no-new-privileges`).
+
+  Then check: `docker exec hardened touch /x` must fail and `docker exec hardened touch /tmp/x` must work.
+checks:
+  - name: '`hardened` runs as 1000:1000'
+    run: |
+      [ "$(docker exec hardened id -u):$(docker exec hardened id -g)" = "1000:1000" ]
+  - name: The root filesystem is read-only and /tmp is a tmpfs
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig}}' hardened) || exit 1
+      echo "$out" | jq -e '.ReadonlyRootfs == true and (((.Tmpfs // {}) | has("/tmp")) or ([.Mounts[]? | select(.Type == "tmpfs" and .Target == "/tmp")] | length == 1))' >/dev/null || exit 1
+      ! docker exec hardened touch /x 2>/dev/null && docker exec hardened touch /tmp/x
+  - name: All capabilities are dropped
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig.CapDrop}}' hardened) || exit 1
+      echo "$out" | jq -e 'map(ascii_upcase) | index("ALL") != null' >/dev/null
+  - name: no-new-privileges is set
+    run: |
+      out=$(docker inspect -f '{{json .HostConfig.SecurityOpt}}' hardened) || exit 1
+      echo "$out" | jq -e 'map(select(. == "no-new-privileges" or . == "no-new-privileges:true" or . == "no-new-privileges=true")) | length == 1' >/dev/null
+  - name: '`hardened` is running'
+    run: '[ "$(docker inspect -f "{{.State.Running}}" hardened)" = true ]'
+solution: |
+  docker run -d --name hardened \
+    --user 1000:1000 \
+    --read-only --tmpfs /tmp \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    alpine:3.20 sleep 1d
+  docker exec hardened id
+  docker exec hardened touch /x        # Read-only file system
+  docker exec hardened touch /tmp/x    # works
+docs:
+  - https://docs.docker.com/engine/security/
+  - https://docs.docker.com/reference/cli/docker/container/run/#security-opt
+  - https://docs.docker.com/engine/storage/tmpfs/

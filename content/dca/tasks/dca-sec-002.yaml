@@ -1,0 +1,38 @@
+id: dca-sec-002
+title: Lock the swarm and rotate the join token
+domain: security
+difficulty: 2
+minutes: 6
+environment: docker
+setup: |
+  [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init >/dev/null
+  mkdir -p /lab/answers
+  docker swarm join-token -q worker > /var/tmp/dca-sec-002.token
+task: |
+  A worker join token was pasted in a public chat. Also, the security team wants the Raft data of
+  the managers to stay encrypted when a manager restarts, until a person unlocks it.
+
+  1. Turn on **autolock** for the swarm.
+  2. Save the **unlock key** (only the key, it starts with `SWMKEY-1-`) to
+     `/lab/answers/unlock-key.txt`.
+  3. **Rotate** the worker join token, so the old one stops working.
+checks:
+  - name: Swarm autolock is on
+    run: '[ "$(docker info --format "{{.Swarm.Cluster.Spec.EncryptionConfig.AutoLockManagers}}")" = true ]'
+  - name: '`/lab/answers/unlock-key.txt` has the current unlock key'
+    run: |
+      key=$(docker swarm unlock-key -q) || exit 1
+      [ "$(tr -d ' \n\r' < /lab/answers/unlock-key.txt)" = "$key" ]
+  - name: The worker join token was rotated
+    run: |
+      now=$(docker swarm join-token -q worker) || exit 1
+      [ -n "$now" ] && [ "$now" != "$(cat /var/tmp/dca-sec-002.token)" ]
+solution: |
+  docker swarm update --autolock=true          # prints the unlock key once
+  docker swarm unlock-key -q > /lab/answers/unlock-key.txt
+  docker swarm join-token --rotate worker
+  # After a restart, a locked manager needs: docker swarm unlock   (then paste the key)
+  # Rotate the unlock key too if it leaks: docker swarm unlock-key --rotate
+docs:
+  - https://docs.docker.com/engine/swarm/swarm_manager_locking/
+  - https://docs.docker.com/reference/cli/docker/swarm/join-token/

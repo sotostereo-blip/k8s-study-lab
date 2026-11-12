@@ -1,0 +1,11 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+source <(docker completion bash 2>/dev/null)
+alias d=docker
+complete -F __start_docker d 2>/dev/null
+export EDITOR=vim
+PS1='\[\e[36m\]docker-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Docker lab ready (Docker Engine 29 in the "docker" host, local registry at registry:5000).
+Try: docker info    Shortcut: d=docker    Your work folder: /lab (shared with the engine,
+so bind mounts from /lab work). Published ports are reached at http://docker:<port>.
+MSG

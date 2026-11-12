@@ -1,0 +1,88 @@
+id: dca-orch-006
+title: Fix a broken compose.yaml
+domain: orchestration
+difficulty: 2
+minutes: 10
+environment: docker
+setup: |
+  mkdir -p /lab/notes-app/html
+  echo '<h1>Notes app</h1>' > /lab/notes-app/html/index.html
+  cat > /lab/notes-app/compose.yaml <<'YAML'
+  services:
+    web:
+      image: nginx:1.27-alpine
+      ports:
+        - "8083:8080"
+      volumes:
+        - ./html:/usr/share/nginx/html:ro
+      depends_on:
+        - backend
+    api:
+      image: python:3.12-alpine
+      command: python -m http.server 9000
+      environment:
+        - MODE=dev
+  YAML
+task: |
+  A teammate wrote `/lab/notes-app/compose.yaml`, but it does not work.
+  Fix the file and start the application with **project name `notes`** so that:
+
+  - `docker compose config` shows no error;
+  - `web` starts **after** `api` (it depends on `api`);
+  - `http://docker:8083/` shows the page from `./html` (nginx listens on port **80** in the container);
+  - `api` runs with the environment variable `MODE=prod`;
+  - the `web` container can reach `http://api:9000/` by service name.
+checks:
+  - name: The `web` and `api` containers of project `notes` are running
+    run: |
+      for s in web api; do
+        out=$(docker ps -q --filter label=com.docker.compose.project=notes --filter label=com.docker.compose.service=$s --filter status=running) || exit 1
+        [ -n "$out" ] || exit 1
+      done
+  - name: http://docker:8083/ shows the Notes app page
+    run: |
+      out=$(curl -s -m 5 http://docker:8083/) || exit 1
+      echo "$out" | grep -q 'Notes app'
+  - name: '`web` depends on `api`'
+    run: |
+      id=$(docker ps -q --filter label=com.docker.compose.project=notes --filter label=com.docker.compose.service=web | head -1)
+      [ -n "$id" ] || exit 1
+      docker inspect -f '{{index .Config.Labels "com.docker.compose.depends_on"}}' "$id" | grep -Eq '(^|,)api:'
+  - name: '`api` has MODE=prod'
+    run: |
+      id=$(docker ps -q --filter label=com.docker.compose.project=notes --filter label=com.docker.compose.service=api | head -1)
+      [ -n "$id" ] || exit 1
+      out=$(docker inspect -f '{{json .Config.Env}}' "$id")
+      echo "$out" | jq -e 'index("MODE=prod") != null' >/dev/null
+  - name: '`web` reaches http://api:9000/'
+    run: |
+      id=$(docker ps -q --filter label=com.docker.compose.project=notes --filter label=com.docker.compose.service=web | head -1)
+      [ -n "$id" ] || exit 1
+      docker exec "$id" wget -q -T 5 -O /dev/null http://api:9000/
+solution: |
+  cd /lab/notes-app
+  docker compose config          # error: service "web" depends on undefined service "backend"
+  cat > compose.yaml <<'YAML'
+  services:
+    web:
+      image: nginx:1.27-alpine
+      ports:
+        - "8083:80"            # host 8083 -> container 80
+      volumes:
+        - ./html:/usr/share/nginx/html:ro
+      depends_on:
+        - api
+    api:
+      image: python:3.12-alpine
+      command: python -m http.server 9000
+      environment:
+        - MODE=prod
+  YAML
+  docker compose -p notes up -d
+  docker compose -p notes ps
+  curl -s http://docker:8083/
+  # Compose puts both services on the network notes_default, so "api" resolves by DNS.
+docs:
+  - https://docs.docker.com/reference/compose-file/services/
+  - https://docs.docker.com/compose/how-tos/startup-order/
+  - https://docs.docker.com/compose/how-tos/networking/
