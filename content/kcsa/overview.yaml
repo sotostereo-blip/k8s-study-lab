@@ -1,0 +1,449 @@
+domain: overview
+questions:
+  - id: kcsa-overview-001
+    difficulty: 1
+    type: single
+    question: "In the 4Cs model of cloud native security, what is the order of the layers from the outside to the inside?"
+    options:
+      - id: a
+        text: "Cloud, Cluster, Container, Code"
+      - id: b
+        text: "Code, Container, Cluster, Cloud"
+        why: "This is the same list but from the inside to the outside. Code is the innermost layer, not the outermost."
+      - id: c
+        text: "Cluster, Cloud, Code, Container"
+        why: "The Cluster runs on top of the Cloud (or data center), so Cloud must come first. The order here mixes the layers."
+      - id: d
+        text: "Cloud, Container, Cluster, Code"
+        why: "Containers run inside the cluster, so the Cluster layer comes before the Container layer when you go inwards."
+    answer: [a]
+    explanation: |
+      The 4Cs are Cloud (or data center), Cluster, Container and Code. Each layer
+      is built on the one outside it, so a weak outer layer (for example an open
+      cloud firewall) cannot be fully fixed by good security at an inner layer.
+      This is a form of defense in depth.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/cloud-native-security/
+    glossary: [four-cs, defense-in-depth]
+
+  - id: kcsa-overview-002
+    difficulty: 1
+    type: single
+    question: "A developer changes the application to use parameterized SQL queries to stop SQL injection. Which of the 4Cs does this control belong to?"
+    options:
+      - id: a
+        text: "Cloud"
+        why: "The Cloud layer covers the provider account, networks and machines. SQL queries inside the app are not part of it."
+      - id: b
+        text: "Cluster"
+        why: "The Cluster layer covers Kubernetes components and settings such as RBAC and NetworkPolicy, not the app's own logic."
+      - id: c
+        text: "Container"
+        why: "The Container layer covers images, runtimes and isolation. It does not change how the app builds its queries."
+      - id: d
+        text: "Code"
+    answer: [d]
+    explanation: |
+      The Code layer is the application itself: its source code, its libraries
+      and how it handles input. Safe query building, input validation and
+      dependency updates are Code-layer controls. This layer is the one the
+      application team controls most directly.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/overview/
+    glossary: [four-cs]
+
+  - id: kcsa-overview-003
+    difficulty: 2
+    type: single
+    question: "A company uses a managed Kubernetes service from a cloud provider. Which task is usually the customer's responsibility, not the provider's?"
+    options:
+      - id: a
+        text: "Patching the operating system of the etcd servers"
+        why: "In a managed service the provider runs and patches the control plane, including etcd. The customer usually cannot even reach those machines."
+      - id: b
+        text: "Physical security of the data center buildings"
+        why: "Physical security is always the cloud provider's job in a public cloud. Customers never manage the buildings."
+      - id: c
+        text: "Configuring RBAC for users and workloads"
+      - id: d
+        text: "Patching the hypervisor that runs the virtual machines"
+        why: "The hypervisor belongs to the provider's infrastructure. Customers rent the VMs on top of it and do not patch it."
+    answer: [c]
+    explanation: |
+      Cloud security follows a shared responsibility model. The provider secures
+      the physical infrastructure and, in a managed service, the control plane.
+      The customer still owns what runs in the cluster: RBAC, workload settings,
+      images, NetworkPolicies and application code.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/cloud-native-security/
+    glossary: [shared-responsibility, rbac]
+
+  - id: kcsa-overview-004
+    difficulty: 2
+    type: single
+    question: "A compromised Pod on a cloud VM calls `http://169.254.169.254/` and gets the node's cloud credentials. Which control best stops this?"
+    options:
+      - id: a
+        text: "Enable encryption at rest for all Secrets stored in etcd"
+        why: "Encryption at rest protects data stored in etcd. The metadata service is a cloud endpoint, so this does not block the request."
+      - id: b
+        text: "Block Pod egress to the metadata IP; use workload identity"
+      - id: c
+        text: "Run the Pod with a higher QoS class such as Guaranteed"
+        why: "QoS classes affect eviction under resource pressure. They do not change what network endpoints a Pod can reach."
+      - id: d
+        text: "Use a ClusterIP Service instead of a NodePort Service"
+        why: "Service types control how traffic reaches the app. They do nothing about outbound calls from the Pod to the metadata endpoint."
+    answer: [b]
+    explanation: |
+      The cloud instance metadata service often gives out the node's cloud
+      credentials. Pods should not reach it: block the address with an egress
+      NetworkPolicy or a provider setting, and give Pods their own limited
+      cloud identity instead of the node's identity.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [instance-metadata, network-policy, least-privilege]
+
+  - id: kcsa-overview-005
+    difficulty: 2
+    type: single
+    question: "Which infrastructure control is recommended for the Kubernetes API server endpoint in a cloud environment?"
+    options:
+      - id: a
+        text: "Limit network access to it from known networks only"
+      - id: b
+        text: "Expose it publicly so that health checks always work"
+        why: "A public API endpoint lets anyone on the internet try to attack it. Health checks can work from trusted networks only."
+      - id: c
+        text: "Turn off TLS on it to make load balancing simpler"
+        why: "TLS protects credentials and data in transit to the API server. Turning it off lets attackers on the network read and change traffic."
+      - id: d
+        text: "Run it on the same machines as the application Pods"
+        why: "Mixing control plane and untrusted workloads on the same machines makes it easier for a compromised app to attack the control plane."
+    answer: [a]
+    explanation: |
+      Access to the API server should be limited at the network level, for
+      example with a private endpoint, firewall rules or an allowlist of source
+      networks. Authentication and RBAC still apply, but fewer reachable
+      endpoints means a smaller attack surface.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/security-checklist/
+      - https://kubernetes.io/docs/concepts/security/controlling-access/
+    glossary: [kube-apiserver, attack-surface, tls]
+
+  - id: kcsa-overview-006
+    difficulty: 1
+    type: single
+    question: "What is the CIS Kubernetes Benchmark?"
+    options:
+      - id: a
+        text: "A knowledge base of attacker tactics and techniques"
+        why: "That describes MITRE ATT&CK. The CIS Benchmark is a list of secure configuration settings, not a catalog of attacks."
+      - id: b
+        text: "A test that measures how fast a cluster schedules Pods"
+        why: "Despite the word benchmark, it does not measure performance. It checks security configuration."
+      - id: c
+        text: "A set of secure configuration checks for cluster components"
+      - id: d
+        text: "A standard file format that lists software in an image"
+        why: "That describes an SBOM format such as SPDX or CycloneDX, not the CIS Benchmark."
+    answer: [c]
+    explanation: |
+      The CIS Kubernetes Benchmark from the Center for Internet Security lists
+      recommended settings for the API server, etcd, kubelet and other parts,
+      such as disabling anonymous access or profiling. Tools like kube-bench
+      check a cluster against it automatically.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/security-checklist/
+    glossary: [cis-benchmark]
+
+  - id: kcsa-overview-007
+    difficulty: 2
+    type: single
+    question: "A security team wants to map possible attacks on their cluster to known stages such as initial access, persistence and privilege escalation. Which framework fits best?"
+    options:
+      - id: a
+        text: "MITRE ATT&CK"
+      - id: b
+        text: "The CIS Kubernetes Benchmark"
+        why: "The CIS Benchmark lists configuration settings to check. It is not organized by attack stages like persistence or initial access."
+      - id: c
+        text: "Pod Security Standards"
+        why: "Pod Security Standards define three profiles for Pod settings. They are a control, not a model of attacker behavior."
+      - id: d
+        text: "The OCI image specification"
+        why: "The OCI image spec defines how container images are built and stored. It has nothing to do with attack stages."
+    answer: [a]
+    explanation: |
+      MITRE ATT&CK is a knowledge base of real attacker tactics (goals such as
+      persistence) and techniques (how they reach them). Threat matrices for
+      Kubernetes reuse this structure, which helps teams see which controls
+      cover which stage of an attack.
+    docs:
+      - https://attack.mitre.org/
+      - https://kubernetes.io/docs/concepts/security/overview/
+    glossary: [mitre-attack, threat-model]
+
+  - id: kcsa-overview-008
+    difficulty: 2
+    type: multiple
+    question: "Which TWO options give a workload stronger kernel isolation than a normal container that shares the host kernel?"
+    options:
+      - id: a
+        text: "A sandboxed runtime such as gVisor, chosen with a RuntimeClass"
+      - id: b
+        text: "Kata Containers, which run each Pod in a lightweight VM"
+      - id: c
+        text: "Moving the Pod into its own Kubernetes Namespace"
+        why: "A Kubernetes Namespace is a logical scope for names, RBAC and quotas. Pods in it still share the same node kernel."
+      - id: d
+        text: "Adding a NetworkPolicy that denies all ingress"
+        why: "A NetworkPolicy limits network traffic. It does not separate the container from the host kernel."
+      - id: e
+        text: "Setting CPU and memory limits on the container"
+        why: "Limits control how much CPU and memory a container uses. The container still makes system calls to the shared kernel."
+    answer: [a, b]
+    explanation: |
+      Normal containers share the node's Linux kernel, so a kernel bug can lead
+      to a container breakout. gVisor puts a user-space kernel between the app
+      and the host, and Kata Containers use a small VM per Pod. Both are
+      selected through a RuntimeClass.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/runtime-class/
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [runtime-class, container-breakout]
+
+  - id: kcsa-overview-009
+    difficulty: 2
+    type: single
+    question: "Two tenants are placed in different Kubernetes Namespaces and nothing else is configured. What isolation do they get by default?"
+    options:
+      - id: a
+        text: "Their Pods cannot send network traffic to each other"
+        why: "Without NetworkPolicies, all Pods can reach each other across Namespaces. Namespaces do not block traffic on their own."
+      - id: b
+        text: "A separate name scope where RBAC and quotas can apply"
+      - id: c
+        text: "Their containers run on separate Linux kernels"
+        why: "Namespaces are a Kubernetes API concept. Pods from both tenants can still run on the same node and share its kernel."
+      - id: d
+        text: "Their Pods are always scheduled to different nodes"
+        why: "The scheduler ignores Namespaces when it places Pods. You need taints, tolerations or affinity to keep tenants on separate nodes."
+    answer: [b]
+    explanation: |
+      A Namespace is the basic unit for multi-tenancy, but alone it only scopes
+      names. It becomes a security boundary when you add RBAC, ResourceQuotas,
+      NetworkPolicies and Pod Security settings per Namespace.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [namespace, multi-tenancy, rbac, network-policy]
+
+  - id: kcsa-overview-010
+    difficulty: 2
+    type: single
+    question: "A platform must run code uploaded by untrusted customers. Which approach gives the strongest isolation between customers?"
+    options:
+      - id: a
+        text: "One Namespace per customer in a shared cluster"
+        why: "Namespaces in one cluster share the control plane and, by default, the nodes. This is soft isolation, not the strongest."
+      - id: b
+        text: "One ServiceAccount per customer in a shared Namespace"
+        why: "ServiceAccounts only separate API identities. All Pods in the Namespace still share nodes, network and quotas."
+      - id: c
+        text: "A separate cluster for each customer"
+      - id: d
+        text: "A different label on each customer's Pods"
+        why: "Labels are just metadata for selection. They give no security isolation at all."
+    answer: [c]
+    explanation: |
+      For hostile tenants, the strongest option is a separate cluster per
+      tenant, so they share no control plane, nodes or network. Inside one
+      cluster you can get closer with dedicated nodes and sandboxed runtimes,
+      but the control plane is still shared.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [multi-tenancy, namespace, service-account]
+
+  - id: kcsa-overview-011
+    difficulty: 1
+    type: single
+    question: "Which image reference makes sure the same image content is pulled every time?"
+    options:
+      - id: a
+        text: "`nginx:latest`"
+        why: "The latest tag can be moved to a new image at any time. Two pulls may give different content."
+      - id: b
+        text: "`nginx:1.27.3-alpine3.20`"
+        why: "Even full version tags are mutable. The publisher can push a new image with the same tag, for example a patch rebuild."
+      - id: c
+        text: "`nginx:stable`"
+        why: "A stable tag is a moving pointer that changes when a new stable release comes out."
+      - id: d
+        text: "`nginx@sha256:<digest>`"
+    answer: [d]
+    explanation: |
+      A digest is a hash of the image content, so it cannot point to anything
+      else. Tags are mutable labels that can be moved. Pinning images by digest
+      protects you from a tag being changed to a malicious image.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/
+    glossary: [image, digest]
+
+  - id: kcsa-overview-012
+    difficulty: 2
+    type: single
+    question: "What is the main security goal of signing container images and checking the signature before deployment?"
+    options:
+      - id: a
+        text: "To find known vulnerabilities in the image packages"
+        why: "That is what image scanning does. A valid signature says who built the image, not whether it has CVEs."
+      - id: b
+        text: "To prove who built the image and that it is unchanged"
+      - id: c
+        text: "To encrypt the image so only the cluster can read it"
+        why: "Signing does not encrypt anything. The image layers stay readable; the signature only proves origin and integrity."
+      - id: d
+        text: "To make the image smaller and faster to pull"
+        why: "A signature adds a small extra object. It does not compress the image or speed up pulls."
+    answer: [b]
+    explanation: |
+      Tools such as Sigstore Cosign create a signature for the image digest. An
+      admission policy can then allow only images signed by trusted keys or
+      identities. This protects the supply chain against swapped or tampered
+      images.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/verify-signed-artifacts/
+    glossary: [image-signing, supply-chain, image]
+
+  - id: kcsa-overview-013
+    difficulty: 2
+    type: single
+    question: "A new critical CVE is published for a common library. How does keeping an SBOM for each image help the team?"
+    options:
+      - id: a
+        text: "It patches the library inside running containers"
+        why: "An SBOM is only a list of components. It does not change any image or running container."
+      - id: b
+        text: "It blocks the vulnerable image at the registry"
+        why: "An SBOM does not enforce anything. Blocking needs a registry policy or an admission controller."
+      - id: c
+        text: "It lets them quickly find which images use that library"
+      - id: d
+        text: "It removes the need to scan images in the pipeline"
+        why: "SBOMs and scanners work together. A scanner can read an SBOM, but you still need to check components against vulnerability data."
+    answer: [c]
+    explanation: |
+      A Software Bill of Materials lists every package and version in an image.
+      When a new CVE appears, you can search the SBOMs to find the affected
+      images without rebuilding or rescanning everything first.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/cloud-native-security/
+    glossary: [sbom, cve, supply-chain]
+
+  - id: kcsa-overview-014
+    difficulty: 2
+    type: single
+    question: "In a multi-tenant cluster, why would you enable the `AlwaysPullImages` admission controller?"
+    options:
+      - id: a
+        text: "To make Pods start faster by caching images on nodes"
+        why: "It does the opposite: it forces a pull on every start, which can make start-up slower. Its value is security, not speed."
+      - id: b
+        text: "To stop use of another tenant's cached private image"
+      - id: c
+        text: "To scan every image for vulnerabilities before it runs"
+        why: "AlwaysPullImages only sets the pull policy. It does not run any vulnerability scan."
+      - id: d
+        text: "To require that every image is signed with a trusted key"
+        why: "Signature checks need a policy engine or a dedicated admission webhook. AlwaysPullImages does not check signatures."
+    answer: [b]
+    explanation: |
+      Once a private image is on a node, any Pod on that node could use it with
+      `imagePullPolicy: IfNotPresent`, even without pull credentials.
+      AlwaysPullImages sets the policy to Always, so the registry checks the
+      credentials for every Pod.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+      - https://kubernetes.io/docs/concepts/containers/images/
+    glossary: [admission-controller, registry, multi-tenancy]
+
+  - id: kcsa-overview-015
+    difficulty: 1
+    type: single
+    question: "A team finds a database password written directly in the application source code. What is the best fix?"
+    options:
+      - id: a
+        text: "Encode the password with base64 inside the code"
+        why: "Base64 is encoding, not encryption. Anyone who reads the code can decode it in seconds."
+      - id: b
+        text: "Move the password into a comment in the Dockerfile"
+        why: "The Dockerfile is in the repository too, and build steps can end up in image layers. The secret stays exposed."
+      - id: c
+        text: "Make the Git repository private and keep the code"
+        why: "A private repo still shares the secret with everyone who can read it, and it stays in Git history forever."
+      - id: d
+        text: "Rotate it and inject it at runtime from a secret store"
+    answer: [d]
+    explanation: |
+      Secrets must not live in code or images. A leaked password should be
+      rotated, then provided at runtime from a Kubernetes Secret or an external
+      secret manager. Secret scanning in CI helps catch this early.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/secrets-good-practices/
+    glossary: [secret]
+
+  - id: kcsa-overview-016
+    difficulty: 2
+    type: single
+    question: "Why is a distroless or minimal base image a good security choice?"
+    options:
+      - id: a
+        text: "It encrypts the application files inside the image"
+        why: "Distroless images are not encrypted. They are simply smaller and contain fewer programs."
+      - id: b
+        text: "It has no shell or package manager for an attacker to use"
+      - id: c
+        text: "It lets the container run as root without any extra risk"
+        why: "Running as root is risky with any base image. A minimal image does not remove the need for non-root users."
+      - id: d
+        text: "It makes the image signature check unnecessary"
+        why: "Image size and image origin are separate concerns. A small image can still be swapped or tampered with."
+    answer: [b]
+    explanation: |
+      Minimal images contain only the app and its runtime dependencies. With
+      fewer packages there are fewer CVEs, and an attacker who gets code
+      execution finds no shell or tools to use. This reduces the attack
+      surface.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/cloud-native-security/
+    glossary: [distroless, attack-surface, image]
+
+  - id: kcsa-overview-017
+    difficulty: 2
+    type: multiple
+    question: "Which TWO are controls at the Code layer of the 4Cs?"
+    options:
+      - id: a
+        text: "Static code analysis (SAST) in the CI pipeline"
+      - id: b
+        text: "Scanning third-party dependencies for known CVEs"
+      - id: c
+        text: "A NetworkPolicy that denies traffic between Namespaces"
+        why: "NetworkPolicy is a Cluster-layer control. It works on Pod traffic, not on the application's source."
+      - id: d
+        text: "Encryption at rest for Secrets in etcd"
+        why: "Encrypting etcd data is a Cluster-layer control on the control plane. It does not touch the app's code."
+      - id: e
+        text: "Cloud firewall rules around the node VMs"
+        why: "Firewall rules for VMs belong to the Cloud layer, the outermost one."
+    answer: [a, b]
+    explanation: |
+      Code-layer controls protect the application itself: static analysis,
+      dependency scanning, safe coding and secret scanning. NetworkPolicy and
+      etcd encryption are Cluster controls, and VM firewalls are Cloud
+      controls.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/overview/
+    glossary: [four-cs, cve, ci-cd]

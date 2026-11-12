@@ -1,0 +1,19 @@
+# CKS - Certified Kubernetes Security Specialist (Kubernetes v1.37 curriculum).
+# Domains and weights from the Linux Foundation CKS page (checked 2026-11).
+# Topics that need kernel features of a real node (AppArmor profiles, Falco, kube-bench on
+# kubeadm files) cannot run in k3s inside Docker Desktop; they are covered by the docs links
+# in related tasks instead.
+id: cks
+name: Certified Kubernetes Security Specialist
+exam_minutes: 120
+passing_score: 67
+domains:
+  - { id: cluster-setup, name: "Cluster Setup", weight: 15 }
+  - { id: cluster-hardening, name: "Cluster Hardening", weight: 15 }
+  - { id: system-hardening, name: "System Hardening", weight: 10 }
+  - { id: microservices, name: "Minimize Microservice Vulnerabilities", weight: 20 }
+  - { id: supply-chain, name: "Supply Chain Security", weight: 20 }
+  - { id: runtime, name: "Monitoring, Logging and Runtime Security", weight: 20 }
+environments:
+  secure-node: { name: "1 node with API audit logging", nodes: 1 }
+mock_environment: secure-node

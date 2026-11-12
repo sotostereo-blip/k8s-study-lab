@@ -1,0 +1,54 @@
+id: ckad-env-003
+title: LimitRange defaults and a ResourceQuota
+domain: environment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace team-alpha
+task: |
+  The namespace `team-alpha` is shared by many developers. Add guard rails:
+
+  1. A LimitRange `team-alpha-limits` that gives every **container** without resources:
+     - default **requests**: `cpu: 100m`, `memory: 128Mi`
+     - default **limits**: `cpu: 300m`, `memory: 256Mi`
+  2. A ResourceQuota `team-alpha-quota` with these hard limits:
+     `pods: 4`, `requests.cpu: 1`, `requests.memory: 1Gi`, `limits.cpu: 2`, `limits.memory: 2Gi`
+  3. Create a Pod `quota-check` with image `nginx:1.27-alpine` and **no** resources in its
+     spec. It must start and get the default values from the LimitRange.
+checks:
+  - name: LimitRange `team-alpha-limits` has the default requests and limits
+    run: |
+      kubectl -n team-alpha get limitrange team-alpha-limits -o json | jq -e '.spec.limits[] | select(.type=="Container")
+        | .defaultRequest.cpu=="100m" and .defaultRequest.memory=="128Mi" and .default.cpu=="300m" and .default.memory=="256Mi"'
+  - name: ResourceQuota `team-alpha-quota` has the hard limits
+    run: |
+      kubectl -n team-alpha get resourcequota team-alpha-quota -o json | jq -e '.spec.hard
+        | .pods=="4" and ."requests.cpu"=="1" and ."requests.memory"=="1Gi" and ."limits.cpu"=="2" and ."limits.memory"=="2Gi"'
+  - name: Pod `quota-check` is Running with the default resources
+    run: |
+      p=$(kubectl -n team-alpha get pod quota-check -o json)
+      [ "$(echo "$p" | jq -r .status.phase)" = Running ] &&
+      echo "$p" | jq -e '.spec.containers[0].resources | .requests.cpu=="100m" and .requests.memory=="128Mi"
+        and .limits.cpu=="300m" and .limits.memory=="256Mi"'
+  - name: The quota counts the Pod
+    run: '[ "$(kubectl -n team-alpha get resourcequota team-alpha-quota -o jsonpath="{.status.used.pods}")" -ge 1 ]'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: LimitRange
+  metadata: { name: team-alpha-limits, namespace: team-alpha }
+  spec:
+    limits:
+    - type: Container
+      defaultRequest: { cpu: 100m, memory: 128Mi }
+      default: { cpu: 300m, memory: 256Mi }
+  YAML
+  kubectl -n team-alpha create quota team-alpha-quota \
+    --hard=pods=4,requests.cpu=1,requests.memory=1Gi,limits.cpu=2,limits.memory=2Gi
+  kubectl -n team-alpha run quota-check --image=nginx:1.27-alpine
+  kubectl -n team-alpha get pod quota-check -o jsonpath='{.spec.containers[0].resources}'
+  kubectl -n team-alpha describe quota team-alpha-quota
+docs:
+  - https://kubernetes.io/docs/concepts/policy/limit-range/
+  - https://kubernetes.io/docs/concepts/policy/resource-quotas/

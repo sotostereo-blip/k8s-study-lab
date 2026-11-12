@@ -1,0 +1,686 @@
+domain: cluster-components
+questions:
+  - id: kcsa-comp-001
+    difficulty: 1
+    type: single
+    question: "In which order does the API server process a request to create a Pod?"
+    options:
+      - id: a
+        text: "Authorization, authentication, admission control"
+        why: "The API server must know who you are before it can check what you may do. Authentication always comes first."
+      - id: b
+        text: "Authentication, authorization, admission control"
+      - id: c
+        text: "Admission control, authentication, authorization"
+        why: "Admission control runs last, after the request is already authenticated and authorized. It can then change or reject the object."
+      - id: d
+        text: "Authentication, admission control, authorization"
+        why: "Authorization happens before admission. Admission controllers only see requests that are already allowed by RBAC or another authorizer."
+    answer: [b]
+    explanation: |
+      Every request is first authenticated (who are you?), then authorized (are
+      you allowed to do this?), and then passed through admission controllers
+      (should this object be changed or rejected?). Only then is it stored in
+      etcd.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/controlling-access/
+    glossary: [kube-apiserver, authentication, authorization, admission-controller]
+
+  - id: kcsa-comp-002
+    difficulty: 2
+    type: single
+    question: "Which statement about mutating and validating admission is true?"
+    options:
+      - id: a
+        text: "Validating admission runs first, then mutating admission"
+        why: "It is the other way round. If validation ran first, a later mutation could change the object after it was checked."
+      - id: b
+        text: "Only mutating admission can reject a request"
+        why: "Both kinds can reject requests. Validating admission exists mainly to reject objects that break a policy."
+      - id: c
+        text: "Mutating runs first, so validators see the final object"
+      - id: d
+        text: "Admission webhooks run before authentication"
+        why: "Webhooks run in the admission phase, which comes after authentication and authorization."
+    answer: [c]
+    explanation: |
+      The API server runs mutating admission first (for example to add default
+      values or sidecars) and validating admission after it. This order makes
+      sure policy checks see the object exactly as it will be stored.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+      - https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+    glossary: [admission-controller, admission-webhook]
+
+  - id: kcsa-comp-003
+    difficulty: 2
+    type: single
+    question: "What is the effect of starting kube-apiserver with `--anonymous-auth=false`?"
+    options:
+      - id: a
+        text: "Requests without credentials are rejected with 401"
+      - id: b
+        text: "All ServiceAccount tokens stop working"
+        why: "ServiceAccount tokens are real credentials, so they still authenticate. Only requests with no credentials are affected."
+      - id: c
+        text: "RBAC is turned off for anonymous users"
+        why: "The flag is about authentication, not authorization. RBAC keeps working for every authenticated user."
+      - id: d
+        text: "Clients must authenticate with client certificates only"
+        why: "Other methods such as bearer tokens and OIDC still work. The flag only removes the anonymous identity."
+    answer: [a]
+    explanation: |
+      With anonymous auth enabled, requests that no authenticator accepts are
+      treated as user `system:anonymous`. Turning it off makes the API server
+      reject them. This removes the risk of a bad RBAC binding giving rights
+      to anonymous users.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/authentication/
+    glossary: [kube-apiserver, anonymous-access, authentication]
+
+  - id: kcsa-comp-004
+    difficulty: 2
+    type: single
+    question: "The CIS Benchmark recommends `--profiling=false` on kube-apiserver. What is the reason?"
+    options:
+      - id: a
+        text: "Profiling turns off TLS on the secure API server port"
+        why: "Profiling does not change TLS. The endpoints are served on the same secure port as the rest of the API."
+      - id: b
+        text: "Its debug endpoints expose details not needed in production"
+      - id: c
+        text: "Profiling stores Secrets in plain text in the etcd database"
+        why: "Profiling has nothing to do with how Secrets are stored. That is controlled by encryption at rest."
+      - id: d
+        text: "Profiling lets any authenticated user bypass RBAC checks"
+        why: "Profiling endpoints still need authentication and authorization. The risk is extra exposed detail and load, not a bypass."
+    answer: [b]
+    explanation: |
+      Profiling (pprof) endpoints show detailed internal data about the process
+      and can be used to put heavy load on it. They are useful for debugging but
+      are an unnecessary attack surface in production. The same advice applies
+      to kube-scheduler and kube-controller-manager.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+    glossary: [kube-apiserver, cis-benchmark, attack-surface]
+
+  - id: kcsa-comp-005
+    difficulty: 2
+    type: single
+    question: "Which pair of kube-apiserver flags turns on audit logging to a file?"
+    options:
+      - id: a
+        text: "`--audit-policy-file` and `--audit-log-path`"
+      - id: b
+        text: "`--authorization-mode` and `--audit-log-path`"
+        why: "`--authorization-mode` picks the authorizers such as Node and RBAC. Without an audit policy file, nothing is logged."
+      - id: c
+        text: "`--encryption-provider-config` and `--audit-policy-file`"
+        why: "The encryption flag controls encryption at rest. Audit events also need a log path or a webhook backend."
+      - id: d
+        text: "`--enable-admission-plugins` and `--profiling`"
+        why: "These flags control admission plugins and profiling endpoints. Neither one writes audit records."
+    answer: [a]
+    explanation: |
+      The audit policy file defines which events to record and at which level
+      (None, Metadata, Request, RequestResponse). The log path tells the API
+      server where to write them. Audit logs answer "who did what, and when".
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    glossary: [audit-log, kube-apiserver]
+
+  - id: kcsa-comp-006
+    difficulty: 2
+    type: single
+    question: "Why should kube-controller-manager run with `--use-service-account-credentials=true`?"
+    options:
+      - id: a
+        text: "It lets all controllers skip the authorization checks"
+        why: "It does the opposite: each controller is checked by RBAC under its own identity."
+      - id: b
+        text: "Each controller uses its own, limited ServiceAccount"
+      - id: c
+        text: "It makes every Pod automatically mount a ServiceAccount token"
+        why: "Token mounting is controlled by `automountServiceAccountToken`. This flag only changes how controllers authenticate."
+      - id: d
+        text: "It encrypts ServiceAccount tokens in etcd"
+        why: "Encryption in etcd is set by the encryption provider config on the API server, not by a controller manager flag."
+    answer: [b]
+    explanation: |
+      Without this flag, all controllers use the controller manager's own,
+      very powerful credentials. With it, each controller (for example the
+      ReplicaSet controller) uses its own ServiceAccount and only the RBAC
+      rights it needs. This follows least privilege.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [kube-controller-manager, service-account, least-privilege]
+
+  - id: kcsa-comp-007
+    difficulty: 2
+    type: single
+    question: "kube-scheduler serves HTTPS on port 10259. Which setting reduces who can reach that port from the network?"
+    options:
+      - id: a
+        text: "`--profiling=true`"
+        why: "Profiling adds debug endpoints and should be off. It does not limit who can connect."
+      - id: b
+        text: "`--authorization-always-allow-paths=/`"
+        why: "This would allow every path without authorization, which makes the port more exposed, not less."
+      - id: c
+        text: "`--bind-address=127.0.0.1`"
+      - id: d
+        text: "`--leader-elect=false`"
+        why: "Leader election decides which scheduler copy is active. It does not change which addresses the port listens on."
+    answer: [c]
+    explanation: |
+      Binding the secure port to localhost means only processes on the control
+      plane node can reach it, so a compromised Pod cannot probe it over the
+      network. The same idea applies to kube-controller-manager on port 10257.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/
+    glossary: [kube-scheduler, attack-surface]
+
+  - id: kcsa-comp-008
+    difficulty: 3
+    type: single
+    question: "Why is scheduler placement (taints, affinity) not a security boundary on its own?"
+    options:
+      - id: a
+        text: "The scheduler only places new Pods once a day in a batch"
+        why: "The scheduler works continuously and places Pods within seconds. Timing is not the issue."
+      - id: b
+        text: "Users who create Pods can set `spec.nodeName` themselves"
+      - id: c
+        text: "Taints are removed automatically every time a node restarts"
+        why: "Taints are stored on the Node object in etcd and survive restarts, unless something removes them."
+      - id: d
+        text: "The scheduler runs inside every application Pod"
+        why: "The scheduler is a control plane component. It never runs inside application Pods."
+    answer: [b]
+    explanation: |
+      If a Pod already has `spec.nodeName`, the scheduler is not involved and
+      the kubelet on that node runs it, so NoSchedule taints are skipped. To
+      really keep workloads off sensitive nodes, add admission policies that
+      check nodeName, tolerations and node selectors.
+    docs:
+      - https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [kube-scheduler, taint, admission-controller]
+
+  - id: kcsa-comp-009
+    difficulty: 1
+    type: single
+    question: "Which kubelet settings stop unauthenticated users from running commands in containers through the kubelet API on port 10250?"
+    options:
+      - id: a
+        text: "`--read-only-port=10255` and `--authorization-mode=AlwaysAllow`"
+        why: "Port 10255 has no authentication at all, and AlwaysAllow approves every request. Both make things worse."
+      - id: b
+        text: "`--anonymous-auth=true` and `--authorization-mode=Webhook`"
+        why: "With anonymous auth on, requests without credentials still reach the authorizer as system:anonymous. Turn it off."
+      - id: c
+        text: "`--anonymous-auth=false` and `--authorization-mode=AlwaysAllow`"
+        why: "Turning off anonymous auth helps, but AlwaysAllow lets any authenticated client run commands without an RBAC check."
+      - id: d
+        text: "`--anonymous-auth=false` and `--authorization-mode=Webhook`"
+    answer: [d]
+    explanation: |
+      The kubelet API can run exec, read logs and list Pods. Disabling
+      anonymous auth rejects requests without credentials, and Webhook
+      authorization asks the API server whether each caller is allowed. kubeadm
+      sets both, but the plain kubelet defaults are less safe.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/
+    glossary: [kubelet, anonymous-access, authorization]
+
+  - id: kcsa-comp-010
+    difficulty: 2
+    type: single
+    question: "A scan finds that nodes answer on kubelet port 10255. What is the risk, and what is the fix?"
+    options:
+      - id: a
+        text: "An unauthenticated read-only port; set it to 0"
+      - id: b
+        text: "It is the etcd peer port; move etcd off the nodes"
+        why: "etcd uses ports 2379 and 2380. Port 10255 belongs to the kubelet."
+      - id: c
+        text: "It is the secure kubelet port; nothing needs to change"
+        why: "The secure, authenticated kubelet port is 10250. Port 10255 has no authentication or authorization."
+      - id: d
+        text: "It is the kube-proxy health port; turn kube-proxy off"
+        why: "kube-proxy health checks use port 10256 and are not the problem here. Turning off kube-proxy would break Services."
+    answer: [a]
+    explanation: |
+      The kubelet read-only port serves Pod and node details over plain HTTP
+      without any authentication. Attackers use it to map workloads. Set
+      `readOnlyPort: 0` in the KubeletConfiguration (or `--read-only-port=0`)
+      to turn it off.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/
+      - https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/
+    glossary: [kubelet, read-only-port]
+
+  - id: kcsa-comp-011
+    difficulty: 2
+    type: single
+    question: "When the kubelet uses `authorization: mode: Webhook`, how does it decide whether a caller may use its API?"
+    options:
+      - id: a
+        text: "It reads a local list of allowed users from a file"
+        why: "Webhook mode does not use a local list. It delegates the decision to the API server."
+      - id: b
+        text: "It sends a SubjectAccessReview to the API server"
+      - id: c
+        text: "It allows any caller that has a valid TLS certificate"
+        why: "A valid certificate only authenticates the caller. In Webhook mode the kubelet still asks if that identity is authorized."
+      - id: d
+        text: "It forwards the call to the container runtime to decide"
+        why: "The container runtime runs containers. It makes no access-control decisions for the kubelet API."
+    answer: [b]
+    explanation: |
+      In Webhook mode the kubelet sends a SubjectAccessReview to the API server,
+      which checks it against RBAC. For example, a client that calls the
+      kubelet API directly needs rights on the `nodes/proxy` subresource.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/
+    glossary: [kubelet, authorization, rbac]
+
+  - id: kcsa-comp-012
+    difficulty: 2
+    type: single
+    question: "An attacker steals the kubelet credentials of `node-1` and tries to change labels on `node-2`. Which control blocks this?"
+    options:
+      - id: a
+        text: "The Node authorizer plus NodeRestriction admission"
+      - id: b
+        text: "A NetworkPolicy that isolates the kube-system Namespace"
+        why: "NetworkPolicy controls Pod network traffic. The attacker is calling the API server with valid credentials, so it does not help."
+      - id: c
+        text: "The AlwaysPullImages admission plugin on the API server"
+        why: "AlwaysPullImages only forces image pulls for new Pods. It does not limit what a kubelet may change."
+      - id: d
+        text: "A LimitRange in the default Namespace"
+        why: "A LimitRange sets default resource limits for Pods. It has no effect on changes to Node objects."
+    answer: [a]
+    explanation: |
+      The Node authorizer limits each kubelet (user `system:node:<name>`) to
+      objects related to its own node. NodeRestriction adds checks at admission:
+      a kubelet can only change its own Node object and Pods bound to it.
+      It also cannot set protected `node-restriction.kubernetes.io/` labels.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/node/
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+    glossary: [node-restriction, kubelet, admission-controller]
+
+  - id: kcsa-comp-013
+    difficulty: 2
+    type: single
+    question: "A Pod mounts `/run/containerd/containerd.sock` from the host. Why is this dangerous?"
+    options:
+      - id: a
+        text: "It slows down image pulls for every Pod on the node"
+        why: "The danger is not speed. Access to the socket gives control over all containers on the node."
+      - id: b
+        text: "It lets the Pod control every container on the node"
+      - id: c
+        text: "It only lets the Pod read its own container logs"
+        why: "The runtime socket is not limited to one container. Through it, a client can manage every container on the node."
+      - id: d
+        text: "It is safe because the socket is mounted as read-only"
+        why: "Clients write requests to a Unix socket even when the mount is read-only. Read-only does not protect a socket."
+    answer: [b]
+    explanation: |
+      Anyone who can talk to the container runtime socket can start a
+      privileged container, read other containers' files and secrets, and so
+      take over the node. This bypasses the API server and its admission
+      checks. Treat the runtime socket like root access.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/
+      - https://kubernetes.io/docs/concepts/storage/volumes/#hostpath
+    glossary: [container-runtime, hostpath, container-breakout]
+
+  - id: kcsa-comp-014
+    difficulty: 2
+    type: single
+    question: "What does `runtimeClassName: gvisor` in a Pod spec do?"
+    options:
+      - id: a
+        text: "It picks a RuntimeClass with a sandboxed runtime handler"
+      - id: b
+        text: "It pulls the container image from a registry called gvisor"
+        why: "The registry is part of the image name. runtimeClassName has nothing to do with where images come from."
+      - id: c
+        text: "It sets the Pod's QoS class to a special gvisor level"
+        why: "QoS classes come only from requests and limits. There is no QoS level set by name."
+      - id: d
+        text: "It schedules the Pod only onto the control plane nodes"
+        why: "A RuntimeClass can add scheduling rules for nodes that support the handler, but it does not target control plane nodes."
+    answer: [a]
+    explanation: |
+      A RuntimeClass maps a name to a container runtime handler configured on
+      the nodes. Pointing to a sandboxed handler such as gVisor or Kata
+      Containers gives the Pod stronger isolation from the host kernel than
+      the default runc.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/runtime-class/
+    glossary: [runtime-class, container-runtime]
+
+  - id: kcsa-comp-015
+    difficulty: 2
+    type: single
+    question: "Which statement about kube-proxy is true?"
+    options:
+      - id: a
+        text: "It enforces NetworkPolicy rules between Pods"
+        why: "NetworkPolicy is enforced by the CNI plugin, not by kube-proxy. kube-proxy only handles Service traffic."
+      - id: b
+        text: "It programs iptables, IPVS or nftables rules for Services"
+      - id: c
+        text: "It encrypts all traffic between Pods on the node with mTLS"
+        why: "kube-proxy does not encrypt traffic. mTLS between workloads usually comes from a service mesh."
+      - id: d
+        text: "It still uses the userspace proxy mode by default"
+        why: "The old userspace mode was removed in Kubernetes 1.26. Linux modes today are iptables, IPVS and nftables."
+    answer: [b]
+    explanation: |
+      kube-proxy runs on every node and writes packet rules so that Service
+      virtual IPs reach the right Pods. It does not encrypt traffic and does
+      not enforce NetworkPolicy, so you need other controls for those.
+    docs:
+      - https://kubernetes.io/docs/reference/networking/virtual-ips/
+    glossary: [kube-proxy, iptables, network-policy]
+
+  - id: kcsa-comp-016
+    difficulty: 2
+    type: single
+    question: "kube-proxy usually runs as a DaemonSet with host networking and network admin rights. What follows from this?"
+    options:
+      - id: a
+        text: "It cannot read any Service or EndpointSlice data at all"
+        why: "kube-proxy must watch Services and EndpointSlices to do its job, so it has read access to them."
+      - id: b
+        text: "A compromised kube-proxy could redirect Service traffic"
+      - id: c
+        text: "Its rules only affect Pods in the kube-system Namespace"
+        why: "kube-proxy rules apply to all Service traffic on the node, for Pods from every Namespace."
+      - id: d
+        text: "It is fully isolated from the node by a sandboxed runtime"
+        why: "kube-proxy normally runs with runc and host networking. It is deliberately close to the node, not sandboxed."
+    answer: [b]
+    explanation: |
+      Because kube-proxy can change the node's packet rules, an attacker who
+      controls it can send Service traffic anywhere. Keep its image patched,
+      limit its RBAC rights and bind its metrics port (10249) to localhost.
+    docs:
+      - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/
+      - https://kubernetes.io/docs/reference/networking/virtual-ips/
+    glossary: [kube-proxy, daemonset, host-namespaces]
+
+  - id: kcsa-comp-017
+    difficulty: 1
+    type: single
+    question: "What does `securityContext: privileged: true` give a container?"
+    options:
+      - id: a
+        text: "Only the permission to bind to network ports below 1024"
+        why: "That is the NET_BIND_SERVICE capability alone. Privileged mode gives far more than that."
+      - id: b
+        text: "A higher scheduling priority than other Pods"
+        why: "Scheduling priority comes from PriorityClass. The privileged flag is about host access, not priority."
+      - id: c
+        text: "All Linux capabilities and access to the host's devices"
+      - id: d
+        text: "A read-only root filesystem for extra protection on the node"
+        why: "Read-only root is set by `readOnlyRootFilesystem: true`. Privileged mode removes protections instead of adding them."
+    answer: [c]
+    explanation: |
+      A privileged container gets all capabilities, access to host devices and
+      loose seccomp/AppArmor settings. It is almost the same as root on the
+      node, and breaking out is easy. Pod Security Standards Baseline and
+      Restricted forbid it.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [privileged-container, security-context, pod-security]
+
+  - id: kcsa-comp-018
+    difficulty: 2
+    type: multiple
+    question: "Which TWO Pod settings give a container direct access to resources of the host node?"
+    options:
+      - id: a
+        text: "`hostPID: true`"
+      - id: b
+        text: "A `hostPath` volume that mounts `/`"
+      - id: c
+        text: "`readOnlyRootFilesystem: true`"
+        why: "This makes the container's own filesystem read-only. It limits the container rather than opening the host."
+      - id: d
+        text: "`runAsNonRoot: true`"
+        why: "This requires the container to run as a non-root user, which lowers risk instead of adding host access."
+      - id: e
+        text: "`automountServiceAccountToken: false`"
+        why: "This stops the API token from being mounted into the Pod. It reduces access instead of adding host access."
+    answer: [a, b]
+    explanation: |
+      `hostPID: true` puts the container in the host's process namespace, so it
+      can see and sometimes signal every process on the node. A `hostPath` of
+      `/` exposes the whole node filesystem. Both are common container
+      breakout paths and are forbidden by the Baseline profile.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+      - https://kubernetes.io/docs/concepts/storage/volumes/#hostpath
+    glossary: [host-namespaces, hostpath, container-breakout]
+
+  - id: kcsa-comp-019
+    difficulty: 2
+    type: single
+    question: "Which etcd setting makes sure only clients with a certificate signed by a trusted CA can connect?"
+    options:
+      - id: a
+        text: "`--auto-tls=true` and `--peer-auto-tls=true`"
+        why: "Auto TLS creates self-signed certificates. It encrypts traffic but does not check who the client or peer is."
+      - id: b
+        text: "`--client-cert-auth=true` with `--trusted-ca-file`"
+      - id: c
+        text: "`--listen-client-urls=http://0.0.0.0:2379`"
+        why: "This listens on all interfaces over plain HTTP. It makes etcd more exposed and removes encryption."
+      - id: d
+        text: "`--snapshot-count=10000`"
+        why: "This sets how often etcd takes a snapshot of its log. It has nothing to do with client authentication."
+    answer: [b]
+    explanation: |
+      etcd holds all cluster state, including Secrets. With client certificate
+      auth, etcd only accepts clients whose certificates are signed by the
+      trusted CA, normally just the API server. Peer traffic should use the
+      peer equivalents (`--peer-client-cert-auth`).
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+    glossary: [etcd, tls, certificate-authority]
+
+  - id: kcsa-comp-020
+    difficulty: 2
+    type: single
+    question: "An EncryptionConfiguration for Secrets lists the providers `identity: {}` first and `aescbc` second. What happens to new Secrets?"
+    options:
+      - id: a
+        text: "They are encrypted with aescbc, the stronger provider"
+        why: "The API server does not pick the strongest provider. It always writes with the first provider in the list."
+      - id: b
+        text: "The API server refuses to start with this config"
+        why: "This config is valid. It is used during migrations, for example when you turn encryption off."
+      - id: c
+        text: "They are stored without encryption"
+      - id: d
+        text: "They are encrypted twice, once by each provider"
+        why: "Providers are not chained. One provider writes; the others are only tried when reading."
+    answer: [c]
+    explanation: |
+      The first provider is used to write new data, and all providers are
+      tried in order to read. `identity` means no encryption, so new Secrets
+      are stored in plain form. Put the real encryption provider first.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+    glossary: [encryption-at-rest, secret, etcd]
+
+  - id: kcsa-comp-021
+    difficulty: 3
+    type: single
+    question: "What is the main security benefit of the KMS v2 provider compared with putting an `aescbc` key in the EncryptionConfiguration file?"
+    options:
+      - id: a
+        text: "The key that protects data keys stays in an external KMS"
+      - id: b
+        text: "Secrets are no longer stored in etcd at all"
+        why: "With KMS, Secrets are still stored in etcd, only encrypted. The external system holds the keys, not the data."
+      - id: c
+        text: "It removes the need for TLS between API server and etcd"
+        why: "Encryption at rest and TLS in transit protect different things. You still need TLS to etcd."
+      - id: d
+        text: "Every Pod can decrypt Secrets without RBAC rights"
+        why: "Decryption happens in the API server. Pods still need RBAC rights to read Secrets through the API."
+    answer: [a]
+    explanation: |
+      KMS uses envelope encryption: data encryption keys (DEKs) encrypt the
+      data, and a key encryption key (KEK) in an external KMS encrypts the
+      DEKs. With aescbc, the key sits in a file on the control plane, so
+      anyone who gets that file and an etcd backup can read everything.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
+      - https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+    glossary: [kms, encryption-at-rest]
+
+  - id: kcsa-comp-022
+    difficulty: 2
+    type: single
+    question: "You just turned on encryption at rest for Secrets. What must you do so that existing Secrets are also encrypted?"
+    options:
+      - id: a
+        text: "Nothing; old Secrets are encrypted at the next restart"
+        why: "Restarting does not rewrite data. Old Secrets stay as they were until they are written again."
+      - id: b
+        text: "Delete etcd and restore it from an old backup"
+        why: "An old backup holds the same unencrypted data. Restoring it does not encrypt anything."
+      - id: c
+        text: "Rewrite them, for example with `kubectl replace`"
+      - id: d
+        text: "Restart every Pod that mounts a Secret"
+        why: "Restarting Pods does not touch how the Secret object is stored in etcd."
+    answer: [c]
+    explanation: |
+      Encryption is applied when data is written. To encrypt existing Secrets,
+      read and write them back, for example with
+      `kubectl get secrets -A -o json | kubectl replace -f -`. Remember that old
+      etcd backups still contain the unencrypted values.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+    glossary: [encryption-at-rest, secret, kubectl]
+
+  - id: kcsa-comp-023
+    difficulty: 2
+    type: single
+    question: "A team applies a default-deny NetworkPolicy, but Pods can still talk to each other. What is the most likely cause?"
+    options:
+      - id: a
+        text: "kube-proxy is in IPVS mode instead of iptables mode"
+        why: "kube-proxy does not enforce NetworkPolicy in any mode. The mode only changes how Service traffic is routed."
+      - id: b
+        text: "The installed CNI plugin does not enforce NetworkPolicy"
+      - id: c
+        text: "NetworkPolicies only apply after the nodes restart"
+        why: "A supporting CNI plugin applies policies within seconds. No node restart is needed."
+      - id: d
+        text: "NetworkPolicies only work in the default Namespace"
+        why: "NetworkPolicies work in any Namespace. Each one applies to Pods in its own Namespace."
+    answer: [b]
+    explanation: |
+      Kubernetes stores NetworkPolicy objects, but the CNI plugin must enforce
+      them. If the plugin does not support policies, they are silently
+      ignored. Choose a CNI plugin with policy support, such as Calico or
+      Cilium.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [network-policy, cni]
+
+  - id: kcsa-comp-024
+    difficulty: 2
+    type: single
+    question: "An admin's laptop is stolen. Its kubeconfig has a client certificate valid for one year. Why is this serious?"
+    options:
+      - id: a
+        text: "kubeconfig files are always encrypted with the user password"
+        why: "kubeconfig files are plain YAML. Keys and tokens in them are readable by anyone with the file."
+      - id: b
+        text: "The API server deletes the user's RBAC bindings"
+        why: "The API server does not react to a lost laptop. The bindings stay, and so does the certificate's access."
+      - id: c
+        text: "Kubernetes cannot revoke a client certificate before it expires"
+      - id: d
+        text: "Client certificates only work from the original IP address"
+        why: "Certificates are not tied to an IP address. They work from any machine that can reach the API server."
+    answer: [c]
+    explanation: |
+      Kubernetes does not support certificate revocation lists. A stolen
+      certificate works until it expires, unless you rotate the CA or remove the
+      user's RBAC rights by name. Prefer short-lived credentials such as OIDC
+      tokens for people.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/
+      - https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+    glossary: [kubeconfig, client-certificate]
+
+  - id: kcsa-comp-025
+    difficulty: 2
+    type: single
+    question: "A client certificate has the organization field `O=system:masters`. What access does it give?"
+    options:
+      - id: a
+        text: "Read-only access to all Namespaces"
+        why: "There is nothing read-only about this group. It has full access to everything."
+      - id: b
+        text: "Access only to the kube-system Namespace"
+        why: "The group is not limited to a Namespace. It applies to the whole cluster."
+      - id: c
+        text: "No access until a RoleBinding is created for it"
+        why: "This group does not need any binding. Its access is built in and cannot be removed with RBAC."
+      - id: d
+        text: "Full cluster access that RBAC cannot restrict"
+    answer: [d]
+    explanation: |
+      The O field of a client certificate becomes the user's group. Members of
+      `system:masters` pass every authorization check, and removing RBAC
+      bindings does not help. Keep this certificate offline for emergencies and
+      give daily users normal groups.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/rbac-good-practices/
+      - https://kubernetes.io/docs/reference/access-authn-authz/authentication/
+    glossary: [client-certificate, rbac, authorization]
+
+  - id: kcsa-comp-026
+    difficulty: 2
+    type: multiple
+    question: "Which TWO actions reduce storage-related security risks in a cluster?"
+    options:
+      - id: a
+        text: "Use a CSI driver or backend that encrypts volumes at rest"
+      - id: b
+        text: "Block `hostPath` volumes with the Baseline Pod Security profile"
+      - id: c
+        text: "Store database passwords in ConfigMaps instead of Secrets"
+        why: "ConfigMaps are meant for non-sensitive data and get weaker handling. Secrets are the right place for passwords."
+      - id: d
+        text: "Give every PersistentVolume the `ReadWriteMany` access mode"
+        why: "Access modes describe how many nodes can mount a volume. Sharing more widely raises risk instead of lowering it."
+      - id: e
+        text: "Mount `/var/lib/kubelet` into application Pods"
+        why: "That directory holds data of all Pods on the node, including their mounted Secrets. Apps should never mount it."
+    answer: [a, b]
+    explanation: |
+      Encryption of volume data at rest is done by the storage backend or CSI
+      driver, not by Kubernetes. `hostPath` volumes give Pods access to the
+      node's files, so Pod Security Standards Baseline forbids them.
+    docs:
+      - https://kubernetes.io/docs/concepts/storage/volumes/
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [csi, hostpath, pod-security, persistent-volume]

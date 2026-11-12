@@ -1,0 +1,70 @@
+id: cks-setup-001
+title: Default deny with DNS egress
+domain: cluster-setup
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace ledger
+  kubectl -n ledger create deployment ledger-api --image=nginx:1.27-alpine
+  kubectl -n ledger expose deployment ledger-api --port=80
+  kubectl -n ledger run ledger-client --image=busybox:1.36 -- sleep 3600
+  kubectl -n ledger rollout status deployment ledger-api --timeout=180s
+  kubectl -n ledger wait --for=condition=Ready pod/ledger-client --timeout=180s
+task: |
+  The namespace `ledger` has a Deployment `ledger-api` (Service `ledger-api`, port 80)
+  and a Pod `ledger-client`. Right now every Pod can talk to everything.
+
+  1. Create a NetworkPolicy called `ledger-default-deny` in `ledger` that selects **all** Pods
+     and blocks **all** incoming and **all** outgoing traffic.
+  2. Create a NetworkPolicy called `ledger-allow-dns` in `ledger` that allows outgoing
+     DNS traffic (UDP and TCP port `53`) for all Pods. Allow nothing else.
+
+  Result: `ledger-client` can still resolve names, but cannot open connections to
+  `ledger-api` or to other ports in `kube-system`.
+checks:
+  - name: ledger-default-deny selects all Pods and blocks Ingress and Egress
+    run: |
+      kubectl -n ledger get netpol ledger-default-deny -o json | jq -e '
+        (.spec.podSelector | length == 0)
+        and (.spec.policyTypes | index("Ingress")) and (.spec.policyTypes | index("Egress"))
+        and ((.spec.ingress // []) | length == 0) and ((.spec.egress // []) | length == 0)'
+  - name: NetworkPolicy ledger-allow-dns exists
+    run: kubectl -n ledger get netpol ledger-allow-dns
+  - name: ledger-client can still resolve DNS names
+    run: kubectl -n ledger exec ledger-client -- nslookup ledger-api.ledger.svc.cluster.local
+    guard: true
+  - name: ledger-client cannot reach ledger-api
+    run: '! kubectl -n ledger exec ledger-client -- wget -qO- -T 3 http://ledger-api'
+  - name: ledger-client cannot reach the CoreDNS metrics port (9153)
+    run: '! kubectl -n ledger exec ledger-client -- wget -qO- -T 3 http://kube-dns.kube-system:9153/metrics'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: ledger-default-deny
+    namespace: ledger
+  spec:
+    podSelector: {}
+    policyTypes: [Ingress, Egress]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: ledger-allow-dns
+    namespace: ledger
+  spec:
+    podSelector: {}
+    policyTypes: [Egress]
+    egress:
+    - ports:
+      - { protocol: UDP, port: 53 }
+      - { protocol: TCP, port: 53 }
+  YAML
+  # test
+  kubectl -n ledger exec ledger-client -- nslookup ledger-api
+  kubectl -n ledger exec ledger-client -- wget -qO- -T 3 http://ledger-api   # times out / refused
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-and-all-egress-traffic
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/

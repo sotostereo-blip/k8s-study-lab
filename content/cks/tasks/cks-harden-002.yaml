@@ -1,0 +1,49 @@
+id: cks-harden-002
+title: Stop mounting ServiceAccount tokens
+domain: cluster-hardening
+difficulty: 2
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace billing
+  kubectl -n billing create deployment billing-api --image=busybox:1.36 -- sleep 3600
+  kubectl -n billing rollout status deployment billing-api --timeout=180s
+task: |
+  The Deployment `billing-api` in namespace `billing` uses the `default` ServiceAccount, and
+  every Pod gets an API token mounted at `/var/run/secrets/kubernetes.io/serviceaccount`.
+  The application never talks to the Kubernetes API.
+
+  1. Change the `default` ServiceAccount in `billing` so it does **not** automount its token.
+  2. Create a ServiceAccount `billing-api` in `billing` that also does **not** automount its token.
+  3. Change the Deployment `billing-api` to use the ServiceAccount `billing-api`.
+
+  After the rollout, the running Pod must have **no** token mounted.
+checks:
+  - name: The default ServiceAccount in billing does not automount tokens
+    run: '[ "$(kubectl -n billing get sa default -o jsonpath="{.automountServiceAccountToken}")" = false ]'
+  - name: ServiceAccount billing-api exists and does not automount tokens
+    run: '[ "$(kubectl -n billing get sa billing-api -o jsonpath="{.automountServiceAccountToken}")" = false ]'
+  - name: Deployment billing-api uses the ServiceAccount billing-api
+    run: '[ "$(kubectl -n billing get deploy billing-api -o jsonpath="{.spec.template.spec.serviceAccountName}")" = billing-api ]'
+  - name: The running billing-api Pod is ready and has no token mounted
+    run: |
+      pods=$(kubectl -n billing get pods -l app=billing-api -o json | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | .metadata.name')
+      [ "$(echo "$pods" | grep -c .)" = 1 ] || exit 1
+      kubectl -n billing wait --for=condition=Ready pod/$pods --timeout=5s >/dev/null &&
+      ! kubectl -n billing exec $pods -- ls /var/run/secrets/kubernetes.io/serviceaccount/token
+solution: |
+  kubectl -n billing patch serviceaccount default -p '{"automountServiceAccountToken": false}'
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: billing-api
+    namespace: billing
+  automountServiceAccountToken: false
+  YAML
+  kubectl -n billing set serviceaccount deployment billing-api billing-api
+  kubectl -n billing rollout status deployment billing-api
+  kubectl -n billing exec deploy/billing-api -- ls /var/run/secrets/kubernetes.io/serviceaccount   # No such file
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting
+  - https://kubernetes.io/docs/concepts/security/service-accounts/

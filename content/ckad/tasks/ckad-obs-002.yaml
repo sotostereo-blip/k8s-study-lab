@@ -1,0 +1,82 @@
+id: ckad-obs-002
+title: Liveness, readiness and startup probes
+domain: observability
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace orders
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: orders-api, namespace: orders }
+  spec:
+    replicas: 2
+    selector: { matchLabels: { app: orders-api } }
+    template:
+      metadata: { labels: { app: orders-api } }
+      spec:
+        containers:
+        - name: api
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          livenessProbe:
+            exec: { command: ["cat", "/tmp/healthy"] }
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 1
+  YAML
+task: |
+  The Pods of the Deployment `orders-api` (namespace `orders`) restart again and again.
+  Their liveness probe checks a file that nginx never creates.
+
+  Change the container `api` so that it has:
+
+  1. a **liveness** probe: HTTP GET on path `/`, port `80`, every `10` seconds
+     (remove the old `exec` check)
+  2. a **readiness** probe: HTTP GET on path `/`, port `80`, every `5` seconds
+  3. a **startup** probe: TCP socket on port `80`, every `2` seconds, `failureThreshold: 30`
+
+  At the end, 2 Pods must be ready and must not restart.
+checks:
+  - name: Liveness probe is httpGet / on port 80 every 10s (no exec)
+    run: |
+      kubectl -n orders get deploy orders-api -o json | jq -e '.spec.template.spec.containers[] | select(.name=="api") | .livenessProbe
+        | .exec==null and .httpGet.path=="/" and .httpGet.port==80 and .periodSeconds==10'
+  - name: Readiness probe is httpGet / on port 80 every 5s
+    run: |
+      kubectl -n orders get deploy orders-api -o json | jq -e '.spec.template.spec.containers[] | select(.name=="api") | .readinessProbe
+        | .httpGet.path=="/" and .httpGet.port==80 and .periodSeconds==5'
+  - name: Startup probe is tcpSocket 80 every 2s with failureThreshold 30
+    run: |
+      kubectl -n orders get deploy orders-api -o json | jq -e '.spec.template.spec.containers[] | select(.name=="api") | .startupProbe
+        | .tcpSocket.port==80 and .periodSeconds==2 and .failureThreshold==30'
+  - name: 2 updated replicas are ready and their containers did not restart
+    run: |
+      d=$(kubectl -n orders get deploy orders-api -o json)
+      [ "$(echo "$d" | jq .status.updatedReplicas)" = 2 ] && [ "$(echo "$d" | jq .status.readyReplicas)" = 2 ] &&
+      [ "$(echo "$d" | jq .status.replicas)" = 2 ] &&
+      [ "$(kubectl -n orders get pods -l app=orders-api -o json | jq '[.items[] | select(.metadata.deletionTimestamp==null) | .status.containerStatuses[0].restartCount] | add')" = 0 ]
+solution: |
+  kubectl -n orders describe pod -l app=orders-api | grep -A3 Liveness   # cat /tmp/healthy fails
+  kubectl -n orders edit deployment orders-api
+  # under the container "api":
+  #   livenessProbe:
+  #     httpGet: { path: /, port: 80 }
+  #     periodSeconds: 10
+  #   readinessProbe:
+  #     httpGet: { path: /, port: 80 }
+  #     periodSeconds: 5
+  #   startupProbe:
+  #     tcpSocket: { port: 80 }
+  #     periodSeconds: 2
+  #     failureThreshold: 30
+  kubectl -n orders rollout status deployment/orders-api
+auto_solution: |
+  kubectl -n orders patch deployment orders-api --type=json -p '[
+    {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe","value":{"httpGet":{"path":"/","port":80},"periodSeconds":10}},
+    {"op":"add","path":"/spec/template/spec/containers/0/readinessProbe","value":{"httpGet":{"path":"/","port":80},"periodSeconds":5}},
+    {"op":"add","path":"/spec/template/spec/containers/0/startupProbe","value":{"tcpSocket":{"port":80},"periodSeconds":2,"failureThreshold":30}}]'
+  kubectl -n orders rollout status deployment/orders-api --timeout=180s
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/

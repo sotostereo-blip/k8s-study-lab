@@ -1,0 +1,684 @@
+domain: security-fundamentals
+questions:
+  - id: kcsa-fund-001
+    difficulty: 1
+    type: single
+    question: "Which Pod Security Standards level is the most restrictive and follows current Pod hardening best practices?"
+    options:
+      - id: a
+        text: "hardened"
+        why: "There is no level called hardened. The three Pod Security Standards levels are privileged, baseline and restricted."
+      - id: b
+        text: "privileged"
+        why: "The privileged level is fully open. It applies no restrictions and is meant for trusted system workloads only."
+      - id: c
+        text: "restricted"
+      - id: d
+        text: "baseline"
+        why: "Baseline blocks known privilege escalations such as privileged containers and hostNetwork, but it still allows things like running as root."
+    answer: [c]
+    explanation: |
+      The Pod Security Standards define three cumulative levels: privileged
+      (no restrictions), baseline (prevents known privilege escalations) and
+      restricted (heavily restricted, follows hardening best practices).
+      Restricted includes everything in baseline and adds more rules.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [pod-security]
+
+  - id: kcsa-fund-002
+    difficulty: 1
+    type: single
+    question: "A Namespace has the label `pod-security.kubernetes.io/enforce: baseline`. What happens when someone creates a Pod with `privileged: true` in it?"
+    options:
+      - id: a
+        text: "The API server rejects the Pod because it breaks baseline."
+      - id: b
+        text: "The Pod is created, and a warning is shown to the user."
+        why: "Only the warn mode shows a warning and still allows the Pod. The enforce mode blocks Pods that break the policy."
+      - id: c
+        text: "The Pod is created, but its container runs unprivileged."
+        why: "Pod Security Admission only validates Pods. It never changes (mutates) the Pod spec to make it compliant."
+      - id: d
+        text: "The Pod is created and an event is added to the audit log."
+        why: "That describes the audit mode, which records the violation but does not block the Pod."
+    answer: [a]
+    explanation: |
+      Pod Security Admission reads namespace labels. With the enforce mode,
+      Pods that violate the chosen level are rejected by the API server.
+      Privileged containers are forbidden by the baseline level, so the Pod
+      is not created.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-admission/
+    glossary: [pod-security-admission, pod-security, namespace, privileged-container]
+
+  - id: kcsa-fund-003
+    difficulty: 2
+    type: multiple
+    question: "Which TWO Pod Security Admission modes allow a violating Pod to be created but still report the violation?"
+    options:
+      - id: a
+        text: "permissive"
+        why: "permissive is not a Pod Security Admission mode. You may be thinking of SELinux; PSA only has enforce, audit and warn."
+      - id: b
+        text: "warn"
+      - id: c
+        text: "enforce"
+        why: "The enforce mode rejects Pods that violate the policy, so the Pod is not created."
+      - id: d
+        text: "dry-run"
+        why: "dry-run is not a Pod Security Admission mode. The three modes are enforce, audit and warn."
+      - id: e
+        text: "audit"
+    answer: [b, e]
+    explanation: |
+      The audit mode adds an annotation to the audit event, and the warn mode
+      returns a warning to the user. In both cases the Pod is still allowed.
+      Only enforce blocks the Pod. You can set different levels per mode, for
+      example enforce baseline and warn restricted.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-admission/
+    glossary: [pod-security-admission, audit-log]
+
+  - id: kcsa-fund-004
+    difficulty: 1
+    type: single
+    question: "PodSecurityPolicy (PSP) was removed in Kubernetes v1.25. What is the built-in feature that replaces it?"
+    options:
+      - id: a
+        text: "OPA Gatekeeper"
+        why: "Gatekeeper is a popular third-party policy engine that can replace PSP rules, but it is not built into Kubernetes."
+      - id: b
+        text: "NetworkPolicy"
+        why: "NetworkPolicy controls network traffic between Pods. It does not check the security settings of a Pod spec."
+      - id: c
+        text: "Pod Security Admission"
+      - id: d
+        text: "The securityContext field"
+        why: "securityContext is where a Pod sets its own security options. It does not enforce any policy on other Pods."
+    answer: [c]
+    explanation: |
+      Pod Security Admission is a built-in admission controller, stable since
+      v1.25. It enforces the Pod Security Standards per Namespace using labels.
+      For more custom rules you can add external policy engines such as
+      Kyverno or OPA Gatekeeper.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-admission/
+    glossary: [pod-security-admission, pod-security, admission-controller]
+
+  - id: kcsa-fund-005
+    difficulty: 3
+    type: single
+    question: "A Namespace has `pod-security.kubernetes.io/enforce: restricted`. You create a Deployment whose Pod template runs as root. What happens?"
+    options:
+      - id: a
+        text: "The Pods are created and changed to run as non-root."
+        why: "Pod Security Admission is a validating check. It never mutates Pods to fix them."
+      - id: b
+        text: "The Deployment is rejected before it is stored."
+        why: "The enforce mode checks only Pod objects. Workload resources such as Deployments are accepted; only the warn and audit modes check them."
+      - id: c
+        text: "The Deployment and Pods run, with only a warning."
+        why: "A warning alone would be the warn mode. With enforce, the Pods that the ReplicaSet tries to create are blocked."
+      - id: d
+        text: "The Deployment is created, but its Pods are rejected."
+    answer: [d]
+    explanation: |
+      The enforce mode applies only to Pods. The Deployment and its ReplicaSet
+      are stored, but every Pod they try to create is rejected, so no Pods
+      run. The warn and audit modes also check Pod templates in workload
+      resources, which helps you find the problem early.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-admission/
+    glossary: [pod-security-admission, deployment, replicaset]
+
+  - id: kcsa-fund-006
+    difficulty: 2
+    type: single
+    question: "Which Pod setting is allowed by the baseline level but NOT allowed by the restricted level?"
+    options:
+      - id: a
+        text: "A `hostPath` volume from the node"
+        why: "hostPath volumes are forbidden by baseline because they give access to the node file system."
+      - id: b
+        text: "A container running as root"
+      - id: c
+        text: "`hostNetwork: true` in the Pod spec"
+        why: "Using the host network namespace is already forbidden by baseline, so it is also forbidden by restricted."
+      - id: d
+        text: "`privileged: true` in a container"
+        why: "Privileged containers are forbidden by baseline, and restricted includes all baseline rules."
+    answer: [b]
+    explanation: |
+      Baseline blocks the most dangerous settings, such as privileged
+      containers, host namespaces and hostPath volumes. Restricted adds more
+      rules: containers must run as non-root, drop all capabilities, use a
+      seccomp profile and set allowPrivilegeEscalation to false.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [pod-security, security-context, volume, host-namespaces, hostpath, privileged-container]
+
+  - id: kcsa-fund-007
+    difficulty: 2
+    type: single
+    question: "A new team member asks you to run `kubectl create user alice`. Why can you not do this in Kubernetes?"
+    options:
+      - id: a
+        text: "Users must be created in etcd directly."
+        why: "Kubernetes does not store normal users anywhere, not even in etcd. Writing to etcd directly is also a bad security practice."
+      - id: b
+        text: "Users are created with a ServiceAccount manifest."
+        why: "ServiceAccounts are for processes in Pods, not for people. Normal users are not managed by the API."
+      - id: c
+        text: "Only a ClusterRole can create new User objects."
+        why: "A ClusterRole is a set of permissions. There is no User resource that any role could create."
+      - id: d
+        text: "Kubernetes has no User object; users come from outside."
+    answer: [d]
+    explanation: |
+      Kubernetes does not have objects that represent normal user accounts.
+      The API server trusts identities from outside: X.509 client
+      certificates signed by the cluster CA, OIDC tokens, or webhook token
+      authentication. ServiceAccounts are the only accounts managed by the API.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/authentication/
+    glossary: [authentication, client-certificate, oidc, service-account]
+
+  - id: kcsa-fund-008
+    difficulty: 2
+    type: single
+    question: "A user signs in with an X.509 client certificate. Which certificate field does Kubernetes use for the user's group memberships?"
+    options:
+      - id: a
+        text: "The Subject Alternative Name (SAN)"
+        why: "SANs list the DNS names or IPs a server certificate is valid for. Kubernetes does not read groups from them."
+      - id: b
+        text: "The Common Name (CN)"
+        why: "The Common Name becomes the username, not the group."
+      - id: c
+        text: "The Organization (O)"
+      - id: d
+        text: "The serial number"
+        why: "The serial number only identifies the certificate inside the CA. It carries no user or group information."
+    answer: [c]
+    explanation: |
+      When client certificate authentication is used, the CN of the subject
+      is the username and each O (organization) field is a group. For example,
+      `/CN=alice/O=dev` gives the user alice in the group dev. RBAC can then
+      bind roles to that user or group.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/authentication/
+    glossary: [client-certificate, authentication, rbac]
+
+  - id: kcsa-fund-009
+    difficulty: 2
+    type: single
+    question: "In current Kubernetes versions, how does a Pod normally receive the token of its ServiceAccount?"
+    options:
+      - id: a
+        text: "An environment variable copied from the kubeconfig file"
+        why: "The kubeconfig belongs to clients such as kubectl. Pods do not get credentials from it."
+      - id: b
+        text: "A short-lived token mounted with a projected volume"
+      - id: c
+        text: "A client certificate created by the kubelet at start"
+        why: "The kubelet uses client certificates for its own identity, but Pods get ServiceAccount tokens, not certificates."
+      - id: d
+        text: "A long-lived token Secret created for every ServiceAccount"
+        why: "Kubernetes no longer creates these legacy token Secrets automatically. They never expire, so they are a bigger risk if leaked."
+    answer: [b]
+    explanation: |
+      The kubelet requests a token through the TokenRequest API and mounts it
+      with a projected volume. The token is bound to the Pod, has an expiry
+      and is rotated automatically. If a Pod does not need the API, set
+      `automountServiceAccountToken: false`.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/service-accounts/
+    glossary: [service-account, volume, service-account-token]
+
+  - id: kcsa-fund-010
+    difficulty: 2
+    type: single
+    question: "Your company wants engineers to sign in to the cluster with their corporate identity provider and single sign-on. Which authentication method fits best?"
+    options:
+      - id: a
+        text: "OpenID Connect (OIDC) tokens"
+      - id: b
+        text: "Anonymous requests with RBAC rules"
+        why: "Anonymous requests have no identity at all. RBAC cannot tell engineers apart if nobody is authenticated."
+      - id: c
+        text: "ServiceAccount tokens for each engineer"
+        why: "ServiceAccounts are meant for workloads, not people. Sharing their tokens with humans makes auditing and revocation hard."
+      - id: d
+        text: "Static token file on the API server"
+        why: "A static token file is a fixed list of tokens on disk. Changing it requires an API server restart and it does not use SSO."
+    answer: [a]
+    explanation: |
+      With OIDC, the identity provider signs an ID token (a JWT) and the API
+      server verifies it. The username and groups come from claims in the
+      token. This lets you reuse existing accounts, MFA and SSO.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/authentication/
+    glossary: [oidc, authentication]
+
+  - id: kcsa-fund-011
+    difficulty: 2
+    type: single
+    question: "Which authorization mode is designed to limit each kubelet to the Pods, Secrets and other objects related to its own node?"
+    options:
+      - id: a
+        text: "Node"
+      - id: b
+        text: "Webhook"
+        why: "The Webhook mode asks an external service to decide. It is not specific to kubelets."
+      - id: c
+        text: "ABAC"
+        why: "ABAC uses a static policy file of attributes. It is legacy and is not the mode built for kubelets."
+      - id: d
+        text: "RBAC"
+        why: "RBAC grants permissions through Roles and bindings. It cannot express \"only objects for Pods on this node\"."
+    answer: [a]
+    explanation: |
+      The Node authorizer allows a kubelet (user `system:node:<name>` in the
+      group `system:nodes`) to read only the Secrets, ConfigMaps and volumes
+      of Pods bound to its node. It is used with the NodeRestriction admission
+      plugin, for example `--authorization-mode=Node,RBAC`.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/node/
+      - https://kubernetes.io/docs/reference/access-authn-authz/authorization/
+    glossary: [authorization, kubelet, node-authorizer, node-restriction]
+
+  - id: kcsa-fund-012
+    difficulty: 1
+    type: single
+    question: "A monitoring tool must read Pods in every Namespace of the cluster. Which RBAC objects should you use?"
+    options:
+      - id: a
+        text: "A Role and a RoleBinding in the default Namespace"
+        why: "A Role and RoleBinding only grant access inside one Namespace, so the tool could not read Pods in the others."
+      - id: b
+        text: "A ClusterRole and a ClusterRoleBinding"
+      - id: c
+        text: "A Role and a ClusterRoleBinding"
+        why: "A ClusterRoleBinding can only reference a ClusterRole, not a namespaced Role."
+      - id: d
+        text: "A ClusterRole and a RoleBinding in kube-system"
+        why: "A RoleBinding limits the ClusterRole's permissions to the Namespace of the binding, here only kube-system."
+    answer: [b]
+    explanation: |
+      Roles and RoleBindings are namespaced. To grant permissions in all
+      Namespaces, define the rules in a ClusterRole and grant them with a
+      ClusterRoleBinding. Give only the verbs needed, such as get, list and
+      watch.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [rbac, role, role-binding, namespace]
+
+  - id: kcsa-fund-013
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements about Kubernetes RBAC are true?"
+    options:
+      - id: a
+        text: "A Role can grant access to Nodes and PersistentVolumes."
+        why: "Nodes and PersistentVolumes are cluster-scoped. A namespaced Role cannot grant access to them; you need a ClusterRole."
+      - id: b
+        text: "If no rule matches, the request is allowed by default."
+        why: "RBAC denies by default. A request is allowed only when some rule grants it."
+      - id: c
+        text: "Permissions are purely additive; there are no deny rules."
+      - id: d
+        text: "A RoleBinding can reference a ClusterRole to grant it in one Namespace."
+      - id: e
+        text: "You can edit the roleRef of a binding after it is created."
+        why: "roleRef is immutable. To point a binding to a different role you must delete and recreate the binding."
+    answer: [c, d]
+    explanation: |
+      RBAC starts from deny and only adds permissions, so there is no way to
+      write a deny rule. A RoleBinding may use a ClusterRole, which is a handy
+      way to reuse common roles in many Namespaces. The roleRef of a binding
+      cannot be changed after creation.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [rbac, role, role-binding]
+
+  - id: kcsa-fund-014
+    difficulty: 3
+    type: single
+    question: "A Role grants `apiGroups: [\"\"]`, `resources: [\"pods\"]`, `verbs: [\"get\", \"list\"]`. The bound user can list Pods, but `kubectl logs` fails with Forbidden. Why?"
+    options:
+      - id: a
+        text: "Logs are a subresource; the Role needs `pods/log`."
+      - id: b
+        text: "The apiGroups value must be `logs.k8s.io`."
+        why: "There is no logs.k8s.io API group. Pods and their log subresource are in the core group, written as an empty string."
+      - id: c
+        text: "Logs can only be read by cluster administrators."
+        why: "Any user can read logs if RBAC grants get on the pods/log subresource. It is not limited to admins."
+      - id: d
+        text: "The Role needs the `watch` verb to stream logs."
+        why: "watch lets a client follow changes to objects. Reading logs is a separate subresource that must be granted on its own."
+    answer: [a]
+    explanation: |
+      RBAC treats subresources as separate resources, written as
+      `resource/subresource`. To read logs you need get on `pods/log`;
+      `pods/exec` is another example. This lets you grant read access to Pods
+      without giving access to logs or exec.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [rbac, role]
+
+  - id: kcsa-fund-015
+    difficulty: 1
+    type: single
+    question: "A developer says: \"Our Secret is safe because the value in the YAML is unreadable.\" What is wrong with this idea?"
+    options:
+      - id: a
+        text: "The value is only base64-encoded and easy to decode."
+      - id: b
+        text: "Nothing; Secret values are encrypted with the cluster CA key."
+        why: "The cluster CA is used for certificates, not for Secret data. Secret values in manifests are not encrypted."
+      - id: c
+        text: "The value is hashed, so the app cannot read it either."
+        why: "Secret values are not hashed. Pods receive the original value, which shows the data is fully reversible."
+      - id: d
+        text: "Secrets are only safe when stored in a ConfigMap."
+        why: "ConfigMaps are meant for non-sensitive data and have no extra protection. They are less suitable than Secrets."
+    answer: [a]
+    explanation: |
+      Base64 is an encoding, not encryption. Anyone who can read the manifest
+      or has get access to the Secret can decode it with `base64 -d`. Protect
+      Secrets with RBAC, encryption at rest and by keeping manifests out of
+      public Git repositories.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/secret/
+    glossary: [secret, rbac, encryption-at-rest]
+
+  - id: kcsa-fund-016
+    difficulty: 2
+    type: single
+    question: "You want Secrets to be encrypted in etcd. Which component do you configure with an `EncryptionConfiguration` file?"
+    options:
+      - id: a
+        text: "The kubelet on every node"
+        why: "The kubelet reads Secrets for its Pods through the API server. It does not decide how data is stored in etcd."
+      - id: b
+        text: "The kube-apiserver, with `--encryption-provider-config`"
+      - id: c
+        text: "The kube-controller-manager"
+        why: "The controller manager runs control loops. It does not handle storage encryption of API objects."
+      - id: d
+        text: "etcd, with a flag on each etcd member"
+        why: "Encryption at rest for Kubernetes resources is done by the API server before it writes to etcd. etcd only stores the result."
+    answer: [b]
+    explanation: |
+      The API server encrypts resources such as Secrets before writing them to
+      etcd, using the providers listed in the EncryptionConfiguration. A KMS
+      provider keeps the main key in an external key management service,
+      which is safer than storing a static key on the control plane node.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+    glossary: [encryption-at-rest, kube-apiserver, etcd, kms]
+
+  - id: kcsa-fund-017
+    difficulty: 2
+    type: single
+    question: "Your security team keeps all credentials in HashiCorp Vault. What is a common way to give these credentials to Pods?"
+    options:
+      - id: a
+        text: "Put them in a ConfigMap with restricted RBAC"
+        why: "ConfigMaps are for non-sensitive data. Even with RBAC, the data stays in etcd in plain form and the values are not managed by Vault."
+      - id: b
+        text: "Copy the values into the container image at build time"
+        why: "Credentials baked into an image can be read by anyone who pulls it, and changing them needs a new image."
+      - id: c
+        text: "Use a tool such as the Secrets Store CSI Driver"
+      - id: d
+        text: "Store them as annotations on the Deployment"
+        why: "Annotations are plain metadata that many users can read. They are not designed for sensitive data."
+    answer: [c]
+    explanation: |
+      External secret stores keep the source of truth outside the cluster.
+      Tools such as the Secrets Store CSI Driver (mounts secrets as volumes) or
+      the External Secrets Operator (syncs them into Secrets) connect Pods to
+      Vault or a cloud secret manager, with central rotation and auditing.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/secrets-good-practices/
+    glossary: [external-secret-store, secret, csi]
+
+  - id: kcsa-fund-018
+    difficulty: 3
+    type: single
+    question: "A user has no RBAC permission to read Secrets in the `prod` Namespace, but can create Pods there. What is the risk?"
+    options:
+      - id: a
+        text: "The user can change the RBAC rules from inside a Pod."
+        why: "A Pod gets only the permissions of its ServiceAccount. Creating a Pod does not by itself let the user edit RBAC."
+      - id: b
+        text: "The user can read Secrets of every Namespace in the cluster."
+        why: "A Pod can only mount Secrets from its own Namespace, so the risk is limited to prod."
+      - id: c
+        text: "The user can read the Secrets by mounting them in a Pod."
+      - id: d
+        text: "None; RBAC also blocks Secrets mounted into the user's Pods."
+        why: "The kubelet mounts the Secret for the Pod. RBAC does not check whether the Pod creator could read that Secret."
+    answer: [c]
+    explanation: |
+      Anyone who can create a Pod in a Namespace can mount any Secret in that
+      Namespace and read it from inside the container. The same is true for
+      the ServiceAccount tokens there. Treat the create pods permission as
+      sensitive and keep Secrets for different teams in different Namespaces.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/secrets-good-practices/
+      - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+    glossary: [secret, rbac, namespace, least-privilege]
+
+  - id: kcsa-fund-019
+    difficulty: 1
+    type: single
+    question: "Two teams share a cluster and each team has its own Namespace. Which statement about Namespace isolation is true by default?"
+    options:
+      - id: a
+        text: "Each Namespace runs its Pods on its own set of nodes."
+        why: "Namespaces do not control scheduling. Pods from all Namespaces can share the same nodes."
+      - id: b
+        text: "Pods in different Namespaces cannot reach each other on the network."
+        why: "Pod networking is flat by default. You need NetworkPolicies to block traffic between Namespaces."
+      - id: c
+        text: "Each Namespace gets its own separate API server."
+        why: "All Namespaces share one control plane. Separate API servers would need separate clusters or virtual clusters."
+      - id: d
+        text: "Namespaces scope names, RBAC and quotas, but not traffic."
+    answer: [d]
+    explanation: |
+      A Namespace is a logical boundary for names, RBAC bindings, resource
+      quotas and policies. It does not isolate the network or the nodes. For
+      stronger separation, add NetworkPolicies, Pod Security Admission and,
+      for sensitive workloads, dedicated nodes or clusters.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [namespace, rbac, network-policy, multi-tenancy]
+
+  - id: kcsa-fund-020
+    difficulty: 3
+    type: multiple
+    question: "You must run untrusted code from customers in your cluster. Which TWO measures give these workloads stronger isolation from other workloads and the node?"
+    options:
+      - id: a
+        text: "Expose these Pods only through a headless Service"
+        why: "A headless Service only changes how DNS returns Pod IPs. It does not isolate the workload."
+      - id: b
+        text: "Run them on dedicated nodes using taints, tolerations and affinity"
+      - id: c
+        text: "Use a RuntimeClass with a sandboxed runtime such as gVisor or Kata"
+      - id: d
+        text: "Give these Pods a higher PriorityClass than other Pods"
+        why: "PriorityClass affects scheduling order and preemption. It does not add any security boundary."
+      - id: e
+        text: "Increase the number of replicas of the workload"
+        why: "More replicas improve availability, not isolation. Each replica has the same risk."
+    answer: [b, c]
+    explanation: |
+      Sandboxed runtimes such as gVisor or Kata Containers add an extra kernel
+      or VM layer between the container and the host, selected with a
+      RuntimeClass. Dedicated nodes keep untrusted Pods away from sensitive
+      ones, so a container escape affects fewer workloads.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/runtime-class/
+      - https://kubernetes.io/docs/concepts/security/multi-tenancy/
+    glossary: [runtime-class, taint, toleration, affinity, multi-tenancy, container-breakout]
+
+  - id: kcsa-fund-021
+    difficulty: 1
+    type: single
+    question: "Which audit level records who made a request, the verb and the resource, but NOT the request or response body?"
+    options:
+      - id: a
+        text: "RequestResponse"
+        why: "RequestResponse logs the metadata plus both the request and the response bodies."
+      - id: b
+        text: "Request"
+        why: "The Request level logs the metadata and also the request body."
+      - id: c
+        text: "Metadata"
+      - id: d
+        text: "None"
+        why: "None means the event is not logged at all."
+    answer: [c]
+    explanation: |
+      Audit levels from lowest to highest are None, Metadata, Request and
+      RequestResponse. Metadata logs the user, timestamp, resource and verb
+      without any body. Higher levels add the request body, then the response
+      body too.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    glossary: [audit-log]
+
+  - id: kcsa-fund-022
+    difficulty: 2
+    type: single
+    question: "Why do audit policy examples usually log Secrets only at the Metadata level?"
+    options:
+      - id: a
+        text: "Metadata is the only level that records the user name."
+        why: "All levels except None record the user name. Higher levels add bodies on top of the metadata."
+      - id: b
+        text: "Secrets do not support the Request and RequestResponse levels."
+        why: "Any level can be set for any resource. The choice is about risk, not about support."
+      - id: c
+        text: "Audit logs are stored in etcd and must stay small."
+        why: "Audit logs are written to a log file or a webhook backend, not to etcd."
+      - id: d
+        text: "Higher levels would write the secret values into the audit log."
+    answer: [d]
+    explanation: |
+      At the Request or RequestResponse level, the body of a Secret (or a
+      TokenReview) would be copied into the audit log. Then anyone who can read
+      the logs could see sensitive data. Metadata still shows who touched the
+      Secret and when.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    glossary: [audit-log, secret]
+
+  - id: kcsa-fund-023
+    difficulty: 3
+    type: single
+    question: "Which audit stage is generated only for long-running requests such as `watch`, after the response headers are sent but before the body is complete?"
+    options:
+      - id: a
+        text: "ResponseStarted"
+      - id: b
+        text: "Panic"
+        why: "Panic events are generated only when a panic occurs while handling the request."
+      - id: c
+        text: "ResponseComplete"
+        why: "ResponseComplete happens when the whole response body has been sent, for every finished request."
+      - id: d
+        text: "RequestReceived"
+        why: "RequestReceived happens as soon as the audit handler receives the request, for every request."
+    answer: [a]
+    explanation: |
+      The audit stages are RequestReceived, ResponseStarted, ResponseComplete
+      and Panic. ResponseStarted exists only for long-running requests like
+      watch. A policy can skip stages with `omitStages`, for example to drop
+      RequestReceived events.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    glossary: [audit-log]
+
+  - id: kcsa-fund-024
+    difficulty: 1
+    type: single
+    question: "A Namespace has no NetworkPolicies. What traffic is allowed to and from its Pods?"
+    options:
+      - id: a
+        text: "No traffic, until a policy allows it."
+        why: "Deny by default only happens after you add a policy that selects the Pods. Without policies, everything is open."
+      - id: b
+        text: "Only traffic from Pods in the same Namespace."
+        why: "Kubernetes has no built-in Namespace network boundary. Without policies, Pods in any Namespace can connect."
+      - id: c
+        text: "Only egress traffic to the cluster DNS."
+        why: "There is no such built-in rule. Restricting egress to DNS is something you write yourself in a policy."
+      - id: d
+        text: "All ingress and egress traffic is allowed."
+    answer: [d]
+    explanation: |
+      By default Pods are non-isolated and accept all traffic. A Pod becomes
+      isolated for ingress or egress only when some NetworkPolicy selects it
+      for that direction. Policies are additive: allowed traffic is the union
+      of all policies that select the Pod.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [network-policy, namespace]
+
+  - id: kcsa-fund-025
+    difficulty: 2
+    type: single
+    question: "You apply a correct NetworkPolicy that should block traffic, but Pods can still connect to each other. What is the most likely reason?"
+    options:
+      - id: a
+        text: "NetworkPolicies need a restart of kube-proxy to apply."
+        why: "kube-proxy handles Service traffic rules. It does not enforce NetworkPolicies."
+      - id: b
+        text: "The cluster's CNI plugin does not enforce NetworkPolicy."
+      - id: c
+        text: "The policy must also be added to the Service object."
+        why: "Services have no field for NetworkPolicies. Policies select Pods with labels."
+      - id: d
+        text: "NetworkPolicies only work in the default Namespace."
+        why: "NetworkPolicies are namespaced objects and work in any Namespace."
+    answer: [b]
+    explanation: |
+      The API server stores NetworkPolicies, but the network plugin enforces
+      them. If the CNI plugin does not support policies, creating them has no
+      effect. Plugins such as Calico and Cilium enforce NetworkPolicy.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [network-policy, cni]
+
+  - id: kcsa-fund-026
+    difficulty: 2
+    type: single
+    question: "What does this NetworkPolicy do in its Namespace? `spec: {podSelector: {}, policyTypes: [\"Ingress\"]}`"
+    options:
+      - id: a
+        text: "Allows all ingress traffic to every Pod"
+        why: "An allow-all ingress policy needs an ingress rule with an empty entry, like `ingress: [{}]`. Here there are no ingress rules."
+      - id: b
+        text: "Has no effect because the selector is empty"
+        why: "An empty podSelector does not mean nothing. It selects all Pods in the Namespace."
+      - id: c
+        text: "Blocks all egress traffic from every Pod"
+        why: "policyTypes lists only Ingress, so egress is not affected by this policy."
+      - id: d
+        text: "Blocks all ingress traffic to every Pod"
+    answer: [d]
+    explanation: |
+      An empty podSelector selects every Pod in the Namespace. Because Ingress
+      is in policyTypes and no ingress rules are listed, no incoming traffic is
+      allowed. This is the usual "default deny ingress" policy; you then add
+      more policies that allow only the traffic you need.
+    docs:
+      - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    glossary: [network-policy, default-deny, selector]

@@ -1,0 +1,55 @@
+id: cks-micro-001
+title: Make a Deployment pass Pod Security restricted
+domain: microservices
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace vault-app
+  kubectl label namespace vault-app pod-security.kubernetes.io/enforce=restricted \
+    pod-security.kubernetes.io/enforce-version=latest
+  kubectl -n vault-app create deployment vault-ui --image=busybox:1.36 --replicas=2 -- sleep 3600
+task: |
+  The namespace `vault-app` enforces the Pod Security Standard **restricted** (see its labels).
+  The Deployment `vault-ui` was created, but it has **0** Pods: the ReplicaSet cannot create them.
+
+  1. Find out why (look at the ReplicaSet events).
+  2. Fix the Deployment `vault-ui` so its Pods are admitted. Keep the image `busybox:1.36`
+     and 2 replicas. Use the user id `1000`.
+
+  Do **not** change the labels of the namespace.
+checks:
+  - name: The namespace still enforces restricted
+    run: '[ "$(kubectl get ns vault-app -o jsonpath="{.metadata.labels.pod-security\.kubernetes\.io/enforce}")" = restricted ]'
+    guard: true
+  - name: Deployment vault-ui has 2 ready replicas
+    run: '[ "$(kubectl -n vault-app get deploy vault-ui -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: The Pods use image busybox:1.36
+    run: '[ "$(kubectl -n vault-app get deploy vault-ui -o jsonpath="{.spec.template.spec.containers[0].image}")" = busybox:1.36 ]'
+    guard: true
+solution: |
+  kubectl -n vault-app describe rs -l app=vault-ui | grep -i forbidden
+  # violates PodSecurity "restricted:latest": allowPrivilegeEscalation != false,
+  # unrestricted capabilities, runAsNonRoot != true, seccompProfile not set
+  kubectl -n vault-app edit deployment vault-ui
+  # spec.template.spec:
+  #   securityContext:
+  #     runAsNonRoot: true
+  #     runAsUser: 1000
+  #     seccompProfile:
+  #       type: RuntimeDefault
+  #   containers:
+  #   - name: busybox
+  #     securityContext:
+  #       allowPrivilegeEscalation: false
+  #       capabilities:
+  #         drop: ["ALL"]
+  kubectl -n vault-app rollout status deployment vault-ui
+auto_solution: |
+  kubectl -n vault-app patch deployment vault-ui --type=strategic -p '{"spec":{"template":{"spec":{
+    "securityContext":{"seccompProfile":{"type":"RuntimeDefault"},"runAsNonRoot":true,"runAsUser":1000},
+    "containers":[{"name":"busybox","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}}}'
+  kubectl -n vault-app rollout status deployment vault-ui --timeout=120s
+docs:
+  - https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+  - https://kubernetes.io/docs/concepts/security/pod-security-admission/

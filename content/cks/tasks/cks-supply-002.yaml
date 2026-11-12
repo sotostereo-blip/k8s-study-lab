@@ -1,0 +1,38 @@
+id: cks-supply-002
+title: Pin an image by digest
+domain: supply-chain
+difficulty: 2
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace supply-pin
+  kubectl -n supply-pin create deployment pinned-web --image=nginx:1.27-alpine --replicas=2
+  kubectl -n supply-pin rollout status deployment pinned-web --timeout=180s
+task: |
+  The Deployment `pinned-web` in namespace `supply-pin` uses the tag `nginx:1.27-alpine`.
+  A tag can be moved to a different image at any time; a **digest** cannot.
+
+  Change the Deployment so its container image is referenced **by digest**
+  (`...@sha256:<64 hex characters>`), using the **same image** that the Pods run now.
+  Keep 2 ready replicas.
+
+  Tip: the running Pods show the digest in `.status.containerStatuses[].imageID`.
+checks:
+  - name: The container image is referenced by a sha256 digest
+    run: kubectl -n supply-pin get deploy pinned-web -o jsonpath='{.spec.template.spec.containers[0].image}' | grep -Eq '^(docker\.io/)?(library/)?nginx(:[^@]+)?@sha256:[0-9a-f]{64}$'
+  - name: Deployment pinned-web has 2 ready replicas
+    run: '[ "$(kubectl -n supply-pin get deploy pinned-web -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+    guard: true
+  - name: The running Pods use exactly the pinned digest and nginx 1.27
+    run: |
+      want=$(kubectl -n supply-pin get deploy pinned-web -o jsonpath='{.spec.template.spec.containers[0].image}' | sed 's/.*@//')
+      ids=$(kubectl -n supply-pin get pods -l app=pinned-web -o json | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | .status.containerStatuses[0].imageID' | sed 's/.*@//' | sort -u)
+      [ "$ids" = "$want" ] && kubectl -n supply-pin exec deploy/pinned-web -- nginx -v 2>&1 | grep -q 'nginx/1\.27\.'
+solution: |
+  kubectl -n supply-pin get pods -l app=pinned-web -o jsonpath='{.items[0].status.containerStatuses[0].imageID}'; echo
+  # docker.io/library/nginx@sha256:abc...
+  DIGEST=$(kubectl -n supply-pin get pods -l app=pinned-web -o jsonpath='{.items[0].status.containerStatuses[0].imageID}' | sed 's/.*@//')
+  kubectl -n supply-pin set image deployment/pinned-web nginx=nginx@$DIGEST
+  kubectl -n supply-pin rollout status deployment pinned-web
+docs:
+  - https://kubernetes.io/docs/concepts/containers/images/#image-names

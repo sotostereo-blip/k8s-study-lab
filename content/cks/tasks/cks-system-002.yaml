@@ -1,0 +1,78 @@
+id: cks-system-002
+title: Remove host namespaces and hostPath
+domain: system-hardening
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace agents
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: log-agent
+    namespace: agents
+  spec:
+    selector:
+      matchLabels: { app: log-agent }
+    template:
+      metadata:
+        labels: { app: log-agent }
+      spec:
+        hostPID: true
+        hostNetwork: true
+        containers:
+        - name: agent
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do date >> /data/agent.log; sleep 10; done"]
+          volumeMounts:
+          - { name: host-root, mountPath: /host }
+          - { name: host-root, mountPath: /data, subPath: tmp }
+        volumes:
+        - name: host-root
+          hostPath: { path: / }
+  YAML
+  kubectl -n agents rollout status deployment log-agent --timeout=180s
+task: |
+  The Deployment `log-agent` in namespace `agents` shares the **node's** process and network
+  namespaces and mounts the whole node file system (`/`). It only needs a writable
+  directory at `/data`.
+
+  Change the Deployment so that:
+
+  - it does **not** use `hostPID`, `hostNetwork` or `hostIPC`
+  - it has **no** `hostPath` volumes (use an `emptyDir` volume for `/data`, and remove `/host`)
+  - it keeps running with 1 ready replica and can write to `/data`
+checks:
+  - name: The Pod template does not use hostPID, hostNetwork or hostIPC
+    run: |
+      kubectl -n agents get deploy log-agent -o json | jq -e '.spec.template.spec
+        | (.hostPID != true) and (.hostNetwork != true) and (.hostIPC != true)'
+  - name: The Pod template has no hostPath volumes
+    run: kubectl -n agents get deploy log-agent -o json | jq -e '[.spec.template.spec.volumes[]? | select(.hostPath)] | length == 0'
+  - name: Deployment log-agent has 1 ready replica
+    run: '[ "$(kubectl -n agents get deploy log-agent -o jsonpath="{.status.readyReplicas}")" = 1 ]'
+    guard: true
+  - name: In the running Pod, PID 1 is the agent and /data is writable
+    run: |
+      kubectl -n agents exec deploy/log-agent -- sh -c 'tr "\0" " " < /proc/1/cmdline | grep -q agent.log && touch /data/check && [ ! -e /host ]'
+solution: |
+  kubectl -n agents edit deployment log-agent
+  # - delete the lines  hostPID: true  and  hostNetwork: true
+  # - delete the /host volumeMount
+  # - change the /data mount to:   - { name: data, mountPath: /data }   (no subPath)
+  # - replace the hostPath volume with:
+  #     volumes:
+  #     - name: data
+  #       emptyDir: {}
+  kubectl -n agents rollout status deployment log-agent
+auto_solution: |
+  kubectl -n agents patch deployment log-agent --type=json -p '[
+    {"op":"remove","path":"/spec/template/spec/hostPID"},
+    {"op":"remove","path":"/spec/template/spec/hostNetwork"},
+    {"op":"replace","path":"/spec/template/spec/containers/0/volumeMounts","value":[{"name":"data","mountPath":"/data"}]},
+    {"op":"replace","path":"/spec/template/spec/volumes","value":[{"name":"data","emptyDir":{}}]}]'
+  kubectl -n agents rollout status deployment log-agent --timeout=120s
+docs:
+  - https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline
+  - https://kubernetes.io/docs/concepts/storage/volumes/#hostpath

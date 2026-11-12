@@ -1,0 +1,45 @@
+id: cks-setup-004
+title: Verify downloaded binaries with sha512
+domain: cluster-setup
+difficulty: 1
+minutes: 6
+environment: secure-node
+setup: |
+  d=/root/cks-binaries
+  mkdir -p $d
+  head -c 2097152 /dev/urandom > $d/kubelet-mirror-b
+  echo "$(sha512sum $d/kubelet-mirror-b | cut -d' ' -f1)  kubelet" > $d/kubelet.sha512
+  cp $d/kubelet-mirror-b $d/kubelet-mirror-a && printf 'x' >> $d/kubelet-mirror-a
+  cp $d/kubelet-mirror-b $d/kubelet-mirror-c && printf '\001' | dd of=$d/kubelet-mirror-c bs=1 seek=4096 conv=notrunc 2>/dev/null
+task: |
+  You downloaded the `kubelet` binary from three mirrors into the directory
+  `/root/cks-binaries` (files `kubelet-mirror-a`, `kubelet-mirror-b`, `kubelet-mirror-c`).
+  The official release checksum is in `/root/cks-binaries/kubelet.sha512`.
+
+  1. Compare the **sha512** checksum of each file with the official one.
+  2. **Delete** every file that does not match.
+  3. Write the file name of the good copy (for example `kubelet-mirror-x`) into
+     `/root/cks-binaries/verified.txt`.
+
+  Do not change `kubelet.sha512`.
+checks:
+  - name: verified.txt names the copy that matches the checksum
+    run: '[ "$(tr -d "[:space:]" < /root/cks-binaries/verified.txt)" = kubelet-mirror-b ]'
+  - name: The tampered copies (a and c) are deleted
+    run: '[ ! -e /root/cks-binaries/kubelet-mirror-a ] && [ ! -e /root/cks-binaries/kubelet-mirror-c ]'
+  - name: The good copy is still there and matches the official checksum
+    run: |
+      [ "$(sha512sum /root/cks-binaries/kubelet-mirror-b | cut -d' ' -f1)" = "$(cut -d' ' -f1 /root/cks-binaries/kubelet.sha512)" ]
+    guard: true
+solution: |
+  cd /root/cks-binaries
+  cat kubelet.sha512
+  sha512sum kubelet-mirror-*            # compare by eye, or:
+  for f in kubelet-mirror-*; do
+    echo "$(cut -d' ' -f1 kubelet.sha512)  $f" | sha512sum -c -
+  done
+  rm kubelet-mirror-a kubelet-mirror-c
+  echo kubelet-mirror-b > verified.txt
+docs:
+  - https://kubernetes.io/releases/download/#binaries
+  - https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-binary-with-curl-on-linux

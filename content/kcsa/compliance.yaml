@@ -1,0 +1,345 @@
+domain: compliance
+questions:
+  - id: kcsa-compliance-001
+    difficulty: 1
+    type: single
+    question: "What is the CIS Kubernetes Benchmark?"
+    options:
+      - id: a
+        text: "A set of consensus-based secure configuration guidelines"
+      - id: b
+        text: "A certification exam for Kubernetes administrators"
+        why: "Certification exams like CKA or KCSA come from the CNCF and the Linux Foundation. CIS Benchmarks are configuration guides."
+      - id: c
+        text: "A performance test that measures cluster throughput"
+        why: "Despite the word benchmark, it does not measure speed. It is a list of security configuration checks."
+      - id: d
+        text: "A law that every Kubernetes cluster must follow"
+        why: "The CIS Benchmark is a voluntary best-practice guide. Some regulations or auditors may expect it, but it is not a law."
+    answer: [a]
+    explanation: |
+      The Center for Internet Security publishes benchmarks with recommended
+      settings for the API server, etcd, kubelet, policies and more. Each check
+      explains why it matters and how to audit and fix it. Managed Kubernetes
+      services often have their own benchmark variant.
+    docs:
+      - https://www.cisecurity.org/benchmark/kubernetes
+    glossary: [cis-benchmark]
+
+  - id: kcsa-compliance-002
+    difficulty: 1
+    type: single
+    question: "Which open source tool checks a cluster's nodes against the CIS Kubernetes Benchmark?"
+    options:
+      - id: a
+        text: "kube-linter"
+        why: "kube-linter checks YAML manifests and Helm charts for bad practices. It does not inspect the control plane or node files."
+      - id: b
+        text: "kube-bench"
+      - id: c
+        text: "Falco"
+        why: "Falco detects suspicious behavior at runtime. It does not audit node configuration against the CIS Benchmark."
+      - id: d
+        text: "cosign"
+        why: "cosign signs and verifies container images. It does not check cluster settings."
+    answer: [b]
+    explanation: |
+      kube-bench runs the CIS checks on control plane and worker nodes, for
+      example file permissions and API server or kubelet flags. It reports
+      PASS, FAIL or WARN for each item, often as a Job in the cluster.
+    docs:
+      - https://github.com/aquasecurity/kube-bench
+      - https://www.cisecurity.org/benchmark/kubernetes
+    glossary: [kube-bench, cis-benchmark, job]
+
+  - id: kcsa-compliance-003
+    difficulty: 2
+    type: single
+    question: "Which NIST publication is the Application Container Security Guide, covering risks and countermeasures for images, registries, orchestrators and hosts?"
+    options:
+      - id: a
+        text: "NIST SP 800-63"
+        why: "SP 800-63 is about digital identity, such as authentication and passwords."
+      - id: b
+        text: "NIST SP 800-190"
+      - id: c
+        text: "NIST SP 800-53"
+        why: "SP 800-53 is a large general catalog of security and privacy controls. It is not specific to containers."
+      - id: d
+        text: "NIST SP 800-88"
+        why: "SP 800-88 is about media sanitization, that is safely erasing storage devices."
+    answer: [b]
+    explanation: |
+      NIST SP 800-190 describes the main risks in container stacks (image,
+      registry, orchestrator, container and host OS risks) and recommends
+      countermeasures. It is a common reference when building a container
+      security program.
+    docs:
+      - https://csrc.nist.gov/pubs/sp/800/190/final
+    glossary: [nist, image, registry]
+
+  - id: kcsa-compliance-004
+    difficulty: 1
+    type: single
+    question: "An online shop runs its payment service on Kubernetes and stores credit card data. Which standard is most directly relevant?"
+    options:
+      - id: a
+        text: "SLSA"
+        why: "SLSA is about software supply chain integrity. It has no rules about payment card data."
+      - id: b
+        text: "STRIDE"
+        why: "STRIDE is a threat modelling method. It helps find threats but is not a payment industry standard."
+      - id: c
+        text: "PCI DSS"
+      - id: d
+        text: "CycloneDX"
+        why: "CycloneDX is an SBOM format, not a compliance standard for payments."
+    answer: [c]
+    explanation: |
+      PCI DSS (Payment Card Industry Data Security Standard) applies to
+      systems that store, process or send cardholder data. In Kubernetes this
+      often means strong segmentation of the payment workloads, for example
+      with NetworkPolicies, dedicated nodes and strict access control.
+    docs:
+      - https://www.pcisecuritystandards.org/
+    glossary: [pci-dss, network-policy]
+
+  - id: kcsa-compliance-005
+    difficulty: 2
+    type: single
+    question: "A customer asks your SaaS company for an independent auditor's report on how well your security controls work over time. Which framework is this request about?"
+    options:
+      - id: a
+        text: "SPDX"
+        why: "SPDX is a format for software bills of materials. It says nothing about how controls operate."
+      - id: b
+        text: "MITRE ATT&CK"
+        why: "MITRE ATT&CK is a knowledge base of attacker tactics and techniques, not an audit report."
+      - id: c
+        text: "CIS Kubernetes Benchmark"
+        why: "The CIS Benchmark is a technical configuration guide. It does not produce an auditor's report on an organization's controls."
+      - id: d
+        text: "SOC 2"
+    answer: [d]
+    explanation: |
+      A SOC 2 report is created by an independent auditor using the AICPA
+      Trust Services Criteria: security, availability, processing integrity,
+      confidentiality and privacy. A Type II report checks that controls
+      worked over a period of time, not just on one day.
+    docs:
+      - https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2
+    glossary: [soc2]
+
+  - id: kcsa-compliance-006
+    difficulty: 2
+    type: single
+    question: "What does ISO/IEC 27001 mainly define?"
+    options:
+      - id: a
+        text: "The exact Kubernetes flags that every cluster must use"
+        why: "ISO 27001 is technology-neutral. Detailed Kubernetes settings come from guides like the CIS Benchmark."
+      - id: b
+        text: "The requirements for an information security management system"
+      - id: c
+        text: "A matrix of attacker techniques against containers"
+        why: "That describes MITRE ATT&CK. ISO 27001 is a management standard."
+      - id: d
+        text: "A file format for listing the components of an image"
+        why: "That is an SBOM format such as SPDX or CycloneDX, not ISO 27001."
+    answer: [b]
+    explanation: |
+      ISO/IEC 27001 is an international standard for an ISMS: how an
+      organization manages security risks with policies, processes and
+      controls. Organizations can be certified against it. Kubernetes
+      controls such as RBAC and audit logs help provide evidence for it.
+    docs:
+      - https://www.iso.org/standard/27001
+    glossary: [iso-27001, rbac, audit-log]
+
+  - id: kcsa-compliance-007
+    difficulty: 2
+    type: single
+    question: "In a STRIDE threat model, an attacker pushes a modified image with the same tag to your registry. Which STRIDE category fits best?"
+    options:
+      - id: a
+        text: "Tampering"
+      - id: b
+        text: "Information disclosure"
+        why: "Information disclosure means data is exposed to people who should not see it. Here the image content is changed, not leaked."
+      - id: c
+        text: "Repudiation"
+        why: "Repudiation is when someone can deny an action because there is no proof, such as missing audit logs."
+      - id: d
+        text: "Denial of service"
+        why: "Denial of service is about making a system unavailable. Changing an image is an attack on integrity."
+    answer: [a]
+    explanation: |
+      STRIDE stands for Spoofing, Tampering, Repudiation, Information
+      disclosure, Denial of service and Elevation of privilege. Tampering is
+      the unauthorized change of data or code, which threatens integrity.
+      Image signing and digest pinning are common mitigations.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats
+    glossary: [stride, image, registry, image-signing, denial-of-service]
+
+  - id: kcsa-compliance-008
+    difficulty: 1
+    type: single
+    question: "An attacker escapes from a container and gets root access on the node. Which STRIDE category is this?"
+    options:
+      - id: a
+        text: "Repudiation"
+        why: "Repudiation is about denying actions without proof. A container escape is about gaining more rights."
+      - id: b
+        text: "Tampering"
+        why: "The attacker may tamper with files later, but the escape itself is a gain of privileges."
+      - id: c
+        text: "Spoofing"
+        why: "Spoofing is pretending to be another user or system, for example with a stolen token."
+      - id: d
+        text: "Elevation of privilege"
+    answer: [d]
+    explanation: |
+      Elevation of privilege means getting more rights than you were given.
+      A container breakout to root on the host is a classic example.
+      Mitigations include running as non-root, dropping capabilities and the
+      restricted Pod Security Standard.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [stride, node, pod-security, container-breakout, privilege-escalation]
+
+  - id: kcsa-compliance-009
+    difficulty: 2
+    type: single
+    question: "What is the MITRE ATT&CK Containers matrix mainly used for?"
+    options:
+      - id: a
+        text: "Defining the YAML schema for Kubernetes security policies"
+        why: "ATT&CK is a knowledge base, not a schema. Policies are written for tools like Kyverno or Gatekeeper."
+      - id: b
+        text: "Certifying that a cluster meets a regulatory standard"
+        why: "ATT&CK is not a certification. Compliance standards like PCI DSS or ISO 27001 are audited instead."
+      - id: c
+        text: "Scoring each CVE with a severity number from 0 to 10"
+        why: "That is CVSS, the Common Vulnerability Scoring System. ATT&CK describes attacker behavior, not CVE scores."
+      - id: d
+        text: "Mapping real attacker tactics and techniques against containers"
+    answer: [d]
+    explanation: |
+      MITRE ATT&CK organizes observed adversary behavior into tactics (the
+      goal, such as initial access or privilege escalation) and techniques
+      (how). The Containers matrix covers techniques such as deploying a
+      container or escaping to the host, which helps teams plan detections.
+    docs:
+      - https://attack.mitre.org/matrices/enterprise/containers/
+    glossary: [mitre-attack, cve]
+
+  - id: kcsa-compliance-010
+    difficulty: 2
+    type: single
+    question: "An auditor asks you to prove which open source packages are inside every image you shipped last year. What should your pipeline produce and keep?"
+    options:
+      - id: a
+        text: "A list of the image tags used in production"
+        why: "Tags can be moved and do not show what packages an image contains."
+      - id: b
+        text: "A CIS Benchmark report from each worker node"
+        why: "A CIS report describes node and cluster configuration. It does not list the packages inside images."
+      - id: c
+        text: "An SBOM for each image, stored with the image"
+      - id: d
+        text: "The audit log of the API server for each day"
+        why: "Audit logs show API requests, such as who created a Pod. They do not list the contents of images."
+    answer: [c]
+    explanation: |
+      Supply chain compliance needs evidence. Generating an SBOM during the
+      build and attaching it to the image (for example as a signed
+      attestation in the registry) records exactly what each version
+      contained. Many regulations and customers now ask for SBOMs.
+    docs:
+      - https://spdx.dev/
+      - https://slsa.dev/
+    glossary: [sbom, image, provenance, supply-chain]
+
+  - id: kcsa-compliance-011
+    difficulty: 2
+    type: multiple
+    question: "Which TWO tools check Kubernetes YAML manifests for security problems before they are deployed?"
+    options:
+      - id: a
+        text: "kube-bench"
+        why: "kube-bench checks the configuration of running nodes and control plane components, not application manifests."
+      - id: b
+        text: "kubesec"
+      - id: c
+        text: "kube-linter"
+      - id: d
+        text: "Rekor"
+        why: "Rekor is the Sigstore transparency log for signatures. It does not analyze manifests."
+      - id: e
+        text: "Falco"
+        why: "Falco watches running containers at runtime. It does not analyze manifests before deployment."
+    answer: [b, c]
+    explanation: |
+      kubesec gives a risk score to a Pod or workload manifest, and
+      kube-linter checks manifests and Helm charts against best practices,
+      such as missing resource limits or running as root. Running them in CI
+      finds problems early (shift left).
+    docs:
+      - https://kubesec.io/
+      - https://docs.kubelinter.io/
+    glossary: [kubesec, kube-linter, manifest, ci-cd]
+
+  - id: kcsa-compliance-012
+    difficulty: 3
+    type: single
+    question: "Your company must show continuous compliance with the rule \"no privileged containers\". Which approach gives the best automated enforcement and evidence?"
+    options:
+      - id: a
+        text: "A yearly manual review of all Pod manifests by the security team"
+        why: "Manual yearly checks are slow and miss changes between reviews. They do not prevent violations."
+      - id: b
+        text: "A weekly Trivy scan of the images in the registry"
+        why: "Trivy image scans look for vulnerable packages. The privileged flag is set in the Pod spec, not in the image."
+      - id: c
+        text: "A policy as code engine that blocks and reports violations"
+      - id: d
+        text: "A wiki page that tells developers not to use privileged mode"
+        why: "Documentation is useful but enforces nothing and gives no evidence that the rule is followed."
+    answer: [c]
+    explanation: |
+      Policy as code (for example Kyverno, Gatekeeper or Pod Security
+      Admission) stores rules in Git, blocks violating objects at admission
+      and reports on existing ones. The policy files, reports and audit logs
+      together give auditors repeatable evidence.
+    docs:
+      - https://kyverno.io/docs/
+      - https://kubernetes.io/docs/concepts/security/pod-security-admission/
+    glossary: [policy-as-code, kyverno, opa-gatekeeper, pod-security-admission, privileged-container]
+
+  - id: kcsa-compliance-013
+    difficulty: 1
+    type: single
+    question: "Your team is designing a new platform and wants to find what could go wrong before building it. What activity fits best?"
+    options:
+      - id: a
+        text: "Threat modelling with a method such as STRIDE"
+      - id: b
+        text: "Scanning the platform images with a CVE scanner"
+        why: "Image scanning finds known vulnerabilities in built images. It does not show design-level threats."
+      - id: c
+        text: "Requesting a SOC 2 Type II report for the platform"
+        why: "A SOC 2 Type II report checks controls that already operate over time, so it comes much later."
+      - id: d
+        text: "Running kube-bench on the production nodes"
+        why: "kube-bench checks an existing cluster. It cannot analyze a design that is not built yet."
+    answer: [a]
+    explanation: |
+      Threat modelling studies a design, its data flows and trust boundaries,
+      and lists possible threats and mitigations. Doing it early is cheaper
+      than fixing problems later. STRIDE and MITRE ATT&CK are common
+      frameworks for it.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats
+    glossary: [threat-model, stride, mitre-attack]

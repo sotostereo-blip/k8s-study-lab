@@ -1,0 +1,85 @@
+id: cks-harden-004
+title: Close anonymous access to the API
+domain: cluster-hardening
+difficulty: 2
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace open-docs
+  kubectl -n open-docs create secret generic docs-token --from-literal=token=s3cr3t-docs
+  kubectl create clusterrole docs-reader --verb=get,list --resource=secrets,configmaps
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: docs-reader-binding
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: docs-reader
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: docs-team
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:unauthenticated
+  YAML
+task: |
+  A security scan of the RBAC rules found that **anybody without credentials**
+  (user `system:anonymous`, group `system:unauthenticated`) is allowed to read Secrets and
+  ConfigMaps. This lab's API server runs with `--anonymous-auth=false`, but many clusters
+  (for example kubeadm) accept anonymous requests by default, so the rule is a real risk.
+
+  Find the RBAC binding that gives access to unauthenticated users and fix it:
+
+  - the group `system:unauthenticated` must **not** be allowed to read Secrets or ConfigMaps
+  - the group `docs-team` must **keep** its read access
+  - do not touch the default bindings of Kubernetes (names that start with `system:`)
+
+  Tip: `kubectl auth can-i --as=system:anonymous` does not work here (anonymous users cannot
+  ask the API), so read the bindings, or create a `SubjectAccessReview` as admin.
+checks:
+  - name: system:unauthenticated cannot list Secrets in open-docs
+    run: |
+      cat <<'YAML' | kubectl create -f - -o jsonpath='{.status.allowed}' | grep -qx false
+      apiVersion: authorization.k8s.io/v1
+      kind: SubjectAccessReview
+      spec:
+        user: system:anonymous
+        groups: [system:unauthenticated]
+        resourceAttributes: { namespace: open-docs, verb: list, resource: secrets }
+      YAML
+  - name: system:unauthenticated cannot get ConfigMaps in open-docs
+    run: |
+      cat <<'YAML' | kubectl create -f - -o jsonpath='{.status.allowed}' | grep -qx false
+      apiVersion: authorization.k8s.io/v1
+      kind: SubjectAccessReview
+      spec:
+        user: system:anonymous
+        groups: [system:unauthenticated]
+        resourceAttributes: { namespace: open-docs, verb: get, resource: configmaps }
+      YAML
+  - name: Group docs-team can still list Secrets in open-docs
+    run: '[ "$(kubectl auth can-i list secrets -n open-docs --as=dana --as-group=docs-team)" = yes ]'
+    guard: true
+  - name: The default binding system:public-info-viewer is unchanged
+    run: |
+      kubectl get clusterrolebinding system:public-info-viewer -o json | jq -e '
+        [.subjects[].name] | index("system:unauthenticated")'
+    guard: true
+solution: |
+  # find bindings with the group system:unauthenticated (or the user system:anonymous)
+  kubectl get clusterrolebindings -o json | jq -r '.items[]
+    | select(any(.subjects[]?; .name == "system:unauthenticated" or .name == "system:anonymous"))
+    | .metadata.name'
+  # system:public-info-viewer is a default binding: leave it alone.
+  # docs-reader-binding has two subjects: remove only system:unauthenticated
+  kubectl edit clusterrolebinding docs-reader-binding
+  # or: kubectl patch clusterrolebinding docs-reader-binding --type=json -p '[{"op":"remove","path":"/subjects/1"}]'
+  kubectl get clusterrolebinding docs-reader-binding -o yaml   # only docs-team is left
+auto_solution: |
+  kubectl patch clusterrolebinding docs-reader-binding --type=json -p '[{"op":"remove","path":"/subjects/1"}]'
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/#discovery-roles

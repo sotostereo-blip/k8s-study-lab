@@ -1,0 +1,62 @@
+id: cks-setup-002
+title: Block access to the node metadata endpoint
+domain: cluster-setup
+difficulty: 2
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace orbit
+  kubectl -n orbit create deployment orbit-web --image=nginx:1.27-alpine
+  kubectl -n orbit expose deployment orbit-web --port=80
+  kubectl -n orbit run orbit-worker --image=busybox:1.36 -- sleep 3600
+  kubectl -n orbit rollout status deployment orbit-web --timeout=180s
+  kubectl -n orbit wait --for=condition=Ready pod/orbit-worker --timeout=180s
+task: |
+  On cloud VMs the address `169.254.169.254` is the **instance metadata service**. Pods that
+  can reach it may steal node credentials.
+
+  In the namespace `orbit`, create a NetworkPolicy called `orbit-block-metadata` that:
+
+  - selects **all** Pods in `orbit`
+  - allows outgoing traffic to **any** IP address (`0.0.0.0/0`) **except** `169.254.169.254/32`
+
+  Do not add rules that allow all egress without this exception.
+  The Pods must still reach DNS and the Service `orbit-web`.
+checks:
+  - name: orbit-block-metadata selects all Pods and has policy type Egress
+    run: |
+      kubectl -n orbit get netpol orbit-block-metadata -o json | jq -e '
+        (.spec.podSelector | length == 0) and (.spec.policyTypes | index("Egress"))'
+  - name: Egress allows 0.0.0.0/0 except 169.254.169.254/32, and no rule allows everything
+    run: |
+      kubectl -n orbit get netpol orbit-block-metadata -o json | jq -e '
+        [.spec.egress[]?.to[]?.ipBlock | select(. != null) | select(.cidr == "0.0.0.0/0")
+          | ((.except // []) | index("169.254.169.254/32")) != null] as $b
+        | ($b | length > 0) and ($b | all)
+        and ([.spec.egress[] | (.to // []) | length == 0] | any | not)'
+  - name: orbit-worker can still resolve DNS names
+    run: kubectl -n orbit exec orbit-worker -- nslookup orbit-web.orbit.svc.cluster.local
+    guard: true
+  - name: orbit-worker can still reach orbit-web
+    run: kubectl -n orbit exec orbit-worker -- wget -qO- -T 4 http://orbit-web | grep -qi nginx
+    guard: true
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: orbit-block-metadata
+    namespace: orbit
+  spec:
+    podSelector: {}
+    policyTypes: [Egress]
+    egress:
+    - to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+          except:
+          - 169.254.169.254/32
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/#networkpolicy-resource
+  - https://kubernetes.io/docs/concepts/security/security-checklist/#network-security

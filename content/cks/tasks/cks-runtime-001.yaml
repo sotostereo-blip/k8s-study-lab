@@ -1,0 +1,66 @@
+id: cks-runtime-001
+title: Audit log - who deleted the Secret?
+domain: runtime
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace finance
+  kubectl -n finance create secret generic payroll-db --from-literal=password=pay-2026
+  kubectl -n finance create role secret-editor --verb=get,list,patch,update,delete --resource=secrets
+  for u in eve-ops mallory-dev trent-ci; do
+    kubectl -n finance create rolebinding "finance-$u" --role=secret-editor --user="$u"
+  done
+  sleep 2
+  # some activity by different users (impersonation = "act as" that user)
+  kubectl -n finance get secret payroll-db --as=trent-ci >/dev/null
+  kubectl -n finance label secret payroll-db rotated=no --as=eve-ops
+  kubectl -n finance annotate secret payroll-db owner=payroll-team --as=trent-ci
+  kubectl -n finance delete secret payroll-db --as=mallory-dev
+  sleep 2
+  kubectl -n finance create secret generic payroll-db --from-literal=password=pay-2026
+  mkdir -p /root/audit
+task: |
+  Yesterday the Secret `payroll-db` in namespace `finance` disappeared and the payroll
+  application failed. The Secret was created again, but the security team wants to know **who
+  deleted it**.
+
+  The API server writes an **audit log** (JSON, one event per line) to
+  `/var/log/kubernetes/audit/audit.log`.
+
+  1. Find the user that **deleted** the Secret `payroll-db` in `finance`. The requests were
+     made with impersonation, so look at the **impersonated** user
+     (`.impersonatedUser.username`), not at the admin that sent them.
+  2. Write only the user name into `/root/audit/payroll-deleter.txt`.
+  3. Delete the RoleBinding that gives this user access to Secrets in `finance`. The other
+     users must keep their access.
+checks:
+  - name: payroll-deleter.txt has the right user name
+    run: '[ "$(tr -d "[:space:]" < /root/audit/payroll-deleter.txt)" = mallory-dev ]'
+  - name: That user can no longer delete Secrets in finance
+    run: '[ "$(kubectl auth can-i delete secrets -n finance --as=mallory-dev)" = no ]'
+  - name: eve-ops and trent-ci keep their access
+    run: |
+      [ "$(kubectl auth can-i patch secrets -n finance --as=eve-ops)" = yes ] &&
+      [ "$(kubectl auth can-i patch secrets -n finance --as=trent-ci)" = yes ]
+    guard: true
+  - name: Secret payroll-db still exists
+    run: kubectl -n finance get secret payroll-db
+    guard: true
+solution: |
+  jq -c 'select(.objectRef.resource == "secrets" and .objectRef.name == "payroll-db")
+         | {time: .requestReceivedTimestamp, verb, user: .user.username, as: .impersonatedUser.username}' \
+    /var/log/kubernetes/audit/audit.log
+  # the line with "verb":"delete" shows "as":"mallory-dev"
+  echo mallory-dev > /root/audit/payroll-deleter.txt
+  kubectl -n finance get rolebindings -o wide
+  kubectl -n finance delete rolebinding finance-mallory-dev
+auto_solution: |
+  u=$(jq -r 'select(.objectRef.resource == "secrets" and .objectRef.namespace == "finance"
+             and .objectRef.name == "payroll-db" and .verb == "delete") | .impersonatedUser.username // .user.username' \
+      /var/log/kubernetes/audit/audit.log | tail -1)
+  echo "$u" > /root/audit/payroll-deleter.txt
+  kubectl -n finance delete rolebinding "finance-$u"
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+  - https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation

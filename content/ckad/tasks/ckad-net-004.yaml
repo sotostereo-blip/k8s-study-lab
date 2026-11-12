@@ -1,0 +1,48 @@
+id: ckad-net-004
+title: Expose an app with NodePort and ClusterIP Services
+domain: networking
+difficulty: 1
+minutes: 7
+environment: single-node
+setup: |
+  kubectl create namespace public-status
+  kubectl -n public-status create deployment status-page --image=nginx:1.27-alpine --replicas=2
+task: |
+  The Deployment `status-page` (namespace `public-status`) runs nginx on port `80`.
+
+  1. Create a Service `status-page-public` of type **NodePort**: port `80`, target port `80`,
+     node port `30480`. Users outside the cluster will open `http://<node>:30480`.
+  2. Create a Service `status-page-internal` of type **ClusterIP** on port `8080`, sending
+     traffic to port `80` of the Pods.
+
+  From this terminal, `curl http://server:30480` must show the nginx page.
+checks:
+  - name: status-page-public is a NodePort on 30480 -> 80
+    run: |
+      kubectl -n public-status get svc status-page-public -o json | jq -e '.spec.type=="NodePort"
+        and (.spec.ports[] | select(.port==80 and .targetPort==80 and .nodePort==30480))'
+  - name: http://server:30480 answers
+    run: curl -s -m 5 http://server:30480 | grep -qi "welcome to nginx"
+  - name: status-page-internal is a ClusterIP on 8080 -> 80
+    run: |
+      kubectl -n public-status get svc status-page-internal -o json | jq -e '.spec.type=="ClusterIP"
+        and (.spec.ports[] | select(.port==8080 and .targetPort==80))'
+  - name: A Pod can open http://status-page-internal.public-status:8080
+    run: |
+      out=$(kubectl -n public-status run tmp-status-check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- wget -qO- -T 3 http://status-page-internal.public-status:8080 2>&1)
+      echo "$out" | grep -qi nginx
+solution: |
+  kubectl -n public-status expose deployment status-page --name=status-page-public \
+    --type=NodePort --port=80 --target-port=80 $do > np.yaml
+  # add  nodePort: 30480  under ports[0] in np.yaml
+  kubectl apply -f np.yaml
+  kubectl -n public-status expose deployment status-page --name=status-page-internal --port=8080 --target-port=80
+  curl http://server:30480
+  # or: kubectl create service nodeport status-page-public --tcp=80:80 --node-port=30480 (then fix the selector)
+auto_solution: |
+  kubectl -n public-status expose deployment status-page --name=status-page-public \
+    --type=NodePort --port=80 --target-port=80 \
+    --overrides='{"spec":{"ports":[{"port":80,"targetPort":80,"nodePort":30480,"protocol":"TCP"}]}}'
+  kubectl -n public-status expose deployment status-page --name=status-page-internal --port=8080 --target-port=80
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport

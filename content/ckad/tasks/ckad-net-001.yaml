@@ -1,0 +1,52 @@
+id: ckad-net-001
+title: NetworkPolicy - only the web tier may reach the database
+domain: networking
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace banking
+  kubectl -n banking run ledger-db --image=nginx:1.27-alpine --labels=app=ledger-db --port=80 --expose
+  kubectl -n banking run web-frontend --image=busybox:1.36 --labels=app=web,tier=frontend -- sleep 3600
+  kubectl -n banking run batch-report --image=busybox:1.36 --labels=app=reports -- sleep 3600
+  kubectl -n banking wait --for=condition=Ready pod --all --timeout=180s
+task: |
+  In namespace `banking`, the Pod `ledger-db` (label `app=ledger-db`, Service `ledger-db`
+  on port 80) must be protected.
+
+  Create a NetworkPolicy `ledger-db-ingress` that:
+
+  - applies to the Pods with label `app=ledger-db`
+  - allows incoming traffic **only** from Pods with label `app=web`, on TCP port `80`
+  - blocks all other incoming traffic to `ledger-db`
+
+  Do not change the labels of the Pods. `web-frontend` must still reach the database;
+  `batch-report` must not.
+checks:
+  - name: NetworkPolicy `ledger-db-ingress` selects app=ledger-db
+    run: kubectl -n banking get networkpolicy ledger-db-ingress -o json | jq -e '.spec.podSelector.matchLabels.app=="ledger-db"'
+  - name: batch-report can NOT connect to ledger-db
+    run: '! kubectl -n banking exec batch-report -- wget -qO- -T 3 http://ledger-db'
+  - name: web-frontend can still connect to ledger-db
+    run: kubectl -n banking exec web-frontend -- wget -qO- -T 3 http://ledger-db | grep -qi nginx
+    guard: true
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: { name: ledger-db-ingress, namespace: banking }
+  spec:
+    podSelector:
+      matchLabels: { app: ledger-db }
+    policyTypes: [Ingress]
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels: { app: web }
+      ports:
+      - { protocol: TCP, port: 80 }
+  YAML
+  kubectl -n banking exec web-frontend -- wget -qO- -T 3 http://ledger-db     # works
+  kubectl -n banking exec batch-report -- wget -qO- -T 3 http://ledger-db || echo "blocked, as expected"
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/

@@ -1,0 +1,47 @@
+id: ckad-deploy-002
+title: Roll back to a known good revision
+domain: deployment
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  kubectl create namespace fintech
+  kubectl -n fintech create deployment payments --image=nginx:1.27-alpine --replicas=2
+  kubectl -n fintech annotate deployment payments kubernetes.io/change-cause="release 2026.1"
+  kubectl -n fintech rollout status deployment/payments --timeout=180s
+  rel() {
+    kubectl -n fintech patch deployment payments -p "{\"metadata\":{\"annotations\":{\"kubernetes.io/change-cause\":\"$2\"}},\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"image\":\"$1\"}]}}}}"
+  }
+  rel nginx:1.26-alpine "release 2026.2"
+  kubectl -n fintech rollout status deployment/payments --timeout=180s
+  rel nginx:1.99-alpine "release 2026.3"
+task: |
+  The latest release of the Deployment `payments` (namespace `fintech`) is stuck: the new
+  Pods cannot start.
+
+  1. Look at the rollout history. Find the revision that used the image `nginx:1.27-alpine`
+     and write **only its revision number** to the file `/root/payments-good-revision.txt`.
+  2. Roll the Deployment back to **that** revision (not just the previous one).
+
+  Do not delete or recreate the Deployment.
+checks:
+  - name: /root/payments-good-revision.txt contains the right revision (1)
+    run: '[ "$(tr -d " \n" < /root/payments-good-revision.txt)" = 1 ]'
+  - name: The Deployment runs nginx:1.27-alpine again
+    run: '[ "$(kubectl -n fintech get deploy payments -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+  - name: 2 replicas are updated and ready
+    run: |
+      d=$(kubectl -n fintech get deploy payments -o json)
+      [ "$(echo "$d" | jq .status.updatedReplicas)" = 2 ] && [ "$(echo "$d" | jq .status.readyReplicas)" = 2 ] &&
+      [ "$(echo "$d" | jq '.status.replicas')" = 2 ]
+  - name: It was a rollback (the Deployment is now at revision 4 or more)
+    run: '[ "$(kubectl -n fintech get deploy payments -o jsonpath="{.metadata.annotations.deployment\.kubernetes\.io/revision}")" -ge 4 ]'
+solution: |
+  kubectl -n fintech rollout status deployment/payments --timeout=10s   # stuck
+  kubectl -n fintech rollout history deployment/payments
+  kubectl -n fintech rollout history deployment/payments --revision=1   # shows the image
+  echo 1 > /root/payments-good-revision.txt
+  kubectl -n fintech rollout undo deployment/payments --to-revision=1
+  kubectl -n fintech rollout status deployment/payments
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment

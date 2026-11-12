@@ -1,0 +1,129 @@
+id: ckad-obs-001
+title: Update manifests that use removed API versions
+domain: observability
+difficulty: 2
+minutes: 12
+environment: single-node
+setup: |
+  kubectl create namespace legacy-apps
+  kubectl -n legacy-apps create deployment metrics-api --image=nginx:1.27-alpine --replicas=2
+  kubectl -n legacy-apps set resources deployment metrics-api --requests=cpu=50m
+  kubectl -n legacy-apps expose deployment metrics-api --port=80
+  mkdir -p /root/legacy
+  cat > /root/legacy/hpa.yaml <<'YAML'
+  apiVersion: autoscaling/v2beta2
+  kind: HorizontalPodAutoscaler
+  metadata:
+    name: metrics-api
+    namespace: legacy-apps
+  spec:
+    scaleTargetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: metrics-api
+    minReplicas: 2
+    maxReplicas: 6
+    metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  YAML
+  cat > /root/legacy/pdb.yaml <<'YAML'
+  apiVersion: policy/v1beta1
+  kind: PodDisruptionBudget
+  metadata:
+    name: metrics-api-pdb
+    namespace: legacy-apps
+  spec:
+    minAvailable: 1
+    selector:
+      matchLabels:
+        app: metrics-api
+  YAML
+  cat > /root/legacy/ingress.yaml <<'YAML'
+  apiVersion: extensions/v1beta1
+  kind: Ingress
+  metadata:
+    name: metrics-api
+    namespace: legacy-apps
+  spec:
+    rules:
+    - host: metrics.example.com
+      http:
+        paths:
+        - path: /metrics
+          backend:
+            serviceName: metrics-api
+            servicePort: 80
+  YAML
+task: |
+  An old project left three manifests in `/root/legacy/`: `hpa.yaml`, `pdb.yaml` and
+  `ingress.yaml`. `kubectl apply` fails because their API versions were **removed** from
+  Kubernetes.
+
+  1. Update each file to the current stable API version. Keep the same names and values.
+     The Ingress also needs the new backend format, and use `pathType: Prefix`.
+  2. Apply the three files.
+
+  Tip: `kubectl api-resources` and `kubectl explain` show the current versions and fields.
+checks:
+  - name: The files use autoscaling/v2, policy/v1 and networking.k8s.io/v1
+    run: |
+      grep -qE '^apiVersion: *autoscaling/v2$' /root/legacy/hpa.yaml &&
+      grep -qE '^apiVersion: *policy/v1$' /root/legacy/pdb.yaml &&
+      grep -qE '^apiVersion: *networking.k8s.io/v1$' /root/legacy/ingress.yaml
+  - name: HPA `metrics-api` scales the Deployment from 2 to 6 at 70% CPU
+    run: |
+      kubectl -n legacy-apps get hpa metrics-api -o json | jq -e '
+        .spec.minReplicas==2 and .spec.maxReplicas==6 and .spec.scaleTargetRef.name=="metrics-api"
+        and (.spec.metrics[0].resource | .name=="cpu" and .target.averageUtilization==70)'
+  - name: PodDisruptionBudget `metrics-api-pdb` keeps 1 Pod available
+    run: kubectl -n legacy-apps get pdb metrics-api-pdb -o json | jq -e '.spec.minAvailable==1 and .spec.selector.matchLabels.app=="metrics-api"'
+  - name: Ingress `metrics-api` sends /metrics (Prefix) to metrics-api:80
+    run: |
+      kubectl -n legacy-apps get ingress metrics-api -o json | jq -e '.spec.rules[0].host=="metrics.example.com" and
+        (.spec.rules[0].http.paths[] | select(.path=="/metrics" and .pathType=="Prefix"
+          and .backend.service.name=="metrics-api" and .backend.service.port.number==80))'
+solution: |
+  kubectl apply -f /root/legacy/        # error: no matches for kind ... in version ...
+  kubectl api-resources | grep -E "horizontalpodautoscalers|poddisruptionbudgets|ingresses"
+  # hpa.yaml:     apiVersion: autoscaling/v2        (the spec is the same as v2beta2)
+  # pdb.yaml:     apiVersion: policy/v1             (the spec is the same)
+  # ingress.yaml: apiVersion: networking.k8s.io/v1, and each path becomes:
+  #         - path: /metrics
+  #           pathType: Prefix
+  #           backend:
+  #             service:
+  #               name: metrics-api
+  #               port:
+  #                 number: 80
+  kubectl apply -f /root/legacy/
+auto_solution: |
+  sed -i 's#^apiVersion: autoscaling/v2beta2#apiVersion: autoscaling/v2#' /root/legacy/hpa.yaml
+  sed -i 's#^apiVersion: policy/v1beta1#apiVersion: policy/v1#' /root/legacy/pdb.yaml
+  cat > /root/legacy/ingress.yaml <<'YAML'
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: metrics-api
+    namespace: legacy-apps
+  spec:
+    rules:
+    - host: metrics.example.com
+      http:
+        paths:
+        - path: /metrics
+          pathType: Prefix
+          backend:
+            service:
+              name: metrics-api
+              port:
+                number: 80
+  YAML
+  kubectl apply -f /root/legacy/
+docs:
+  - https://kubernetes.io/docs/reference/using-api/deprecation-guide/
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/

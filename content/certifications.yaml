@@ -2,23 +2,40 @@
 # exam  = multiple-choice question bank (content/<exam>/exam.yaml)
 # track = hands-on labs (content/<track>/labs.yaml)
 certifications:
-- id: kcna
-  name: Kubernetes and Cloud Native Associate
-  short: KCNA
-  area: Kubernetes
-  exam: kcna
-  description: Multiple choice. Kubernetes and cloud native basics.
-- id: cka
-  name: Certified Kubernetes Administrator
-  short: CKA
-  area: Kubernetes
-  track: cka
-  description: Hands-on. Run and fix a real cluster from the command line.
-- id: terraform
-  name: HashiCorp Certified Terraform Associate (004)
-  short: Terraform
-  area: Infrastructure as Code
-  exam: terraform
-  track: terraform
-  description: Multiple choice exam, plus hands-on labs with Terraform and a local
-    AWS emulator.
+  - id: kcna
+    name: Kubernetes and Cloud Native Associate
+    short: KCNA
+    area: Kubernetes
+    exam: kcna
+    description: Multiple choice. Kubernetes and cloud native basics.
+  - id: kcsa
+    name: Kubernetes and Cloud Native Security Associate
+    short: KCSA
+    area: Kubernetes
+    exam: kcsa
+    description: Multiple choice. Security of Kubernetes and the cloud native platform.
+  - id: cka
+    name: Certified Kubernetes Administrator
+    short: CKA
+    area: Kubernetes
+    track: cka
+    description: Hands-on. Run and fix a real cluster from the command line.
+  - id: ckad
+    name: Certified Kubernetes Application Developer
+    short: CKAD
+    area: Kubernetes
+    track: ckad
+    description: Hands-on. Build, deploy, configure and debug applications on Kubernetes.
+  - id: cks
+    name: Certified Kubernetes Security Specialist
+    short: CKS
+    area: Kubernetes
+    track: cks
+    description: Hands-on. Secure a cluster and its workloads (requires a passed CKA for the real exam).
+  - id: terraform
+    name: HashiCorp Certified Terraform Associate (004)
+    short: Terraform
+    area: Infrastructure as Code
+    exam: terraform
+    track: terraform
+    description: Multiple choice exam, plus hands-on labs with Terraform and a local AWS emulator.

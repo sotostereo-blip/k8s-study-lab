@@ -1,0 +1,59 @@
+id: ckad-env-004
+title: ConfigMap from a file and a literal
+domain: environment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace storefront
+  mkdir -p /root/storefront
+  printf 'currency=EUR\ncheckout.timeout=30s\nsearch.page-size=24\n' > /root/storefront/app.properties
+task: |
+  In namespace `storefront`:
+
+  1. Create a ConfigMap `storefront-config` with:
+     - the key `app.properties`, with the content of the file `/root/storefront/app.properties`
+     - the key `THEME` with the value `dark`
+  2. Create a Pod `storefront` with image `nginx:1.27-alpine` that:
+     - has an environment variable `THEME` that **reads its value** from the ConfigMap key `THEME`
+     - mounts the ConfigMap so that the file `/etc/storefront/app.properties` exists
+       inside the container
+checks:
+  - name: ConfigMap `storefront-config` has app.properties and THEME=dark
+    run: |
+      kubectl -n storefront get cm storefront-config -o json | jq -e '.data.THEME=="dark" and (.data["app.properties"] | contains("currency=EUR"))'
+  - name: Pod `storefront` is Running
+    run: '[ "$(kubectl -n storefront get pod storefront -o jsonpath="{.status.phase}")" = Running ]'
+  - name: The env variable THEME comes from the ConfigMap (configMapKeyRef)
+    run: |
+      kubectl -n storefront get pod storefront -o json | jq -e '.spec.containers[0].env[] | select(.name=="THEME")
+        | .valueFrom.configMapKeyRef.name=="storefront-config" and .valueFrom.configMapKeyRef.key=="THEME"'
+  - name: The container sees THEME=dark and /etc/storefront/app.properties
+    run: |
+      [ "$(kubectl -n storefront exec storefront -- printenv THEME)" = dark ] &&
+      kubectl -n storefront exec storefront -- cat /etc/storefront/app.properties | grep -q "search.page-size=24"
+solution: |
+  kubectl -n storefront create configmap storefront-config \
+    --from-file=/root/storefront/app.properties --from-literal=THEME=dark
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Pod
+  metadata: { name: storefront, namespace: storefront }
+  spec:
+    containers:
+    - name: web
+      image: nginx:1.27-alpine
+      env:
+      - name: THEME
+        valueFrom:
+          configMapKeyRef: { name: storefront-config, key: THEME }
+      volumeMounts:
+      - { name: config, mountPath: /etc/storefront }
+    volumes:
+    - name: config
+      configMap:
+        name: storefront-config
+        items: [{ key: app.properties, path: app.properties }]
+  YAML
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/

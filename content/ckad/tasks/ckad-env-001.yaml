@@ -1,0 +1,78 @@
+id: ckad-env-001
+title: Create a CRD and a custom resource
+domain: environment
+difficulty: 2
+minutes: 12
+environment: single-node
+setup: |
+  kubectl create namespace ops-tools
+task: |
+  The platform team will write an operator that runs database backups. First, the API
+  must exist. Create a **CustomResourceDefinition**:
+
+  - group `ops.example.com`, version `v1` (served and storage), **Namespaced**
+  - kind `Backup`, plural `backups`, singular `backup`, short name `bk`
+  - an OpenAPI schema where `spec.schedule` is a `string` and `spec.retentionDays`
+    is an `integer`
+
+  Then create a `Backup` called `nightly-db` in namespace `ops-tools` with
+  `schedule: "0 2 * * *"` and `retentionDays: 7`.
+
+  After that, `kubectl -n ops-tools get bk` must list it.
+checks:
+  - name: CRD `backups.ops.example.com` is Established and Namespaced
+    run: |
+      c=$(kubectl get crd backups.ops.example.com -o json)
+      echo "$c" | jq -e '.spec.scope=="Namespaced" and .spec.names.kind=="Backup" and (.spec.names.shortNames | index("bk"))
+        and ([.status.conditions[] | select(.type=="Established" and .status=="True")] | length == 1)'
+  - name: Version v1 is served and is the storage version
+    run: kubectl get crd backups.ops.example.com -o json | jq -e '.spec.versions[] | select(.name=="v1" and .served and .storage)'
+  - name: The schema rejects a Backup whose retentionDays is not an integer
+    run: |
+      kubectl get crd backups.ops.example.com >/dev/null &&
+      ! kubectl apply --dry-run=server -f - <<'YAML'
+      apiVersion: ops.example.com/v1
+      kind: Backup
+      metadata: { name: schema-test, namespace: ops-tools }
+      spec: { schedule: "0 3 * * *", retentionDays: "seven" }
+      YAML
+  - name: Backup `nightly-db` in `ops-tools` has the right schedule and retentionDays
+    run: |
+      kubectl -n ops-tools get backup.ops.example.com nightly-db -o json |
+        jq -e '.spec.schedule=="0 2 * * *" and .spec.retentionDays==7'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: backups.ops.example.com      # <plural>.<group>
+  spec:
+    group: ops.example.com
+    scope: Namespaced
+    names: { kind: Backup, plural: backups, singular: backup, shortNames: [bk] }
+    versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                schedule: { type: string }
+                retentionDays: { type: integer }
+  YAML
+  kubectl wait --for=condition=Established crd/backups.ops.example.com
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: ops.example.com/v1
+  kind: Backup
+  metadata: { name: nightly-db, namespace: ops-tools }
+  spec:
+    schedule: "0 2 * * *"
+    retentionDays: 7
+  YAML
+  kubectl -n ops-tools get bk
+docs:
+  - https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/

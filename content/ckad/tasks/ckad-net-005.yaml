@@ -1,0 +1,54 @@
+id: ckad-net-005
+title: Ingress with TLS, Prefix and Exact paths
+domain: networking
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace docs-site
+  kubectl -n docs-site create deployment docs-web --image=nginx:1.27-alpine
+  kubectl -n docs-site create deployment docs-search --image=httpd:2.4-alpine
+  kubectl -n docs-site expose deployment docs-web --port=80
+  kubectl -n docs-site expose deployment docs-search --port=8080 --target-port=80
+  mkdir -p /root/docs-site
+  openssl req -x509 -nodes -newkey rsa:2048 -days 365 -subj "/CN=docs.internal.example" \
+    -keyout /root/docs-site/tls.key -out /root/docs-site/tls.crt 2>/dev/null
+task: |
+  In namespace `docs-site` there are two Services: `docs-web` (port 80) and
+  `docs-search` (port 8080). A certificate is ready in `/root/docs-site/tls.crt` and
+  `/root/docs-site/tls.key`.
+
+  1. Create a TLS Secret `docs-tls` from these two files.
+  2. Create an Ingress `docs-ingress` with `ingressClassName: nginx` for the host
+     `docs.internal.example`:
+     - TLS for this host with the Secret `docs-tls`
+     - path `/` (type `Prefix`) goes to `docs-web` port `80`
+     - path `/search` (type `Exact`) goes to `docs-search` port `8080`
+
+  Note: this cluster has no Ingress controller, so the checker reads your Ingress object.
+checks:
+  - name: Secret `docs-tls` is of type kubernetes.io/tls
+    run: '[ "$(kubectl -n docs-site get secret docs-tls -o jsonpath="{.type}")" = kubernetes.io/tls ]'
+  - name: The Ingress uses class nginx and TLS with docs-tls for the host
+    run: |
+      kubectl -n docs-site get ingress docs-ingress -o json | jq -e '.spec.ingressClassName=="nginx"
+        and (.spec.tls[] | select(.secretName=="docs-tls" and (.hosts | index("docs.internal.example"))))'
+  - name: Path / (Prefix) goes to docs-web:80
+    run: |
+      kubectl -n docs-site get ingress docs-ingress -o json | jq -e '.spec.rules[] | select(.host=="docs.internal.example") | .http.paths[]
+        | select(.path=="/" and .pathType=="Prefix" and .backend.service.name=="docs-web" and .backend.service.port.number==80)'
+  - name: Path /search (Exact) goes to docs-search:8080
+    run: |
+      kubectl -n docs-site get ingress docs-ingress -o json | jq -e '.spec.rules[] | select(.host=="docs.internal.example") | .http.paths[]
+        | select(.path=="/search" and .pathType=="Exact" and .backend.service.name=="docs-search" and .backend.service.port.number==8080)'
+solution: |
+  kubectl -n docs-site create secret tls docs-tls \
+    --cert=/root/docs-site/tls.crt --key=/root/docs-site/tls.key
+  kubectl -n docs-site create ingress docs-ingress --class=nginx \
+    --rule="docs.internal.example/*=docs-web:80,tls=docs-tls" \
+    --rule="docs.internal.example/search=docs-search:8080"
+  # "path/*" means pathType Prefix, a path without * means Exact
+  kubectl -n docs-site describe ingress docs-ingress
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types

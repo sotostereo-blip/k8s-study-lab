@@ -1,0 +1,63 @@
+id: cks-setup-003
+title: Ingress with a TLS certificate
+domain: cluster-setup
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace shop
+  kubectl -n shop create deployment storefront --image=nginx:1.27-alpine
+  kubectl -n shop expose deployment storefront --port=80
+task: |
+  The namespace `shop` has a Deployment and a Service called `storefront` (port 80).
+  Publish it over HTTPS:
+
+  1. Use `openssl` to create a self-signed certificate and private key for the host
+     `shop.lab.test` (put the host in the Common Name **and** in the Subject Alternative Name).
+  2. Create a TLS Secret called `storefront-tls` in `shop` with this certificate and key.
+  3. Create an Ingress called `storefront` in `shop`:
+     - host `shop.lab.test`, path `/` (type `Prefix`) to Service `storefront` port `80`
+     - a `tls` section for host `shop.lab.test` that uses the Secret `storefront-tls`
+
+  This lab has no Ingress controller, so the checks read the objects only.
+checks:
+  - name: Secret storefront-tls has type kubernetes.io/tls
+    run: '[ "$(kubectl -n shop get secret storefront-tls -o jsonpath="{.type}")" = kubernetes.io/tls ]'
+  - name: The certificate is for shop.lab.test (SAN) and matches the key
+    run: |
+      d=$(mktemp -d)
+      kubectl -n shop get secret storefront-tls -o jsonpath='{.data.tls\.crt}' | base64 -d > $d/crt
+      kubectl -n shop get secret storefront-tls -o jsonpath='{.data.tls\.key}' | base64 -d > $d/key
+      openssl x509 -in $d/crt -noout -ext subjectAltName | grep -q 'DNS:shop.lab.test' &&
+      [ "$(openssl x509 -in $d/crt -noout -pubkey | openssl sha256)" = "$(openssl pkey -in $d/key -pubout | openssl sha256)" ]
+  - name: Ingress storefront sends shop.lab.test / to storefront:80
+    run: |
+      kubectl -n shop get ingress storefront -o json | jq -e '
+        [.spec.rules[] | select(.host == "shop.lab.test") | .http.paths[]
+          | select(.path == "/" and .backend.service.name == "storefront" and .backend.service.port.number == 80)]
+        | length > 0'
+  - name: Ingress storefront has TLS for shop.lab.test with Secret storefront-tls
+    run: |
+      kubectl -n shop get ingress storefront -o json | jq -e '
+        [.spec.tls[]? | select(.secretName == "storefront-tls" and ((.hosts // []) | index("shop.lab.test")))] | length > 0'
+  - name: Deployment storefront is still available
+    run: '[ "$(kubectl -n shop get deploy storefront -o jsonpath="{.status.availableReplicas}")" = 1 ]'
+    guard: true
+solution: |
+  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+    -keyout shop.key -out shop.crt \
+    -subj "/CN=shop.lab.test" -addext "subjectAltName=DNS:shop.lab.test"
+  kubectl -n shop create secret tls storefront-tls --cert=shop.crt --key=shop.key
+  kubectl -n shop create ingress storefront \
+    --rule="shop.lab.test/*=storefront:80,tls=storefront-tls"
+  # "/*" makes a Prefix path "/". Check it:
+  kubectl -n shop get ingress storefront -o yaml
+auto_solution: |
+  cd "$(mktemp -d)"
+  openssl req -x509 -nodes -newkey rsa:2048 -days 365 -keyout shop.key -out shop.crt \
+    -subj "/CN=shop.lab.test" -addext "subjectAltName=DNS:shop.lab.test" 2>/dev/null
+  kubectl -n shop create secret tls storefront-tls --cert=shop.crt --key=shop.key
+  kubectl -n shop create ingress storefront --rule="shop.lab.test/*=storefront:80,tls=storefront-tls"
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+  - https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets

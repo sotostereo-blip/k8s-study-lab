@@ -1,0 +1,547 @@
+# Security glossary (KCSA, CKS). Shown when you click a highlighted term.
+terms:
+- id: four-cs
+  term: 4Cs of Cloud Native Security
+  match:
+  - 4Cs
+  - 4Cs model
+  - 4Cs of cloud native security
+  definition: 'A layered security model: Cloud, Cluster, Container and Code. Each layer depends on the security of the layer
+    outside it.'
+  es: 'Las 4C de la seguridad cloud native: Cloud, Cluster, Container y Code.'
+- id: defense-in-depth
+  term: Defense in depth
+  match:
+  - defense in depth
+  definition: Using several layers of security controls, so that if one layer fails, the others still protect the system.
+  es: Defensa en profundidad; varias capas de controles de seguridad.
+- id: shared-responsibility
+  term: Shared responsibility model
+  match:
+  - shared responsibility model
+  - shared responsibility
+  definition: The split of security tasks between a cloud provider (infrastructure) and the customer (what runs on it).
+  es: Modelo de responsabilidad compartida entre el proveedor cloud y el cliente.
+- id: instance-metadata
+  term: Instance metadata service
+  match:
+  - metadata service
+  - instance metadata
+  - metadata endpoint
+  - metadata IP
+  definition: A cloud endpoint (often 169.254.169.254) that gives a VM information about itself, sometimes including cloud
+    credentials.
+  es: Servicio de metadatos de la instancia en la nube; puede entregar credenciales del nodo.
+- id: least-privilege
+  term: Least privilege
+  match:
+  - least privilege
+  definition: Giving each user, workload or component only the permissions it really needs, and nothing more.
+  es: Mínimo privilegio; dar solo los permisos estrictamente necesarios.
+- id: attack-surface
+  term: Attack surface
+  match:
+  - attack surface
+  definition: All the points (ports, APIs, programs, users) where an attacker could try to get in or cause harm.
+  es: Superficie de ataque; todos los puntos por donde se puede atacar un sistema.
+- id: tls
+  term: TLS
+  match:
+  - TLS
+  - Transport Layer Security
+  definition: A protocol that encrypts network traffic and lets clients check the server's identity with certificates.
+  es: Protocolo que cifra el tráfico de red y verifica identidades con certificados.
+- id: trust-boundary
+  term: Trust boundary
+  match:
+  - trust boundary
+  - trust boundaries
+  definition: A place where data or commands pass between parts of a system that have different levels of trust.
+  es: Frontera de confianza; punto donde cambia el nivel de confianza entre componentes.
+- id: container-breakout
+  term: Container breakout
+  match:
+  - container breakout
+  - container escape
+  - breaking out
+  definition: An attack where a process leaves the isolation of its container and gets access to the host node.
+  es: Escape del contenedor; el atacante sale del aislamiento y accede al nodo.
+- id: multi-tenancy
+  term: Multi-tenancy
+  match:
+  - multi-tenancy
+  - multi-tenant
+  - tenant
+  - tenants
+  definition: Sharing one cluster between several teams or customers (tenants) while keeping them apart.
+  es: Multiinquilino; varios equipos o clientes comparten un clúster de forma aislada.
+- id: supply-chain
+  term: Software supply chain
+  match:
+  - supply chain
+  - software supply chain
+  definition: 'Everything that goes into building and delivering software: code, dependencies, build systems, images and registries.'
+  es: Cadena de suministro de software; todo lo que interviene en construir y entregar software.
+- id: distroless
+  term: Distroless image
+  match:
+  - distroless
+  - minimal base image
+  - minimal image
+  definition: 'A container image with only the app and its runtime needs: no shell, no package manager.'
+  es: Imagen mínima sin shell ni gestor de paquetes.
+- id: anonymous-access
+  term: Anonymous access
+  match:
+  - anonymous auth
+  - anonymous access
+  - system:anonymous
+  definition: Treating requests that have no credentials as the user system:anonymous instead of rejecting them.
+  es: Acceso anónimo; aceptar peticiones sin credenciales como usuario anónimo.
+- id: read-only-port
+  term: Kubelet read-only port
+  match:
+  - read-only port
+  definition: An old kubelet HTTP port (10255) that shows Pod data with no authentication. It should be turned off.
+  es: Puerto de solo lectura del kubelet (10255), sin autenticación; debe desactivarse.
+- id: node-restriction
+  term: NodeRestriction
+  match:
+  - NodeRestriction
+  definition: An admission plugin that lets a kubelet change only its own Node object and the Pods bound to that node.
+  es: Plugin de admisión que limita al kubelet a su propio nodo y sus Pods.
+- id: hostpath
+  term: hostPath volume
+  match:
+  - hostPath
+  definition: A volume that mounts a file or folder from the node's filesystem into a Pod. Risky for security.
+  es: Volumen que monta un archivo o carpeta del nodo dentro del Pod.
+- id: host-namespaces
+  term: Host namespaces
+  match:
+  - hostPID
+  - hostNetwork
+  - hostIPC
+  - host networking
+  definition: Pod settings that make containers share the node's process, network or IPC namespace instead of their own.
+  es: Ajustes que hacen que el contenedor comparta procesos, red o IPC con el nodo.
+- id: privileged-container
+  term: Privileged container
+  match:
+  - privileged container
+  - privileged containers
+  - privileged mode
+  definition: A container with all Linux capabilities and host device access. It is almost equal to root on the node.
+  es: Contenedor privilegiado; casi equivale a ser root en el nodo.
+- id: iptables
+  term: iptables, IPVS and nftables
+  match:
+  - iptables
+  - IPVS
+  - nftables
+  definition: Linux packet-filtering and load-balancing systems that kube-proxy uses to route Service traffic.
+  es: Sistemas de Linux para filtrar y balancear paquetes que usa kube-proxy.
+- id: attack-persistence
+  term: Persistence (attack)
+  match:
+  - persistence
+  definition: Attacker methods to keep access after the first entry, for example a hidden CronJob or static Pod.
+  es: Persistencia; técnicas del atacante para mantener el acceso.
+- id: denial-of-service
+  term: Denial of service (DoS)
+  match:
+  - denial of service
+  - DoS
+  - fork bomb
+  definition: An attack or bug that uses up resources so the system cannot serve real users.
+  es: Denegación de servicio; agotar recursos para que el sistema deje de funcionar.
+- id: resource-quota
+  term: ResourceQuota
+  match:
+  - ResourceQuota
+  - ResourceQuotas
+  - resource quota
+  - quotas
+  definition: A Namespace object that caps total resource use and object counts in that Namespace.
+  es: Cuota de recursos por Namespace (CPU, memoria, número de objetos).
+- id: limit-range
+  term: LimitRange
+  match:
+  - LimitRange
+  - LimitRanges
+  definition: A Namespace object that sets default and maximum requests and limits for Pods and containers.
+  es: Objeto que fija valores por defecto y máximos de recursos en un Namespace.
+- id: api-priority-fairness
+  term: API Priority and Fairness
+  match:
+  - API Priority and Fairness
+  - FlowSchema
+  - FlowSchemas
+  definition: An API server feature that queues and shares request capacity so one noisy client cannot block others.
+  es: Prioridad y equidad de la API; reparte la capacidad del API server entre clientes.
+- id: service-account-token
+  term: ServiceAccount token
+  match:
+  - ServiceAccount token
+  - ServiceAccount tokens
+  - automountServiceAccountToken
+  definition: A token mounted into Pods that lets them call the API server as their ServiceAccount.
+  es: Token de la ServiceAccount que permite al Pod llamar al API server.
+- id: linux-capabilities
+  term: Linux capabilities
+  match:
+  - capability
+  - capabilities
+  - NET_RAW
+  - CAP_NET_RAW
+  definition: Small pieces of root power (for example NET_RAW) that can be given to or removed from a process.
+  es: Capacidades de Linux; partes del poder de root que se pueden quitar o dar.
+- id: privilege-escalation
+  term: Privilege escalation
+  match:
+  - privilege escalation
+  - allowPrivilegeEscalation
+  definition: When an attacker or process gets more rights than it was given, for example from a Pod to node root.
+  es: Escalada de privilegios; obtener más permisos de los concedidos.
+- id: pod-security-admission
+  term: Pod Security Admission
+  match:
+  - Pod Security Admission
+  - PSA
+  definition: Built-in admission controller that applies the Pod Security Standards per Namespace, using enforce, audit and
+    warn labels.
+  es: Controlador de admisión integrado que aplica los Pod Security Standards por Namespace mediante etiquetas.
+- id: audit-log
+  term: Audit log
+  match:
+  - audit log
+  - audit logs
+  - audit logging
+  - audit policy
+  - audit event
+  - audit events
+  definition: A record of requests to the API server. An audit policy sets what is logged (None, Metadata, Request, RequestResponse).
+  es: Registro de auditoría de las peticiones al API server; una política define qué se registra.
+- id: authentication
+  term: Authentication
+  match:
+  - authentication
+  - authn
+  - authenticated
+  definition: Checking who is making a request, for example with a certificate or a token.
+  es: Autenticación; comprobar quién hace una petición.
+- id: authorization
+  term: Authorization
+  match:
+  - authorization
+  - authz
+  - authorizer
+  definition: Deciding if an authenticated identity may do an action, for example with RBAC or the Node authorizer.
+  es: Autorización; decidir si una identidad puede realizar una acción.
+- id: client-certificate
+  term: Client certificate
+  match:
+  - client certificate
+  - client certificates
+  - X.509
+  definition: An X.509 certificate a client uses to prove its identity. Kubernetes reads the user from CN and groups from
+    O.
+  es: Certificado de cliente X.509 usado para identificarse; CN es el usuario y O los grupos.
+- id: oidc
+  term: OpenID Connect (OIDC)
+  match:
+  - OIDC
+  - OpenID Connect
+  definition: A standard sign-in protocol. An identity provider issues signed ID tokens that the API server can verify.
+  es: Protocolo estándar de inicio de sesión basado en tokens firmados por un proveedor de identidad.
+- id: node-authorizer
+  term: Node authorizer
+  match:
+  - Node authorizer
+  - Node authorization
+  definition: Authorization mode that lets each kubelet access only the objects related to Pods on its own node.
+  es: Modo de autorización que limita cada kubelet a los objetos de los Pods de su propio nodo.
+- id: role
+  term: Role / ClusterRole
+  match:
+  - Role
+  - Roles
+  - ClusterRole
+  - ClusterRoles
+  definition: RBAC object with a list of allowed verbs on resources. A Role is namespaced; a ClusterRole is cluster-wide.
+  es: Objeto RBAC con permisos; Role es de un Namespace y ClusterRole de todo el clúster.
+- id: role-binding
+  term: RoleBinding / ClusterRoleBinding
+  match:
+  - RoleBinding
+  - RoleBindings
+  - ClusterRoleBinding
+  - ClusterRoleBindings
+  definition: RBAC object that grants the permissions of a Role or ClusterRole to users, groups or ServiceAccounts.
+  es: Objeto RBAC que asigna los permisos de un rol a usuarios, grupos o ServiceAccounts.
+- id: encryption-at-rest
+  term: Encryption at rest
+  match:
+  - encryption at rest
+  - EncryptionConfiguration
+  definition: Encrypting stored data. In Kubernetes, the API server encrypts resources like Secrets before writing them to
+    etcd.
+  es: Cifrado de datos almacenados; el API server cifra los Secrets antes de guardarlos en etcd.
+- id: kms
+  term: KMS
+  match:
+  - KMS
+  - key management service
+  definition: A key management service that keeps encryption keys outside the cluster and does encrypt/decrypt operations.
+  es: Servicio de gestión de claves que guarda las claves de cifrado fuera del clúster.
+- id: external-secret-store
+  term: External secret store
+  match:
+  - external secret store
+  - external secret stores
+  - Secrets Store CSI Driver
+  - External Secrets Operator
+  definition: A system outside Kubernetes, like HashiCorp Vault or a cloud secret manager, that holds secrets for workloads.
+  es: Almacén de secretos externo al clúster, como HashiCorp Vault.
+- id: runtime-class
+  term: RuntimeClass
+  match:
+  - RuntimeClass
+  - sandboxed runtime
+  - gVisor
+  - Kata Containers
+  definition: A Kubernetes object that selects the container runtime for a Pod, such as a sandboxed runtime for extra isolation.
+  es: Objeto que elige el runtime de contenedores de un Pod, por ejemplo uno aislado (sandbox).
+- id: default-deny
+  term: Default deny
+  match:
+  - default deny
+  - default-deny
+  definition: A NetworkPolicy that selects all Pods and allows no traffic, so only traffic allowed by other policies passes.
+  es: Política que bloquea todo el tráfico salvo el permitido explícitamente por otras políticas.
+- id: sbom
+  term: SBOM
+  match:
+  - SBOM
+  - SBOMs
+  - software bill of materials
+  - SPDX
+  - CycloneDX
+  definition: Software Bill of Materials. A list of the packages and versions inside software. Common formats are SPDX and
+    CycloneDX.
+  es: Lista de materiales de software; inventario de paquetes y versiones que contiene.
+- id: cve
+  term: CVE
+  match:
+  - CVE
+  - CVEs
+  definition: Common Vulnerabilities and Exposures. A public ID for a known security vulnerability, like CVE-2024-1234.
+  es: Identificador público de una vulnerabilidad de seguridad conocida.
+- id: image-signing
+  term: Image signing
+  match:
+  - image signing
+  - signed image
+  - signed images
+  - signature
+  - signatures
+  definition: Adding a cryptographic signature to an image so others can verify who published it and that it is unchanged.
+  es: Firmar una imagen para verificar quién la publicó y que no ha sido modificada.
+- id: sigstore
+  term: Sigstore
+  match:
+  - Sigstore
+  - cosign
+  - Rekor
+  - Fulcio
+  definition: Open source project for signing software. cosign signs images, Fulcio issues certificates, Rekor is the log.
+  es: Proyecto de código abierto para firmar software (cosign, Fulcio, Rekor).
+- id: slsa
+  term: SLSA
+  match:
+  - SLSA
+  definition: Supply-chain Levels for Software Artifacts. A framework of levels to protect builds and prove artifact provenance.
+  es: Marco de niveles para proteger la cadena de construcción de software y su procedencia.
+- id: provenance
+  term: Provenance
+  match:
+  - provenance
+  - attestation
+  - attestations
+  definition: Verifiable information about how, where and from which source an artifact was built.
+  es: Procedencia; información verificable sobre cómo y desde qué fuente se construyó un artefacto.
+- id: image-scanning
+  term: Image scanning
+  match:
+  - image scanning
+  - scan images
+  - vulnerability scanner
+  - CVE scanner
+  definition: Checking the packages inside an image against databases of known vulnerabilities (CVEs).
+  es: Analizar los paquetes de una imagen en busca de vulnerabilidades conocidas.
+- id: trivy
+  term: Trivy
+  match:
+  - Trivy
+  definition: Open source scanner for vulnerabilities and misconfigurations in images, file systems and manifests. It can
+    also make SBOMs.
+  es: Escáner de código abierto de vulnerabilidades y configuraciones incorrectas.
+- id: image-pull-secret
+  term: imagePullSecrets
+  match:
+  - imagePullSecrets
+  - imagePullSecret
+  - docker-registry
+  definition: Pod field that lists Secrets with registry credentials, used by the kubelet to pull private images.
+  es: Campo del Pod con Secrets de credenciales para descargar imágenes privadas.
+- id: falco
+  term: Falco
+  match:
+  - Falco
+  definition: CNCF runtime security tool that watches system calls and alerts on suspicious behavior in containers.
+  es: Herramienta de seguridad en tiempo de ejecución que vigila llamadas al sistema y genera alertas.
+- id: pki
+  term: PKI
+  match:
+  - PKI
+  - public key infrastructure
+  definition: Public Key Infrastructure. The CAs, certificates and keys that components use to prove identity and use TLS.
+  es: 'Infraestructura de clave pública: CAs, certificados y claves.'
+- id: certificate-authority
+  term: Certificate authority (CA)
+  match:
+  - certificate authority
+  - cluster CA
+  - CA
+  definition: A trusted entity that signs certificates. The cluster CA signs certificates for components and users.
+  es: Autoridad de certificación; entidad de confianza que firma certificados.
+- id: konnectivity
+  term: Konnectivity
+  match:
+  - Konnectivity
+  definition: A TCP proxy service that carries traffic from the control plane to the nodes through agents on the nodes.
+  es: Servicio proxy TCP que lleva el tráfico del plano de control a los nodos.
+- id: admission-webhook
+  term: Admission webhook
+  match:
+  - admission webhook
+  - admission webhooks
+  - validating webhook
+  - mutating webhook
+  definition: An HTTP callback the API server calls during admission to change (mutating) or accept/reject (validating) objects.
+  es: Llamada HTTP que hace el API server durante la admisión para modificar o validar objetos.
+- id: validating-admission-policy
+  term: ValidatingAdmissionPolicy
+  match:
+  - ValidatingAdmissionPolicy
+  - ValidatingAdmissionPolicyBinding
+  definition: Built-in way to write admission rules as CEL expressions that run inside the API server, with no webhook.
+  es: Forma integrada de escribir reglas de admisión en CEL que se ejecutan dentro del API server.
+- id: cel
+  term: CEL
+  match:
+  - CEL
+  - Common Expression Language
+  definition: Common Expression Language. A small, safe expression language used in Kubernetes policies and validation.
+  es: Lenguaje de expresiones sencillo y seguro usado en políticas de Kubernetes.
+- id: opa-gatekeeper
+  term: OPA Gatekeeper
+  match:
+  - OPA Gatekeeper
+  - Gatekeeper
+  definition: Admission controller based on Open Policy Agent. Rules are written in Rego inside ConstraintTemplates.
+  es: Controlador de admisión basado en Open Policy Agent con reglas en Rego.
+- id: rego
+  term: Rego
+  match:
+  - Rego
+  definition: The policy language of Open Policy Agent (OPA).
+  es: Lenguaje de políticas de Open Policy Agent.
+- id: kyverno
+  term: Kyverno
+  match:
+  - Kyverno
+  definition: CNCF policy engine for Kubernetes. Policies are YAML resources that can validate, mutate, generate and verify
+    images.
+  es: Motor de políticas para Kubernetes con políticas escritas en YAML.
+- id: policy-as-code
+  term: Policy as code
+  match:
+  - policy as code
+  definition: Writing security and compliance rules as versioned files that tools check and enforce automatically.
+  es: Políticas como código; reglas en ficheros versionados que se aplican automáticamente.
+- id: cis-benchmark
+  term: CIS Kubernetes Benchmark
+  match:
+  - CIS Kubernetes Benchmark
+  - CIS Benchmark
+  - CIS checks
+  definition: Free guide from the Center for Internet Security with recommended secure settings for Kubernetes.
+  es: Guía del Center for Internet Security con configuraciones seguras recomendadas para Kubernetes.
+- id: kube-bench
+  term: kube-bench
+  match:
+  - kube-bench
+  definition: Open source tool that checks cluster nodes against the CIS Kubernetes Benchmark.
+  es: Herramienta que comprueba los nodos del clúster con el CIS Kubernetes Benchmark.
+- id: kubesec
+  term: kubesec
+  match:
+  - kubesec
+  definition: Open source tool that gives a security risk score to Kubernetes manifests.
+  es: Herramienta que puntúa el riesgo de seguridad de manifiestos de Kubernetes.
+- id: kube-linter
+  term: kube-linter
+  match:
+  - kube-linter
+  definition: Open source tool that checks Kubernetes YAML and Helm charts for bad practices and security problems.
+  es: Herramienta que revisa YAML y charts de Helm en busca de malas prácticas.
+- id: nist
+  term: NIST
+  match:
+  - NIST
+  - SP 800-190
+  definition: US National Institute of Standards and Technology. Its SP 800-190 is a guide to container security.
+  es: Instituto Nacional de Estándares y Tecnología de EE. UU.; su SP 800-190 trata la seguridad de contenedores.
+- id: pci-dss
+  term: PCI DSS
+  match:
+  - PCI DSS
+  definition: Payment Card Industry Data Security Standard. Security rules for systems that handle credit card data.
+  es: Estándar de seguridad para sistemas que manejan datos de tarjetas de pago.
+- id: soc2
+  term: SOC 2
+  match:
+  - SOC 2
+  definition: An independent audit report on an organization's security controls, based on the AICPA Trust Services Criteria.
+  es: Informe de auditoría independiente sobre los controles de seguridad de una organización.
+- id: iso-27001
+  term: ISO/IEC 27001
+  match:
+  - ISO 27001
+  - ISO/IEC 27001
+  - ISMS
+  definition: International standard for an information security management system (ISMS). Organizations can be certified.
+  es: Norma internacional para un sistema de gestión de seguridad de la información (SGSI).
+- id: threat-model
+  term: Threat model
+  match:
+  - threat model
+  - threat modelling
+  - threat modeling
+  definition: A structured study of a system to find possible threats, attack paths and mitigations.
+  es: Modelo de amenazas; análisis estructurado de posibles amenazas y mitigaciones.
+- id: stride
+  term: STRIDE
+  match:
+  - STRIDE
+  definition: 'Threat model method: Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation
+    of privilege.'
+  es: Método de modelado de amenazas con seis categorías de amenaza.
+- id: mitre-attack
+  term: MITRE ATT&CK
+  match:
+  - MITRE ATT&CK
+  - ATT&CK
+  definition: A public knowledge base of real attacker tactics and techniques, with a matrix for containers.
+  es: Base de conocimiento pública de tácticas y técnicas de atacantes reales.

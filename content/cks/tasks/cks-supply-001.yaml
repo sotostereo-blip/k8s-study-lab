@@ -1,0 +1,56 @@
+id: cks-supply-001
+title: Remove Pods with CRITICAL image vulnerabilities
+domain: supply-chain
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace legacy-apps
+  kubectl -n legacy-apps run legacy-web --image=nginx:1.19
+  kubectl -n legacy-apps run legacy-cache --image=memcached:1.6.9-alpine
+  kubectl -n legacy-apps run legacy-base --image=alpine:3.20 -- sleep 3600
+  kubectl -n legacy-apps run legacy-tools --image=busybox:1.36 -- sleep 3600
+  kubectl -n legacy-apps run legacy-pause --image=registry.k8s.io/pause:3.10
+  kubectl -n legacy-apps wait --for=condition=Ready pod --all --timeout=240s
+task: |
+  The namespace `legacy-apps` runs five Pods with old images.
+
+  Use **trivy** to scan the image of every Pod in `legacy-apps` for vulnerabilities with
+  severity **CRITICAL**. Then **delete every Pod whose image has at least one CRITICAL
+  vulnerability**. Keep the other Pods.
+
+  Example: `trivy image --severity CRITICAL nginx:1.19`
+
+  (The vulnerability database is inside the terminal image, so trivy works offline and
+  gives the same result as the checker.)
+checks:
+  - name: No Pod left in legacy-apps has an image with CRITICAL vulnerabilities
+    run: |
+      for img in $(kubectl -n legacy-apps get pods -o jsonpath='{.items[*].spec.containers[*].image}' | tr ' ' '\n' | sort -u); do
+        n=$(trivy image -q --severity CRITICAL --format json "$img" | jq '[.Results[]?.Vulnerabilities[]?] | length') || exit 1
+        [ "$n" = 0 ] || { echo "$img has $n CRITICAL"; exit 1; }
+      done
+  - name: The Pods whose image has no CRITICAL vulnerabilities still exist
+    run: |
+      for p in legacy-web=nginx:1.19 legacy-cache=memcached:1.6.9-alpine legacy-base=alpine:3.20 \
+               legacy-tools=busybox:1.36 legacy-pause=registry.k8s.io/pause:3.10; do
+        n=$(trivy image -q --severity CRITICAL --format json "${p#*=}" | jq '[.Results[]?.Vulnerabilities[]?] | length') || exit 1
+        if [ "$n" = 0 ]; then kubectl -n legacy-apps get pod "${p%%=*}" >/dev/null || exit 1; fi
+      done
+    guard: true
+solution: |
+  kubectl -n legacy-apps get pods -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image
+  for img in $(kubectl -n legacy-apps get pods -o jsonpath='{.items[*].spec.containers[*].image}'); do
+    echo "$img: $(trivy image -q --severity CRITICAL --format json $img | jq '[.Results[]?.Vulnerabilities[]?] | length')"
+  done
+  # delete the Pods whose number is greater than 0, for example:
+  kubectl -n legacy-apps delete pod legacy-web legacy-cache
+auto_solution: |
+  kubectl -n legacy-apps get pods -o json | jq -r '.items[] | "\(.metadata.name) \(.spec.containers[0].image)"' |
+  while read -r pod img; do
+    n=$(trivy image -q --severity CRITICAL --format json "$img" | jq '[.Results[]?.Vulnerabilities[]?] | length')
+    [ "$n" = 0 ] || kubectl -n legacy-apps delete pod "$pod" --wait=false
+  done
+docs:
+  - https://kubernetes.io/docs/concepts/security/security-checklist/
+  - https://trivy.dev/latest/docs/target/container_image/

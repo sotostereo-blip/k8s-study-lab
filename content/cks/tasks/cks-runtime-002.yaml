@@ -1,0 +1,75 @@
+id: cks-runtime-002
+title: Audit log - who created a privileged Pod?
+domain: runtime
+difficulty: 3
+minutes: 12
+environment: secure-node
+setup: |
+  kubectl create namespace night-shift
+  kubectl -n night-shift create role pod-runner --verb=get,list,create,delete --resource=pods
+  for u in ivan-ops judy-dev; do
+    kubectl -n night-shift create rolebinding "night-$u" --role=pod-runner --user="$u"
+  done
+  sleep 2
+  pod() {  # name user privileged
+    cat <<YAML | kubectl create --as="$2" -f - >/dev/null
+  apiVersion: v1
+  kind: Pod
+  metadata: { name: $1, namespace: night-shift }
+  spec:
+    containers:
+    - name: job
+      image: busybox:1.36
+      command: ["sleep", "5"]
+      securityContext: { privileged: $3 }
+  YAML
+  }
+  pod batch-runner-1 ivan-ops false
+  pod batch-runner-2 judy-dev true
+  pod batch-runner-3 ivan-ops false
+  pod batch-runner-4 judy-dev false
+  sleep 2
+  kubectl -n night-shift delete pod batch-runner-1 batch-runner-2 batch-runner-3 batch-runner-4 --wait=false >/dev/null
+  mkdir -p /root/audit
+task: |
+  Last night four Pods `batch-runner-1` … `batch-runner-4` ran in namespace `night-shift`.
+  They are deleted now, but one of them ran a **privileged** container.
+
+  The audit log `/var/log/kubernetes/audit/audit.log` records the **full request body**
+  (`.requestObject`) when Pods are created.
+
+  1. Find the Pod that had a container with `privileged: true`. Write its name into
+     `/root/audit/privileged-pod.txt`.
+  2. Find the user that created it (requests were made with impersonation: use
+     `.impersonatedUser.username`). Write the user name into `/root/audit/privileged-creator.txt`.
+  3. This user must not create Pods in `night-shift` any more: delete their RoleBinding.
+     The other user keeps access.
+checks:
+  - name: privileged-pod.txt names the privileged Pod
+    run: '[ "$(tr -d "[:space:]" < /root/audit/privileged-pod.txt)" = batch-runner-2 ]'
+  - name: privileged-creator.txt names the user that created it
+    run: '[ "$(tr -d "[:space:]" < /root/audit/privileged-creator.txt)" = judy-dev ]'
+  - name: judy-dev can no longer create Pods in night-shift
+    run: '[ "$(kubectl auth can-i create pods -n night-shift --as=judy-dev)" = no ]'
+  - name: ivan-ops can still create Pods in night-shift
+    run: '[ "$(kubectl auth can-i create pods -n night-shift --as=ivan-ops)" = yes ]'
+    guard: true
+solution: |
+  jq -c 'select(.verb == "create" and .objectRef.resource == "pods" and .objectRef.namespace == "night-shift")
+         | {pod: .objectRef.name, as: .impersonatedUser.username,
+            privileged: [.requestObject.spec.containers[].securityContext.privileged]}' \
+    /var/log/kubernetes/audit/audit.log
+  # {"pod":"batch-runner-2","as":"judy-dev","privileged":[true]}
+  echo batch-runner-2 > /root/audit/privileged-pod.txt
+  echo judy-dev > /root/audit/privileged-creator.txt
+  kubectl -n night-shift delete rolebinding night-judy-dev
+auto_solution: |
+  jq -r 'select(.verb == "create" and .objectRef.resource == "pods" and .objectRef.namespace == "night-shift"
+         and .objectRef.subresource == null
+         and any(.requestObject.spec.containers[]; .securityContext.privileged == true))
+         | "\(.objectRef.name) \(.impersonatedUser.username)"' /var/log/kubernetes/audit/audit.log | tail -1 |
+  { read -r p u; echo "$p" > /root/audit/privileged-pod.txt; echo "$u" > /root/audit/privileged-creator.txt
+    kubectl -n night-shift delete rolebinding "night-$u"; }
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy
+  - https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline

@@ -1,0 +1,87 @@
+id: ckad-deploy-004
+title: Blue/green switch with a Service selector
+domain: deployment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace release
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: api-blue, namespace: release }
+  spec:
+    replicas: 2
+    selector: { matchLabels: { app: api-gw, color: blue } }
+    template:
+      metadata: { labels: { app: api-gw, color: blue } }
+      spec:
+        containers:
+        - name: api
+          image: nginx:1.26-alpine
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata: { name: api-gw, namespace: release }
+  spec:
+    selector: { app: api-gw, color: blue }
+    ports: [{ port: 80, targetPort: 80 }]
+  YAML
+task: |
+  In namespace `release`, the Service `api-gw` sends all traffic to the **blue** version
+  (Deployment `api-blue`, `nginx:1.26-alpine`, Pods labelled `app=api-gw,color=blue`).
+
+  Do a **blue/green** deployment:
+
+  1. Create the Deployment `api-green`: `2` replicas, image `nginx:1.27-alpine`,
+     Pods labelled `app=api-gw` and `color=green`.
+  2. When the green Pods are ready, switch the Service `api-gw` so it sends traffic
+     **only** to the green Pods.
+  3. Keep `api-blue` running with 2 replicas, so you can switch back fast if needed.
+checks:
+  - name: Deployment `api-green` has 2 ready replicas with nginx:1.27-alpine
+    run: |
+      d=$(kubectl -n release get deploy api-green -o json)
+      [ "$(echo "$d" | jq .status.readyReplicas)" = 2 ] &&
+      [ "$(echo "$d" | jq -r '.spec.template.spec.containers[0].image')" = nginx:1.27-alpine ]
+  - name: Service `api-gw` selects color=green
+    run: kubectl -n release get svc api-gw -o json | jq -e '.spec.selector.color=="green" and .spec.selector.app=="api-gw"'
+  - name: The Service endpoints are exactly the 2 green Pods
+    run: |
+      eps=$(kubectl -n release get endpointslices -l kubernetes.io/service-name=api-gw -o json |
+        jq -r '[.items[].endpoints[]? | select(.conditions.ready==true) | .addresses[]] | sort | join(",")')
+      green=$(kubectl -n release get pods -l app=api-gw,color=green --field-selector=status.phase=Running -o json |
+        jq -r '[.items[] | select(.metadata.deletionTimestamp==null) | .status.podIP] | sort | join(",")')
+      [ -n "$eps" ] && [ "$eps" = "$green" ] && [ "$(echo "$eps" | tr ',' '\n' | wc -l)" -eq 2 ]
+  - name: api-blue still has 2 ready replicas
+    run: '[ "$(kubectl -n release get deploy api-blue -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+    guard: true
+solution: |
+  kubectl -n release get deploy api-blue -o yaml > green.yaml
+  # edit green.yaml: name api-green, color: green (selector + template), image nginx:1.27-alpine
+  # and remove status/uid/resourceVersion
+  kubectl apply -f green.yaml
+  kubectl -n release rollout status deployment/api-green
+  kubectl -n release patch service api-gw -p '{"spec":{"selector":{"app":"api-gw","color":"green"}}}'
+  kubectl -n release get endpointslices -l kubernetes.io/service-name=api-gw
+  # to switch back: patch the selector to color=blue again
+auto_solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: api-green, namespace: release }
+  spec:
+    replicas: 2
+    selector: { matchLabels: { app: api-gw, color: green } }
+    template:
+      metadata: { labels: { app: api-gw, color: green } }
+      spec:
+        containers:
+        - name: api
+          image: nginx:1.27-alpine
+  YAML
+  kubectl -n release rollout status deployment/api-green --timeout=180s
+  kubectl -n release patch service api-gw -p '{"spec":{"selector":{"app":"api-gw","color":"green"}}}'
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
+  - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/

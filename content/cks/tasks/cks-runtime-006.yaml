@@ -1,0 +1,51 @@
+id: cks-runtime-006
+title: Audit log - who opened a shell in a Pod?
+domain: runtime
+difficulty: 3
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace ledger
+  kubectl -n ledger run ledger-api --image=nginx:1.27-alpine
+  kubectl -n ledger create role pod-reader --verb=get,list --resource=pods
+  kubectl -n ledger create role pod-debugger --verb=create,get --resource=pods/exec
+  kubectl -n ledger create rolebinding readers --role=pod-reader --user=contractor-ana --user=dev-luis
+  kubectl -n ledger create rolebinding ana-debug --role=pod-debugger --user=contractor-ana
+  kubectl -n ledger wait --for=condition=Ready pod/ledger-api --timeout=180s
+  kubectl -n ledger get pods --as=dev-luis >/dev/null
+  kubectl -n ledger exec ledger-api --as=contractor-ana -- cat /etc/hostname >/dev/null
+task: |
+  Somebody opened a shell in the Pod `ledger-api` (namespace `ledger`) with `kubectl exec`.
+  The API server audit log is at `/var/log/kubernetes/audit/audit.log` (one JSON event per line).
+
+  1. Find the user who ran `exec` in `ledger-api`. Write only the user name to
+     `/root/exec-user.txt`.
+     Tip: in this lab the admin acted as other users, so look at `impersonatedUser` too.
+  2. That user must not be able to exec into Pods in `ledger` any more. Remove the
+     RoleBinding that gives them `pods/exec`. They must still be able to read Pods.
+checks:
+  - name: /root/exec-user.txt names the right user
+    run: '[ "$(tr -d "[:space:]" < /root/exec-user.txt)" = contractor-ana ]'
+  - name: contractor-ana cannot exec into Pods in ledger
+    run: '[ "$(kubectl auth can-i create pods --subresource=exec -n ledger --as contractor-ana)" = no ]'
+  - name: contractor-ana can still read Pods in ledger
+    run: '[ "$(kubectl auth can-i get pods -n ledger --as contractor-ana)" = yes ]'
+    guard: true   # already true before the task; must stay true
+  - name: The Pod ledger-api still runs
+    run: '[ "$(kubectl -n ledger get pod ledger-api -o jsonpath="{.status.phase}")" = Running ]'
+    guard: true   # already true before the task; must stay true
+solution: |
+  # exec events are on the pods/exec subresource
+  jq -r 'select(.objectRef.subresource=="exec" and .objectRef.namespace=="ledger" and .objectRef.name=="ledger-api")
+         | .impersonatedUser.username // .user.username' /var/log/kubernetes/audit/audit.log | sort -u
+  echo contractor-ana > /root/exec-user.txt
+  kubectl -n ledger get rolebindings -o wide        # ana-debug -> Role pod-debugger
+  kubectl -n ledger delete rolebinding ana-debug
+  kubectl auth can-i create pods --subresource=exec -n ledger --as contractor-ana   # no
+auto_solution: |
+  jq -r 'select(.objectRef.subresource=="exec" and .objectRef.namespace=="ledger") | .impersonatedUser.username // .user.username' \
+    /var/log/kubernetes/audit/audit.log | sort -u | head -1 > /root/exec-user.txt
+  kubectl -n ledger delete rolebinding ana-debug
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/

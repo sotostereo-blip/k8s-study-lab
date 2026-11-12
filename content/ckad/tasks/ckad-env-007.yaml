@@ -1,0 +1,70 @@
+id: ckad-env-007
+title: SecurityContext - non-root, read-only and capabilities
+domain: environment
+difficulty: 3
+minutes: 12
+environment: single-node
+setup: |
+  kubectl create namespace hardened
+task: |
+  Create the Pod `secure-cache` in namespace `hardened` with two containers.
+
+  **Pod level** security context: run as user `1000`, group `3000`, and `runAsNonRoot: true`.
+
+  1. Container `cache` (`busybox:1.36`, command `sleep 3600`):
+     - read-only root filesystem
+     - `allowPrivilegeEscalation: false`
+     - drop **ALL** Linux capabilities
+     - it can still write to `/tmp`: mount an `emptyDir` volume there
+  2. Container `net-tools` (`busybox:1.36`, command `sleep 3600`):
+     - drop **ALL** capabilities and **add only** `NET_ADMIN`
+checks:
+  - name: Pod `secure-cache` is Running
+    run: '[ "$(kubectl -n hardened get pod secure-cache -o jsonpath="{.status.phase}")" = Running ]'
+  - name: Pod security context sets runAsUser 1000, runAsGroup 3000, runAsNonRoot
+    run: kubectl -n hardened get pod secure-cache -o json | jq -e '.spec.securityContext | .runAsUser==1000 and .runAsGroup==3000 and .runAsNonRoot==true'
+  - name: Container cache is read-only, no privilege escalation, drops ALL
+    run: |
+      kubectl -n hardened get pod secure-cache -o json | jq -e '.spec.containers[] | select(.name=="cache") | .securityContext
+        | .readOnlyRootFilesystem==true and .allowPrivilegeEscalation==false and (.capabilities.drop | index("ALL"))'
+  - name: Container net-tools drops ALL and adds NET_ADMIN
+    run: |
+      kubectl -n hardened get pod secure-cache -o json | jq -e '.spec.containers[] | select(.name=="net-tools") | .securityContext.capabilities
+        | (.drop | index("ALL")) and .add == ["NET_ADMIN"]'
+  - name: In cache, the user is 1000, / is read-only and /tmp is writable
+    run: |
+      [ "$(kubectl -n hardened exec secure-cache -c cache -- id -u)" = 1000 ] &&
+      [ "$(kubectl -n hardened exec secure-cache -c cache -- id -g)" = 3000 ] &&
+      ! kubectl -n hardened exec secure-cache -c cache -- touch /should-fail &&
+      kubectl -n hardened exec secure-cache -c cache -- touch /tmp/ok
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Pod
+  metadata: { name: secure-cache, namespace: hardened }
+  spec:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 3000
+      runAsNonRoot: true
+    volumes:
+    - { name: tmp, emptyDir: {} }
+    containers:
+    - name: cache
+      image: busybox:1.36
+      command: ["sleep", "3600"]
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+      volumeMounts: [{ name: tmp, mountPath: /tmp }]
+    - name: net-tools
+      image: busybox:1.36
+      command: ["sleep", "3600"]
+      securityContext:
+        capabilities: { drop: ["ALL"], add: ["NET_ADMIN"] }
+  YAML
+  kubectl -n hardened wait --for=condition=Ready pod/secure-cache
+  kubectl -n hardened exec secure-cache -c cache -- id
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/

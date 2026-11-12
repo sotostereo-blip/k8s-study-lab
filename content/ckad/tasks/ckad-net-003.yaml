@@ -1,0 +1,50 @@
+id: ckad-net-003
+title: Fix a Service that has no endpoints
+domain: networking
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  kubectl create namespace recipes
+  kubectl -n recipes create deployment recipes-api --image=nginx:1.27-alpine --replicas=2
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Service
+  metadata: { name: recipes-api, namespace: recipes }
+  spec:
+    selector: { app: recipe-api }
+    ports:
+    - { name: http, port: 80, targetPort: 8080 }
+  YAML
+task: |
+  The developers of `recipes-api` (namespace `recipes`) say: "the Service `recipes-api`
+  does not work". The Deployment is fine and nginx listens on port `80`.
+
+  Find the problems in the **Service** and fix them. Do not change the Deployment.
+  At the end, `http://recipes-api.recipes` (port 80) must answer from inside the cluster.
+
+  Tip: `kubectl get endpointslices -l kubernetes.io/service-name=recipes-api -n recipes`.
+checks:
+  - name: The Service has 2 ready endpoints on port 80
+    run: |
+      e=$(kubectl -n recipes get endpointslices -l kubernetes.io/service-name=recipes-api -o json)
+      [ "$(echo "$e" | jq '[.items[].endpoints[]? | select(.conditions.ready==true)] | length')" = 2 ] &&
+      echo "$e" | jq -e '[.items[].ports[]?.port] | index(80)' >/dev/null
+  - name: A Pod can open http://recipes-api.recipes
+    run: |
+      out=$(kubectl -n recipes run tmp-recipes-check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- wget -qO- -T 3 http://recipes-api.recipes 2>&1)
+      echo "$out" | grep -qi nginx
+  - name: The Deployment still has 2 Pods with label app=recipes-api
+    run: '[ "$(kubectl -n recipes get deploy recipes-api -o jsonpath="{.spec.selector.matchLabels.app}/{.spec.replicas}")" = recipes-api/2 ]'
+    guard: true
+solution: |
+  kubectl -n recipes get endpointslices -l kubernetes.io/service-name=recipes-api   # no endpoints
+  kubectl -n recipes get pods --show-labels                                          # app=recipes-api
+  kubectl -n recipes describe svc recipes-api    # selector app=recipe-api (typo), targetPort 8080
+  kubectl -n recipes patch svc recipes-api --type=json -p '[
+    {"op":"replace","path":"/spec/selector","value":{"app":"recipes-api"}},
+    {"op":"replace","path":"/spec/ports/0/targetPort","value":80}]'
+  kubectl -n recipes run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- http://recipes-api.recipes
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/
+  - https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/

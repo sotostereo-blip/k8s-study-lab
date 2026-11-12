@@ -1,0 +1,63 @@
+id: cks-system-001
+title: Seccomp, capabilities and a non-root user
+domain: system-hardening
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace pulse-sys
+  kubectl -n pulse-sys create deployment pulse --image=busybox:1.36 -- sleep 3600
+  kubectl -n pulse-sys rollout status deployment pulse --timeout=180s
+task: |
+  The Deployment `pulse` in namespace `pulse-sys` runs `sleep` as **root** with the default
+  Linux capabilities and no seccomp profile. Harden it with a `securityContext`:
+
+  - Pod level: seccomp profile type `RuntimeDefault`
+  - run as a non-root user: `runAsNonRoot: true` and `runAsUser: 1000`
+  - container level: `allowPrivilegeEscalation: false` and **drop ALL** capabilities
+
+  The Deployment must keep running with 1 ready replica.
+checks:
+  - name: The Pod template uses seccomp RuntimeDefault, runAsNonRoot and runAsUser 1000
+    run: |
+      kubectl -n pulse-sys get deploy pulse -o json | jq -e '.spec.template.spec as $p | $p.containers[0] as $c
+        | (($p.securityContext.seccompProfile.type // $c.securityContext.seccompProfile.type) == "RuntimeDefault")
+        and (($c.securityContext.runAsNonRoot // $p.securityContext.runAsNonRoot) == true)
+        and (($c.securityContext.runAsUser // $p.securityContext.runAsUser) == 1000)'
+  - name: The container sets allowPrivilegeEscalation false and drops ALL capabilities
+    run: |
+      kubectl -n pulse-sys get deploy pulse -o json | jq -e '.spec.template.spec.containers[0].securityContext
+        | (.allowPrivilegeEscalation == false) and ((.capabilities.drop // []) | index("ALL"))'
+  - name: Deployment pulse has 1 ready replica
+    run: '[ "$(kubectl -n pulse-sys get deploy pulse -o jsonpath="{.status.readyReplicas}")" = 1 ]'
+    guard: true
+  - name: In the running container uid is 1000, no capabilities, seccomp filter on
+    run: |
+      s=$(kubectl -n pulse-sys exec deploy/pulse -- cat /proc/1/status) &&
+      echo "$s" | grep -Eq '^Uid:\s+1000\s' &&
+      echo "$s" | grep -Eq '^CapEff:\s+0000000000000000$' &&
+      echo "$s" | grep -Eq '^Seccomp:\s+2$'
+solution: |
+  kubectl -n pulse-sys edit deployment pulse
+  # spec.template.spec:
+  #   securityContext:
+  #     seccompProfile:
+  #       type: RuntimeDefault
+  #     runAsNonRoot: true
+  #     runAsUser: 1000
+  #   containers:
+  #   - name: busybox
+  #     securityContext:
+  #       allowPrivilegeEscalation: false
+  #       capabilities:
+  #         drop: ["ALL"]
+  kubectl -n pulse-sys rollout status deployment pulse
+  kubectl -n pulse-sys exec deploy/pulse -- grep -E 'Uid|CapEff|Seccomp' /proc/1/status
+auto_solution: |
+  kubectl -n pulse-sys patch deployment pulse --type=strategic -p '{"spec":{"template":{"spec":{
+    "securityContext":{"seccompProfile":{"type":"RuntimeDefault"},"runAsNonRoot":true,"runAsUser":1000},
+    "containers":[{"name":"busybox","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}}}'
+  kubectl -n pulse-sys rollout status deployment pulse --timeout=120s
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  - https://kubernetes.io/docs/tutorials/security/seccomp/#create-pod-that-uses-the-container-runtime-default-seccomp-profile

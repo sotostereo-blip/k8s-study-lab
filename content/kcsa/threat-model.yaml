@@ -1,0 +1,502 @@
+domain: threat-model
+questions:
+  - id: kcsa-threat-001
+    difficulty: 1
+    type: single
+    question: "In a threat model, what is a trust boundary?"
+    options:
+      - id: a
+        text: "Where data passes between parts with different trust"
+      - id: b
+        text: "The maximum number of users that a cluster is allowed to trust"
+        why: "A trust boundary is not a number of users. It marks where the level of trust changes."
+      - id: c
+        text: "A firewall rule that blocks all external traffic"
+        why: "A firewall can protect a trust boundary, but the boundary itself is the place where trust changes, not a rule."
+      - id: d
+        text: "The list of CVEs that a team has accepted"
+        why: "That would be a risk register. Trust boundaries are about where components with different trust meet."
+    answer: [a]
+    explanation: |
+      Trust boundaries are where data or commands move between parts with
+      different levels of trust, for example from the internet to the API
+      server, from a container to the node kernel, or from a node to the
+      control plane. Threat modeling focuses on these points because attacks
+      usually cross them.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/
+    glossary: [trust-boundary, threat-model]
+
+  - id: kcsa-threat-002
+    difficulty: 2
+    type: single
+    question: "Why is direct network access to etcd so dangerous, even for someone with no RBAC rights?"
+    options:
+      - id: a
+        text: "It bypasses every API server check and the audit log"
+      - id: b
+        text: "etcd automatically grants cluster-admin to new clients"
+        why: "etcd knows nothing about Kubernetes roles. The danger is that it does not use RBAC at all."
+      - id: c
+        text: "etcd runs application code from the objects it stores"
+        why: "etcd only stores key-value data. It does not run code from the stored objects."
+      - id: d
+        text: "etcd traffic cannot be encrypted with TLS"
+        why: "etcd supports TLS for client and peer traffic, and it should always be turned on."
+    answer: [a]
+    explanation: |
+      In the normal data flow, only the API server talks to etcd. A client that
+      reaches etcd directly can read every Secret and change any object without
+      passing authentication, RBAC, admission policies or audit logging. Protect
+      etcd with mutual TLS and network isolation.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/
+      - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+    glossary: [etcd, trust-boundary, audit-log]
+
+  - id: kcsa-threat-003
+    difficulty: 2
+    type: single
+    question: "When a user runs `kubectl exec` into a Pod, what is the normal path of the request?"
+    options:
+      - id: a
+        text: "kubectl, then kubelet, then API server, then the container runtime"
+        why: "kubectl does not call the kubelet directly. All requests go to the API server first."
+      - id: b
+        text: "kubectl, then etcd, then kubelet, then the container runtime"
+        why: "etcd only stores state. It never forwards exec sessions to nodes."
+      - id: c
+        text: "kubectl, then API server, then kubelet, then the container runtime"
+      - id: d
+        text: "kubectl, then kube-proxy, then the container"
+        why: "kube-proxy handles Service traffic. It is not part of the exec path."
+    answer: [c]
+    explanation: |
+      The API server authenticates and authorizes the request (the user needs
+      the `pods/exec` right), then connects to the kubelet on the target node,
+      which asks the container runtime to run the command. This flow crosses
+      the trust boundary between the control plane and the node.
+    docs:
+      - https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/
+    glossary: [kubectl, kube-apiserver, kubelet, trust-boundary]
+
+  - id: kcsa-threat-004
+    difficulty: 2
+    type: single
+    question: "An attacker with root on a node writes a Pod manifest into `/etc/kubernetes/manifests/`. Why is this good persistence for them?"
+    options:
+      - id: a
+        text: "The Pod is stored in etcd with encryption, so no one can read it"
+        why: "Static Pods are defined by files on the node, not created through etcd. Encryption is not the reason."
+      - id: b
+        text: "The kubelet runs it as a static Pod, even if deleted through the API"
+      - id: c
+        text: "The scheduler gives it the highest priority on every node"
+        why: "Static Pods do not go through the scheduler at all. The local kubelet starts them from the file."
+      - id: d
+        text: "Admission controllers mark it as a trusted system Pod"
+        why: "The Pod is never created by an API request, so admission webhooks do not check it. That is a blind spot, not a trust mark."
+    answer: [b]
+    explanation: |
+      The kubelet watches its static Pod folder and runs every manifest there.
+      Deleting the mirror Pod through the API does not stop it; the kubelet
+      creates it again. Watch for changes to this folder on nodes.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
+    glossary: [static-pod, kubelet, attack-persistence]
+
+  - id: kcsa-threat-005
+    difficulty: 2
+    type: multiple
+    question: "Which TWO actions are examples of an attacker setting up persistence in a cluster?"
+    options:
+      - id: a
+        text: "Creating a CronJob that starts a backdoor container every hour"
+      - id: b
+        text: "Adding a mutating webhook that injects a malicious sidecar into new Pods"
+      - id: c
+        text: "Reading a Secret once to get a database password"
+        why: "This is credential access. It gives data but does not keep the attacker's access alive over time."
+      - id: d
+        text: "Scanning the Pod network to find open ports"
+        why: "Scanning is discovery. It helps plan the attack but does not leave anything behind that survives."
+      - id: e
+        text: "Deleting the API server audit log files"
+        why: "This is defense evasion: hiding traces. It does not create a new way back into the cluster."
+    answer: [a, b]
+    explanation: |
+      Persistence means keeping access after the first entry is fixed, for
+      example after a Pod restarts. CronJobs, DaemonSets, static Pods, mutating
+      webhooks and extra RBAC bindings are common methods. Audit logs and
+      regular reviews help find them.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+      - https://attack.mitre.org/matrices/enterprise/containers/
+    glossary: [attack-persistence, cronjob, admission-webhook]
+
+  - id: kcsa-threat-006
+    difficulty: 2
+    type: single
+    question: "An attacker created a DaemonSet named `kube-proxy-helper` in `kube-system` so their container runs on every node. Which source best shows who created it and when?"
+    options:
+      - id: a
+        text: "The container logs of the DaemonSet Pods"
+        why: "Container logs show what the app prints. They do not record which user created the DaemonSet."
+      - id: b
+        text: "The kube-apiserver audit logs"
+      - id: c
+        text: "The kube-scheduler metrics endpoint"
+        why: "Scheduler metrics count scheduling attempts and latency. They do not name the user who created objects."
+      - id: d
+        text: "The CoreDNS query logs"
+        why: "DNS logs show name lookups. They do not record API requests that create objects."
+    answer: [b]
+    explanation: |
+      Audit logs record every API request with the user, verb, resource and
+      time. They are the main way to find persistence created through the API,
+      such as new DaemonSets, CronJobs, webhooks or RoleBindings. Send them to
+      storage the attacker cannot change.
+    docs:
+      - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    glossary: [audit-log, daemonset, attack-persistence]
+
+  - id: kcsa-threat-007
+    difficulty: 1
+    type: single
+    question: "One container has a memory leak and uses all memory on its node, so other Pods are evicted. Which control prevents this?"
+    options:
+      - id: a
+        text: "Memory requests and limits on the container"
+      - id: b
+        text: "Adding a NetworkPolicy to the Namespace"
+        why: "NetworkPolicy controls traffic. It does not limit how much memory a container uses."
+      - id: c
+        text: "Running the container as a non-root user"
+        why: "A non-root user can still use all the node's memory. User IDs and memory limits are separate controls."
+      - id: d
+        text: "Pulling the image by digest"
+        why: "Pulling by digest fixes which image runs. It does not limit resource use."
+    answer: [a]
+    explanation: |
+      Without a memory limit, one container can starve the whole node. A limit
+      makes the kernel kill only that container when it goes over. A LimitRange
+      can set defaults for Pods that forget to set them.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - https://kubernetes.io/docs/concepts/policy/limit-range/
+    glossary: [limit, request, denial-of-service, limit-range]
+
+  - id: kcsa-threat-008
+    difficulty: 2
+    type: single
+    question: "A tenant's buggy script creates thousands of Pods and ConfigMaps in their Namespace. Which control limits the damage?"
+    options:
+      - id: a
+        text: "A PodDisruptionBudget for the Namespace"
+        why: "A PDB limits voluntary evictions of running Pods. It does not limit how many objects can be created."
+      - id: b
+        text: "A ResourceQuota with object count limits"
+      - id: c
+        text: "A RuntimeClass that uses gVisor"
+        why: "A sandboxed runtime improves isolation from the kernel. It does not cap the number of objects."
+      - id: d
+        text: "A readiness probe on every Pod"
+        why: "Readiness probes decide when a Pod gets traffic. They do not stop new objects from being created."
+    answer: [b]
+    explanation: |
+      A ResourceQuota can cap total CPU, memory and storage, and also object
+      counts such as `count/pods` or `count/configmaps` per Namespace. This
+      protects the nodes, the API server and etcd from one noisy tenant.
+    docs:
+      - https://kubernetes.io/docs/concepts/policy/resource-quotas/
+    glossary: [resource-quota, denial-of-service, namespace]
+
+  - id: kcsa-threat-009
+    difficulty: 3
+    type: single
+    question: "An attacker runs a fork bomb inside a container to use up all process IDs on the node. Which setting protects the node?"
+    options:
+      - id: a
+        text: "`podPidsLimit` in the KubeletConfiguration"
+      - id: b
+        text: "`imagePullPolicy: Always` on the Pod"
+        why: "The pull policy only decides when the image is downloaded. It does not limit processes."
+      - id: c
+        text: "A CPU limit on the container"
+        why: "A CPU limit slows the processes down but does not stop them from using all PIDs."
+      - id: d
+        text: "`terminationGracePeriodSeconds: 0`"
+        why: "This only changes how fast a Pod is killed after deletion. The fork bomb is not stopped by it."
+    answer: [a]
+    explanation: |
+      Process IDs are a shared node resource. The kubelet can limit the number
+      of PIDs per Pod with `podPidsLimit` (the `--pod-max-pids` flag) and keep
+      PIDs for the system. Without it, one Pod can stop the node from starting
+      new processes.
+    docs:
+      - https://kubernetes.io/docs/concepts/policy/pid-limiting/
+    glossary: [denial-of-service, kubelet, cgroups]
+
+  - id: kcsa-threat-010
+    difficulty: 2
+    type: single
+    question: "A buggy controller floods the API server with requests. Which built-in feature keeps the API server usable for other clients?"
+    options:
+      - id: a
+        text: "The NodeRestriction admission plugin"
+        why: "NodeRestriction limits what kubelets may change. It does not manage request load."
+      - id: b
+        text: "API Priority and Fairness"
+      - id: c
+        text: "The Horizontal Pod Autoscaler"
+        why: "The HPA scales workloads by metrics. It does not shape traffic to the API server."
+      - id: d
+        text: "Encryption at rest with KMS v2"
+        why: "Encryption protects stored data. It does nothing to limit request rates."
+    answer: [b]
+    explanation: |
+      API Priority and Fairness sorts requests into flows with FlowSchemas and
+      gives each priority level its own share of capacity. A noisy client
+      fills only its own queues, while system and other clients keep working.
+    docs:
+      - https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
+    glossary: [api-priority-fairness, denial-of-service, kube-apiserver]
+
+  - id: kcsa-threat-011
+    difficulty: 2
+    type: single
+    question: "An attacker uses a remote code execution bug in a web app. Which container setting makes it hardest for them to install tools and change files?"
+    options:
+      - id: a
+        text: "`imagePullPolicy: IfNotPresent`"
+        why: "This decides when the image is pulled. It does not limit what the attacker can do inside the container."
+      - id: b
+        text: "`readOnlyRootFilesystem: true`"
+      - id: c
+        text: "`restartPolicy: Always`"
+        why: "A restart policy restarts crashed containers. It does not stop the attacker from writing files while it runs."
+      - id: d
+        text: "`hostNetwork: true`"
+        why: "Host networking gives the container the node's network, which helps an attacker instead of stopping them."
+    answer: [b]
+    explanation: |
+      A read-only root filesystem stops the attacker from downloading tools or
+      changing app files, which is a common next step after code execution.
+      Combine it with a non-root user, dropped capabilities and a minimal
+      image for defense in depth.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    glossary: [security-context, defense-in-depth]
+
+  - id: kcsa-threat-012
+    difficulty: 2
+    type: single
+    question: "An attacker gets a shell in a Pod and reads `/var/run/secrets/kubernetes.io/serviceaccount/token`. How could this have been prevented for an app that never calls the API?"
+    options:
+      - id: a
+        text: "Set `automountServiceAccountToken: false`"
+      - id: b
+        text: "Mount the token with `readOnly: true`"
+        why: "The token is already mounted read-only. Reading it is enough for the attacker to use it."
+      - id: c
+        text: "Store the token in a ConfigMap instead"
+        why: "ConfigMaps are for non-sensitive data. Moving the token there would make it easier to read, not harder."
+      - id: d
+        text: "Use a NodePort Service for the app"
+        why: "The Service type affects inbound traffic only. It does not change which credentials are inside the Pod."
+    answer: [a]
+    explanation: |
+      By default each Pod gets a ServiceAccount token that lets it call the API
+      server. If the app does not need the API, turn off automounting so a
+      compromised container has no API credential. Apps that need the API
+      should use a ServiceAccount with minimal RBAC rights.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+      - https://kubernetes.io/docs/concepts/security/service-accounts/
+    glossary: [service-account-token, service-account, least-privilege]
+
+  - id: kcsa-threat-013
+    difficulty: 2
+    type: single
+    question: "An attacker on the Pod network can capture plain-text HTTP traffic between microservices. Which control stops them from reading it?"
+    options:
+      - id: a
+        text: "A ResourceQuota on the Namespace"
+        why: "Quotas limit resource use. They do not protect traffic on the network."
+      - id: b
+        text: "Mutual TLS between the services"
+      - id: c
+        text: "Running the Pods with a Guaranteed QoS class"
+        why: "QoS classes affect eviction under pressure. Traffic is still plain text."
+      - id: d
+        text: "Changing the Service type to ClusterIP"
+        why: "ClusterIP keeps the Service internal, but an attacker already inside the network can still read the traffic."
+    answer: [b]
+    explanation: |
+      Pod traffic is not encrypted by default. Mutual TLS, often provided by a
+      service mesh, encrypts traffic and lets each side prove its identity.
+      NetworkPolicies add another layer by limiting who can connect at all.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/security-checklist/
+    glossary: [mtls, service-mesh, microservices]
+
+  - id: kcsa-threat-014
+    difficulty: 2
+    type: single
+    question: "Which Linux capability, kept by default in many container runtimes, lets a compromised container craft raw packets for spoofing attacks?"
+    options:
+      - id: a
+        text: "`CAP_NET_RAW`"
+      - id: b
+        text: "`CAP_NET_BIND_SERVICE`"
+        why: "This capability only allows binding to ports below 1024. It does not allow crafting raw packets."
+      - id: c
+        text: "`CAP_CHOWN`"
+        why: "CHOWN allows changing file owners. It has nothing to do with network packets."
+      - id: d
+        text: "`CAP_SYS_TIME`"
+        why: "SYS_TIME allows changing the system clock. It is not in the default set and is not about packets."
+    answer: [a]
+    explanation: |
+      NET_RAW allows raw and packet sockets, which can be used for ARP or DNS
+      spoofing on the Pod network. Most apps do not need it. Drop all
+      capabilities and add back only what the app needs, as the Restricted
+      Pod Security profile requires.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [linux-capabilities, pod-security]
+
+  - id: kcsa-threat-015
+    difficulty: 2
+    type: single
+    question: "From a compromised Pod, an attacker finds that etcd port 2379 on a control plane node answers. What is the best fix?"
+    options:
+      - id: a
+        text: "Allow only the API server and require client certs"
+      - id: b
+        text: "Change etcd to listen on a non-standard port like 8080"
+        why: "Moving the port only hides it for a short time. A scan finds the new port, and access is still open."
+      - id: c
+        text: "Add a liveness probe to the attacker's Pod"
+        why: "Probes check application health. They do not block network access to etcd."
+      - id: d
+        text: "Turn on profiling on the API server"
+        why: "Profiling adds debug endpoints. It does not protect etcd and should be off in production."
+    answer: [a]
+    explanation: |
+      etcd should be reachable only by the API server (and other etcd members).
+      Use firewall rules so Pods and other hosts cannot reach ports 2379 and
+      2380, and require TLS client certificates. Then even a reachable port
+      does not accept unknown clients.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+      - https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/
+    glossary: [etcd, tls, attack-surface]
+
+  - id: kcsa-threat-016
+    difficulty: 1
+    type: single
+    question: "A developer says: \"Our Secrets are safe because the values are base64.\" What is wrong with this?"
+    options:
+      - id: a
+        text: "Nothing; base64 is a strong form of encryption"
+        why: "Base64 is not encryption at all. It uses no key and is reversed with one command."
+      - id: b
+        text: "Base64 is only safe when the cluster has one node"
+        why: "Node count has nothing to do with it. Base64 gives no protection in any cluster size."
+      - id: c
+        text: "Base64 is encoding, so anyone who can read it can decode it"
+      - id: d
+        text: "Base64 values are encrypted again by kubelet on each node"
+        why: "The kubelet does not encrypt Secret values. It keeps mounted Secrets in memory (tmpfs) on the node."
+    answer: [c]
+    explanation: |
+      Base64 only changes the format of the data. Anyone who can read the
+      Secret through the API, an etcd backup or etcd itself sees the value.
+      Protect Secrets with RBAC, encryption at rest and careful access to etcd.
+    docs:
+      - https://kubernetes.io/docs/concepts/configuration/secret/
+      - https://kubernetes.io/docs/concepts/security/secrets-good-practices/
+    glossary: [secret, encryption-at-rest]
+
+  - id: kcsa-threat-017
+    difficulty: 3
+    type: single
+    question: "A Role grants only the `list` and `watch` verbs on `secrets`, not `get`. Can the user read Secret values?"
+    options:
+      - id: a
+        text: "No, reading values always needs the `get` verb"
+        why: "`list` returns the full objects, including their data. `get` is not needed to see the values."
+      - id: b
+        text: "Yes, because `list` returns the full Secret objects"
+      - id: c
+        text: "Only if the Secrets are of type `Opaque`"
+        why: "The Secret type does not matter. A list response includes the data of every type."
+      - id: d
+        text: "Only if encryption at rest is turned off"
+        why: "Encryption at rest protects data in etcd. The API server decrypts Secrets before it returns them to an authorized user."
+    answer: [b]
+    explanation: |
+      A list or watch response contains the complete objects, so these verbs
+      reveal Secret values just like `get`. Treat `list` and `watch` on Secrets
+      as equally sensitive when you design RBAC.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/rbac-good-practices/
+    glossary: [rbac, secret, least-privilege]
+
+  - id: kcsa-threat-018
+    difficulty: 3
+    type: single
+    question: "A user can only create Pods in Namespace `team-a`, with no rights on Secrets. Why is this still a privilege escalation risk?"
+    options:
+      - id: a
+        text: "Pods can be scheduled onto any cluster in the organization"
+        why: "A Pod belongs to one cluster. The risk lies in what the Pod can use inside the Namespace."
+      - id: b
+        text: "Creating Pods also gives the user cluster-admin"
+        why: "No RBAC right is granted by creating a Pod. The risk comes from what the Pod itself can access."
+      - id: c
+        text: "A new Pod can mount any Secret or ServiceAccount in `team-a`"
+      - id: d
+        text: "Pods always run with the `system:masters` group"
+        why: "Pods run with their ServiceAccount identity, not system:masters. That group is only for client certificates of admins."
+    answer: [c]
+    explanation: |
+      A Pod can mount any Secret in its Namespace and run as any ServiceAccount
+      there, then print the values or use the token. So the right to create
+      workloads gives indirect access to all Secrets and ServiceAccounts in
+      that Namespace. Grant Pod creation as carefully as access to Secrets.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/rbac-good-practices/
+    glossary: [privilege-escalation, rbac, service-account, secret]
+
+  - id: kcsa-threat-019
+    difficulty: 2
+    type: multiple
+    question: "Which TWO container settings help prevent privilege escalation inside the container?"
+    options:
+      - id: a
+        text: "`allowPrivilegeEscalation: false`"
+      - id: b
+        text: "`capabilities: { drop: [\"ALL\"] }`"
+      - id: c
+        text: "`hostPID: true`"
+        why: "Sharing the host PID namespace lets the container see node processes. It increases risk."
+      - id: d
+        text: "`privileged: true`"
+        why: "Privileged mode gives all capabilities and host device access, which is the opposite of what you want."
+      - id: e
+        text: "`imagePullPolicy: Always`"
+        why: "The pull policy affects image downloads only. It does not change the process's rights."
+    answer: [a, b]
+    explanation: |
+      `allowPrivilegeEscalation: false` sets the no_new_privs flag, so setuid
+      binaries cannot give a process more rights. Dropping all capabilities
+      removes root powers the app does not need. The Restricted Pod Security
+      profile requires both.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+      - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    glossary: [privilege-escalation, linux-capabilities, security-context]

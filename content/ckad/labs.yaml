@@ -1,0 +1,15 @@
+# CKAD - Certified Kubernetes Application Developer (Kubernetes v1.37 curriculum).
+# Domains and weights from the Linux Foundation CKAD page (checked 2026-11).
+id: ckad
+name: Certified Kubernetes Application Developer
+exam_minutes: 120
+passing_score: 66
+domains:
+  - { id: design-build, name: "Application Design and Build", weight: 20 }
+  - { id: deployment, name: "Application Deployment", weight: 20 }
+  - { id: observability, name: "Application Observability and Maintenance", weight: 15 }
+  - { id: environment, name: "Application Environment, Configuration and Security", weight: 25 }
+  - { id: networking, name: "Services and Networking", weight: 20 }
+environments:
+  single-node: { name: "1 node (controlplane)", nodes: 1 }
+mock_environment: single-node

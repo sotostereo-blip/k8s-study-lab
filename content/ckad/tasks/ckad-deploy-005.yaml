@@ -1,0 +1,45 @@
+id: ckad-deploy-005
+title: Helm rollback and upgrade
+domain: deployment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  mkdir -p /root/charts && cd /root/charts && helm create ticketing >/dev/null
+  sed -i 's/^  tag: ""/  tag: "1.27-alpine"/' ticketing/values.yaml
+  helm install ticketing /root/charts/ticketing -n helm-apps --create-namespace --wait --timeout 4m >/dev/null
+  helm upgrade ticketing /root/charts/ticketing -n helm-apps --set image.tag=1.99-broken >/dev/null
+task: |
+  The Helm release `ticketing` (namespace `helm-apps`, chart in `/root/charts/ticketing`)
+  was upgraded a moment ago and the new Pods cannot pull their image.
+
+  1. Use Helm to **roll back** the release to revision `1`.
+  2. Then **upgrade** the release again so it runs `3` replicas (`replicaCount=3`), still
+     with the working image (`nginx:1.27-alpine`).
+
+  Tip: `helm history`, `helm get values` and `helm show values` help you.
+checks:
+  - name: Release `ticketing` is deployed
+    run: 'helm -n helm-apps status ticketing | grep -q "STATUS: deployed"'
+    guard: true   # the broken upgrade is also "deployed"; must stay true
+  - name: The release history has a rollback to revision 1
+    run: helm -n helm-apps history ticketing -o json | jq -e '.[] | select(.description=="Rollback to 1")'
+  - name: The latest revision came after the rollback (an upgrade)
+    run: |
+      helm -n helm-apps history ticketing -o json | jq -e '
+        (map(select(.description=="Rollback to 1")) | max_by(.revision).revision) as $r
+        | $r != null and (max_by(.revision) | .revision > $r and .status=="deployed")'
+  - name: Deployment `ticketing` has 3 ready replicas with nginx:1.27-alpine
+    run: |
+      d=$(kubectl -n helm-apps get deploy ticketing -o json)
+      [ "$(echo "$d" | jq .status.readyReplicas)" = 3 ] && [ "$(echo "$d" | jq .status.updatedReplicas)" = 3 ] &&
+      [ "$(echo "$d" | jq -r '.spec.template.spec.containers[0].image')" = nginx:1.27-alpine ]
+solution: |
+  helm -n helm-apps history ticketing
+  helm -n helm-apps rollback ticketing 1
+  helm -n helm-apps upgrade ticketing /root/charts/ticketing --reuse-values --set replicaCount=3
+  helm -n helm-apps history ticketing
+  kubectl -n helm-apps get deploy ticketing
+docs:
+  - https://helm.sh/docs/helm/helm_rollback/
+  - https://helm.sh/docs/helm/helm_upgrade/

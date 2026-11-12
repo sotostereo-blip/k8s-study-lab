@@ -1,0 +1,56 @@
+id: cks-runtime-003
+title: Read-only root file system for nginx
+domain: runtime
+difficulty: 2
+minutes: 10
+environment: secure-node
+setup: |
+  kubectl create namespace immutable-zone
+  kubectl -n immutable-zone create deployment edge-cache --image=nginx:1.27-alpine
+  kubectl -n immutable-zone rollout status deployment edge-cache --timeout=180s
+task: |
+  If an attacker gets into a container, a writable file system lets them download tools or
+  change the website. Make the Deployment `edge-cache` in namespace `immutable-zone`
+  **immutable at runtime**:
+
+  1. Set `readOnlyRootFilesystem: true` on the container.
+  2. nginx still needs to write to `/var/cache/nginx`, `/run` and `/tmp`: mount an
+     `emptyDir` volume on each of these paths.
+
+  The Deployment must keep running and nginx must answer on port 80.
+checks:
+  - name: The container has readOnlyRootFilesystem true
+    run: '[ "$(kubectl -n immutable-zone get deploy edge-cache -o jsonpath="{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}")" = true ]'
+  - name: Deployment edge-cache has 1 ready replica
+    run: '[ "$(kubectl -n immutable-zone get deploy edge-cache -o jsonpath="{.status.readyReplicas}")" = 1 ]'
+    guard: true
+  - name: nginx answers inside the Pod
+    run: kubectl -n immutable-zone exec deploy/edge-cache -- wget -qO- -T 3 http://127.0.0.1/ | grep -qi nginx
+    guard: true
+  - name: The web root cannot be changed in the running container
+    run: '! kubectl -n immutable-zone exec deploy/edge-cache -- touch /usr/share/nginx/html/hacked.html'
+solution: |
+  kubectl -n immutable-zone edit deployment edge-cache
+  #   containers:
+  #   - name: nginx
+  #     securityContext:
+  #       readOnlyRootFilesystem: true
+  #     volumeMounts:
+  #     - { name: cache, mountPath: /var/cache/nginx }
+  #     - { name: run,   mountPath: /run }
+  #     - { name: tmp,   mountPath: /tmp }
+  #   volumes:
+  #   - { name: cache, emptyDir: {} }
+  #   - { name: run,   emptyDir: {} }
+  #   - { name: tmp,   emptyDir: {} }
+  kubectl -n immutable-zone rollout status deployment edge-cache
+  kubectl -n immutable-zone logs deploy/edge-cache      # no "Read-only file system" errors
+auto_solution: |
+  kubectl -n immutable-zone patch deployment edge-cache --type=strategic -p '{"spec":{"template":{"spec":{
+    "containers":[{"name":"nginx","securityContext":{"readOnlyRootFilesystem":true},
+      "volumeMounts":[{"name":"cache","mountPath":"/var/cache/nginx"},{"name":"run","mountPath":"/run"},{"name":"tmp","mountPath":"/tmp"}]}],
+    "volumes":[{"name":"cache","emptyDir":{}},{"name":"run","emptyDir":{}},{"name":"tmp","emptyDir":{}}]}}}}'
+  kubectl -n immutable-zone rollout status deployment edge-cache --timeout=120s
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  - https://kubernetes.io/docs/concepts/storage/volumes/#emptydir

@@ -1,0 +1,54 @@
+id: ckad-env-002
+title: RBAC for a CI/CD ServiceAccount
+domain: environment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace ci-cd
+task: |
+  A pipeline in namespace `ci-cd` must deploy apps there, and nothing more.
+
+  1. Create the ServiceAccount `deployer` in `ci-cd`.
+  2. Create the Role `deployer-role` in `ci-cd` that allows:
+     - `get`, `list`, `watch`, `create`, `update`, `patch` on `deployments` (API group `apps`)
+     - `get`, `list` on `pods`
+  3. Bind the Role to the ServiceAccount with the RoleBinding `deployer-binding`.
+
+  Check your work with `kubectl auth can-i ... --as=system:serviceaccount:ci-cd:deployer`.
+  The ServiceAccount must **not** be able to delete Deployments, read Secrets, or work in
+  other namespaces.
+checks:
+  - name: ServiceAccount `deployer` exists in ci-cd
+    run: kubectl -n ci-cd get serviceaccount deployer
+  - name: RoleBinding `deployer-binding` binds Role `deployer-role` to the ServiceAccount
+    run: |
+      kubectl -n ci-cd get rolebinding deployer-binding -o json | jq -e '.roleRef.kind=="Role" and .roleRef.name=="deployer-role"
+        and (.subjects[] | select(.kind=="ServiceAccount" and .name=="deployer" and .namespace=="ci-cd"))'
+  - name: deployer can create and patch Deployments in ci-cd
+    run: |
+      a=system:serviceaccount:ci-cd:deployer
+      [ "$(kubectl auth can-i create deployments.apps -n ci-cd --as=$a)" = yes ] &&
+      [ "$(kubectl auth can-i patch deployments.apps -n ci-cd --as=$a)" = yes ] &&
+      [ "$(kubectl auth can-i watch deployments.apps -n ci-cd --as=$a)" = yes ]
+  - name: deployer can list Pods in ci-cd
+    run: '[ "$(kubectl auth can-i list pods -n ci-cd --as=system:serviceaccount:ci-cd:deployer)" = yes ]'
+  - name: deployer cannot delete Deployments, read Secrets or create Deployments in default
+    run: |
+      a=system:serviceaccount:ci-cd:deployer
+      [ "$(kubectl auth can-i delete deployments.apps -n ci-cd --as=$a)" = no ] &&
+      [ "$(kubectl auth can-i get secrets -n ci-cd --as=$a)" = no ] &&
+      [ "$(kubectl auth can-i create deployments.apps -n default --as=$a)" = no ]
+    guard: true
+solution: |
+  kubectl -n ci-cd create serviceaccount deployer
+  kubectl -n ci-cd create role deployer-role \
+    --verb=get,list,watch,create,update,patch --resource=deployments.apps
+  # add the pods rule: edit the Role, or create it from YAML with two rules
+  kubectl -n ci-cd patch role deployer-role --type=json \
+    -p '[{"op":"add","path":"/rules/-","value":{"apiGroups":[""],"resources":["pods"],"verbs":["get","list"]}}]'
+  kubectl -n ci-cd create rolebinding deployer-binding --role=deployer-role --serviceaccount=ci-cd:deployer
+  kubectl auth can-i --list -n ci-cd --as=system:serviceaccount:ci-cd:deployer
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+  - https://kubernetes.io/docs/reference/kubectl/generated/kubectl_auth/kubectl_auth_can-i/

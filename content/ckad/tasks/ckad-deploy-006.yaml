@@ -1,0 +1,84 @@
+id: ckad-deploy-006
+title: Kustomize overlay with a ConfigMap generator
+domain: deployment
+difficulty: 3
+minutes: 12
+environment: single-node
+setup: |
+  mkdir -p /root/notes-api/base
+  cat > /root/notes-api/base/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: notes-api
+  spec:
+    replicas: 1
+    selector:
+      matchLabels: { app: notes-api }
+    template:
+      metadata:
+        labels: { app: notes-api }
+      spec:
+        containers:
+        - name: api
+          image: nginx:1.27-alpine
+          envFrom:
+          - configMapRef:
+              name: notes-config
+  YAML
+  printf 'resources:\n- deployment.yaml\n' > /root/notes-api/base/kustomization.yaml
+task: |
+  The Kustomize base `/root/notes-api/base` has a Deployment `notes-api` that reads its
+  settings from a ConfigMap `notes-config` (which does not exist yet).
+
+  Create a **staging** overlay in `/root/notes-api/overlays/staging` that uses the base and:
+
+  - deploys everything into the namespace `notes-staging`
+  - adds the label `env=staging` to all resources
+  - sets `2` replicas
+  - **generates** the ConfigMap `notes-config` (`configMapGenerator`) with
+    `LOG_LEVEL=info` and `FEATURE_SEARCH=on`
+
+  Apply it with `kubectl apply -k`. Do not edit the base.
+checks:
+  - name: The overlay builds with kubectl kustomize
+    run: kubectl kustomize /root/notes-api/overlays/staging >/dev/null
+  - name: Deployment `notes-api` in `notes-staging` has 2 ready replicas and label env=staging
+    run: |
+      d=$(kubectl -n notes-staging get deploy notes-api -o json)
+      [ "$(echo "$d" | jq .status.readyReplicas)" = 2 ] && [ "$(echo "$d" | jq -r .metadata.labels.env)" = staging ]
+  - name: The Deployment uses a generated ConfigMap (notes-config-<hash>) with LOG_LEVEL=info
+    run: |
+      cm=$(kubectl -n notes-staging get deploy notes-api -o jsonpath='{.spec.template.spec.containers[0].envFrom[0].configMapRef.name}')
+      case "$cm" in notes-config-?*) ;; *) exit 1 ;; esac
+      [ "$(kubectl -n notes-staging get cm "$cm" -o jsonpath='{.data.LOG_LEVEL}')" = info ] &&
+      [ "$(kubectl -n notes-staging get cm "$cm" -o jsonpath='{.metadata.labels.env}')" = staging ]
+  - name: The running Pods see FEATURE_SEARCH=on
+    run: '[ "$(kubectl -n notes-staging exec deploy/notes-api -- printenv FEATURE_SEARCH)" = on ]'
+  - name: The base was not changed
+    run: |
+      grep -q "replicas: 1" /root/notes-api/base/deployment.yaml && ! grep -q "namespace" /root/notes-api/base/deployment.yaml
+    guard: true
+solution: |
+  mkdir -p /root/notes-api/overlays/staging
+  cat > /root/notes-api/overlays/staging/kustomization.yaml <<'YAML'
+  resources:
+  - ../../base
+  namespace: notes-staging
+  labels:
+  - pairs:
+      env: staging
+  replicas:
+  - name: notes-api
+    count: 2
+  configMapGenerator:
+  - name: notes-config
+    literals:
+    - LOG_LEVEL=info
+    - FEATURE_SEARCH=on
+  YAML
+  kubectl create namespace notes-staging
+  kubectl kustomize /root/notes-api/overlays/staging     # preview: the ConfigMap name gets a hash
+  kubectl apply -k /root/notes-api/overlays/staging
+docs:
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/

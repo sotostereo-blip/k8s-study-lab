@@ -1,0 +1,55 @@
+id: cks-harden-001
+title: Remove cluster-admin from a ServiceAccount
+domain: cluster-hardening
+difficulty: 2
+minutes: 8
+environment: secure-node
+setup: |
+  kubectl create namespace reports
+  kubectl -n reports create serviceaccount report-runner
+  kubectl create clusterrolebinding report-runner-admin --clusterrole=cluster-admin \
+    --serviceaccount=reports:report-runner
+  kubectl -n reports create configmap report-settings --from-literal=format=pdf
+  kubectl -n reports create deployment report-runner --image=busybox:1.36 -- sleep 3600
+  kubectl -n reports set serviceaccount deployment report-runner report-runner
+  kubectl -n reports rollout status deployment report-runner --timeout=180s
+task: |
+  The Deployment `report-runner` in namespace `reports` uses the ServiceAccount
+  `report-runner`. Somebody gave this ServiceAccount **cluster-admin** for the whole cluster.
+  The application only needs to **read ConfigMaps** in its own namespace.
+
+  1. Find and delete the binding that gives `report-runner` cluster-admin.
+  2. Create a Role `report-reader` in `reports` that allows only `get`, `list` and `watch`
+     on `configmaps`.
+  3. Bind it to the ServiceAccount with a RoleBinding called `report-reader`.
+
+  Tip: `kubectl auth can-i --list --as=system:serviceaccount:reports:report-runner -n reports`
+checks:
+  - name: report-runner can list ConfigMaps in reports
+    run: '[ "$(kubectl auth can-i list configmaps -n reports --as=system:serviceaccount:reports:report-runner)" = yes ]'
+    guard: true
+  - name: report-runner cannot delete nodes
+    run: '[ "$(kubectl auth can-i delete nodes --as=system:serviceaccount:reports:report-runner)" = no ]'
+  - name: report-runner cannot read Secrets in reports
+    run: '[ "$(kubectl auth can-i get secrets -n reports --as=system:serviceaccount:reports:report-runner)" = no ]'
+  - name: report-runner cannot list ConfigMaps in other namespaces
+    run: '[ "$(kubectl auth can-i list configmaps -n default --as=system:serviceaccount:reports:report-runner)" = no ]'
+  - name: Role report-reader is bound to report-runner by RoleBinding report-reader
+    run: |
+      kubectl -n reports get rolebinding report-reader -o json | jq -e '
+        .roleRef.kind == "Role" and .roleRef.name == "report-reader"
+        and ([.subjects[] | select(.kind == "ServiceAccount" and .name == "report-runner")] | length > 0)'
+  - name: Deployment report-runner still runs
+    run: '[ "$(kubectl -n reports get deploy report-runner -o jsonpath="{.status.availableReplicas}")" = 1 ]'
+    guard: true
+solution: |
+  # which bindings point to the ServiceAccount?
+  kubectl get clusterrolebindings -o wide | grep report-runner
+  kubectl delete clusterrolebinding report-runner-admin
+  kubectl -n reports create role report-reader --verb=get,list,watch --resource=configmaps
+  kubectl -n reports create rolebinding report-reader --role=report-reader \
+    --serviceaccount=reports:report-runner
+  kubectl auth can-i --list -n reports --as=system:serviceaccount:reports:report-runner
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+  - https://kubernetes.io/docs/concepts/security/rbac-good-practices/

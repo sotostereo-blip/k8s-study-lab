@@ -1,0 +1,66 @@
+id: ckad-obs-004
+title: Read container logs, including a crashed container
+domain: observability
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  kubectl create namespace accounting
+  code=$(head -c 3 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  cat <<YAML | kubectl apply -f -
+  apiVersion: v1
+  kind: Pod
+  metadata: { name: ledger-worker, namespace: accounting }
+  spec:
+    containers:
+    - name: worker
+      image: busybox:1.36
+      command: ["sh", "-c", "echo worker starting; sleep 4; echo 'FATAL: ledger lock held by job ${code}'; exit 1"]
+    - name: audit
+      image: busybox:1.36
+      command:
+      - sh
+      - -c
+      - |
+        echo "INFO audit started"
+        echo "ERROR invoice 1042 total does not match"
+        echo "INFO 300 entries checked"
+        echo "ERROR invoice 1077 missing currency"
+        echo "WARN slow query 2.1s"
+        echo "ERROR invoice 1090 duplicated id"
+        sleep 3600
+  YAML
+task: |
+  The Pod `ledger-worker` in namespace `accounting` has two containers: `worker` and `audit`.
+
+  1. Save **only the lines that contain `ERROR`** from the logs of the `audit` container
+     to `/root/logs/audit-errors.txt`.
+  2. The `worker` container keeps crashing. Write the **last line it printed before it
+     crashed** to `/root/logs/worker-crash.txt`.
+checks:
+  - name: /root/logs/audit-errors.txt has exactly the ERROR lines of container audit
+    run: |
+      [ -s /root/logs/audit-errors.txt ] &&
+      diff <(kubectl -n accounting logs ledger-worker -c audit | grep ERROR) /root/logs/audit-errors.txt
+  - name: /root/logs/worker-crash.txt has the last line of the crashed worker
+    run: |
+      want=$(kubectl -n accounting logs ledger-worker -c worker --previous | tail -1)
+      [ -n "$want" ] && [ "$(cat /root/logs/worker-crash.txt)" = "$want" ]
+solution: |
+  mkdir -p /root/logs
+  kubectl -n accounting get pod ledger-worker          # RESTARTS > 0
+  kubectl -n accounting logs ledger-worker -c audit | grep ERROR > /root/logs/audit-errors.txt
+  # the current worker may show only "worker starting": read the PREVIOUS (crashed) container
+  kubectl -n accounting logs ledger-worker -c worker --previous
+  kubectl -n accounting logs ledger-worker -c worker --previous | tail -1 > /root/logs/worker-crash.txt
+auto_solution: |
+  mkdir -p /root/logs
+  kubectl -n accounting logs ledger-worker -c audit | grep ERROR > /root/logs/audit-errors.txt
+  for i in $(seq 30); do
+    kubectl -n accounting logs ledger-worker -c worker --previous 2>/dev/null | grep -q FATAL && break
+    sleep 3
+  done
+  kubectl -n accounting logs ledger-worker -c worker --previous | tail -1 > /root/logs/worker-crash.txt
+docs:
+  - https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/
+  - https://kubernetes.io/docs/concepts/cluster-administration/logging/

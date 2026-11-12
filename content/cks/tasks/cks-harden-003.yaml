@@ -1,0 +1,106 @@
+id: cks-harden-003
+title: A read-only user with a client certificate
+domain: cluster-hardening
+difficulty: 3
+minutes: 15
+environment: secure-node
+setup: |
+  kubectl create namespace audit-zone
+  kubectl -n audit-zone run audit-target --image=busybox:1.36 -- sleep 3600
+  kubectl -n audit-zone create secret generic audit-key --from-literal=key=do-not-share
+  mkdir -p /root/amy
+task: |
+  A new auditor, **auditor-amy**, needs to **look at Pods** in the namespace `audit-zone`
+  and nothing more. Give her access with a client certificate:
+
+  1. Create a private key `/root/amy/amy.key` and a certificate signing request with the
+     Common Name `auditor-amy`.
+  2. Create a Kubernetes `CertificateSigningRequest` called `auditor-amy`
+     (signer `kubernetes.io/kube-apiserver-client`, usage `client auth`), approve it and
+     save the signed certificate as `/root/amy/amy.crt`.
+  3. Create the kubeconfig file `/root/amy/amy.kubeconfig` for the user `auditor-amy`
+     (same API server and CA as your own kubeconfig, certificate and key embedded).
+  4. Create a Role `pod-reader` in `audit-zone` (`get`, `list`, `watch` on `pods`) and a
+     RoleBinding `auditor-amy-pods` that gives it to the user `auditor-amy`.
+
+  Test: `kubectl --kubeconfig /root/amy/amy.kubeconfig -n audit-zone get pods`
+checks:
+  - name: CSR auditor-amy is approved and has a certificate
+    run: |
+      kubectl get csr auditor-amy -o json | jq -e '
+        ([.status.conditions[]? | select(.type == "Approved")] | length > 0) and ((.status.certificate // "") != "")'
+  - name: amy.kubeconfig authenticates as auditor-amy
+    run: '[ "$(kubectl --kubeconfig /root/amy/amy.kubeconfig auth whoami -o jsonpath="{.status.userInfo.username}")" = auditor-amy ]'
+  - name: auditor-amy can list Pods in audit-zone
+    run: kubectl --kubeconfig /root/amy/amy.kubeconfig -n audit-zone get pods audit-target
+  - name: auditor-amy cannot read Secrets or delete Pods in audit-zone
+    run: |
+      [ "$(kubectl auth can-i get secrets -n audit-zone --as=auditor-amy)" = no ] &&
+      [ "$(kubectl auth can-i delete pods -n audit-zone --as=auditor-amy)" = no ]
+    guard: true
+  - name: auditor-amy cannot list Pods in other namespaces
+    run: '[ "$(kubectl auth can-i list pods -n default --as=auditor-amy)" = no ]'
+    guard: true
+solution: |
+  cd /root/amy
+  openssl genrsa -out amy.key 2048
+  openssl req -new -key amy.key -subj "/CN=auditor-amy" -out amy.csr
+  cat <<YAML | kubectl apply -f -
+  apiVersion: certificates.k8s.io/v1
+  kind: CertificateSigningRequest
+  metadata:
+    name: auditor-amy
+  spec:
+    request: $(base64 < amy.csr | tr -d '\n')
+    signerName: kubernetes.io/kube-apiserver-client
+    expirationSeconds: 86400
+    usages: [client auth]
+  YAML
+  kubectl certificate approve auditor-amy
+  kubectl get csr auditor-amy -o jsonpath='{.status.certificate}' | base64 -d > amy.crt
+
+  # kubeconfig: copy the cluster from your own config
+  kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > ca.crt
+  SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+  K="--kubeconfig=amy.kubeconfig"
+  kubectl config set-cluster lab $K --server=$SERVER --certificate-authority=ca.crt --embed-certs
+  kubectl config set-credentials auditor-amy $K --client-certificate=amy.crt --client-key=amy.key --embed-certs
+  kubectl config set-context auditor-amy $K --cluster=lab --user=auditor-amy
+  kubectl config use-context auditor-amy $K
+
+  kubectl -n audit-zone create role pod-reader --verb=get,list,watch --resource=pods
+  kubectl -n audit-zone create rolebinding auditor-amy-pods --role=pod-reader --user=auditor-amy
+  kubectl --kubeconfig amy.kubeconfig -n audit-zone get pods
+auto_solution: |
+  set -e
+  cd /root/amy
+  openssl genrsa -out amy.key 2048 2>/dev/null
+  openssl req -new -key amy.key -subj "/CN=auditor-amy" -out amy.csr
+  cat <<YAML | kubectl apply -f -
+  apiVersion: certificates.k8s.io/v1
+  kind: CertificateSigningRequest
+  metadata:
+    name: auditor-amy
+  spec:
+    request: $(base64 < amy.csr | tr -d '\n')
+    signerName: kubernetes.io/kube-apiserver-client
+    expirationSeconds: 86400
+    usages: [client auth]
+  YAML
+  kubectl certificate approve auditor-amy
+  for i in $(seq 20); do
+    c=$(kubectl get csr auditor-amy -o jsonpath='{.status.certificate}'); [ -n "$c" ] && break; sleep 1
+  done
+  echo "$c" | base64 -d > amy.crt
+  kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > ca.crt
+  SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+  K="--kubeconfig=amy.kubeconfig"
+  kubectl config set-cluster lab $K --server=$SERVER --certificate-authority=ca.crt --embed-certs
+  kubectl config set-credentials auditor-amy $K --client-certificate=amy.crt --client-key=amy.key --embed-certs
+  kubectl config set-context auditor-amy $K --cluster=lab --user=auditor-amy
+  kubectl config use-context auditor-amy $K
+  kubectl -n audit-zone create role pod-reader --verb=get,list,watch --resource=pods
+  kubectl -n audit-zone create rolebinding auditor-amy-pods --role=pod-reader --user=auditor-amy
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#normal-user
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/

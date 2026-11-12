@@ -1,0 +1,86 @@
+id: ckad-net-002
+title: Default deny, DNS egress and a namespace selector
+domain: networking
+difficulty: 3
+minutes: 14
+environment: single-node
+setup: |
+  kubectl create namespace payments-secure
+  kubectl create namespace frontend-team
+  kubectl label namespace frontend-team team=frontend
+  kubectl create namespace guest-team
+  kubectl -n payments-secure run api --image=nginx:1.27-alpine --labels=app=api --port=80 --expose
+  kubectl -n payments-secure run tester --image=busybox:1.36 --labels=app=tester -- sleep 3600
+  kubectl -n frontend-team run fe-client --image=busybox:1.36 -- sleep 3600
+  kubectl -n guest-team run outsider --image=busybox:1.36 -- sleep 3600
+  for n in payments-secure frontend-team guest-team; do kubectl -n $n wait --for=condition=Ready pod --all --timeout=180s; done
+task: |
+  Secure the namespace `payments-secure` (Pods `api` with label `app=api` and Service `api`
+  on port 80, and `tester`). Create three NetworkPolicies there:
+
+  1. `default-deny-all`: applies to **all** Pods and denies all **Ingress and Egress**.
+  2. `allow-dns`: all Pods may send traffic (egress) to port `53` over **UDP and TCP**, so
+     DNS still works.
+  3. `api-from-frontend`: Pods with `app=api` accept traffic on TCP `80` from all Pods in
+     namespaces with the label `team=frontend`.
+
+  Result: `fe-client` (namespace `frontend-team`) can reach `api.payments-secure`;
+  `outsider` (namespace `guest-team`) cannot; `tester` cannot reach `api` either
+  (its egress is denied), but it can still resolve DNS names.
+checks:
+  - name: default-deny-all selects all Pods and has policyTypes Ingress and Egress
+    run: |
+      kubectl -n payments-secure get networkpolicy default-deny-all -o json | jq -e '(.spec.podSelector == {})
+        and (.spec.policyTypes | index("Ingress")) and (.spec.policyTypes | index("Egress"))
+        and ((.spec.ingress // []) | length == 0) and ((.spec.egress // []) | length == 0)'
+  - name: allow-dns allows egress on port 53 UDP and TCP
+    run: |
+      kubectl -n payments-secure get networkpolicy allow-dns -o json | jq -e '[.spec.egress[].ports[]? | select(.port==53) | .protocol] as $p
+        | ($p | index("UDP")) and ($p | index("TCP"))'
+  - name: tester can NOT reach api (egress denied)
+    run: '! kubectl -n payments-secure exec tester -- wget -qO- -T 3 http://api'
+  - name: outsider (guest-team) can NOT reach api
+    run: '! kubectl -n guest-team exec outsider -- wget -qO- -T 3 http://api.payments-secure'
+  - name: fe-client (frontend-team) can reach api
+    run: kubectl -n frontend-team exec fe-client -- wget -qO- -T 3 http://api.payments-secure | grep -qi nginx
+    guard: true
+  - name: tester can still resolve DNS names
+    run: kubectl -n payments-secure exec tester -- nslookup -timeout=3 api.payments-secure.svc.cluster.local
+    guard: true
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: { name: default-deny-all, namespace: payments-secure }
+  spec:
+    podSelector: {}
+    policyTypes: [Ingress, Egress]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: { name: allow-dns, namespace: payments-secure }
+  spec:
+    podSelector: {}
+    policyTypes: [Egress]
+    egress:
+    - ports:
+      - { protocol: UDP, port: 53 }
+      - { protocol: TCP, port: 53 }
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: { name: api-from-frontend, namespace: payments-secure }
+  spec:
+    podSelector:
+      matchLabels: { app: api }
+    policyTypes: [Ingress]
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels: { team: frontend }
+      ports:
+      - { protocol: TCP, port: 80 }
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-policies
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/#behavior-of-to-and-from-selectors

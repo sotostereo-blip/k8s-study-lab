@@ -341,3 +341,14 @@ def test_terraform_track_has_no_mock_and_starts_without_kubernetes(tmp_path):
     assert s["status"] == "ready" and s["environment"] == "terraform"
     assert any("lab-ready" in sc for sc in docker.scripts)        # waited for LocalStack, not for nodes
     assert any("terraform/compose.yaml" in " ".join(c) for c in docker.calls)
+
+
+def test_mock_exam_uses_the_track_environment(tmp_path):
+    for track, env in [("ckad", "single-node"), ("cks", "secure-node"), ("cka", "two-node")]:
+        docker = FakeDocker()
+        client = lab_client(tmp_path / track, docker)
+        s = client.post("/api/mock/start", json={"track_id": track, "tasks": 4}).json()
+        assert len(s["tasks"]) == 4 and all(t["id"].startswith(track) for t in s["tasks"])
+        assert wait_ready(client)["environment"] == env
+        assert client.get(f"/api/mock/current?track_id={track}").json()["session_id"] == s["session_id"]
+        assert client.get("/api/mock/current?track_id=kcna-none").json() is None

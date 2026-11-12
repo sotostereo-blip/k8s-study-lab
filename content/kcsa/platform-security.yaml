@@ -1,0 +1,500 @@
+domain: platform-security
+questions:
+  - id: kcsa-platform-001
+    difficulty: 1
+    type: single
+    question: "What is a Software Bill of Materials (SBOM)?"
+    options:
+      - id: a
+        text: "A bill that shows the cloud cost of each workload"
+        why: "Cost reports belong to FinOps. An SBOM is about software components, not money."
+      - id: b
+        text: "A signed statement of who built an image and how"
+        why: "That describes build provenance (an attestation), which SLSA focuses on. An SBOM lists the components inside the software."
+      - id: c
+        text: "A report of known vulnerabilities found in an image"
+        why: "That is the output of a vulnerability scanner. A scanner can use an SBOM as input, but the SBOM itself is only an inventory."
+      - id: d
+        text: "A list of the components and dependencies in software"
+    answer: [d]
+    explanation: |
+      An SBOM is an inventory of the packages, libraries and versions that
+      make up a piece of software, such as a container image. When a new CVE
+      is published, you can search your SBOMs to find affected images quickly.
+    docs:
+      - https://kubernetes.io/docs/concepts/security/cloud-native-security/
+      - https://spdx.dev/
+    glossary: [sbom, image, cve]
+
+  - id: kcsa-platform-002
+    difficulty: 2
+    type: multiple
+    question: "Which TWO are widely used standard formats for an SBOM?"
+    options:
+      - id: a
+        text: "SARIF"
+        why: "SARIF is a format for results of static analysis tools, not an inventory of software components."
+      - id: b
+        text: "CycloneDX"
+      - id: c
+        text: "OCI"
+        why: "OCI defines standards for container images, runtimes and distribution. An SBOM can be stored in an OCI registry, but OCI is not an SBOM format."
+      - id: d
+        text: "SPDX"
+      - id: e
+        text: "SLSA"
+        why: "SLSA is a framework of levels for build integrity and provenance. It is not a file format for SBOMs."
+    answer: [b, d]
+    explanation: |
+      SPDX (a Linux Foundation project and ISO standard) and CycloneDX (an OWASP
+      project) are the two main SBOM formats. Tools such as Trivy and Syft can
+      create SBOMs in both formats during the build.
+    docs:
+      - https://spdx.dev/
+      - https://cyclonedx.org/
+    glossary: [sbom, slsa, oci]
+
+  - id: kcsa-platform-003
+    difficulty: 2
+    type: single
+    question: "Your pipeline signs every image with cosign before pushing it. What security goal does this mainly support?"
+    options:
+      - id: a
+        text: "It lets the cluster verify who built the image and that it is unchanged."
+      - id: b
+        text: "It makes the image smaller so it is faster to pull from the registry."
+        why: "A signature is extra metadata stored next to the image. It does not change the image size."
+      - id: c
+        text: "It removes known vulnerabilities from the image before deployment."
+        why: "A signature says nothing about vulnerabilities. A signed image can still contain CVEs; scanning finds them."
+      - id: d
+        text: "It encrypts the image layers so that nobody can read them."
+        why: "Signing does not encrypt anything. The image layers stay readable; the signature only proves origin and integrity."
+    answer: [a]
+    explanation: |
+      Sigstore cosign creates a signature tied to the image digest. An
+      admission policy (for example in Kyverno or a policy controller) can
+      then allow only images signed by your pipeline, which blocks tampered or
+      unknown images.
+    docs:
+      - https://www.sigstore.dev/
+    glossary: [image-signing, sigstore, digest]
+
+  - id: kcsa-platform-004
+    difficulty: 3
+    type: single
+    question: "In Sigstore keyless signing, what does Rekor do?"
+    options:
+      - id: a
+        text: "It is the command-line tool that signs and verifies images."
+        why: "That is cosign. Rekor is a service that cosign writes to and reads from."
+      - id: b
+        text: "It is a public transparency log that records signing events."
+      - id: c
+        text: "It issues short-lived signing certificates based on an OIDC identity."
+        why: "That is Fulcio, the Sigstore certificate authority. Rekor records the signing events."
+      - id: d
+        text: "It is a private registry that stores only signed images."
+        why: "Sigstore does not provide a registry. Signatures are stored next to images in your normal OCI registry."
+    answer: [b]
+    explanation: |
+      In keyless signing, Fulcio issues a short-lived certificate for the
+      signer's OIDC identity, cosign signs the image, and the event is written
+      to Rekor, a tamper-resistant transparency log. Verifiers can check the
+      log to confirm when and by whom an image was signed.
+    docs:
+      - https://docs.sigstore.dev/
+    glossary: [sigstore, image-signing, oidc]
+
+  - id: kcsa-platform-005
+    difficulty: 2
+    type: single
+    question: "What does the SLSA framework mainly help you improve?"
+    options:
+      - id: a
+        text: "The encryption of network traffic between Pods"
+        why: "Encrypting Pod traffic is the job of mTLS or the CNI. SLSA covers the build pipeline."
+      - id: b
+        text: "The integrity of builds and the provenance of artifacts"
+      - id: c
+        text: "The speed of image pulls from remote registries"
+        why: "SLSA does not deal with performance. It defines levels of trust in how software is built."
+      - id: d
+        text: "The availability of services through service levels"
+        why: "Service levels like SLOs and SLAs are about reliability. SLSA, despite the similar name, is about supply chain integrity."
+    answer: [b]
+    explanation: |
+      SLSA (Supply-chain Levels for Software Artifacts) defines increasing
+      levels of build security. Higher levels require signed provenance that
+      says how, where and from which source an artifact was built, and a
+      hardened build platform that is hard to tamper with.
+    docs:
+      - https://slsa.dev/
+    glossary: [slsa, provenance, supply-chain]
+
+  - id: kcsa-platform-006
+    difficulty: 1
+    type: single
+    question: "Why is `image: myapp@sha256:4f2a...` safer than `image: myapp:1.2` in a production manifest?"
+    options:
+      - id: a
+        text: "A digest encrypts the image while it is in the registry."
+        why: "A digest is a hash used to identify content. It does not encrypt anything."
+      - id: b
+        text: "A digest means the image has been scanned for CVEs."
+        why: "A digest is only a content hash. It says nothing about whether the image was scanned."
+      - id: c
+        text: "A digest is immutable, but a tag can be moved to another image."
+      - id: d
+        text: "A digest makes the kubelet skip pulling the image."
+        why: "The pull policy decides if the kubelet pulls. Using a digest does not skip pulls; it only fixes which image is used."
+    answer: [c]
+    explanation: |
+      A digest is a hash of the image content, so it always points to exactly
+      the same image. A tag is a movable name: if someone pushes a different
+      image with the same tag, your Pods may run it. Pinning digests makes
+      deployments repeatable and helps signature checks.
+    docs:
+      - https://kubernetes.io/docs/concepts/containers/images/
+    glossary: [digest, image, manifest]
+
+  - id: kcsa-platform-007
+    difficulty: 2
+    type: multiple
+    question: "Which TWO practices help you find vulnerable images before and after they run in the cluster?"
+    options:
+      - id: a
+        text: "Scan images with a tool such as Trivy in the CI pipeline"
+      - id: b
+        text: "Use the `latest` tag so Pods always get new patches"
+        why: "latest is a mutable tag. It does not guarantee patched images and makes it hard to know what is running."
+      - id: c
+        text: "Store all images in one public registry"
+        why: "Where images are stored does not detect CVEs. Public registries also increase the risk of exposure."
+      - id: d
+        text: "Set `imagePullPolicy: Never` on all containers"
+        why: "Never only uses images already on the node. It does nothing to detect vulnerabilities."
+      - id: e
+        text: "Rescan images stored in the registry on a regular schedule"
+    answer: [a, e]
+    explanation: |
+      Scanning in CI blocks known CVEs before deployment. New CVEs are found
+      every day, so images that were clean last month may be vulnerable now;
+      regular rescans of the registry (or of running workloads) catch them.
+    docs:
+      - https://github.com/aquasecurity/trivy
+      - https://kubernetes.io/docs/concepts/security/security-checklist/
+    glossary: [image-scanning, trivy, cve, ci-cd, registry]
+
+  - id: kcsa-platform-008
+    difficulty: 1
+    type: single
+    question: "Pods must pull images from a private registry that needs a login. What is the standard Kubernetes way to provide these credentials?"
+    options:
+      - id: a
+        text: "An annotation on the Namespace with the registry token"
+        why: "There is no built-in annotation for registry credentials. Annotations are also not meant for sensitive data."
+      - id: b
+        text: "Add the password to the image name in the Pod spec"
+        why: "Putting credentials in the image field would expose them to anyone who can read the Pod. Kubernetes does not support it."
+      - id: c
+        text: "A ConfigMap mounted at the container's home directory"
+        why: "The kubelet pulls the image before the container starts, so files mounted in the container are not used for the pull."
+      - id: d
+        text: "A `docker-registry` Secret used in `imagePullSecrets`"
+    answer: [d]
+    explanation: |
+      Create a Secret of type `kubernetes.io/dockerconfigjson`, for example
+      with `kubectl create secret docker-registry`, and list it in the Pod's
+      `imagePullSecrets` (or attach it to the ServiceAccount). The kubelet uses
+      it when it pulls the image.
+    docs:
+      - https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    glossary: [image-pull-secret, registry, secret]
+
+  - id: kcsa-platform-009
+    difficulty: 3
+    type: single
+    question: "In a multi-tenant cluster, a private image is already cached on a node. How can you make sure a Pod from another tenant cannot use it without valid pull credentials?"
+    options:
+      - id: a
+        text: "Use only images that are tagged `latest`."
+        why: "The latest tag changes the default pull policy to Always only when no policy is set, and it brings other risks. It is not a reliable control."
+      - id: b
+        text: "Set `imagePullPolicy: IfNotPresent` on every Pod."
+        why: "IfNotPresent uses the cached image without contacting the registry, which is exactly the problem."
+      - id: c
+        text: "Enable the NamespaceLifecycle admission controller."
+        why: "NamespaceLifecycle stops objects from being created in Namespaces that are being deleted. It has nothing to do with images."
+      - id: d
+        text: "Enable the AlwaysPullImages admission controller."
+    answer: [d]
+    explanation: |
+      AlwaysPullImages sets every container's pull policy to Always. The
+      kubelet then contacts the registry for each new Pod, and the registry
+      checks the credentials, so a Pod cannot reuse a cached private image it
+      has no right to pull.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+    glossary: [admission-controller, image, registry, multi-tenancy]
+
+  - id: kcsa-platform-010
+    difficulty: 2
+    type: single
+    question: "You want an alert when a shell is started inside a running container or a sensitive file like `/etc/shadow` is read. Which tool is designed for this?"
+    options:
+      - id: a
+        text: "kube-bench"
+        why: "kube-bench checks cluster configuration against the CIS Benchmark. It does not monitor running containers."
+      - id: b
+        text: "cosign"
+        why: "cosign signs and verifies images. It plays no part once the container is running."
+      - id: c
+        text: "Falco"
+      - id: d
+        text: "Trivy"
+        why: "Trivy scans images and configuration for known problems. It does not watch what containers do at runtime."
+    answer: [c]
+    explanation: |
+      Falco is a CNCF runtime security tool. It watches system calls (with an
+      eBPF probe or kernel module) and compares them with rules, such as
+      "a shell was spawned in a container", then sends alerts. It adds
+      runtime detection to the build-time checks of scanners.
+    docs:
+      - https://falco.org/docs/
+    glossary: [falco, observability]
+
+  - id: kcsa-platform-011
+    difficulty: 1
+    type: single
+    question: "A service mesh enables mutual TLS (mTLS) between all services. What does mTLS add compared to plain TLS?"
+    options:
+      - id: a
+        text: "Requests are retried automatically when a service fails."
+        why: "Retries are a traffic management feature of a mesh, not part of mTLS."
+      - id: b
+        text: "Only the server shows a certificate, and traffic is encrypted."
+        why: "That is plain one-way TLS. In mTLS the client also shows a certificate."
+      - id: c
+        text: "Traffic is compressed so that it uses less network bandwidth."
+        why: "mTLS is about authentication and encryption. Compression is not its purpose."
+      - id: d
+        text: "Both client and server prove their identity with certificates."
+    answer: [d]
+    explanation: |
+      In mutual TLS both sides present certificates, so each service knows
+      the identity of the other and all traffic is encrypted. In a mesh the
+      proxies (sidecars or node proxies) do this, and the mesh CA issues and
+      rotates certificates, so application code does not change.
+    docs:
+      - https://istio.io/latest/docs/concepts/security/
+    glossary: [mtls, service-mesh, sidecar, tls]
+
+  - id: kcsa-platform-012
+    difficulty: 1
+    type: single
+    question: "In a cluster built with kubeadm, where are the cluster CA and component certificates stored by default?"
+    options:
+      - id: a
+        text: "`/etc/kubernetes/pki`"
+      - id: b
+        text: "`/var/lib/etcd/certs`"
+        why: "/var/lib/etcd holds etcd data. The kubeadm certificates, including the etcd ones, are under /etc/kubernetes/pki."
+      - id: c
+        text: "`~/.kube/certs` of the admin"
+        why: "~/.kube usually holds the kubeconfig of a user. The cluster certificates are not stored there."
+      - id: d
+        text: "In a Secret in `kube-system`"
+        why: "kubeadm keeps these files on the control plane nodes' disks. It does not store the CA private key in a Secret by default."
+    answer: [a]
+    explanation: |
+      kubeadm puts the Kubernetes CA, the API server, front-proxy and etcd
+      certificates and keys in /etc/kubernetes/pki (etcd ones in a subfolder).
+      These files are very sensitive: the CA key can sign certificates for any
+      user, so protect the directory and its backups.
+    docs:
+      - https://kubernetes.io/docs/setup/best-practices/certificates/
+    glossary: [pki, certificate-authority]
+
+  - id: kcsa-platform-013
+    difficulty: 2
+    type: single
+    question: "A kubeadm cluster was created almost a year ago. What should the operator check to avoid an outage?"
+    options:
+      - id: a
+        text: "The ServiceAccount signing key, which is deleted after one year."
+        why: "The ServiceAccount key pair does not expire or get deleted by kubeadm. It is a plain key pair, not a certificate."
+      - id: b
+        text: "The client and server certificates, which expire after one year."
+      - id: c
+        text: "The etcd database, which is reset after 365 days."
+        why: "etcd is never reset automatically. It keeps data until you delete it."
+      - id: d
+        text: "The kubelet binary, which stops after one year without updates."
+        why: "Binaries have no expiry date. Old versions lose support, but they keep running."
+    answer: [b]
+    explanation: |
+      Certificates created by kubeadm are valid for one year (the CA for ten
+      years). Run `kubeadm certs check-expiration` to see the dates and
+      `kubeadm certs renew` to renew them. Upgrading the cluster with kubeadm
+      also renews them.
+    docs:
+      - https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/
+    glossary: [pki, certificate-authority]
+
+  - id: kcsa-platform-014
+    difficulty: 2
+    type: single
+    question: "Which Kubernetes API can a client use to ask for a certificate signed by the cluster, with an approval step?"
+    options:
+      - id: a
+        text: "CertificateSigningRequest"
+      - id: b
+        text: "ServiceAccount TokenRequest"
+        why: "TokenRequest issues ServiceAccount tokens (JWTs), not X.509 certificates."
+      - id: c
+        text: "SelfSubjectAccessReview"
+        why: "SelfSubjectAccessReview asks \"can I do this action?\". It is used by `kubectl auth can-i`, not for certificates."
+      - id: d
+        text: "TokenReview"
+        why: "TokenReview checks whether a bearer token is valid. It does not issue certificates."
+    answer: [a]
+    explanation: |
+      A client creates a CertificateSigningRequest with its CSR. An admin (or
+      an automatic approver, as for kubelet client certificates) runs
+      `kubectl certificate approve`, and the signer issues the certificate.
+      Approving a CSR grants a new identity, so limit who can do it.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/
+    glossary: [pki, client-certificate]
+
+  - id: kcsa-platform-015
+    difficulty: 3
+    type: single
+    question: "The control plane runs in a separate network from the nodes. Which feature gives a TCP proxy so the API server can reach nodes without opening direct paths to them?"
+    options:
+      - id: a
+        text: "An Ingress controller"
+        why: "An Ingress controller brings outside HTTP traffic to Services. It is not used by the API server to reach kubelets."
+      - id: b
+        text: "The Konnectivity service"
+      - id: c
+        text: "kube-proxy in IPVS mode"
+        why: "kube-proxy routes Service traffic inside the cluster. It does not carry control plane traffic to the nodes."
+      - id: d
+        text: "CoreDNS stub domains"
+        why: "Stub domains only change how DNS names are resolved. They do not create network paths."
+    answer: [b]
+    explanation: |
+      Konnectivity has a server on the control plane and agents on the nodes.
+      The agents open connections to the server, and the API server sends its
+      traffic to nodes (for logs, exec and webhooks) through them. This keeps
+      the node network closed to direct inbound control plane connections.
+    docs:
+      - https://kubernetes.io/docs/tasks/extend-kubernetes/setup-konnectivity/
+    glossary: [konnectivity, kube-apiserver, node]
+
+  - id: kcsa-platform-016
+    difficulty: 2
+    type: single
+    question: "In which order does the API server run admission for a create request?"
+    options:
+      - id: a
+        text: "Mutating admission, then validating admission"
+      - id: b
+        text: "Both run in parallel and the fastest one wins"
+        why: "Admission phases run in a fixed order. Every validating check must pass, not just the fastest."
+      - id: c
+        text: "Admission runs after the object is saved in etcd"
+        why: "Admission happens before the object is persisted. A rejected request is never stored."
+      - id: d
+        text: "Validating admission, then mutating admission"
+        why: "If validation ran first, a later mutation could change the object into something that was never validated."
+    answer: [a]
+    explanation: |
+      After authentication and authorization, mutating admission controllers
+      and webhooks may change the object. Then validating controllers and
+      webhooks check the final object. Only if all of them accept it is the
+      object stored in etcd.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+      - https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+    glossary: [admission-controller, admission-webhook, etcd]
+
+  - id: kcsa-platform-017
+    difficulty: 2
+    type: single
+    question: "You want to reject Deployments with more than 5 replicas using a rule like `object.spec.replicas <= 5`, without running any webhook server. What should you use?"
+    options:
+      - id: a
+        text: "A ResourceQuota for the Namespace"
+        why: "A ResourceQuota limits total resources or object counts in a Namespace. It cannot check a field inside one Deployment."
+      - id: b
+        text: "A MutatingWebhookConfiguration"
+        why: "A mutating webhook calls an external server and is meant to change objects, not only to reject them."
+      - id: c
+        text: "A ValidatingAdmissionPolicy with a CEL expression"
+      - id: d
+        text: "A NetworkPolicy with a replicas field"
+        why: "NetworkPolicies control traffic between Pods. They have no rules about Deployment specs."
+    answer: [c]
+    explanation: |
+      ValidatingAdmissionPolicy (stable since v1.30) evaluates CEL expressions
+      inside the API server, so no external webhook is needed. You create the
+      policy with its validations and a ValidatingAdmissionPolicyBinding that
+      says where it applies.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/
+    glossary: [validating-admission-policy, cel, deployment]
+
+  - id: kcsa-platform-018
+    difficulty: 2
+    type: single
+    question: "Which policy engine uses the Rego language and defines rules with ConstraintTemplates and Constraints?"
+    options:
+      - id: a
+        text: "Falco"
+        why: "Falco uses its own YAML rules to detect suspicious runtime behavior. It is not an admission policy engine."
+      - id: b
+        text: "Pod Security Admission"
+        why: "Pod Security Admission is built in and only applies the fixed Pod Security Standards levels. You cannot write custom rules."
+      - id: c
+        text: "OPA Gatekeeper"
+      - id: d
+        text: "Kyverno"
+        why: "Kyverno policies are written as Kubernetes YAML resources and do not need Rego."
+    answer: [c]
+    explanation: |
+      OPA Gatekeeper runs as a validating (and optionally mutating) admission
+      webhook. A ConstraintTemplate contains Rego logic, and Constraints apply
+      it to resources. It can also audit objects that already exist in the
+      cluster.
+    docs:
+      - https://open-policy-agent.github.io/gatekeeper/website/docs/
+    glossary: [opa-gatekeeper, rego, kyverno, admission-webhook]
+
+  - id: kcsa-platform-019
+    difficulty: 3
+    type: single
+    question: "A validating webhook enforces that only signed images run. What `failurePolicy` should it have, and why?"
+    options:
+      - id: a
+        text: "`Fail`, so requests are rejected if the webhook cannot answer"
+      - id: b
+        text: "`Ignore`, so the cluster stays usable if the webhook is down"
+        why: "With Ignore, an attacker who can make the webhook fail or time out can deploy unsigned images. That defeats the control."
+      - id: c
+        text: "`Audit`, so failures are written to the audit log only"
+        why: "Audit is not a valid failurePolicy. The only values are Ignore and Fail."
+      - id: d
+        text: "`Retry`, so the API server tries again until it gets an answer"
+        why: "Retry is not a valid failurePolicy. The only values are Ignore and Fail."
+    answer: [a]
+    explanation: |
+      With failurePolicy Fail, the API server rejects requests when the webhook
+      errors or times out (fail closed). This is safer for security controls,
+      but the webhook must be highly available, and you should exclude
+      critical system Namespaces to avoid locking yourself out.
+    docs:
+      - https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+    glossary: [admission-webhook, image-signing]

@@ -1,0 +1,79 @@
+id: ckad-design-001
+title: Fix a Dockerfile and pin the image tag
+domain: design-build
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  mkdir -p /root/build/invoice
+  cat > /root/build/invoice/Dockerfile <<'EOF'
+  FROM node:latest
+  WORKDIR /app
+  ADD . /app
+  RUN npm ci --omit=dev
+  CMD npm start
+  EOF
+  echo 'require("http").createServer((q, r) => r.end("invoice ok")).listen(3000)' > /root/build/invoice/server.js
+  kubectl create namespace billing
+  kubectl -n billing create deployment invoice-web --image=nginx:latest --replicas=2
+task: |
+  Your team builds the image of the `invoice` service from `/root/build/invoice/Dockerfile`.
+  A security review found problems. Fix the Dockerfile (you cannot build images here,
+  the checker reads the file):
+
+  1. Use the fixed base image `node:22-alpine` (not `latest`).
+  2. Use `COPY` instead of `ADD` to copy the code into `/app`.
+  3. Document the port with `EXPOSE 3000`.
+  4. Run the app as the non-root user `node` (a `USER node` line before `CMD`).
+  5. Use the exec form for the start command: `CMD ["node", "server.js"]`.
+
+  Also, the Deployment `invoice-web` in namespace `billing` uses the image `nginx:latest`.
+  Change it to the fixed tag `nginx:1.27-alpine` and make sure the rollout finishes.
+checks:
+  - name: The base image is node:22-alpine
+    run: grep -qE '^FROM +node:22-alpine( |$)' /root/build/invoice/Dockerfile
+  - name: The Dockerfile uses COPY, not ADD
+    run: '! grep -qE "^ADD " /root/build/invoice/Dockerfile && grep -qE "^COPY " /root/build/invoice/Dockerfile'
+  - name: The Dockerfile exposes port 3000
+    run: grep -qE '^EXPOSE +3000$' /root/build/invoice/Dockerfile
+  - name: The app runs as user node (USER before CMD)
+    run: |
+      f=/root/build/invoice/Dockerfile
+      u=$(grep -nE '^USER +node$' $f | tail -1 | cut -d: -f1)
+      c=$(grep -nE '^CMD ' $f | tail -1 | cut -d: -f1)
+      [ -n "$u" ] && [ -n "$c" ] && [ "$u" -lt "$c" ]
+  - name: CMD uses the exec form ["node", "server.js"]
+    run: grep -qE '^CMD +\[ *"node" *, *"server.js" *\] *$' /root/build/invoice/Dockerfile
+  - name: Deployment `invoice-web` uses nginx:1.27-alpine with 2 updated, ready replicas
+    run: |
+      d=$(kubectl -n billing get deploy invoice-web -o json)
+      [ "$(echo "$d" | jq -r '.spec.template.spec.containers[0].image')" = nginx:1.27-alpine ] &&
+      [ "$(echo "$d" | jq -r '.status.updatedReplicas')" = 2 ] &&
+      [ "$(echo "$d" | jq -r '.status.readyReplicas')" = 2 ]
+solution: |
+  vim /root/build/invoice/Dockerfile
+  # the fixed file:
+  #   FROM node:22-alpine
+  #   WORKDIR /app
+  #   COPY . /app
+  #   RUN npm ci --omit=dev
+  #   EXPOSE 3000
+  #   USER node
+  #   CMD ["node", "server.js"]
+  kubectl -n billing set image deployment/invoice-web nginx=nginx:1.27-alpine
+  kubectl -n billing rollout status deployment/invoice-web
+auto_solution: |
+  cat > /root/build/invoice/Dockerfile <<'EOF'
+  FROM node:22-alpine
+  WORKDIR /app
+  COPY . /app
+  RUN npm ci --omit=dev
+  EXPOSE 3000
+  USER node
+  CMD ["node", "server.js"]
+  EOF
+  kubectl -n billing set image deployment/invoice-web nginx=nginx:1.27-alpine
+  kubectl -n billing rollout status deployment/invoice-web --timeout=180s
+docs:
+  - https://docs.docker.com/build/building/best-practices/
+  - https://kubernetes.io/docs/concepts/containers/images/

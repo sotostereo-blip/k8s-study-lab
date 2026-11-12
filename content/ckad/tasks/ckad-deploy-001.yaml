@@ -1,0 +1,46 @@
+id: ckad-deploy-001
+title: Safe rolling update with maxSurge and maxUnavailable
+domain: deployment
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  kubectl create namespace store
+  kubectl -n store create deployment checkout --image=nginx:1.26-alpine --replicas=4
+task: |
+  The Deployment `checkout` in namespace `store` runs 4 replicas of `nginx:1.26-alpine`.
+  The shop must never lose capacity during an update.
+
+  1. Change the update strategy to `RollingUpdate` with `maxSurge: 1` and `maxUnavailable: 0`.
+  2. Update the image to `nginx:1.27-alpine`.
+  3. Add the annotation `kubernetes.io/change-cause=upgrade nginx to 1.27` to the
+     Deployment, so the reason shows in `kubectl rollout history`.
+
+  Wait until all 4 replicas run the new version.
+checks:
+  - name: Strategy is RollingUpdate with maxSurge 1 and maxUnavailable 0
+    run: |
+      s=$(kubectl -n store get deploy checkout -o json | jq -c '.spec.strategy')
+      [ "$(echo "$s" | jq -r .type)" = RollingUpdate ] &&
+      [ "$(echo "$s" | jq -r .rollingUpdate.maxSurge)" = 1 ] &&
+      [ "$(echo "$s" | jq -r .rollingUpdate.maxUnavailable)" = 0 ]
+  - name: The image is nginx:1.27-alpine
+    run: '[ "$(kubectl -n store get deploy checkout -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+  - name: 4 replicas of nginx:1.27-alpine are updated and ready
+    run: |
+      d=$(kubectl -n store get deploy checkout -o json)
+      [ "$(echo "$d" | jq -r '.spec.template.spec.containers[0].image')" = nginx:1.27-alpine ] &&
+      [ "$(echo "$d" | jq .status.updatedReplicas)" = 4 ] && [ "$(echo "$d" | jq .status.readyReplicas)" = 4 ] &&
+      [ "$(echo "$d" | jq '.status.replicas')" = 4 ]
+  - name: The change-cause annotation is set
+    run: '[ "$(kubectl -n store get deploy checkout -o jsonpath="{.metadata.annotations.kubernetes\.io/change-cause}")" = "upgrade nginx to 1.27" ]'
+solution: |
+  kubectl -n store patch deployment checkout \
+    -p '{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":1,"maxUnavailable":0}}}}'
+  kubectl -n store set image deployment/checkout nginx=nginx:1.27-alpine
+  kubectl -n store annotate deployment checkout kubernetes.io/change-cause="upgrade nginx to 1.27"
+  kubectl -n store rollout status deployment/checkout
+  kubectl -n store rollout history deployment/checkout
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#checking-rollout-history-of-a-deployment

@@ -1,0 +1,78 @@
+id: ckad-design-004
+title: Persistent and memory-backed volumes
+domain: design-build
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace gallery
+task: |
+  In namespace `gallery`, the photo app needs two kinds of storage:
+
+  1. A PersistentVolumeClaim `gallery-uploads`: `1Gi`, access mode `ReadWriteOnce`,
+     StorageClass `local-path`.
+  2. A Deployment `gallery-app` with `1` replica and image `nginx:1.27-alpine`:
+     - mount the PVC `gallery-uploads` at `/usr/share/nginx/html/uploads`
+     - add an ephemeral `emptyDir` volume called `thumb-cache`, kept **in memory**
+       (`medium: Memory`) with a size limit of `64Mi`, mounted at `/cache`
+
+  The PVC must be `Bound` and the Pod must be ready.
+checks:
+  - name: PVC `gallery-uploads` is Bound, 1Gi, ReadWriteOnce, local-path
+    run: |
+      p=$(kubectl -n gallery get pvc gallery-uploads -o json)
+      [ "$(echo "$p" | jq -r .status.phase)" = Bound ] &&
+      [ "$(echo "$p" | jq -r .spec.resources.requests.storage)" = 1Gi ] &&
+      [ "$(echo "$p" | jq -r '.spec.accessModes[0]')" = ReadWriteOnce ] &&
+      [ "$(echo "$p" | jq -r .spec.storageClassName)" = local-path ]
+  - name: Deployment `gallery-app` has 1 ready replica
+    run: '[ "$(kubectl -n gallery get deploy gallery-app -o jsonpath="{.status.readyReplicas}")" = 1 ]'
+  - name: The PVC is mounted at /usr/share/nginx/html/uploads
+    run: |
+      kubectl -n gallery get deploy gallery-app -o json | jq -e '
+        .spec.template.spec as $s
+        | ($s.volumes[] | select(.persistentVolumeClaim.claimName=="gallery-uploads") | .name) as $v
+        | $s.containers[0].volumeMounts[] | select(.name==$v and .mountPath=="/usr/share/nginx/html/uploads")'
+  - name: thumb-cache is an in-memory emptyDir (64Mi) mounted at /cache
+    run: |
+      kubectl -n gallery get deploy gallery-app -o json | jq -e '
+        .spec.template.spec as $s
+        | ($s.volumes[] | select(.name=="thumb-cache" and .emptyDir.medium=="Memory" and .emptyDir.sizeLimit=="64Mi"))
+        and ([$s.containers[0].volumeMounts[] | select(.name=="thumb-cache" and .mountPath=="/cache")] | length == 1)' >/dev/null
+  - name: Inside the Pod, /cache is a tmpfs (memory)
+    run: kubectl -n gallery exec deploy/gallery-app -- grep -q " /cache tmpfs " /proc/mounts
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata: { name: gallery-uploads, namespace: gallery }
+  spec:
+    accessModes: [ReadWriteOnce]
+    storageClassName: local-path
+    resources: { requests: { storage: 1Gi } }
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: gallery-app, namespace: gallery }
+  spec:
+    replicas: 1
+    selector: { matchLabels: { app: gallery-app } }
+    template:
+      metadata: { labels: { app: gallery-app } }
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          volumeMounts:
+          - { name: uploads, mountPath: /usr/share/nginx/html/uploads }
+          - { name: thumb-cache, mountPath: /cache }
+        volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: gallery-uploads }
+        - name: thumb-cache
+          emptyDir: { medium: Memory, sizeLimit: 64Mi }
+  YAML
+  kubectl -n gallery get pvc   # local-path binds when the first Pod uses the claim
+docs:
+  - https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  - https://kubernetes.io/docs/concepts/storage/volumes/#emptydir

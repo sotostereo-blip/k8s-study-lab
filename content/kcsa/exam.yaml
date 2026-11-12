@@ -1,0 +1,19 @@
+# KCSA - Kubernetes and Cloud Native Security Associate.
+# Domains and weights from the Linux Foundation KCSA page (checked 2026-11):
+# https://training.linuxfoundation.org/certification/kubernetes-and-cloud-native-security-associate-kcsa/
+id: kcsa
+name: Kubernetes and Cloud Native Security Associate
+format: multiple-choice
+exam_minutes: 90
+exam_questions: 60
+passing_score: 75
+facts_note: >-
+  Official: 90 minutes, online, multiple choice. Not published on the official page: number of
+  questions and passing score (60 questions and 75% are commonly reported).
+domains:
+  - { id: overview, name: "Overview of Cloud Native Security", weight: 14 }
+  - { id: cluster-components, name: "Kubernetes Cluster Component Security", weight: 22 }
+  - { id: security-fundamentals, name: "Kubernetes Security Fundamentals", weight: 22 }
+  - { id: threat-model, name: "Kubernetes Threat Model", weight: 16 }
+  - { id: platform-security, name: "Platform Security", weight: 16 }
+  - { id: compliance, name: "Compliance and Security Frameworks", weight: 10 }

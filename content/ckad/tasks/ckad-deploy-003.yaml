@@ -1,0 +1,89 @@
+id: ckad-deploy-003
+title: Canary release with labels and replica ratio
+domain: deployment
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace canary-shop
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: frontend-v1, namespace: canary-shop }
+  spec:
+    replicas: 4
+    selector: { matchLabels: { app: frontend, version: v1 } }
+    template:
+      metadata: { labels: { app: frontend, version: v1 } }
+      spec:
+        containers:
+        - name: web
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata: { name: frontend, namespace: canary-shop }
+  spec:
+    selector: { app: frontend }
+    ports: [{ port: 80, targetPort: 80 }]
+  YAML
+task: |
+  In namespace `canary-shop`, the Service `frontend` sends traffic to all Pods with the
+  label `app=frontend`. Today the Deployment `frontend-v1` has 4 replicas.
+
+  Start a **canary** release so that about **20%** of the requests go to the new version:
+
+  - Create a Deployment `frontend-v2` with image `httpd:2.4-alpine` and `1` replica.
+  - Its Pods must have the labels `app=frontend` and `version=v2`, and its selector
+    must use both labels (so it does not select the v1 Pods).
+  - Do not change the Service or `frontend-v1`.
+
+  The Service must end with 5 ready endpoints (4 v1 + 1 v2).
+checks:
+  - name: Deployment `frontend-v2` has 1 ready replica with httpd:2.4-alpine
+    run: |
+      d=$(kubectl -n canary-shop get deploy frontend-v2 -o json)
+      [ "$(echo "$d" | jq .status.readyReplicas)" = 1 ] && [ "$(echo "$d" | jq .spec.replicas)" = 1 ] &&
+      [ "$(echo "$d" | jq -r '.spec.template.spec.containers[0].image')" = httpd:2.4-alpine ]
+  - name: frontend-v2 Pods have app=frontend,version=v2 and the selector uses both
+    run: |
+      kubectl -n canary-shop get deploy frontend-v2 -o json | jq -e '
+        .spec.template.metadata.labels.app=="frontend" and .spec.template.metadata.labels.version=="v2"
+        and .spec.selector.matchLabels.app=="frontend" and .spec.selector.matchLabels.version=="v2"'
+  - name: Service `frontend` has 5 ready endpoints
+    run: |
+      [ "$(kubectl -n canary-shop get endpointslices -l kubernetes.io/service-name=frontend -o json |
+        jq '[.items[].endpoints[]? | select(.conditions.ready==true)] | length')" = 5 ]
+  - name: The Service still selects only app=frontend
+    run: kubectl -n canary-shop get svc frontend -o json | jq -e '.spec.selector == {"app":"frontend"}'
+    guard: true
+  - name: frontend-v1 still has 4 replicas
+    run: '[ "$(kubectl -n canary-shop get deploy frontend-v1 -o jsonpath="{.spec.replicas}")" = 4 ]'
+    guard: true
+solution: |
+  kubectl -n canary-shop get deploy frontend-v1 -o yaml > v2.yaml
+  # edit v2.yaml: name frontend-v2, replicas 1, version: v2 in selector and template labels,
+  # image httpd:2.4-alpine; remove status, uid, resourceVersion and creationTimestamp
+  kubectl apply -f v2.yaml
+  kubectl -n canary-shop get endpointslices -l kubernetes.io/service-name=frontend
+  # 1 of 5 Pods = about 20% of the requests. To finish the canary: scale v2 up and v1 down.
+auto_solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: frontend-v2, namespace: canary-shop }
+  spec:
+    replicas: 1
+    selector: { matchLabels: { app: frontend, version: v2 } }
+    template:
+      metadata: { labels: { app: frontend, version: v2 } }
+      spec:
+        containers:
+        - name: web
+          image: httpd:2.4-alpine
+          ports: [{ containerPort: 80 }]
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/management/#canary-deployments
+  - https://kubernetes.io/docs/concepts/services-networking/service/
