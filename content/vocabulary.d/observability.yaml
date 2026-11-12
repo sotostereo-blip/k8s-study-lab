@@ -1,0 +1,128 @@
+# Everyday exam English found in the Prometheus (PCA) questions and labs.
+words:
+  - id: nightly
+    word: "nightly"
+    match: ["nightly"]
+    definition: "Happening every night."
+    example: "The nightly backup job runs at 02:00."
+    es: "nocturno, cada noche"
+  - id: planned
+    word: "planned"
+    match: ["planned"]
+    definition: "Decided and prepared before it happens."
+    example: "A planned cleanup runs on the server, so we silence its alerts."
+    es: "planificado, programado"
+  - id: noisy
+    word: "noisy"
+    match: ["noisy"]
+    definition: "Changing a lot or producing many unimportant messages."
+    example: "Alerts on every small cause are noisy."
+    es: "ruidoso, con muchas variaciones o avisos innecesarios"
+  - id: flapping
+    word: "flapping"
+    match: ["flapping"]
+    definition: "Changing state again and again in a short time (on, off, on...)."
+    example: "A flapping alert fires and resolves every few minutes."
+    es: "que oscila, que cambia de estado continuamente"
+  - id: cheap
+    word: "cheap"
+    match: ["cheap", "cheaper"]
+    definition: "Costing little money or few resources."
+    example: "A recording rule makes a slow query cheap."
+    es: "barato, que consume pocos recursos"
+  - id: expensive
+    word: "expensive"
+    match: ["expensive"]
+    definition: "Costing a lot of money or many resources."
+    example: "Subqueries over long ranges can be expensive."
+    es: "caro, costoso"
+  - id: useless
+    word: "useless"
+    match: ["useless"]
+    definition: "Having no use; not helpful."
+    example: "During a full outage, warnings from each service are useless."
+    es: "inútil"
+  - id: trend
+    word: "trend"
+    match: ["trend", "trends"]
+    definition: "The general direction in which something changes over time."
+    example: "Metrics are good at showing trends."
+    es: "tendencia"
+  - id: glitch
+    word: "glitch"
+    match: ["glitch", "glitches"]
+    definition: "A small, short problem that goes away by itself."
+    example: "A suitable `for` avoids pages for short glitches."
+    es: "fallo pequeño y pasajero"
+  - id: mute
+    word: "mute"
+    match: ["mute", "mutes", "muted"]
+    definition: "To make something silent; to stop it from sending sounds or messages."
+    example: "A silence mutes notifications for one hour."
+    es: "silenciar"
+  - id: penalty
+    word: "penalty"
+    match: ["penalty", "penalties"]
+    definition: "A punishment or payment you must make when you break a rule or a promise."
+    example: "An SLA often has penalties if the service is down too long."
+    es: "penalización, multa"
+  - id: fraction
+    word: "fraction"
+    match: ["fraction", "fractional"]
+    definition: "A part of a whole; a number that is not whole, such as 0.5."
+    example: "The query returns the fraction of requests served within 300ms."
+    es: "fracción, parte"
+  - id: share
+    word: "share (noun)"
+    match: ["share"]
+    definition: "The part of a total, often given as a ratio or percentage."
+    example: "The SLI is the share of requests that did not fail."
+    es: "proporción, parte (también 'compartir' como verbo)"
+  - id: duplicate
+    word: "duplicate"
+    match: ["duplicate", "duplicates"]
+    definition: "An exact copy of something that already exists."
+    example: "Alertmanager removes duplicate alerts from two Prometheus servers."
+    es: "duplicado"
+  - id: meant
+    word: "meant (for)"
+    match: ["meant"]
+    definition: "Made or planned for a certain purpose."
+    example: "delta() is meant for gauges."
+    es: "pensado para, destinado a"
+  - id: unbounded
+    word: "unbounded"
+    match: ["unbounded"]
+    definition: "Without a limit; it can grow forever."
+    example: "User IDs have unbounded values."
+    es: "ilimitado, sin límite"
+  - id: busiest
+    word: "busiest"
+    match: ["busy", "busiest"]
+    definition: "Having the most work or activity."
+    example: "Find the busiest paths of the shop with topk."
+    es: "más ocupado, con más actividad"
+  - id: slightly
+    word: "slightly"
+    match: ["slightly"]
+    definition: "A little; not much."
+    example: "Values can be slightly off after a missed scrape."
+    es: "ligeramente, un poco"
+  - id: redundant
+    word: "redundant"
+    match: ["redundant"]
+    definition: "Not needed because it repeats something that already exists."
+    example: "A hostname label is redundant, because Prometheus adds `instance`."
+    es: "redundante, innecesario"
+  - id: advise
+    word: "advise"
+    match: ["advise", "advises"]
+    definition: "To tell someone what you think they should do."
+    example: "The docs advise rate() for alerts."
+    es: "aconsejar, recomendar"
+  - id: estimate
+    word: "estimate"
+    match: ["estimate", "estimated"]
+    definition: "A value that is close to the real one but not exact; to calculate such a value."
+    example: "increase() returns an estimate, not an exact count."
+    es: "estimación; estimar"

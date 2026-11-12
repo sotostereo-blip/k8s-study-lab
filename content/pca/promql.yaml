@@ -1,0 +1,716 @@
+domain: promql
+questions:
+  - id: pca-promql-001
+    difficulty: 1
+    type: single
+    question: "Which selector returns the `http_requests_total` series whose `status` label is any 5xx code (500, 503, ...)?"
+    options:
+      - id: a
+        text: "`http_requests_total{status=\"5..\"}`"
+        why: "`=` is exact equality. It only matches a label whose value is the text `5..`, which no series has."
+      - id: b
+        text: "`http_requests_total{status=~\"5..\"}`"
+      - id: c
+        text: "`http_requests_total{status~\"5.*\"}`"
+        why: "`~` alone is not a PromQL matcher. The regex matcher is `=~` (and `!~` for the negative form)."
+      - id: d
+        text: "`http_requests_total{status=~\"^5\"}`"
+        why: "PromQL regexes are fully anchored. `^5` only matches the value `5`, not `500` or `503`."
+    answer: [b]
+    explanation: |
+      PromQL has four label matchers: `=`, `!=`, `=~` and `!~`. The regex matchers use RE2
+      syntax and are fully anchored, so `5..` matches exactly three characters that start
+      with 5. `status=~"5.*"` would also work.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors
+    glossary: [label-matcher, promql]
+
+  - id: pca-promql-002
+    difficulty: 1
+    type: single
+    question: "What does the expression `http_requests_total[5m]` return?"
+    options:
+      - id: a
+        text: "For each series, the per-second rate over the last 5 minutes"
+        why: "A selector alone does not calculate anything. You need `rate()` to get a per-second rate."
+      - id: b
+        text: "For each series, all samples from the last 5 minutes"
+      - id: c
+        text: "For each series, the single value it had 5 minutes ago"
+        why: "That is the `offset 5m` modifier on an instant vector selector, not a range selector."
+      - id: d
+        text: "One number: the total increase of all series in 5 minutes"
+        why: "A range selector keeps every series separate and returns raw samples, not a sum."
+    answer: [b]
+    explanation: |
+      A duration in brackets turns a selector into a **range vector selector**. The result has,
+      for every matching series, all samples whose timestamps are inside the last 5 minutes.
+      Functions such as `rate()`, `increase()` and `avg_over_time()` take a range vector.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors
+    glossary: [range-vector, prom-sample]
+
+  - id: pca-promql-003
+    difficulty: 2
+    type: single
+    question: "In the Prometheus web UI, the **Graph** tab shows an error for `node_cpu_seconds_total[5m]`, but the **Table** tab works. Why?"
+    options:
+      - id: a
+        text: "A range vector cannot be graphed; wrap it in a function such as `rate()`"
+      - id: b
+        text: "The Graph tab needs a `by` clause to know which label to draw"
+        why: "Graphs can show many series without any aggregation. The problem is the type of the result."
+      - id: c
+        text: "Counters can only be shown in tables, never in graphs"
+        why: "You can graph any instant vector, also a raw counter. The brackets make the result a range vector."
+      - id: d
+        text: "The 5-minute range is shorter than the default graph step"
+        why: "The step does not cause this. A range query only accepts expressions of type instant vector or scalar."
+    answer: [a]
+    explanation: |
+      A graph is drawn from a range query, which evaluates an expression at many steps. The
+      expression must return an instant vector or a scalar. A range vector is allowed only as a
+      function argument or in the Table view (an instant query).
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#expression-language-data-types
+      - https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries
+    glossary: [range-vector, instant-vector]
+
+  - id: pca-promql-004
+    difficulty: 1
+    type: single
+    question: "You want the per-second average rate of the counter `http_requests_total` over the last 5 minutes, for alerting and dashboards. Which function fits best?"
+    options:
+      - id: a
+        text: "`delta(http_requests_total[5m])`"
+        why: "`delta()` is for gauges. It does not handle counter resets, so a restart gives wrong, negative values."
+      - id: b
+        text: "`deriv(http_requests_total[5m])`"
+        why: "`deriv()` uses linear regression and is meant for gauges. It also ignores counter resets."
+      - id: c
+        text: "`irate(http_requests_total[5m])`"
+        why: "`irate()` only uses the last two samples, so the result jumps a lot. It is not an average over 5 minutes."
+      - id: d
+        text: "`rate(http_requests_total[5m])`"
+    answer: [d]
+    explanation: |
+      `rate()` calculates the per-second average increase over the whole range, adjusts for
+      counter resets, and extrapolates to the edges of the range. It is the normal choice for
+      counters in alerts, recording rules and slow-moving graphs.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#rate
+    glossary: [counter]
+
+  - id: pca-promql-005
+    difficulty: 2
+    type: single
+    question: "A service restarts and its counter `jobs_done_total` drops from 1200 to 3. What does `rate(jobs_done_total[10m])` do with this drop?"
+    options:
+      - id: a
+        text: "It returns a negative rate for the window that contains the restart"
+        why: "That happens with `delta()`. `rate()` never returns negative values for counters."
+      - id: b
+        text: "It sees a counter reset and counts the new value as an increase from zero"
+      - id: c
+        text: "It returns no data until the counter is above 1200 again"
+        why: "The series continues normally. A reset does not hide data."
+      - id: d
+        text: "It ignores all samples from before the restart"
+        why: "Samples before the restart are still used. Only the drop is treated in a special way."
+    answer: [b]
+    explanation: |
+      Any decrease of a counter is treated as a reset. `rate()`, `irate()` and `increase()`
+      adjust for it, so the increase over the window is still correct (approximately). This is
+      why you must always apply `rate()` before you aggregate counters with `sum()`.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#rate
+      - https://prometheus.io/docs/concepts/metric_types/#counter
+    glossary: [counter]
+
+  - id: pca-promql-006
+    difficulty: 2
+    type: single
+    question: "When is `irate()` a better choice than `rate()`?"
+    options:
+      - id: a
+        text: "For alerting rules, because it reacts faster to changes"
+        why: "The docs advise `rate()` for alerts. `irate()` is very noisy, and short spikes can reset the `for` timer."
+      - id: b
+        text: "For counters that reset often, because only irate handles resets"
+        why: "Both `rate()` and `irate()` handle counter resets."
+      - id: c
+        text: "For graphs of fast-moving counters, to show short spikes"
+      - id: d
+        text: "For gauges, because rate only works with counters"
+        why: "`irate()` is also only for counters. For gauges, use `delta()`, `deriv()` or `*_over_time()` functions."
+    answer: [c]
+    explanation: |
+      `irate()` uses only the last two samples in the range. It shows fast changes and spikes in
+      high-resolution graphs. For alerts and slow graphs, use `rate()`, which averages over the
+      whole range and is more stable.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#irate
+    glossary: [counter]
+
+  - id: pca-promql-007
+    difficulty: 2
+    type: single
+    question: "A counter only increases in whole steps of 1, but `increase(orders_total[1h])` returns `59.83`. Why?"
+    options:
+      - id: a
+        text: "Prometheus stores all samples as rounded floating point values"
+        why: "Samples are stored as 64-bit floats without rounding. Whole numbers stay whole numbers."
+      - id: b
+        text: "The counter was reset, and increase adds a fraction for it"
+        why: "A reset is handled by counting from zero. It does not add a fractional value."
+      - id: c
+        text: "increase() is the per-second rate, so it is not a count"
+        why: "`increase()` returns the increase over the whole range. `rate()` is the per-second value."
+      - id: d
+        text: "increase() extrapolates to the edges of the range, so it can be fractional"
+    answer: [d]
+    explanation: |
+      `increase(x[1h])` is syntactic sugar for `rate(x[1h]) * 3600`. The first and last samples
+      are rarely at the exact edges of the window, so Prometheus extrapolates. The result is an
+      estimate and can be a non-integer even for integer counters.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#increase
+    glossary: [counter, range-vector]
+
+  - id: pca-promql-008
+    difficulty: 1
+    type: single
+    question: "`room_temperature_celsius` is a gauge. Which query shows how much the temperature changed during the last hour?"
+    options:
+      - id: a
+        text: "`delta(room_temperature_celsius[1h])`"
+      - id: b
+        text: "`increase(room_temperature_celsius[1h])`"
+        why: "`increase()` is only for counters. A falling temperature would look like a counter reset."
+      - id: c
+        text: "`rate(room_temperature_celsius[1h])`"
+        why: "`rate()` is only for counters, and it returns a per-second value."
+      - id: d
+        text: "`room_temperature_celsius offset 1h`"
+        why: "This returns the old value, not the difference between the old and the current value."
+    answer: [a]
+    explanation: |
+      `delta()` returns the difference between the first and last value of each series in the
+      range, extrapolated to the edges. It is meant for gauges. Counters use `increase()`.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#delta
+    glossary: [gauge]
+
+  - id: pca-promql-009
+    difficulty: 2
+    type: single
+    question: "What is the difference between `avg(node_load1)` and `avg_over_time(node_load1[10m])`?"
+    options:
+      - id: a
+        text: "They return the same values; avg_over_time is just the older name"
+        why: "They are different operations. One aggregates across series, the other across time."
+      - id: b
+        text: "avg() averages across series now; avg_over_time() averages each series over time"
+      - id: c
+        text: "avg() averages each series over time; avg_over_time() averages across series"
+        why: "This is the other way round. `avg()` is an aggregation operator over dimensions (series)."
+      - id: d
+        text: "avg() needs a range vector; avg_over_time() needs an instant vector"
+        why: "It is the opposite: `avg()` takes an instant vector and `avg_over_time()` takes a range vector."
+    answer: [b]
+    explanation: |
+      Aggregation operators (`sum`, `avg`, `max`, ...) combine **many series** at one moment.
+      The `<aggregation>_over_time()` functions combine **many samples of one series** over a
+      time range, and keep every series separate.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#aggregation_over_time
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+    glossary: [range-vector, instant-vector]
+
+  - id: pca-promql-010
+    difficulty: 2
+    type: multiple
+    question: "Which of these are functions that aggregate the samples of each series **over time**? (Choose 3)"
+    options:
+      - id: a
+        text: "`max_over_time()`"
+      - id: b
+        text: "`quantile_over_time()`"
+      - id: c
+        text: "`count_over_time()`"
+      - id: d
+        text: "`topk()`"
+        why: "`topk` is an aggregation operator over series (dimensions), not over time."
+      - id: e
+        text: "`sum()`"
+        why: "`sum` adds series together at one moment. The over-time version is `sum_over_time()`."
+    answer: [a, b, c]
+    explanation: |
+      The `*_over_time()` family (`avg`, `min`, `max`, `sum`, `count`, `quantile`, `stddev`,
+      `last`, `present`, ...) takes a range vector and returns one value per series.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#aggregation_over_time
+    glossary: [range-vector]
+
+  - id: pca-promql-011
+    difficulty: 1
+    type: single
+    question: "Which labels does the result of `sum by (job) (rate(http_requests_total[5m]))` have?"
+    options:
+      - id: a
+        text: "All labels of the input except `job`"
+        why: "That is what `without (job)` does. `by` keeps only the listed labels."
+      - id: b
+        text: "No labels at all, because sum returns one number"
+        why: "Plain `sum(...)` returns one series with no labels. With `by (job)` you get one series per job."
+      - id: c
+        text: "Only the `job` label"
+      - id: d
+        text: "`job` and `__name__`, which is always kept"
+        why: "Aggregations and most functions drop the metric name, because the value no longer means the same thing."
+    answer: [c]
+    explanation: |
+      `by (labels)` keeps only the listed labels and adds up the series that have the same
+      values for them. `without (labels)` does the opposite: it removes the listed labels and
+      keeps all the others.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+    glossary: [label]
+
+  - id: pca-promql-012
+    difficulty: 3
+    type: single
+    question: "You need the total request rate of all instances of a job. Which query is correct?"
+    options:
+      - id: a
+        text: "`rate(sum(http_requests_total{job=\"api\"})[5m])`"
+        why: "A range selector only works on a series selector or a subquery. Also, a sum of counters hides the resets of each instance."
+      - id: b
+        text: "`sum(rate(http_requests_total{job=\"api\"}[5m]))`"
+      - id: c
+        text: "`sum(http_requests_total{job=\"api\"}) / 300`"
+        why: "Dividing the total by 300 gives no rate. A counter's value is a total since start, not an amount for 5 minutes."
+      - id: d
+        text: "`rate(http_requests_total{job=\"api\"}[5m]) by (job)`"
+        why: "`by` belongs to an aggregation operator such as `sum`. `rate()` alone does not accept it."
+    answer: [b]
+    explanation: |
+      Always apply `rate()` first and aggregate after: "rate, then sum". `rate()` must see each
+      raw counter to detect its resets. Summing counters first would mix resets of different
+      instances and give wrong values.
+    docs:
+      - https://prometheus.io/docs/practices/rules/
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#rate
+    glossary: [counter]
+
+  - id: pca-promql-013
+    difficulty: 2
+    type: single
+    question: "Which query returns, for each job, the **number of targets that are down**?"
+    options:
+      - id: a
+        text: "`sum by (job) (up)`"
+        why: "`up` is 1 for healthy targets, so the sum counts the targets that are **up**."
+      - id: b
+        text: "`count by (job) (up)`"
+        why: "This counts all targets of each job, healthy or not."
+      - id: c
+        text: "`count by (job) (up == 0)`"
+      - id: d
+        text: "`up{job=~\".+\"} == 0`"
+        why: "This lists every down target separately. It does not give a number per job."
+    answer: [c]
+    explanation: |
+      `up == 0` filters the `up` series and keeps only targets whose last scrape failed.
+      `count by (job)` then counts those series per job. Jobs with no down targets do not
+      appear in the result.
+    docs:
+      - https://prometheus.io/docs/concepts/jobs_instances/#automatically-generated-labels-and-time-series
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+    glossary: [scrape-target]
+
+  - id: pca-promql-014
+    difficulty: 2
+    type: single
+    question: "What does `node_filesystem_avail_bytes < bool 1e9` return, compared with the query without `bool`?"
+    options:
+      - id: a
+        text: "It returns every series with value 1 or 0, instead of filtering"
+      - id: b
+        text: "It returns only the series below 1e9, with value 1 instead of the real value"
+        why: "With `bool` no series is dropped. Series that do not match get the value 0."
+      - id: c
+        text: "It returns a single scalar: 1 if any series is below 1e9"
+        why: "The comparison is done per series. To get one value you would need an aggregation."
+      - id: d
+        text: "It is the same; bool only changes how the UI shows the result"
+        why: "`bool` changes the result. Without it, comparison operators filter series and keep their values."
+    answer: [a]
+    explanation: |
+      By default, a comparison between a vector and a scalar works as a **filter**: series that
+      do not match are dropped and the others keep their value. With the `bool` modifier, every
+      series is kept and its value becomes 1 (true) or 0 (false). The metric name is dropped.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#comparison-binary-operators
+    glossary: [instant-vector]
+
+  - id: pca-promql-015
+    difficulty: 3
+    type: single
+    question: "What does `group_left (version)` do in `rate(http_requests_total[5m]) * on (instance) group_left (version) app_info`?"
+    options:
+      - id: a
+        text: "It keeps only the series of the left side that have a `version` label"
+        why: "It does not filter by label. It controls the matching and copies a label from the right side."
+      - id: b
+        text: "It allows many left series per instance and copies `version` from the right side"
+      - id: c
+        text: "It groups the left side by `version` before the multiplication"
+        why: "`group_left` is not an aggregation. No series are added together."
+      - id: d
+        text: "It removes the label `version` from the result"
+        why: "The opposite: the labels listed in `group_left (...)` are copied into the result."
+    answer: [b]
+    explanation: |
+      `on (instance)` matches series only by the `instance` label. `group_left` allows a
+      many-to-one match: many left series (one per method, path, ...) match one `app_info`
+      series. The labels in parentheses are copied from the "one" side. Info metrics with the
+      value 1 are often joined this way, because multiplying by 1 keeps the value.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#many-to-one-and-one-to-many-vector-matches
+    glossary: [vector-matching]
+
+  - id: pca-promql-016
+    difficulty: 2
+    type: multiple
+    question: "Which are logical/set binary operators in PromQL? (Choose 3)"
+    options:
+      - id: a
+        text: "`and`"
+      - id: b
+        text: "`or`"
+      - id: c
+        text: "`unless`"
+      - id: d
+        text: "`xor`"
+        why: "PromQL has no `xor` operator. You can build it with `or` and `unless`."
+      - id: e
+        text: "`not`"
+        why: "There is no `not` operator. Use `unless`, a negative matcher, or `absent()`."
+    answer: [a, b, c]
+    explanation: |
+      `and` (intersection), `or` (union) and `unless` (complement) work on instant vectors and
+      match series by their labels. They always use many-to-many matching.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#logical-set-binary-operators
+    glossary: [promql]
+
+  - id: pca-promql-017
+    difficulty: 3
+    type: single
+    question: "`errors_total` has the labels `{job, instance, code}` and `requests_total` has `{job, instance}`. Why does `rate(errors_total[5m]) / rate(requests_total[5m])` return nothing?"
+    options:
+      - id: a
+        text: "Division is not allowed between two instant vectors"
+        why: "Arithmetic between two instant vectors is allowed. Series are paired by their labels."
+      - id: b
+        text: "rate() drops the job label, so nothing matches"
+        why: "`rate()` drops only the metric name. All other labels stay."
+      - id: c
+        text: "The left side has the extra label `code`, so no label sets match"
+      - id: d
+        text: "The metric names differ, and PromQL only divides series with the same name"
+        why: "The metric name is never used for matching. The problem is the extra label."
+    answer: [c]
+    explanation: |
+      By default, binary operators match series with **exactly** the same labels (one-to-one).
+      The extra `code` label means no left series has a partner. Fix it by removing the label
+      first (`sum without (code) (...)`) or by using `ignoring (code)` with `group_left`.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching
+    glossary: [vector-matching]
+
+  - id: pca-promql-018
+    difficulty: 2
+    type: single
+    question: "`http_request_duration_seconds` is a classic histogram. Which query returns the 90th percentile latency over all instances?"
+    options:
+      - id: a
+        text: "`histogram_quantile(0.9, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))`"
+      - id: b
+        text: "`histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket[5m])))`"
+        why: "The sum removes the `le` label. `histogram_quantile` needs `le` to know the bucket boundaries."
+      - id: c
+        text: "`quantile(0.9, rate(http_request_duration_seconds_sum[5m]))`"
+        why: "`quantile()` is a quantile across series, and `_sum` holds total time, not a latency distribution."
+      - id: d
+        text: "`histogram_quantile(0.9, rate(http_request_duration_seconds_count[5m]))`"
+        why: "`_count` only counts all observations. It has no buckets, so no quantile can be calculated."
+    answer: [a]
+    explanation: |
+      For classic histograms, take the `rate()` of the `_bucket` series, aggregate while you keep
+      the `le` label, and pass the result to `histogram_quantile()`. The function interpolates
+      linearly inside the bucket where the quantile falls.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile
+      - https://prometheus.io/docs/practices/histograms/
+    glossary: [histogram, quantile, bucket]
+
+  - id: pca-promql-019
+    difficulty: 2
+    type: single
+    question: "Which query returns the **average** request duration over the last 5 minutes from the histogram `http_request_duration_seconds`?"
+    options:
+      - id: a
+        text: "`avg_over_time(http_request_duration_seconds_sum[5m])`"
+        why: "`_sum` is a counter of total seconds. Its average value over time is not the average request duration."
+      - id: b
+        text: "`rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])`"
+      - id: c
+        text: "`histogram_quantile(0.5, rate(http_request_duration_seconds_bucket[5m]))`"
+        why: "This is an estimate of the median (50th percentile), not the average (mean)."
+      - id: d
+        text: "`avg(http_request_duration_seconds_bucket)`"
+        why: "Averaging bucket counters across series does not give a duration."
+    answer: [b]
+    explanation: |
+      Histograms and summaries expose `_sum` (total of all observed values) and `_count`
+      (number of observations). Dividing the rate of `_sum` by the rate of `_count` gives the
+      average value of the observations in that window.
+    docs:
+      - https://prometheus.io/docs/practices/histograms/#count-and-sum-of-observations
+    glossary: [histogram]
+
+  - id: pca-promql-020
+    difficulty: 3
+    type: single
+    question: "For hours, `histogram_quantile(0.99, ...)` returns exactly `2.5`, and `2.5` is the highest bucket boundary below `+Inf`. What does this tell you?"
+    options:
+      - id: a
+        text: "The 99th percentile latency is exactly 2.5 seconds"
+        why: "It is only a boundary. The real value is somewhere above 2.5 seconds and the histogram cannot say where."
+      - id: b
+        text: "The histogram has no data, and 2.5 is a default value"
+        why: "Without data the function returns NaN or no result, not the largest finite bucket bound."
+      - id: c
+        text: "Over 1% of requests take longer than 2.5s (the +Inf bucket)"
+      - id: d
+        text: "The `le` label was lost in an aggregation"
+        why: "Without `le` the function returns nothing. Here it returns a value, so `le` is present."
+    answer: [c]
+    explanation: |
+      If the quantile falls into the highest bucket (`le="+Inf"`), `histogram_quantile` returns the
+      upper bound of the second-highest bucket. The result only means "at least 2.5s". Choose
+      bucket boundaries around the values you care about, for example around your SLO.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile
+      - https://prometheus.io/docs/practices/histograms/#errors-of-quantile-estimation
+    glossary: [histogram, bucket, quantile]
+
+  - id: pca-promql-021
+    difficulty: 2
+    type: single
+    question: "Your SLO says 95% of requests must finish in 300ms. The histogram has a bucket `le=\"0.3\"`. Which query returns the share of requests served within 300ms?"
+    options:
+      - id: a
+        text: "`histogram_quantile(0.3, sum by (le) (rate(req_duration_seconds_bucket[5m])))`"
+        why: "This returns the 30th percentile latency, not the share of fast requests."
+      - id: b
+        text: "`sum(rate(req_duration_seconds_bucket{le=\"0.3\"}[5m])) / sum(rate(req_duration_seconds_sum[5m]))`"
+        why: "`_sum` is the total of all durations in seconds, not the number of requests."
+      - id: c
+        text: "`sum(rate(req_duration_seconds_bucket{le=\"0.3\"}[5m])) / sum(rate(req_duration_seconds_count[5m]))`"
+      - id: d
+        text: "`sum(rate(req_duration_seconds_bucket{le!=\"0.3\"}[5m])) / sum(rate(req_duration_seconds_count[5m]))`"
+        why: "Buckets are cumulative, so adding all other buckets counts most requests many times."
+    answer: [c]
+    explanation: |
+      Classic histogram buckets are **cumulative**: `le="0.3"` counts every observation less than
+      or equal to 0.3s. Dividing its rate by the rate of `_count` (all observations) gives the
+      fraction of requests that met the target. This is exact when the target is a bucket boundary.
+    docs:
+      - https://prometheus.io/docs/practices/histograms/#apdex-score
+    glossary: [histogram, bucket, slo]
+
+  - id: pca-promql-022
+    difficulty: 1
+    type: single
+    question: "`process_start_time_seconds` holds the Unix time when the process started. Which query returns the **uptime** of each process in seconds?"
+    options:
+      - id: a
+        text: "`time() - process_start_time_seconds`"
+      - id: b
+        text: "`timestamp(process_start_time_seconds)`"
+        why: "`timestamp()` returns when each sample was scraped, not how long the process has been running."
+      - id: c
+        text: "`rate(process_start_time_seconds[5m])`"
+        why: "The start time is a fixed gauge value. Its rate is 0."
+      - id: d
+        text: "`process_start_time_seconds offset 1d`"
+        why: "`offset` moves the query back in time. It returns the old value, not a duration."
+    answer: [a]
+    explanation: |
+      `time()` returns the evaluation time as Unix seconds. Exposing the **timestamp** of an event
+      (start time, last success) is the recommended practice, because Prometheus can calculate
+      "time since" at query time.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#time
+      - https://prometheus.io/docs/practices/instrumentation/#timestamps-not-time-since
+    glossary: [gauge]
+
+  - id: pca-promql-023
+    difficulty: 2
+    type: single
+    question: "A backup job exposes `backup_last_success_timestamp_seconds`. Which expression is true (returns series) when the last successful backup is **older than one day**?"
+    options:
+      - id: a
+        text: "`backup_last_success_timestamp_seconds > 86400`"
+        why: "The value is a Unix timestamp (about 1.7 billion). It is always above 86400."
+      - id: b
+        text: "`time() - backup_last_success_timestamp_seconds > 86400`"
+      - id: c
+        text: "`increase(backup_last_success_timestamp_seconds[1d]) == 0`"
+        why: "`increase()` is for counters, and this never fires when the series is missing. Compare the timestamp with `time()`."
+      - id: d
+        text: "`backup_last_success_timestamp_seconds offset 1d`"
+        why: "This returns the value from one day ago. It is not a condition."
+    answer: [b]
+    explanation: |
+      Subtracting the event timestamp from `time()` gives the age in seconds. A comparison with
+      86400 (24 hours) keeps only the series that are too old. This is a common alerting rule for
+      batch jobs.
+    docs:
+      - https://prometheus.io/docs/practices/instrumentation/#batch-jobs
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#time
+    glossary: [gauge]
+
+  - id: pca-promql-024
+    difficulty: 2
+    type: single
+    question: "What does `rate(http_requests_total[5m] offset 1w)` return?"
+    options:
+      - id: a
+        text: "The request rate of the last 5 minutes, divided by one week"
+        why: "`offset` moves the time of the evaluation. It does not divide anything."
+      - id: b
+        text: "The request rate over one week, sampled every 5 minutes"
+        why: "That would be a subquery such as `rate(x[1w])[1w:5m]`."
+      - id: c
+        text: "The request rate over the 5 minutes that ended exactly one week ago"
+      - id: d
+        text: "Nothing, because offset only works on instant vectors"
+        why: "`offset` works on instant and range vector selectors."
+    answer: [c]
+    explanation: |
+      The `offset` modifier shifts the time of a selector into the past. Here the 5-minute range
+      ends one week before the evaluation time. It is useful to compare with the same time last
+      week, for example `rate(x[5m]) / rate(x[5m] offset 1w)`. The `@` modifier sets an
+      absolute time instead.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#offset-modifier
+    glossary: [range-vector]
+
+  - id: pca-promql-025
+    difficulty: 3
+    type: single
+    question: "What does `max_over_time(rate(http_requests_total[5m])[1h:1m])` calculate?"
+    options:
+      - id: a
+        text: "The highest 5-minute request rate seen in the last hour, checked every minute"
+      - id: b
+        text: "The request rate over one hour, with a 1-minute scrape interval"
+        why: "The `[1h:1m]` part is a subquery range and step. It does not change the scrape interval."
+      - id: c
+        text: "The highest raw counter value of the last hour"
+        why: "The inner `rate()` turns the counter into a rate first. The maximum is taken over those rates."
+      - id: d
+        text: "Nothing, because a range vector cannot contain a function"
+        why: "A subquery `expr[range:step]` makes a range vector from any instant-vector expression."
+    answer: [a]
+    explanation: |
+      A **subquery** `<expr>[<range>:<step>]` evaluates the inner expression at every step inside
+      the range and returns a range vector. Here, `rate(...[5m])` is evaluated every minute
+      for one hour, and `max_over_time` returns the highest value. Subqueries can be expensive;
+      recording rules are often better for repeated use.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#subquery
+      - https://prometheus.io/docs/prometheus/latest/querying/examples/#subquery
+    glossary: [subquery]
+
+  - id: pca-promql-026
+    difficulty: 2
+    type: single
+    question: "Which query predicts the filesystems that will be **full in 4 hours**, based on the last 6 hours?"
+    options:
+      - id: a
+        text: "`deriv(node_filesystem_avail_bytes[6h]) < 4 * 3600`"
+        why: "`deriv()` returns bytes per second. Comparing it with seconds makes no sense."
+      - id: b
+        text: "`rate(node_filesystem_avail_bytes[6h]) * 4 * 3600 < 0`"
+        why: "`rate()` is for counters. Free space is a gauge and goes up and down."
+      - id: c
+        text: "`node_filesystem_avail_bytes offset 4h < 0`"
+        why: "`offset` looks at the past. It cannot predict the future."
+      - id: d
+        text: "`predict_linear(node_filesystem_avail_bytes[6h], 4 * 3600) < 0`"
+    answer: [d]
+    explanation: |
+      `predict_linear(v range-vector, t scalar)` uses simple linear regression on the samples in
+      the range and predicts the value `t` seconds from now. It works on gauges. A result below 0
+      means the disk is expected to be full.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#predict_linear
+    glossary: [gauge, node-exporter]
+
+  - id: pca-promql-027
+    difficulty: 2
+    type: single
+    question: "A target was scraped successfully 2 minutes ago, but the last two scrapes failed (`up` is 0). What does an instant query for one of its other metrics return now?"
+    options:
+      - id: a
+        text: "The last value, until the 5-minute lookback window ends"
+        why: "The lookback is used for series that are simply not updated. A failed scrape marks the series stale."
+      - id: b
+        text: "No result, because the failed scrape marked its series as stale"
+      - id: c
+        text: "The value 0, because the target is down"
+        why: "Prometheus does not write zeros for missing data. Only the `up` series gets the value 0."
+      - id: d
+        text: "NaN, until the target is up again"
+        why: "Staleness markers are special NaN values inside the TSDB, but queries do not return them; the series is simply missing."
+    answer: [b]
+    explanation: |
+      When a scrape fails or a series disappears from a target, Prometheus writes a **staleness
+      marker**. Queries after it return nothing for that series. If no marker exists (for
+      example a series with an old timestamp), an instant selector looks back at most 5 minutes
+      (the default lookback delta).
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/basics/#staleness
+    glossary: [staleness]
+
+  - id: pca-promql-028
+    difficulty: 2
+    type: multiple
+    question: "Which statements about `topk(3, sum by (path) (rate(http_requests_total[5m])))` are correct? (Choose 2)"
+    options:
+      - id: a
+        text: "It returns at most 3 series, the ones with the highest values"
+      - id: b
+        text: "The returned series keep their `path` label"
+      - id: c
+        text: "It adds the 3 highest values together into one series"
+        why: "`topk` selects series. It does not sum them."
+      - id: d
+        text: "In a graph, it always shows the same 3 paths over the whole time range"
+        why: "In a range query, `topk` is evaluated at every step, so the top 3 can change and more than 3 lines can appear."
+      - id: e
+        text: "It returns the 3 lowest values when the values are negative"
+        why: "`topk` always returns the largest values. Use `bottomk` for the smallest."
+    answer: [a, b]
+    explanation: |
+      `topk(k, v)` and `bottomk(k, v)` select the k largest or smallest series and keep their
+      labels and values. They are evaluated separately at each step of a range query, which
+      often surprises people in graphs.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+    glossary: [promql]

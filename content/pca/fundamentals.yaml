@@ -1,0 +1,517 @@
+domain: fundamentals
+questions:
+  - id: pca-fund-001
+    difficulty: 1
+    type: single
+    question: "In the Prometheus architecture, which component removes duplicate alerts, groups them and sends notifications to email, chat or paging systems?"
+    options:
+      - id: a
+        text: "The Prometheus server, with its rule manager"
+        why: "The server evaluates alerting rules and sends alerts out, but it does not group them or send notifications."
+      - id: b
+        text: "The Pushgateway"
+        why: "The Pushgateway only keeps metrics pushed by batch jobs. It has nothing to do with alerts."
+      - id: c
+        text: "Alertmanager"
+      - id: d
+        text: "An exporter running next to the application"
+        why: "Exporters expose metrics for scraping. They do not handle alerts."
+    answer: [c]
+    explanation: |
+      Prometheus evaluates alerting rules and sends firing alerts to **Alertmanager**.
+      Alertmanager deduplicates, groups, routes, silences and inhibits alerts and sends the
+      notifications to receivers such as email, Slack, PagerDuty or webhooks.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/#architecture
+      - https://prometheus.io/docs/alerting/latest/alertmanager/
+    glossary: [alertmanager, prometheus]
+
+  - id: pca-fund-002
+    difficulty: 1
+    type: single
+    question: "How does a Prometheus server normally get metrics from an application?"
+    options:
+      - id: a
+        text: "The application pushes metrics to Prometheus with remote write"
+        why: "Remote write sends data **from** Prometheus to other systems. Applications do not use it to push to Prometheus."
+      - id: b
+        text: "Prometheus scrapes an HTTP endpoint, usually `/metrics`, at a fixed interval"
+      - id: c
+        text: "Prometheus reads the application log files and counts the lines"
+        why: "Prometheus does not read logs. Log-based tools (or special exporters) do that."
+      - id: d
+        text: "The application writes directly into the Prometheus TSDB files"
+        why: "Only Prometheus writes its own TSDB. Applications expose metrics over HTTP."
+    answer: [b]
+    explanation: |
+      Prometheus uses a **pull model**: it scrapes targets over HTTP at every scrape interval.
+      The target serves its current metric values in the exposition format, by default at the
+      path `/metrics`.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/
+      - https://prometheus.io/docs/introduction/faq/#why-do-you-pull-rather-than-push
+    glossary: [pull-model, scrape-target]
+
+  - id: pca-fund-003
+    difficulty: 1
+    type: single
+    question: "What identifies one time series in Prometheus?"
+    options:
+      - id: a
+        text: "The metric name and its full set of label names and values"
+      - id: b
+        text: "The metric name only; labels are extra data stored with each sample"
+        why: "Labels are part of the identity. `x{a=\"1\"}` and `x{a=\"2\"}` are two different series."
+      - id: c
+        text: "The target that exposed it and the time it was first scraped"
+        why: "The target shows up in the `job` and `instance` labels, but the identity is all labels plus the name."
+      - id: d
+        text: "A unique ID that the client library adds to every metric"
+        why: "Client libraries add no ID. Series are identified only by name and labels."
+    answer: [a]
+    explanation: |
+      Every time series is uniquely identified by its **metric name** and its **labels**
+      (key-value pairs). Internally the metric name is just the label `__name__`. Adding,
+      removing or changing any label value creates a different series.
+    docs:
+      - https://prometheus.io/docs/concepts/data_model/
+    glossary: [time-series, label]
+
+  - id: pca-fund-004
+    difficulty: 2
+    type: multiple
+    question: "Which statements about Prometheus labels are correct? (Choose 2)"
+    options:
+      - id: a
+        text: "Label names that start with `__` are reserved for internal use"
+      - id: b
+        text: "A label with an empty value is the same as not having the label"
+      - id: c
+        text: "A user ID is a good label, because it makes queries more detailed"
+        why: "User IDs have unbounded values. Each value creates a new series and causes high cardinality."
+      - id: d
+        text: "Labels can only be added by the client library, never by Prometheus"
+        why: "Prometheus adds `job` and `instance`, and relabeling or `external_labels` can add more."
+      - id: e
+        text: "Changing the order of labels creates a new time series"
+        why: "Label order does not matter. Only the names and values define the series."
+    answer: [a, b]
+    explanation: |
+      Labels beginning with `__` are reserved (for example `__name__`, `__address__`,
+      `__meta_*`). An empty label value is treated as a missing label. Avoid labels with
+      unbounded values, such as user IDs or email addresses.
+    docs:
+      - https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+      - https://prometheus.io/docs/practices/naming/#labels
+    glossary: [label, cardinality]
+
+  - id: pca-fund-005
+    difficulty: 1
+    type: single
+    question: "Which labels does Prometheus attach to every scraped series automatically?"
+    options:
+      - id: a
+        text: "`host` and `port`"
+        why: "Prometheus does not create these labels. The address is stored in `instance`."
+      - id: b
+        text: "`job` and `instance`"
+      - id: c
+        text: "`service` and `pod`"
+        why: "These can come from Kubernetes service discovery with relabeling, but they are not automatic."
+      - id: d
+        text: "`target` and `scrape_interval`"
+        why: "These are not labels. The scrape interval is part of the configuration."
+    answer: [b]
+    explanation: |
+      `job` is the name of the scrape job (`job_name`), and `instance` is by default the
+      `host:port` of the target. Prometheus also creates series about every scrape, such as
+      `up`, `scrape_duration_seconds` and `scrape_samples_scraped`.
+    docs:
+      - https://prometheus.io/docs/concepts/jobs_instances/
+    glossary: [scrape-job, scrape-target]
+
+  - id: pca-fund-006
+    difficulty: 1
+    type: single
+    question: "In `prometheus.yml`, the `global` section does not set `scrape_interval`. How often does Prometheus scrape a job that also does not set it?"
+    options:
+      - id: a
+        text: "Every 15 seconds"
+        why: "15s is used in many example configs, but it is not the built-in default."
+      - id: b
+        text: "Every 10 seconds"
+        why: "10s is the default `scrape_timeout`, not the scrape interval."
+      - id: c
+        text: "Every 5 minutes"
+        why: "5 minutes is the default lookback delta of queries, not the scrape interval."
+      - id: d
+        text: "Every 1 minute"
+    answer: [d]
+    explanation: |
+      The defaults are `scrape_interval: 1m`, `scrape_timeout: 10s` and
+      `evaluation_interval: 1m`. A job can override the global values.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#configuration-file
+    glossary: [scrape-interval]
+
+  - id: pca-fund-007
+    difficulty: 1
+    type: single
+    question: "You changed `prometheus.yml`. How can you apply it without restarting the process? (Prometheus runs with `--web.enable-lifecycle`.)"
+    options:
+      - id: a
+        text: "Send `SIGHUP` or an HTTP POST to `/-/reload`"
+      - id: b
+        text: "Call `GET /api/v1/status/config` with the new file"
+        why: "This endpoint only shows the loaded configuration. It cannot change it."
+      - id: c
+        text: "Run `promtool check config --apply`"
+        why: "promtool checks configs. It has no `--apply` option and cannot change a running server."
+      - id: d
+        text: "Wait one scrape interval, Prometheus reads the file again"
+        why: "Prometheus does not watch `prometheus.yml`. (It does watch file_sd target files.)"
+    answer: [a]
+    explanation: |
+      Prometheus reloads its configuration (and rule files) on `SIGHUP`, or on a POST to
+      `/-/reload` when the lifecycle API is enabled with `--web.enable-lifecycle`. If the new
+      file is invalid, the reload fails and the old configuration stays active.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+      - https://prometheus.io/docs/prometheus/latest/management_api/#reload
+    glossary: [prometheus]
+
+  - id: pca-fund-008
+    difficulty: 2
+    type: single
+    question: "What is the difference between `relabel_configs` and `metric_relabel_configs` in a scrape job?"
+    options:
+      - id: a
+        text: "relabel_configs works on targets before the scrape; metric_relabel_configs on series after it"
+      - id: b
+        text: "relabel_configs changes alerts; metric_relabel_configs changes scraped metrics"
+        why: "Alerts are relabeled with `alert_relabel_configs` in the `alerting` section."
+      - id: c
+        text: "They are the same; metric_relabel_configs is the old name"
+        why: "Both exist and run at different moments with different input."
+      - id: d
+        text: "relabel_configs runs at query time; metric_relabel_configs at storage time"
+        why: "Relabeling never runs at query time. Target relabeling runs before every scrape."
+    answer: [a]
+    explanation: |
+      `relabel_configs` rewrites the **target** labels (including `__address__` and `__meta_*`
+      labels from service discovery) before the scrape. It can drop whole targets.
+      `metric_relabel_configs` runs on every **scraped series** before it is stored, for
+      example to drop expensive metrics or labels.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+    glossary: [relabeling, metric-relabeling]
+
+  - id: pca-fund-009
+    difficulty: 2
+    type: single
+    question: "After target relabeling, what happens to labels whose names start with `__` (for example `__meta_consul_service`)?"
+    options:
+      - id: a
+        text: "They are stored with every series of the target"
+        why: "They would add many labels to every series. Prometheus removes them before storage."
+      - id: b
+        text: "They are removed; copy a value to a normal label if you need it"
+      - id: c
+        text: "They are renamed automatically, without the two underscores"
+        why: "Nothing is renamed automatically. You must use a `replace` or `labelmap` rule."
+      - id: d
+        text: "They are kept only on the `up` series"
+        why: "`up` gets the same target labels as other series, and `__` labels are removed for all."
+    answer: [b]
+    explanation: |
+      Labels starting with `__` are available only during relabeling. After it, they are
+      removed. If `instance` is not set, it is set from `__address__`. To keep a discovery
+      label, copy it with `action: replace` or `action: labelmap`.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+    glossary: [relabeling, service-discovery]
+
+  - id: pca-fund-010
+    difficulty: 3
+    type: single
+    question: "Service discovery finds many targets, but you want to scrape only those with the meta label `__meta_kubernetes_pod_annotation_prometheus_io_scrape=\"true\"`. Which relabel rule does this?"
+    options:
+      - id: a
+        text: "`action: drop` with `source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]` and `regex: \"true\"`"
+        why: "`drop` removes the matching targets, so it scrapes exactly the wrong ones."
+      - id: b
+        text: "`action: labeldrop` with `regex: __meta_kubernetes_pod_annotation_prometheus_io_scrape`"
+        why: "`labeldrop` removes a label. It never removes a target."
+      - id: c
+        text: "`action: keep` with `source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]` and `regex: \"true\"`"
+      - id: d
+        text: "`action: replace` with `target_label: __scrape__` and `replacement: \"true\"`"
+        why: "`__scrape__` is not a special label. Setting it changes nothing."
+    answer: [c]
+    explanation: |
+      The `keep` action drops every target whose joined `source_labels` do not match the regex.
+      `drop` does the opposite. These actions are often used with service discovery to choose
+      targets by annotations, labels or ports.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_action
+    glossary: [relabeling, service-discovery]
+
+  - id: pca-fund-011
+    difficulty: 2
+    type: single
+    question: "Which relabel action copies all labels matching `__meta_kubernetes_pod_label_(.+)` to labels named after the captured group (for example `app`)?"
+    options:
+      - id: a
+        text: "`labelkeep`"
+        why: "`labelkeep` removes all labels that do not match the regex. It does not create labels."
+      - id: b
+        text: "`labelmap`"
+      - id: c
+        text: "`hashmod`"
+        why: "`hashmod` writes a hash of the source labels modulo a number, used to shard targets."
+      - id: d
+        text: "`keep`"
+        why: "`keep` decides if a target stays. It does not change label names."
+    answer: [b]
+    explanation: |
+      `labelmap` matches the regex against all label **names** and copies the values to new
+      names built from `replacement` (by default `$1`). It is often used to turn discovery
+      labels into normal labels.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_action
+    glossary: [relabeling]
+
+  - id: pca-fund-012
+    difficulty: 2
+    type: single
+    question: "How does Prometheus store data on local disk?"
+    options:
+      - id: a
+        text: "In a SQL database with one table per metric name"
+        why: "Prometheus does not use SQL. It has its own time series database."
+      - id: b
+        text: "In one large file per day, rewritten on every scrape"
+        why: "Data is not rewritten on every scrape. New samples go to memory and the WAL first."
+      - id: c
+        text: "In blocks of about 2 hours, plus a write-ahead log for recent data"
+      - id: d
+        text: "Only in memory; data is lost when the server restarts"
+        why: "The WAL lets Prometheus rebuild recent data after a restart, and older data is in blocks on disk."
+    answer: [c]
+    explanation: |
+      New samples are kept in the in-memory **head block** and written to the **write-ahead log
+      (WAL)**. Every two hours they are written to a block on disk. Blocks are later compacted
+      into bigger blocks. Old blocks are deleted when they are outside the retention.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/storage/
+    glossary: [tsdb, wal]
+
+  - id: pca-fund-013
+    difficulty: 1
+    type: single
+    question: "What is the default retention time of the local Prometheus storage, and how do you change it?"
+    options:
+      - id: a
+        text: "30 days; set `retention` in the `global` section of prometheus.yml"
+        why: "Retention is not set in the global section of prometheus.yml, and 30 days is not the default."
+      - id: b
+        text: "15 days; use the flag `--storage.tsdb.retention.time`"
+      - id: c
+        text: "Unlimited; data is kept until the disk is full"
+        why: "There is a default time limit. A size limit can be added with `--storage.tsdb.retention.size`."
+      - id: d
+        text: "7 days; use the flag `--storage.local.retention`"
+        why: "`--storage.local.*` flags were for the old Prometheus 1.x storage."
+    answer: [b]
+    explanation: |
+      By default Prometheus keeps 15 days of data. Change it with
+      `--storage.tsdb.retention.time` (for example `30d`) or limit the size with
+      `--storage.tsdb.retention.size`. When both are set, the first limit reached wins.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
+    glossary: [retention, tsdb]
+
+  - id: pca-fund-014
+    difficulty: 2
+    type: multiple
+    question: "Which are known limitations of a single Prometheus server? (Choose 3)"
+    options:
+      - id: a
+        text: "Its local storage is not clustered or replicated"
+      - id: b
+        text: "It is not a good fit for data that must be 100% accurate, such as billing"
+      - id: c
+        text: "It is not made to store logs or individual events"
+      - id: d
+        text: "It cannot run more than 100 alerting rules"
+        why: "There is no such limit. A server can run thousands of rules."
+      - id: e
+        text: "It cannot scrape targets that use HTTPS"
+        why: "Prometheus can scrape HTTPS targets with `scheme: https` and `tls_config`."
+    answer: [a, b, c]
+    explanation: |
+      Prometheus favors reliability and simplicity: each server is standalone and its local
+      storage is limited by one node's disk. Values can be slightly off (for example after a
+      missed scrape), so it should not be used for billing. It stores numeric time series, not
+      logs or events. For long-term or global views, use remote write to systems such as Thanos
+      or Mimir.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/#when-does-it-not-fit
+      - https://prometheus.io/docs/prometheus/latest/storage/#remote-storage-integrations
+    glossary: [prometheus, long-term-storage]
+
+  - id: pca-fund-015
+    difficulty: 2
+    type: single
+    question: "How do you usually make Prometheus monitoring **highly available**?"
+    options:
+      - id: a
+        text: "Start Prometheus in cluster mode with three replicas sharing one TSDB"
+        why: "Prometheus has no cluster mode, and two servers must never share one TSDB directory."
+      - id: b
+        text: "Run two identical servers that scrape the same targets"
+      - id: c
+        text: "Put the Prometheus data on a network file system such as NFS"
+        why: "Network file systems are not supported for the TSDB and can corrupt data."
+      - id: d
+        text: "Use the Pushgateway as a buffer between targets and Prometheus"
+        why: "The Pushgateway is a single point of failure itself and is only meant for batch jobs."
+    answer: [b]
+    explanation: |
+      The usual pattern is to run two (or more) identical servers. Both scrape the same targets
+      and evaluate the same rules. Both send alerts to an Alertmanager cluster, which removes
+      the duplicates. Alertmanager itself runs as a cluster with `--cluster.*` flags.
+    docs:
+      - https://prometheus.io/docs/introduction/faq/#can-prometheus-be-made-highly-available
+      - https://prometheus.io/docs/alerting/latest/alertmanager/#high-availability
+    glossary: [prometheus, alertmanager]
+
+  - id: pca-fund-016
+    difficulty: 2
+    type: single
+    question: "A global Prometheus server must collect a few aggregated series from many data-center Prometheus servers. Which built-in feature is made for this?"
+    options:
+      - id: a
+        text: "Federation: scrape the `/federate` endpoint with `match[]` selectors"
+      - id: b
+        text: "The Pushgateway, so each server pushes its series"
+        why: "The Pushgateway is for batch jobs, not for copying data between Prometheus servers."
+      - id: c
+        text: "Recording rules that read data from the other servers"
+        why: "Recording rules only query the local server's data."
+      - id: d
+        text: "The admin API endpoint `/api/v1/admin/tsdb/snapshot`"
+        why: "A snapshot is a backup of the local TSDB, not a way to share live data."
+    answer: [a]
+    explanation: |
+      With **hierarchical federation**, a higher-level server scrapes `/federate` on lower-level
+      servers and selects series with `match[]` parameters. It is best used for aggregated data
+      (from recording rules). The scrape job should use `honor_labels: true`.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/federation/
+    glossary: [federation, honor-labels]
+
+  - id: pca-fund-017
+    difficulty: 2
+    type: single
+    question: "What is Prometheus **agent mode** (`--agent`) made for?"
+    options:
+      - id: a
+        text: "Running Prometheus as a sidecar exporter for one application"
+        why: "An exporter exposes metrics. Agent mode scrapes and forwards them."
+      - id: b
+        text: "Evaluating alerting rules without storing any data"
+        why: "Agent mode cannot evaluate rules or send alerts at all."
+      - id: c
+        text: "Replacing Alertmanager on small installations"
+        why: "Agent mode has no alerting features."
+      - id: d
+        text: "Scraping targets and sending all data with remote write, with no local queries"
+    answer: [d]
+    explanation: |
+      In agent mode, Prometheus only does service discovery, scraping and **remote write**. It
+      keeps a WAL but has no queryable TSDB, rules or alerts. It is used to forward data to a
+      central or long-term storage system with less resource use.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/feature_flags/
+      - https://prometheus.io/docs/prometheus/latest/command-line/prometheus/
+    glossary: [agent-mode, remote-write]
+
+  - id: pca-fund-018
+    difficulty: 1
+    type: single
+    question: "Which line is a valid sample in the Prometheus text exposition format?"
+    options:
+      - id: a
+        text: "`http_requests_total{method=\"GET\",code=\"200\"} 1027`"
+      - id: b
+        text: "`http_requests_total(method=GET, code=200) = 1027`"
+        why: "Labels use curly braces and quoted values, and there is no `=` before the value."
+      - id: c
+        text: "`{\"name\": \"http_requests_total\", \"value\": 1027}`"
+        why: "The exposition format is line-based text, not JSON."
+      - id: d
+        text: "`http_requests_total:1027|c`"
+        why: "This looks like the StatsD format, not the Prometheus format."
+    answer: [a]
+    explanation: |
+      Each sample is one line: metric name, optional labels in `{}` with quoted values, a space,
+      the value, and an optional timestamp in milliseconds. `# HELP` and `# TYPE` lines describe
+      the metric.
+    docs:
+      - https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-example
+    glossary: [exposition-format]
+
+  - id: pca-fund-019
+    difficulty: 2
+    type: multiple
+    question: "Which statements about the `# HELP` and `# TYPE` lines of the text format are correct? (Choose 2)"
+    options:
+      - id: a
+        text: "`# TYPE` can be counter, gauge, histogram, summary or untyped"
+      - id: b
+        text: "Each metric name may have only one `# TYPE` line, before its first sample"
+      - id: c
+        text: "They are required; without them Prometheus rejects the scrape"
+        why: "Both lines are optional. Without TYPE, the metric is untyped."
+      - id: d
+        text: "`# HELP` sets the unit of the metric, for example seconds"
+        why: "HELP is a free text description. The unit belongs in the metric name (or the OpenMetrics `# UNIT` line)."
+      - id: e
+        text: "Any line that starts with `#` must be HELP or TYPE"
+        why: "Other lines that start with `#` are comments and are ignored."
+    answer: [a, b]
+    explanation: |
+      `# HELP <name> <text>` gives a description and `# TYPE <name> <type>` gives the metric
+      type. Only one TYPE line is allowed per metric, and it must come before the first sample
+      of that metric. Other `#` lines are comments.
+    docs:
+      - https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information
+    glossary: [exposition-format]
+
+  - id: pca-fund-020
+    difficulty: 3
+    type: single
+    question: "Prometheus scrapes a Pushgateway. A pushed series has `job=\"backup\"`, but the scrape job is called `pushgateway`. Without extra settings, what labels does the stored series get?"
+    options:
+      - id: a
+        text: "`job=\"backup\"`; pushed labels always win"
+        why: "That only happens with `honor_labels: true`."
+      - id: b
+        text: "The scrape fails because of the label conflict"
+        why: "Conflicts do not fail the scrape. Prometheus renames the scraped label."
+      - id: c
+        text: "`job=\"pushgateway\"` and `exported_job=\"backup\"`"
+      - id: d
+        text: "Both `job=\"pushgateway\"` and `job=\"backup\"`"
+        why: "A series cannot have two labels with the same name."
+    answer: [c]
+    explanation: |
+      With the default `honor_labels: false`, target labels win in a conflict, and the scraped
+      label is renamed with the prefix `exported_`. With `honor_labels: true`, the scraped
+      labels are kept. Use it for the Pushgateway and federation.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+      - https://prometheus.io/docs/practices/pushing/
+    glossary: [honor-labels, pushgateway]

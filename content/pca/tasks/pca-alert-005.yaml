@@ -1,0 +1,68 @@
+id: pca-alert-005
+title: Unit test an alerting rule with promtool
+domain: alerting
+difficulty: 3
+minutes: 12
+environment: prometheus
+setup: |
+  cat > /lab/prometheus/rules/queue-alerts.yml <<'YAML'
+  groups:
+    - name: queue-alerts
+      rules:
+        - alert: OrdersQueueTooLong
+          expr: shop_orders_in_queue > 50
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Queue of {{ $labels.instance }} is too long"
+  YAML
+  curl -s -X POST http://prometheus:9090/-/reload >/dev/null || true
+task: |
+  The rule file `/lab/prometheus/rules/queue-alerts.yml` has the alert `OrdersQueueTooLong`.
+  Write a **unit test** for it in `/lab/prometheus/tests/queue-alerts-test.yml` and run it with
+  `promtool test rules`.
+
+  - Input: the series `shop_orders_in_queue{job="shop", instance="shop:8000"}` with the value
+    **60** every minute for 10 minutes.
+  - Test 1: at `eval_time: 1m` the alert is **not** firing yet (it has `for: 2m`).
+  - Test 2: at `eval_time: 5m` the alert **is** firing, with all its labels (`severity`,
+    `job`, `instance`) and its `summary` annotation.
+
+  `cd /lab/prometheus/tests && promtool test rules queue-alerts-test.yml` must pass.
+checks:
+  - name: promtool test rules passes for /lab/prometheus/tests/queue-alerts-test.yml
+    run: cd /lab/prometheus/tests && promtool test rules queue-alerts-test.yml >/dev/null 2>&1
+  - name: The test expects OrdersQueueTooLong to fire at one time and to not fire at another
+    run: |
+      out=$(yq -o=json '.' /lab/prometheus/tests/queue-alerts-test.yml)
+      echo "$out" | jq -e '[.tests[].alert_rule_test[]? | select(.alertname == "OrdersQueueTooLong")]
+        | any((.exp_alerts // []) | length > 0) and any((.exp_alerts // []) | length == 0)' >/dev/null
+solution: |
+  cat > /lab/prometheus/tests/queue-alerts-test.yml <<'YAML'
+  rule_files:
+    - ../rules/queue-alerts.yml      # relative to this test file
+  evaluation_interval: 1m
+  tests:
+    - interval: 1m
+      input_series:
+        - series: 'shop_orders_in_queue{job="shop", instance="shop:8000"}'
+          values: '60x10'            # 60, 60, ... (11 samples, one per minute)
+      alert_rule_test:
+        - eval_time: 1m
+          alertname: OrdersQueueTooLong
+          exp_alerts: []             # still pending because of for: 2m
+        - eval_time: 5m
+          alertname: OrdersQueueTooLong
+          exp_alerts:
+            - exp_labels:
+                severity: warning
+                job: shop
+                instance: shop:8000
+              exp_annotations:
+                summary: "Queue of shop:8000 is too long"
+  YAML
+  cd /lab/prometheus/tests && promtool test rules queue-alerts-test.yml
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/
+  - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/

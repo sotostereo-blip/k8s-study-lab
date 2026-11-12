@@ -1,0 +1,26 @@
+id: pca-promql-003
+title: Find the busiest paths with topk
+domain: promql
+difficulty: 2
+minutes: 6
+environment: prometheus
+task: |
+  Write a PromQL query that returns the **3 request paths** of job `shop` with the highest
+  request rate: the per-second rate of `http_requests_total` over **5 minutes**, with all
+  methods and status codes added together. The result must have only the label `path`.
+
+  Test it in the terminal (`promq '...'`), then save **only the query** in
+  `/root/answers/top-paths.promql`.
+checks:
+  - name: /root/answers/top-paths.promql returns the 3 busiest paths of job shop (5m rate)
+    run: promql-compare /root/answers/top-paths.promql 'topk(3, sum by (path) (rate(http_requests_total{job="shop"}[5m])))'
+solution: |
+  mkdir -p /root/answers
+  cat > /root/answers/top-paths.promql <<'Q'
+  topk(3, sum by (path) (rate(http_requests_total{job="shop"}[5m])))
+  Q
+  promq "$(cat /root/answers/top-paths.promql)"
+  # sum first (to remove method and status), then topk. topk keeps the labels of the series it returns.
+docs:
+  - https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+  - https://prometheus.io/docs/prometheus/latest/querying/functions/#rate

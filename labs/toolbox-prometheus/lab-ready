@@ -1,0 +1,12 @@
+#!/bin/bash
+# Exit 0 when every service of the Prometheus lab answers and the first scrape of `shop` is done.
+set -o pipefail
+curl -sf http://prometheus:9090/-/ready >/dev/null \
+  && curl -sf http://alertmanager:9093/-/ready >/dev/null \
+  && curl -sf http://pushgateway:9091/-/ready >/dev/null \
+  && curl -sf http://webhook:9000/healthz >/dev/null \
+  && curl -sf http://node-exporter:9100/metrics >/dev/null \
+  && curl -sf http://payments:8000/metrics >/dev/null \
+  && curl -sf http://inventory:8000/metrics >/dev/null \
+  && curl -sf http://prometheus:9090/api/v1/query --data-urlencode 'query=up{job="shop"} == 1' \
+     | jq -e '.data.result | length == 1' >/dev/null

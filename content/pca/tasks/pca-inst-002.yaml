@@ -1,0 +1,82 @@
+id: pca-inst-002
+title: Instrument a Python worker
+domain: instrumentation
+difficulty: 3
+minutes: 12
+environment: prometheus
+task: |
+  `/lab/apps/worker.py` processes fake jobs forever, but it has no metrics. Prometheus already
+  has a job `worker` that scrapes `toolbox:8001` (it is down now).
+
+  Use the Python client library (`prometheus_client`, already installed) to add:
+
+  1. A **counter** `worker_jobs_processed_total` with the label `result` (`ok` or `failed`).
+     Increase it after every job.
+  2. A **histogram** `worker_job_duration_seconds` with the time of each job.
+  3. An HTTP server for the metrics on port **8001** (`start_http_server`).
+
+  Run the worker **in the background** so it keeps running, for example
+  `nohup python3 /lab/apps/worker.py >/tmp/worker.log 2>&1 &`, and check `curl -s localhost:8001/metrics`.
+checks:
+  - name: The job `worker` (toolbox:8001) is up
+    run: promq 'up{job="worker"} == 1' | jq -e 'length == 1' >/dev/null
+  - name: '`worker_jobs_processed_total` is a counter with result="ok" and is growing'
+    run: |
+      meta=$(curl -sf 'http://prometheus:9090/api/v1/targets/metadata?match_target=%7Bjob%3D%22worker%22%7D')
+      echo "$meta" | jq -e 'any(.data[]; (.metric | test("^worker_jobs_processed(_total)?$")) and .type == "counter")' >/dev/null &&
+      promq 'sum(worker_jobs_processed_total{job="worker", result="ok"}) > 0' | jq -e 'length == 1' >/dev/null
+  - name: '`worker_job_duration_seconds` is a histogram with observations'
+    run: |
+      meta=$(curl -sf 'http://prometheus:9090/api/v1/targets/metadata?match_target=%7Bjob%3D%22worker%22%7D')
+      echo "$meta" | jq -e 'any(.data[]; .metric == "worker_job_duration_seconds" and .type == "histogram")' >/dev/null &&
+      promq 'sum(worker_job_duration_seconds_count{job="worker"}) > 0' | jq -e 'length == 1' >/dev/null
+solution: |
+  cat > /lab/apps/worker.py <<'PY'
+  import random
+  import time
+
+  from prometheus_client import Counter, Histogram, start_http_server
+
+  JOBS = Counter("worker_jobs_processed_total", "Jobs processed by the worker.", ["result"])
+  DURATION = Histogram("worker_job_duration_seconds", "Time spent processing one job.")
+
+
+  def process(job_id):
+      time.sleep(random.uniform(0.05, 0.4))
+      return random.random() > 0.1
+
+
+  def main():
+      start_http_server(8001)          # serves /metrics on port 8001
+      job_id = 0
+      while True:
+          job_id += 1
+          with DURATION.time():        # observes the duration of the block
+              ok = process(job_id)
+          JOBS.labels(result="ok" if ok else "failed").inc()
+
+
+  if __name__ == "__main__":
+      main()
+  PY
+  nohup python3 /lab/apps/worker.py >/tmp/worker.log 2>&1 &
+  curl -s localhost:8001/metrics | grep worker_
+auto_solution: |
+  cat > /lab/apps/worker.py <<'PY'
+  import random
+  import time
+  from prometheus_client import Counter, Histogram, start_http_server
+  JOBS = Counter("worker_jobs_processed_total", "Jobs processed by the worker.", ["result"])
+  DURATION = Histogram("worker_job_duration_seconds", "Time spent processing one job.")
+  start_http_server(8001)
+  while True:
+      with DURATION.time():
+          time.sleep(random.uniform(0.05, 0.4))
+      JOBS.labels(result="ok" if random.random() > 0.1 else "failed").inc()
+  PY
+  nohup setsid python3 /lab/apps/worker.py >/tmp/worker.log 2>&1 </dev/null &
+  sleep 2
+docs:
+  - https://prometheus.io/docs/instrumenting/clientlibs/
+  - https://prometheus.github.io/client_python/instrumenting/counter/
+  - https://prometheus.io/docs/practices/naming/

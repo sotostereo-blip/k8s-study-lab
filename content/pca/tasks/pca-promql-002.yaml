@@ -1,0 +1,41 @@
+id: pca-promql-002
+title: Record the 95th percentile latency from a histogram
+domain: promql
+difficulty: 3
+minutes: 10
+environment: prometheus
+task: |
+  The demo apps expose the histogram `http_request_duration_seconds` (with `_bucket`, `_sum`
+  and `_count` series and the label `path`).
+
+  Create a recording rule named `job:http_request_duration_seconds:p95_5m` that calculates the
+  **95th percentile** request duration of each **job** (all paths together), using the bucket
+  rates over **5 minutes**. Only the label `job` must stay in the result.
+
+  Put it in a new rule file in `/lab/prometheus/rules/`, check it with `promtool` and reload.
+checks:
+  - name: 'A recording rule `job:http_request_duration_seconds:p95_5m` uses histogram_quantile(0.95, ...) on the bucket rates'
+    run: |
+      out=$(curl -sf 'http://prometheus:9090/api/v1/rules?type=record')
+      echo "$out" | jq -e '[.data.groups[].rules[] | select(.name == "job:http_request_duration_seconds:p95_5m")]
+        | length == 1 and (.[0].query | test("histogram_quantile\\(0\\.95"))
+          and (.[0].query | test("http_request_duration_seconds_bucket")) and (.[0].query | test("\\[5m\\]"))' >/dev/null
+  - name: 'The result for job shop exists, has only the label job, and is between 0 and 10 seconds'
+    run: |
+      promq 'job:http_request_duration_seconds:p95_5m{job="shop"}' \
+        | jq -e 'length == 1 and (.[0].metric | keys) == ["__name__", "job"]
+                 and (.[0].value[1] | tonumber) > 0 and (.[0].value[1] | tonumber) < 10' >/dev/null
+solution: |
+  cat > /lab/prometheus/rules/latency-recording.yml <<'YAML'
+  groups:
+    - name: latency-recording
+      rules:
+        - record: job:http_request_duration_seconds:p95_5m
+          # keep `le` in the aggregation: histogram_quantile needs the bucket boundaries
+          expr: histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_seconds_bucket[5m])))
+  YAML
+  promtool check rules /lab/prometheus/rules/latency-recording.yml
+  curl -X POST http://prometheus:9090/-/reload
+docs:
+  - https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile
+  - https://prometheus.io/docs/practices/histograms/

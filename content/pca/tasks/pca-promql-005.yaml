@@ -1,0 +1,33 @@
+id: pca-promql-005
+title: Error ratio per path with vector matching
+domain: promql
+difficulty: 3
+minutes: 8
+environment: prometheus
+task: |
+  Write a query that returns, **for each path** of job `shop`, the share of requests that
+  failed with a **5xx** status code (a value between 0 and 1):
+
+  rate of 5xx requests over **5 minutes** / rate of all requests over **5 minutes**
+
+  Add up methods and status codes so that only the label `path` stays on both sides.
+  Paths that never returned a 5xx can be missing from the result.
+
+  Save only the query in `/root/answers/error-ratio.promql`.
+checks:
+  - name: /root/answers/error-ratio.promql returns the 5xx ratio per path for job shop
+    run: |
+      promql-compare /root/answers/error-ratio.promql \
+        'sum by (path) (rate(http_requests_total{job="shop",status=~"5.."}[5m])) / sum by (path) (rate(http_requests_total{job="shop"}[5m]))'
+solution: |
+  mkdir -p /root/answers
+  cat > /root/answers/error-ratio.promql <<'Q'
+  sum by (path) (rate(http_requests_total{job="shop", status=~"5.."}[5m]))
+    /
+  sum by (path) (rate(http_requests_total{job="shop"}[5m]))
+  Q
+  # Binary operators match series with exactly the same labels (here: path).
+  # Without the sums you would need `ignoring(status)` and group modifiers.
+docs:
+  - https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching
+  - https://prometheus.io/docs/prometheus/latest/querying/examples/

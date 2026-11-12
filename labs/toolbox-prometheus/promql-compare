@@ -1,0 +1,18 @@
+#!/bin/bash
+# Used by the lab checks: promql-compare FILE 'REFERENCE QUERY'
+# Exit 0 when the PromQL query in FILE returns the same series (labels, ignoring __name__) and
+# values as the reference query, both evaluated at the same moment. Lines starting with # are ignored.
+set -o pipefail
+file=$1 ref=$2 prom=${PROM:-http://prometheus:9090}
+[ -s "$file" ] || { echo "no query in $file"; exit 1; }
+q=$(grep -v '^[[:space:]]*#' "$file")
+t=$(( $(date +%s) - 2 ))
+run() { curl -sf "$prom/api/v1/query" --data-urlencode "query=$1" --data-urlencode "time=$t"; }
+mine=$(run "$q") || { echo "the query in $file is not valid PromQL"; exit 1; }
+want=$(run "$ref") || { echo "reference query failed"; exit 1; }
+norm='[.data.result[] | {m: (.metric | del(.__name__) | to_entries | sort_by(.key) | from_entries), v: (.value[1] | tonumber)}] | sort_by(.m | tojson)'
+jq -e -n --argjson a "$(echo "$mine" | jq "$norm")" --argjson b "$(echo "$want" | jq "$norm")" '
+  ($b | length) > 0 and ($a | length) == ($b | length)
+  and ([range(0; $a | length) as $i | ($a[$i].m == $b[$i].m)
+        and ((($a[$i].v - $b[$i].v) | fabs) <= 1e-6 * ([1, ($b[$i].v | fabs)] | max))] | all)' >/dev/null \
+  || { echo "the result of your query is different from the expected result"; exit 1; }

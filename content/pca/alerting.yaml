@@ -1,0 +1,460 @@
+domain: alerting
+questions:
+  - id: pca-alert-001
+    difficulty: 1
+    type: single
+    question: "An alerting rule has `for: 10m`. Its expression has just started to return a series. What is the state of the alert?"
+    options:
+      - id: a
+        text: "Firing, and Alertmanager waits 10 minutes before notifying"
+        why: "The waiting happens in Prometheus. Alertmanager gets nothing while the alert is pending."
+      - id: b
+        text: "Inactive, until the expression has returned data 10 times"
+        why: "`for` is a time, not a number of evaluations."
+      - id: c
+        text: "Resolved, because the rule needs 10 minutes of history first"
+        why: "Resolved is used for alerts that stopped firing, not for new ones."
+      - id: d
+        text: "Pending; it becomes firing if the condition is still true after 10 minutes"
+    answer: [d]
+    explanation: |
+      An alert is **pending** while its condition is true for less than the `for` duration. If
+      the condition stays true for the whole duration, it becomes **firing** and is sent to
+      Alertmanager. If it stops being true earlier, the alert goes back to inactive.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+    glossary: [alerting-rule]
+
+  - id: pca-alert-002
+    difficulty: 2
+    type: single
+    question: "A flapping condition makes an alert fire and resolve again every few minutes. Which rule field keeps the alert firing for a while after the condition stops being true?"
+    options:
+      - id: a
+        text: "`for`"
+        why: "`for` delays the start of firing. It does not keep an alert firing after the condition is gone."
+      - id: b
+        text: "`keep_firing_for`"
+      - id: c
+        text: "`repeat_interval`"
+        why: "`repeat_interval` is an Alertmanager setting for resending notifications."
+      - id: d
+        text: "`resolve_timeout`"
+        why: "`resolve_timeout` is an Alertmanager global setting for alerts without an end time."
+    answer: [b]
+    explanation: |
+      `keep_firing_for` tells Prometheus to keep an alert firing for the given time after the
+      expression stops returning it. It reduces flapping and false "resolved" messages, for
+      example when data is briefly missing.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/#defining-alerting-rules
+    glossary: [alerting-rule]
+
+  - id: pca-alert-003
+    difficulty: 2
+    type: multiple
+    question: "What is the difference between **labels** and **annotations** in an alerting rule? (Choose 2)"
+    options:
+      - id: a
+        text: "Labels identify the alert and are used for routing, grouping and silences"
+      - id: b
+        text: "Annotations hold extra information such as a summary or a runbook link"
+      - id: c
+        text: "Annotations decide which receiver gets the alert"
+        why: "Routes match on labels only. Annotations are just information."
+      - id: d
+        text: "Labels cannot use templates; only annotations can"
+        why: "Both labels and annotations can use templates such as `{{ $labels.instance }}`."
+      - id: e
+        text: "Changing an annotation value creates a new alert identity"
+        why: "Only labels define the identity of an alert. Avoid values like `$value` in labels for that reason."
+    answer: [a, b]
+    explanation: |
+      **Labels** are part of the alert identity. Alertmanager uses them for routing, grouping,
+      inhibition and silences. **Annotations** add information for humans, such as `summary`,
+      `description` or `runbook_url`. Put changing values like `$value` in annotations.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+    glossary: [alerting-rule, label]
+
+  - id: pca-alert-004
+    difficulty: 2
+    type: single
+    question: "In an alerting rule annotation, how do you show the `instance` label and the current value of the expression?"
+    options:
+      - id: a
+        text: "`${instance}` and `${value}`"
+        why: "This is shell-style syntax. Prometheus uses Go templates."
+      - id: b
+        text: "`{{ instance }}` and `{{ value }}`"
+        why: "Inside the template, labels are in `$labels` and the value is `$value`."
+      - id: c
+        text: "`{{ $labels.instance }}` and `{{ $value }}`"
+      - id: d
+        text: "`%instance%` and `%value%`"
+        why: "Prometheus does not use this placeholder syntax."
+    answer: [c]
+    explanation: |
+      Annotations and labels use Go templates. `$labels` holds the labels of the alert,
+      `$value` the value of the expression, and `$externalLabels` the external labels.
+      Functions like `humanize` or `humanizePercentage` format numbers.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/#templating
+      - https://prometheus.io/docs/prometheus/latest/configuration/template_reference/
+    glossary: [alerting-rule]
+
+  - id: pca-alert-005
+    difficulty: 1
+    type: single
+    question: "Where do you tell Prometheus to which Alertmanager instances it must send alerts?"
+    options:
+      - id: a
+        text: "In the `alerting.alertmanagers` section of prometheus.yml"
+      - id: b
+        text: "In the `receivers` section of alertmanager.yml"
+        why: "Receivers are where Alertmanager sends notifications, not where Prometheus sends alerts."
+      - id: c
+        text: "In each alerting rule, with a `destination` field"
+        why: "Rules have no destination field. All alerts go to the configured Alertmanagers."
+      - id: d
+        text: "With the Alertmanager flag `--prometheus.url`"
+        why: "Alertmanager does not pull alerts. Prometheus pushes them."
+    answer: [a]
+    explanation: |
+      Prometheus pushes alerts to the Alertmanagers listed under `alerting.alertmanagers`
+      (static or with service discovery). `alert_relabel_configs` can change alert labels
+      before they are sent.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#alertmanager_config
+      - https://prometheus.io/docs/alerting/latest/overview/
+    glossary: [alertmanager]
+
+  - id: pca-alert-006
+    difficulty: 2
+    type: single
+    question: "A network problem fires `InstanceDown` for 40 instances of one cluster. With `group_by: [alertname, cluster]`, how many notifications does the receiver get at first?"
+    options:
+      - id: a
+        text: "40 notifications, one per instance"
+        why: "That happens when `instance` is in `group_by`, or with `group_by: ['...']`."
+      - id: b
+        text: "One notification that lists all 40 alerts"
+      - id: c
+        text: "None, because Alertmanager drops duplicate alert names"
+        why: "Alerts with different labels are different alerts. Grouping combines them, it does not drop them."
+      - id: d
+        text: "Two: one for the alert name and one for the cluster"
+        why: "The group key is the combination of the label values, so there is one group here."
+    answer: [b]
+    explanation: |
+      Alertmanager puts alerts with the same values of the `group_by` labels into one group and
+      sends one notification for the group. All 40 alerts share `alertname` and `cluster`, so
+      they arrive together.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/alertmanager/#grouping
+      - https://prometheus.io/docs/alerting/latest/configuration/#route
+    glossary: [alert-grouping]
+
+  - id: pca-alert-007
+    difficulty: 2
+    type: single
+    question: "What does `group_wait: 30s` do in an Alertmanager route?"
+    options:
+      - id: a
+        text: "It waits 30s before the first notification of a new group, to collect more alerts"
+      - id: b
+        text: "It sends the same notification again every 30 seconds"
+        why: "Resending a notification that did not change is controlled by `repeat_interval`."
+      - id: c
+        text: "It waits 30s between notifications about new alerts in an existing group"
+        why: "That is `group_interval`."
+      - id: d
+        text: "It drops alerts that fire for less than 30 seconds"
+        why: "Short alerts are filtered by `for` in the Prometheus rule, not by Alertmanager."
+    answer: [a]
+    explanation: |
+      `group_wait` (default 30s) is the initial wait for a new group. `group_interval`
+      (default 5m) is the wait before a notification about changes in a group.
+      `repeat_interval` (default 4h) is the wait before an unchanged notification is sent again.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/configuration/#route
+    glossary: [alert-grouping]
+
+  - id: pca-alert-008
+    difficulty: 3
+    type: single
+    question: "An alert matches two child routes of the root route. The first one has no `continue` setting. Where does the alert go?"
+    options:
+      - id: a
+        text: "To both receivers, because all matching routes are used"
+        why: "Only with `continue: true` does Alertmanager keep checking the next routes."
+      - id: b
+        text: "To the receiver of the root route only"
+        why: "The root receiver is used only when no child route matches."
+      - id: c
+        text: "To the receiver of the second route, because the last match wins"
+        why: "The routing tree is checked in order and the first match wins."
+      - id: d
+        text: "Only to the receiver of the first matching route"
+    answer: [d]
+    explanation: |
+      Alertmanager walks the routing tree depth-first. At each level, the first matching child
+      route takes the alert, unless that route sets `continue: true`. Without any match, the
+      parent route handles the alert. `amtool config routes test` shows the result.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/configuration/#route
+    glossary: [routing-tree, am-receiver]
+
+  - id: pca-alert-009
+    difficulty: 1
+    type: single
+    question: "A database will be down for planned maintenance from 22:00 to 23:00. What is the right way to stop its alert notifications in that time?"
+    options:
+      - id: a
+        text: "Delete the alerting rules and add them again after 23:00"
+        why: "This changes the configuration for everybody and is easy to forget. Silences are made for this."
+      - id: b
+        text: "Create a silence for the database alerts, for that hour"
+      - id: c
+        text: "Add an inhibition rule with the database name"
+        why: "Inhibition depends on another alert firing. It is a permanent rule, not a time window."
+      - id: d
+        text: "Stop scraping the database targets for one hour"
+        why: "You would lose data and the `up` alerts could still fire."
+    answer: [b]
+    explanation: |
+      A **silence** mutes notifications for alerts that match a set of matchers, for a time
+      window. You create it in the Alertmanager UI, with `amtool silence add`, or with the API.
+      The alerts still exist; only the notifications are muted.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/alertmanager/#silences
+    glossary: [silence, alertmanager]
+
+  - id: pca-alert-010
+    difficulty: 2
+    type: single
+    question: "When a whole cluster is unreachable, you want to receive only the `ClusterDown` alert, not the many alerts of single services in that cluster. Which Alertmanager feature does this?"
+    options:
+      - id: a
+        text: "Grouping, with `group_by: [cluster]` on the root route"
+        why: "Grouping puts the alerts in one notification, but you would still get all of them."
+      - id: b
+        text: "A silence that matches `cluster=~\".+\"`"
+        why: "A silence would also mute `ClusterDown` itself, and it needs a fixed time window."
+      - id: c
+        text: "An inhibition rule: `ClusterDown` as source, `equal: [cluster]`"
+      - id: d
+        text: "A child route for the cluster with `continue: false`"
+        why: "`continue` only controls routing. It does not mute any alerts."
+    answer: [c]
+    explanation: |
+      An **inhibition rule** mutes the target alerts while a matching source alert is firing.
+      `equal` lists labels that must have the same value in source and target, so only alerts
+      of the same cluster are muted.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/alertmanager/#inhibition
+      - https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
+    glossary: [inhibition]
+
+  - id: pca-alert-011
+    difficulty: 2
+    type: single
+    question: "You run three Alertmanager instances for high availability. How should Prometheus be configured?"
+    options:
+      - id: a
+        text: "Send alerts to all three; the cluster sends each notification once"
+      - id: b
+        text: "Send alerts to one address only, a load balancer in front of them"
+        why: "The docs advise against a load balancer. Prometheus should talk to every instance."
+      - id: c
+        text: "Send each alert to a different instance, by alert name"
+        why: "Prometheus has no such option, and every instance should get every alert."
+      - id: d
+        text: "Use federation between the three Alertmanager instances"
+        why: "Federation is a Prometheus feature for metrics, not for Alertmanager."
+    answer: [a]
+    explanation: |
+      Prometheus should list all Alertmanager instances. The instances form a cluster (gossip
+      protocol, `--cluster.peer`) and share silences and notification state, so a notification
+      is sent once even though every instance received the alert.
+    docs:
+      - https://prometheus.io/docs/alerting/latest/alertmanager/#high-availability
+    glossary: [alertmanager]
+
+  - id: pca-alert-012
+    difficulty: 2
+    type: multiple
+    question: "Which are good practices for alerting, according to the Prometheus docs? (Choose 2)"
+    options:
+      - id: a
+        text: "Alert on symptoms that users notice, such as high latency or errors"
+      - id: b
+        text: "Keep alerts few and simple, and link to a runbook or dashboard"
+      - id: c
+        text: "Page someone for every possible cause, such as high CPU on any server"
+        why: "Cause-based pages create noise. Use them on dashboards to find the cause after a symptom alert."
+      - id: d
+        text: "Use the lowest possible `for` (0s) so that no problem is missed"
+        why: "Very short alerts are noisy. A suitable `for` avoids pages for short glitches."
+    answer: [a, b]
+    explanation: |
+      Page on symptoms close to the user (latency, errors, availability), not on every possible
+      cause. Keep alerting simple and actionable, and make it easy to find the cause with
+      consoles and dashboards.
+    docs:
+      - https://prometheus.io/docs/practices/alerting/
+    glossary: [alerting-rule]
+
+  - id: pca-alert-013
+    difficulty: 2
+    type: single
+    question: "A batch job sometimes disappears completely, and then its metrics are missing. Which expression can fire an alert when **no series** of `job=\"nightly\"` exists?"
+    options:
+      - id: a
+        text: "`up{job=\"nightly\"} == 0`"
+        why: "If the series does not exist at all, there is nothing to compare, so the expression is empty."
+      - id: b
+        text: "`absent(up{job=\"nightly\"})`"
+      - id: c
+        text: "`count(up{job=\"nightly\"}) == 0`"
+        why: "`count` of an empty vector returns nothing, not 0, so this never fires."
+      - id: d
+        text: "`up{job=\"nightly\"} unless up`"
+        why: "This is always empty, because every left series is also on the right side."
+    answer: [b]
+    explanation: |
+      Most expressions return nothing when the input is empty, so a missing metric does not fire
+      an alert. `absent(v)` returns a series with value 1 when `v` has no elements, and nothing
+      otherwise. `absent_over_time()` does the same over a range.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/querying/functions/#absent
+    glossary: [alerting-rule, promql]
+
+  - id: pca-alert-014
+    difficulty: 1
+    type: single
+    question: "Which command checks an alerting rule file for syntax errors before you load it?"
+    options:
+      - id: a
+        text: "`amtool check-config rules.yml`"
+        why: "amtool checks Alertmanager configuration files, not Prometheus rule files."
+      - id: b
+        text: "`prometheus --check rules.yml`"
+        why: "The server binary has no such flag. The checker is promtool."
+      - id: c
+        text: "`promtool check rules rules.yml`"
+      - id: d
+        text: "`curl -X POST /-/reload --dry-run`"
+        why: "There is no dry-run reload. A bad file would make the reload fail."
+    answer: [c]
+    explanation: |
+      `promtool check rules` parses rule files and checks the PromQL expressions. `promtool test
+      rules` runs unit tests with input series and expected alerts. `amtool check-config` checks
+      alertmanager.yml.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/command-line/promtool/
+      - https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/
+    glossary: [promtool, amtool]
+
+  - id: pca-alert-015
+    difficulty: 1
+    type: single
+    question: "Which tool is most often used to build dashboards on top of Prometheus data?"
+    options:
+      - id: a
+        text: "Alertmanager"
+        why: "Alertmanager handles alerts. It has no dashboards for metrics."
+      - id: b
+        text: "Grafana"
+      - id: c
+        text: "Pushgateway"
+        why: "The Pushgateway UI only lists pushed groups."
+      - id: d
+        text: "promtool"
+        why: "promtool is a command-line tool for checks and tests."
+    answer: [b]
+    explanation: |
+      Grafana has built-in support for Prometheus. Panels run PromQL queries through the
+      Prometheus HTTP API. The Prometheus web UI also has an expression browser, which is good
+      for ad-hoc queries but not for permanent dashboards.
+    docs:
+      - https://prometheus.io/docs/visualization/grafana/
+      - https://prometheus.io/docs/visualization/browser/
+    glossary: [grafana, dashboard]
+
+  - id: pca-alert-016
+    difficulty: 3
+    type: single
+    question: "In a Grafana dashboard, you want a drop-down list of all values of the `job` label. Which variable query fits the Prometheus data source?"
+    options:
+      - id: a
+        text: "`label_values(up, job)`"
+      - id: b
+        text: "`sum by (job) (up)`"
+        why: "This is a normal query that returns series, not a list of label values for a variable."
+      - id: c
+        text: "`SELECT DISTINCT job FROM up`"
+        why: "Prometheus does not understand SQL."
+      - id: d
+        text: "`label_replace(up, \"job\", \"$1\", \"job\", \"(.*)\")`"
+        why: "`label_replace` changes labels of series. It does not list values."
+    answer: [a]
+    explanation: |
+      Grafana's Prometheus data source offers template functions such as `label_values(metric,
+      label)` and `label_names()`. The variable can then be used in panel queries, for example
+      `up{job="$job"}`.
+    docs:
+      - https://grafana.com/docs/grafana/latest/datasources/prometheus/
+      - https://grafana.com/docs/grafana/latest/dashboards/variables/
+    glossary: [grafana, dashboard]
+
+  - id: pca-alert-017
+    difficulty: 2
+    type: multiple
+    question: "Which are good practices for Prometheus dashboards? (Choose 2)"
+    options:
+      - id: a
+        text: "Use recording rules for expensive queries that many panels or users load"
+      - id: b
+        text: "Start with a few key graphs (for example errors and latency) instead of every metric"
+      - id: c
+        text: "Show every label of every metric, so nothing is hidden"
+        why: "Too many series make graphs hard to read and slow to load."
+      - id: d
+        text: "Use `irate()` over long ranges such as `[1d]` for smooth daily graphs"
+        why: "`irate` only uses the last two samples, so a long range does not make it smoother."
+    answer: [a, b]
+    explanation: |
+      Good dashboards answer one question each and show the important signals first. Heavy
+      queries that run again and again should be precomputed with recording rules, which also
+      makes dashboards load faster.
+    docs:
+      - https://prometheus.io/docs/practices/consoles/
+      - https://prometheus.io/docs/practices/rules/
+    glossary: [dashboard, recording-rule]
+
+  - id: pca-alert-018
+    difficulty: 2
+    type: single
+    question: "Which recording rule name follows the naming convention `level:metric:operations`?"
+    options:
+      - id: a
+        text: "`http_requests_total_rate5m_by_job`"
+        why: "This name does not show the aggregation level and the operations with colons."
+      - id: b
+        text: "`rate5m:http_requests:job`"
+        why: "The order is wrong: the level comes first, then the metric, then the operations."
+      - id: c
+        text: "`job:http_requests:rate5m`"
+      - id: d
+        text: "`job-http-requests-rate5m`"
+        why: "Dashes are not part of the convention, and the colons are missing."
+    answer: [c]
+    explanation: |
+      Recording rules should be named `level:metric:operations`. The level is the aggregation
+      level (labels kept, such as `job`), the metric is the name without `_total` for rates,
+      and operations lists the functions applied (`rate5m`). Colons in metric names are meant
+      only for recording rules.
+    docs:
+      - https://prometheus.io/docs/practices/rules/#naming
+    glossary: [recording-rule]

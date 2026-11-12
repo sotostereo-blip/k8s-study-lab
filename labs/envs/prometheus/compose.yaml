@@ -1,0 +1,65 @@
+# Prometheus lab (no Kubernetes): Prometheus, Alertmanager, node-exporter, Pushgateway,
+# three copies of a demo app with metrics, an Alertmanager webhook receiver and a terminal.
+# The config files live in the shared `lab` volume, seeded by the toolbox and edited at /lab.
+x-app: &app
+  build: ../../prometheus-apps
+  image: k8s-study-lab/prometheus-apps:1
+  restart: unless-stopped
+
+services:
+  toolbox:
+    build: ../../toolbox-prometheus
+    image: k8s-study-lab/toolbox-prometheus:1
+    init: true
+    volumes: ["lab:/lab"]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    command:
+      - --config.file=/lab/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=12h
+      - --web.enable-lifecycle
+    volumes: ["lab:/lab:ro"]
+    depends_on: { toolbox: { condition: service_healthy } }
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.2
+    restart: unless-stopped
+    command:
+      - --config.file=/lab/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes: ["lab:/lab:ro"]
+    depends_on: { toolbox: { condition: service_healthy } }
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command: ["--collector.textfile.directory=/lab/textfile"]
+    volumes: ["lab:/lab:ro"]
+    depends_on: { toolbox: { condition: service_healthy } }
+
+  pushgateway:
+    image: prom/pushgateway:v1.11.2
+    restart: unless-stopped
+
+  shop:
+    <<: *app
+    environment: { APP_NAME: shop }
+
+  payments:
+    <<: *app
+    environment: { APP_NAME: payments }
+
+  inventory:
+    <<: *app
+    environment: { APP_NAME: inventory }
+
+  webhook:
+    <<: *app
+    command: ["python", "/app/webhook.py"]
+
+volumes:
+  lab:

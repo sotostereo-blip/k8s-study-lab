@@ -1,0 +1,61 @@
+id: pca-fund-004
+title: Clean up series with metric relabeling
+domain: fundamentals
+difficulty: 3
+minutes: 10
+environment: prometheus
+setup: |
+  cat > /lab/prometheus/scrape.d/catalog.yml <<'YAML'
+  scrape_configs:
+    - job_name: catalog
+      static_configs:
+        - targets: ["inventory:8000"]
+  YAML
+  curl -s -X POST http://prometheus:9090/-/reload >/dev/null || true
+task: |
+  The job `catalog` is defined in `/lab/prometheus/scrape.d/catalog.yml`. It stores data that
+  nobody uses. Change **only this job** with `metric_relabel_configs` so that:
+
+  1. Every series whose metric name starts with `python_gc_` is **dropped**.
+  2. The label `build_id` is **removed** from all series (it changes on every restart).
+  3. The label `path` is **renamed** to `endpoint` (copy the value to `endpoint`, then remove `path`).
+
+  Reload Prometheus and check the result, for example with
+  `promq 'http_requests_total{job="catalog"}'`. Old series need a few seconds to disappear.
+checks:
+  - name: 'No series with a name starting with `python_gc_` in job `catalog`'
+    run: promq '{job="catalog", __name__=~"python_gc_.*"}' | jq -e 'length == 0' >/dev/null
+  - name: '`app_info{job="catalog"}` exists and has no `build_id` label'
+    run: promq 'app_info{job="catalog"}' | jq -e 'length == 1 and (.[0].metric | has("build_id") | not)' >/dev/null
+  - name: '`http_requests_total{job="catalog"}` has `endpoint` and no `path` label'
+    run: |
+      a=$(promq 'http_requests_total{job="catalog", endpoint="/checkout"}')
+      b=$(promq 'http_requests_total{job="catalog", path!=""}')
+      echo "$a" | jq -e 'length > 0' >/dev/null && echo "$b" | jq -e 'length == 0' >/dev/null
+  - name: The job `catalog` is up
+    run: promq 'up{job="catalog"} == 1' | jq -e 'length == 1' >/dev/null
+    guard: true
+solution: |
+  cat > /lab/prometheus/scrape.d/catalog.yml <<'YAML'
+  scrape_configs:
+    - job_name: catalog
+      static_configs:
+        - targets: ["inventory:8000"]
+      metric_relabel_configs:        # runs on every scraped series, before storage
+        - source_labels: [__name__]
+          regex: "python_gc_.*"
+          action: drop
+        - regex: build_id
+          action: labeldrop
+        - source_labels: [path]
+          target_label: endpoint     # action: replace is the default
+        - regex: path
+          action: labeldrop
+  YAML
+  promtool check config /lab/prometheus/prometheus.yml
+  curl -X POST http://prometheus:9090/-/reload
+  # relabel_configs (target relabeling) runs BEFORE the scrape, on target labels;
+  # metric_relabel_configs runs AFTER the scrape, on every series.
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+  - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config

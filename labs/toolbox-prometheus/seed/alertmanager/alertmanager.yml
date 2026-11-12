@@ -1,0 +1,14 @@
+# Alertmanager configuration for the lab.
+# Check it:   amtool check-config /lab/alertmanager/alertmanager.yml
+# Apply it:   curl -X POST http://alertmanager:9093/-/reload
+route:
+  receiver: default
+  group_by: [alertname]
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 1h
+
+receivers:
+  - name: default
+    webhook_configs:
+      - url: http://webhook:9000/default

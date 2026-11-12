@@ -1,0 +1,25 @@
+id: pca-promql-004
+title: How long ago was the last order?
+domain: promql
+difficulty: 1
+minutes: 5
+environment: prometheus
+task: |
+  The gauge `shop_last_order_timestamp_seconds` holds the **Unix time** of the last order
+  (a "timestamp metric").
+
+  Write a query that returns, for every target of job `shop`, **how many seconds ago** the last
+  order happened. Keep the labels `job` and `instance`.
+
+  Save only the query in `/root/answers/last-order-age.promql`.
+checks:
+  - name: /root/answers/last-order-age.promql returns the seconds since the last order for job shop
+    run: promql-compare /root/answers/last-order-age.promql 'time() - shop_last_order_timestamp_seconds{job="shop"}'
+solution: |
+  mkdir -p /root/answers
+  echo 'time() - shop_last_order_timestamp_seconds{job="shop"}' > /root/answers/last-order-age.promql
+  # time() is the evaluation time in Unix seconds. An alert could be:
+  #   time() - shop_last_order_timestamp_seconds > 3600
+docs:
+  - https://prometheus.io/docs/prometheus/latest/querying/functions/#time
+  - https://prometheus.io/docs/practices/instrumentation/#timestamps-not-time-since

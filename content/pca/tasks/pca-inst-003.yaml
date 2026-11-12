@@ -1,0 +1,42 @@
+id: pca-inst-003
+title: Push batch job metrics to the Pushgateway
+domain: instrumentation
+difficulty: 2
+minutes: 8
+environment: prometheus
+task: |
+  A short batch job (`nightly_report`) ends before Prometheus can scrape it. It must push its
+  result to the **Pushgateway** (`http://pushgateway:9091`).
+
+  1. From the terminal, push the gauge `nightly_report_last_success_timestamp_seconds` with
+     the current Unix time to the Pushgateway, in the group `job="nightly_report"`.
+  2. Add a scrape job `pushgateway` for `pushgateway:9091`. The pushed series must keep
+     **their own** `job` label (`nightly_report`), not get `job="pushgateway"`.
+  3. Reload Prometheus and query `nightly_report_last_success_timestamp_seconds`.
+checks:
+  - name: 'Prometheus has nightly_report_last_success_timestamp_seconds{job="nightly_report"} with a recent time'
+    run: promq 'nightly_report_last_success_timestamp_seconds{job="nightly_report"} > time() - 86400' | jq -e 'length >= 1' >/dev/null
+  - name: The job `pushgateway` scrapes pushgateway:9091 and is up
+    run: promq 'up{job="pushgateway", instance="pushgateway:9091"} == 1' | jq -e 'length == 1' >/dev/null
+  - name: No pushed series was renamed to exported_job (honor_labels is used)
+    run: promq 'nightly_report_last_success_timestamp_seconds{exported_job!=""}' | jq -e 'length == 0' >/dev/null
+    guard: true
+solution: |
+  # 1. push (the URL path sets the grouping key job=nightly_report)
+  echo "nightly_report_last_success_timestamp_seconds $(date +%s)" \
+    | curl --data-binary @- http://pushgateway:9091/metrics/job/nightly_report
+  # 2. scrape the Pushgateway and keep the pushed job/instance labels
+  cat > /lab/prometheus/scrape.d/pushgateway.yml <<'YAML'
+  scrape_configs:
+    - job_name: pushgateway
+      honor_labels: true
+      static_configs:
+        - targets: ["pushgateway:9091"]
+  YAML
+  promtool check config /lab/prometheus/prometheus.yml
+  curl -X POST http://prometheus:9090/-/reload
+  # Without honor_labels the series get job="pushgateway" and exported_job="nightly_report".
+docs:
+  - https://prometheus.io/docs/practices/pushing/
+  - https://github.com/prometheus/pushgateway#command-line
+  - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config

@@ -1,0 +1,20 @@
+# Hands-on Prometheus labs. The PCA exam is multiple choice, but these tasks build the skills
+# behind it with a real Prometheus, Alertmanager, exporters and a demo app (no Kubernetes).
+id: pca
+name: Prometheus Certified Associate
+exam_minutes: 90
+passing_score: 75
+intro: "Prometheus, Alertmanager, node-exporter, a Pushgateway and a demo app in Docker"
+domains:
+  - { id: promql, name: "PromQL", weight: 28 }
+  - { id: fundamentals, name: "Prometheus Fundamentals", weight: 20 }
+  - { id: observability, name: "Observability Concepts", weight: 18 }
+  - { id: alerting, name: "Alerting & Dashboarding", weight: 18 }
+  - { id: instrumentation, name: "Instrumentation and Exporters", weight: 16 }
+environments:
+  prometheus:
+    name: "Prometheus 3.15 + Alertmanager 0.34 + exporters + demo apps"
+    nodes: 0
+    label: "Prometheus"
+    tools: "Config files in `/lab`; `promtool`, `amtool`, `curl`, `jq`, `yq`, `promq` are ready"
+mock_environment: prometheus   # every task uses its own job, rule file and alert names

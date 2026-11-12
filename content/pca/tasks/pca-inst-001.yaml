@@ -1,0 +1,44 @@
+id: pca-inst-001
+title: Expose backup metrics with the textfile collector
+domain: instrumentation
+difficulty: 2
+minutes: 8
+environment: prometheus
+task: |
+  A nightly backup script cannot serve HTTP. node-exporter reads `*.prom` files from
+  `/lab/textfile` (the **textfile collector**) and exposes their metrics.
+
+  Create `/lab/textfile/backup.prom` in the Prometheus text format with two gauges, each with a
+  `# HELP` and a `# TYPE` line and the label `database="orders"`:
+
+  - `backup_last_success_timestamp_seconds`: the current Unix time (`date +%s`)
+  - `backup_size_bytes`: `52428800`
+
+  The file must pass `promtool check metrics` with no problems. Then find the metrics in
+  Prometheus (job `node`). Tip: write to a temporary file and `mv` it, so node-exporter never
+  reads a half-written file.
+checks:
+  - name: /lab/textfile/backup.prom passes `promtool check metrics` with no problems
+    run: |
+      out=$(promtool check metrics < /lab/textfile/backup.prom 2>&1); rc=$?
+      [ $rc -eq 0 ] && [ -z "$out" ]
+  - name: 'Prometheus has a recent backup_last_success_timestamp_seconds{database="orders"} from job node'
+    run: promq 'backup_last_success_timestamp_seconds{job="node", database="orders"} > time() - 3600' | jq -e 'length == 1' >/dev/null
+  - name: 'Prometheus has backup_size_bytes{database="orders"} = 52428800 from job node'
+    run: promq 'backup_size_bytes{job="node", database="orders"} == 52428800' | jq -e 'length == 1' >/dev/null
+solution: |
+  cat > /lab/textfile/backup.prom.tmp <<EOF2
+  # HELP backup_last_success_timestamp_seconds Unix time of the last successful backup.
+  # TYPE backup_last_success_timestamp_seconds gauge
+  backup_last_success_timestamp_seconds{database="orders"} $(date +%s)
+  # HELP backup_size_bytes Size of the last backup in bytes.
+  # TYPE backup_size_bytes gauge
+  backup_size_bytes{database="orders"} 52428800
+  EOF2
+  mv /lab/textfile/backup.prom.tmp /lab/textfile/backup.prom
+  promtool check metrics < /lab/textfile/backup.prom
+  # node-exporter reads the file on every scrape: no reload needed.
+  promq 'backup_size_bytes'
+docs:
+  - https://github.com/prometheus/node_exporter#textfile-collector
+  - https://prometheus.io/docs/instrumenting/exposition_formats/

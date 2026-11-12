@@ -1,0 +1,40 @@
+# Prometheus configuration for the lab.
+# Check it:   promtool check config /lab/prometheus/prometheus.yml
+# Apply it:   curl -X POST http://prometheus:9090/-/reload   (Prometheus runs with --web.enable-lifecycle)
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - /lab/prometheus/rules/*.yml
+
+# More scrape jobs can live in their own files here (one job list per file).
+scrape_config_files:
+  - /lab/prometheus/scrape.d/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: shop
+    static_configs:
+      - targets: ["shop:8000"]
+
+  # A small worker you can instrument yourself (/lab/apps/worker.py, port 8001 in the toolbox).
+  - job_name: worker
+    static_configs:
+      - targets: ["toolbox:8001"]

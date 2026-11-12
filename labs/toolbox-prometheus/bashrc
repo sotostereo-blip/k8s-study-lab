@@ -1,0 +1,12 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+export EDITOR=vim
+alias reload-prometheus='curl -s -X POST http://prometheus:9090/-/reload && echo "Prometheus reloaded"'
+alias reload-alertmanager='curl -s -X POST http://alertmanager:9093/-/reload && echo "Alertmanager reloaded"'
+PS1='\[\e[33m\]prom-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Prometheus lab (Prometheus 3.15, Alertmanager 0.34). Config files live in /lab:
+  /lab/prometheus/prometheus.yml  rules/*.yml  scrape.d/*.yml  targets/   /lab/alertmanager/alertmanager.yml
+Services: prometheus:9090  alertmanager:9093  pushgateway:9091  node-exporter:9100
+          shop:8000  payments:8000  inventory:8000 (/metrics)  webhook:9000 (GET /alerts)
+Tools: promtool, amtool, curl, jq, yq, promq 'QUERY' (instant query as JSON).  Reload: curl -X POST http://prometheus:9090/-/reload
+MSG

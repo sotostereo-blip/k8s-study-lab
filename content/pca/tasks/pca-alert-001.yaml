@@ -1,0 +1,52 @@
+id: pca-alert-001
+title: Write an alerting rule that fires
+domain: alerting
+difficulty: 2
+minutes: 10
+environment: prometheus
+task: |
+  The shop returns some 5xx errors. Create an **alerting rule** in a new file in
+  `/lab/prometheus/rules/`:
+
+  - alert name `ShopHighErrorRate`
+  - it fires when the share of **5xx** requests of job `shop` (rate over **1 minute**, all paths
+    together) is **above 0.01** (1%)
+  - the condition must be true for at least **30 seconds** before it fires
+  - label `severity: page`
+  - annotation `summary` with a short text (you can use `{{ $value }}`)
+
+  Check the file with `promtool check rules`, reload Prometheus, and wait until the alert is
+  **firing** (`curl -s http://prometheus:9090/api/v1/alerts`).
+checks:
+  - name: 'The rule `ShopHighErrorRate` has for >= 30s, severity="page" and a summary annotation'
+    run: |
+      out=$(curl -sf 'http://prometheus:9090/api/v1/rules?type=alert')
+      echo "$out" | jq -e '[.data.groups[].rules[] | select(.name == "ShopHighErrorRate")]
+        | length == 1 and .[0].duration >= 30 and .[0].labels.severity == "page"
+          and ((.[0].annotations.summary // "") | length > 0)' >/dev/null
+  - name: The alert `ShopHighErrorRate` is firing
+    run: |
+      out=$(curl -sf http://prometheus:9090/api/v1/alerts)
+      echo "$out" | jq -e 'any(.data.alerts[]; .labels.alertname == "ShopHighErrorRate" and .state == "firing")' >/dev/null
+solution: |
+  cat > /lab/prometheus/rules/shop-alerts.yml <<'YAML'
+  groups:
+    - name: shop-alerts
+      rules:
+        - alert: ShopHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{job="shop", status=~"5.."}[1m]))
+              /
+            sum(rate(http_requests_total{job="shop"}[1m])) > 0.01
+          for: 30s                 # pending first, firing after 30s
+          labels:
+            severity: page
+          annotations:
+            summary: "Shop 5xx ratio is {{ $value | humanizePercentage }}"
+  YAML
+  promtool check rules /lab/prometheus/rules/shop-alerts.yml
+  curl -X POST http://prometheus:9090/-/reload
+  curl -s http://prometheus:9090/api/v1/alerts | jq '.data.alerts[] | {alert: .labels.alertname, state}'
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+  - https://prometheus.io/docs/practices/alerting/

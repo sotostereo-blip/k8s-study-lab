@@ -1,0 +1,465 @@
+domain: observability
+questions:
+  - id: pca-obs-001
+    difficulty: 1
+    type: single
+    question: "Which description fits a **metric** best?"
+    options:
+      - id: a
+        text: "A numeric measurement collected over time, such as requests per second"
+      - id: b
+        text: "A timestamped text record of something that happened in a program"
+        why: "That describes a log line. Metrics are numbers, not text messages."
+      - id: c
+        text: "The path of one request through several services"
+        why: "That describes a trace, made of spans."
+      - id: d
+        text: "A rule that sends a message when something goes wrong"
+        why: "That is an alerting rule. It uses metrics but is not a metric."
+    answer: [a]
+    explanation: |
+      Metrics are numeric values measured over time, often with labels for dimensions. They are
+      cheap to store and query, good for dashboards and alerts, and show trends. Logs and traces
+      give more detail about single events and requests.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/#what-are-metrics
+      - https://opentelemetry.io/docs/concepts/observability-primer/
+    glossary: [metrics, observability]
+
+  - id: pca-obs-002
+    difficulty: 1
+    type: single
+    question: "An alert says the error rate of the checkout service is high. Which signal helps most to see the **exact error message** of one failed request?"
+    options:
+      - id: a
+        text: "The `http_requests_total` metric with a `status` label"
+        why: "Metrics give counts and rates. They do not keep the text of a single error."
+      - id: b
+        text: "The logs of the checkout service"
+      - id: c
+        text: "The `up` metric of the checkout targets"
+        why: "`up` only tells you whether the last scrape worked."
+      - id: d
+        text: "A recording rule for the error ratio"
+        why: "A recording rule stores another aggregated metric. It has no error details."
+    answer: [b]
+    explanation: |
+      Metrics tell you **that** something is wrong and how much. Logs are timestamped records of
+      events and usually contain the details, such as the error message or stack trace. Traces
+      show **where** in the request path the time or the error happened.
+    docs:
+      - https://opentelemetry.io/docs/concepts/signals/logs/
+      - https://prometheus.io/docs/introduction/overview/#when-does-it-not-fit
+    glossary: [logs, metrics]
+
+  - id: pca-obs-003
+    difficulty: 1
+    type: single
+    question: "In distributed tracing, what is a **span**?"
+    options:
+      - id: a
+        text: "The time between two Prometheus scrapes"
+        why: "That is the scrape interval. Spans belong to tracing, not to scraping."
+      - id: b
+        text: "A group of logs from the same container"
+        why: "Spans are not groups of logs. A span can have events attached, but it is a unit of work."
+      - id: c
+        text: "One unit of work in a trace, with a name, start time and duration"
+      - id: d
+        text: "The range of a range vector, for example `[5m]`"
+        why: "That is a range selector in PromQL."
+    answer: [c]
+    explanation: |
+      A **trace** is the full path of a request. It is made of **spans**. Each span is one
+      operation (for example an HTTP call or a database query) with a start time, a duration,
+      attributes and a parent span. Spans of one trace share a trace ID.
+    docs:
+      - https://opentelemetry.io/docs/concepts/signals/traces/
+    glossary: [span, trace]
+
+  - id: pca-obs-004
+    difficulty: 2
+    type: single
+    question: "Service A calls service B over HTTP. How do the spans of both services end up in the **same trace**?"
+    options:
+      - id: a
+        text: "Prometheus scrapes both services and joins spans by the instance label"
+        why: "Prometheus does not collect spans. Traces need a tracing backend."
+      - id: b
+        text: "Service A sends the trace context (trace ID, span ID) in the request headers"
+      - id: c
+        text: "The tracing backend joins spans that start within the same second"
+        why: "Joining by time would mix up unrelated requests. Spans are linked by IDs."
+      - id: d
+        text: "Both services write the same log file"
+        why: "Shared logs do not link spans. The context must travel with the request."
+    answer: [b]
+    explanation: |
+      **Context propagation** passes the trace ID and the parent span ID from service to service,
+      for example with the W3C `traceparent` HTTP header. Service B creates a child span with
+      the same trace ID, so the backend can build the whole tree.
+    docs:
+      - https://opentelemetry.io/docs/concepts/signals/traces/#context-propagation
+    glossary: [trace, span, opentelemetry]
+
+  - id: pca-obs-005
+    difficulty: 2
+    type: multiple
+    question: "Which questions can Prometheus metrics answer well? (Choose 2)"
+    options:
+      - id: a
+        text: "How did the 5xx rate of the API change over the last 6 hours?"
+      - id: b
+        text: "Is the memory use of the database close to its limit?"
+      - id: c
+        text: "Which exact SQL statement did user 4711 run at 10:42:13?"
+        why: "This is one event with high-cardinality details. Logs or traces fit better."
+      - id: d
+        text: "Which services did one slow request pass through, and how long in each?"
+        why: "This is the job of a distributed trace."
+    answer: [a, b]
+    explanation: |
+      Metrics are best for aggregated numbers over time: rates, ratios, saturation and trends.
+      They are not made for single events or per-request details, which belong in logs and
+      traces.
+    docs:
+      - https://prometheus.io/docs/introduction/overview/#when-does-it-fit
+      - https://opentelemetry.io/docs/concepts/observability-primer/
+    glossary: [metrics, logs, trace]
+
+  - id: pca-obs-006
+    difficulty: 2
+    type: single
+    question: "You want to know which customer sent each slow request. Why should you **not** add a `customer_id` label to your request metrics?"
+    options:
+      - id: a
+        text: "Label values cannot contain numbers"
+        why: "Label values can contain any Unicode characters, including numbers."
+      - id: b
+        text: "Each customer creates new series, so memory and storage grow with no limit"
+      - id: c
+        text: "Prometheus only allows five labels per metric"
+        why: "There is no such limit, but each label value combination is a new series."
+      - id: d
+        text: "Labels are dropped when they are not in the `# HELP` line"
+        why: "HELP is a description only. It does not control labels."
+    answer: [b]
+    explanation: |
+      Every unique label combination is a separate time series. Unbounded values such as user
+      IDs, customer IDs or request IDs cause **high cardinality** and can overload Prometheus.
+      Put such details in logs or traces (exemplars can link a metric to a trace).
+    docs:
+      - https://prometheus.io/docs/practices/naming/#labels
+      - https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels
+    glossary: [cardinality, label]
+
+  - id: pca-obs-007
+    difficulty: 2
+    type: multiple
+    question: "Which are advantages of the **pull** model that Prometheus uses? (Choose 2)"
+    options:
+      - id: a
+        text: "Prometheus knows directly when a target is down, because the scrape fails"
+      - id: b
+        text: "You can scrape a target by hand (or from a laptop) to see what it exposes"
+      - id: c
+        text: "It works best for short batch jobs that end before the next scrape"
+        why: "Short jobs are the main weak point of pull. They often push to a Pushgateway instead."
+      - id: d
+        text: "Targets behind a firewall that Prometheus cannot reach are scraped automatically"
+        why: "Pull needs network access from Prometheus to the target."
+    answer: [a, b]
+    explanation: |
+      With pull, the `up` metric shows at once if a target is unhealthy, the monitoring server
+      controls the load, and you can open the `/metrics` page of any target by hand. Push is
+      helpful for short batch jobs and for targets that the server cannot reach.
+    docs:
+      - https://prometheus.io/docs/introduction/faq/#why-do-you-pull-rather-than-push
+      - https://prometheus.io/docs/introduction/comparison/
+    glossary: [pull-model]
+
+  - id: pca-obs-008
+    difficulty: 1
+    type: single
+    question: "When does the Prometheus documentation recommend the **Pushgateway**?"
+    options:
+      - id: a
+        text: "For every service, to reduce the load on Prometheus"
+        why: "The Pushgateway is a single point of failure and makes `up` useless. It is not for normal services."
+      - id: b
+        text: "For services behind a load balancer"
+        why: "Services behind a load balancer should be scraped one by one through service discovery."
+      - id: c
+        text: "For service-level batch jobs that are too short to be scraped"
+      - id: d
+        text: "For sending alerts to Alertmanager"
+        why: "Prometheus sends alerts directly to Alertmanager."
+    answer: [c]
+    explanation: |
+      The only recommended use of the Pushgateway is to capture the outcome of **service-level
+      batch jobs**, which are not tied to one machine and end before a scrape. It never forgets
+      pushed series until they are deleted, so you lose automatic health monitoring.
+    docs:
+      - https://prometheus.io/docs/practices/pushing/
+    glossary: [pushgateway, pull-model]
+
+  - id: pca-obs-009
+    difficulty: 1
+    type: single
+    question: "Why is **service discovery** important for Prometheus in cloud and container environments?"
+    options:
+      - id: a
+        text: "It encrypts the traffic between Prometheus and its targets"
+        why: "Encryption is set with `scheme: https` and `tls_config`, not with service discovery."
+      - id: b
+        text: "It lets applications push metrics directly to Prometheus"
+        why: "Service discovery does not change the pull model."
+      - id: c
+        text: "It stores the target list in the TSDB for later queries"
+        why: "Targets are not stored in the TSDB (only the `up` series and scrape metrics)."
+      - id: d
+        text: "Targets change all the time, so Prometheus must find them automatically"
+    answer: [d]
+    explanation: |
+      Containers, Pods and cloud instances start and stop often and get new addresses. Service
+      discovery asks a source of truth (Kubernetes, Consul, a cloud API, DNS, files) for the
+      current list of targets and their metadata, so the configuration stays the same.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+      - https://prometheus.io/docs/concepts/jobs_instances/
+    glossary: [service-discovery]
+
+  - id: pca-obs-010
+    difficulty: 2
+    type: multiple
+    question: "Which are real service discovery configurations in Prometheus? (Choose 3)"
+    options:
+      - id: a
+        text: "`kubernetes_sd_configs`"
+      - id: b
+        text: "`file_sd_configs`"
+      - id: c
+        text: "`consul_sd_configs`"
+      - id: d
+        text: "`syslog_sd_configs`"
+        why: "There is no syslog service discovery. Syslog is a log protocol."
+      - id: e
+        text: "`snmp_sd_configs`"
+        why: "SNMP devices are scraped through the SNMP exporter; there is no SNMP service discovery."
+    answer: [a, b, c]
+    explanation: |
+      Prometheus has many built-in mechanisms, for example `kubernetes_sd_configs`,
+      `consul_sd_configs`, `ec2_sd_configs`, `dns_sd_configs`, `file_sd_configs` and
+      `http_sd_configs`. For other systems, use file or HTTP service discovery.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#configuration-file
+      - https://prometheus.io/docs/prometheus/latest/http_sd/
+    glossary: [service-discovery, file-sd]
+
+  - id: pca-obs-011
+    difficulty: 1
+    type: single
+    question: "Which statement matches SLI, SLO and SLA correctly?"
+    options:
+      - id: a
+        text: "SLI is a target, SLO is a measurement, SLA is a dashboard"
+        why: "SLI and SLO are the other way round, and an SLA is an agreement, not a dashboard."
+      - id: b
+        text: "SLI is a measurement, SLO is a target for it, SLA is a contract with consequences"
+      - id: c
+        text: "SLI, SLO and SLA are three names for the same availability number"
+        why: "They are related but different: a measure, an internal goal, and an external promise."
+      - id: d
+        text: "SLI is for latency, SLO is for errors, SLA is for traffic"
+        why: "Each of them can be about latency, errors or other things. They are not split by signal."
+    answer: [b]
+    explanation: |
+      A **Service Level Indicator** is a measured value (for example the share of successful
+      requests). A **Service Level Objective** is the target for an SLI over a period (for
+      example 99.9% in 30 days). A **Service Level Agreement** is a promise to customers, often
+      with penalties, and is usually looser than the internal SLO.
+    docs:
+      - https://sre.google/sre-book/service-level-objectives/
+    glossary: [sli, slo, sla]
+
+  - id: pca-obs-012
+    difficulty: 2
+    type: single
+    question: "A service has an availability SLO of **99.9%** over 30 days. About how much full downtime does its error budget allow?"
+    options:
+      - id: a
+        text: "About 7 hours"
+        why: "7.2 hours is the budget of a 99% SLO over 30 days."
+      - id: b
+        text: "About 4 minutes"
+        why: "4.3 minutes is the budget of a 99.99% SLO over 30 days."
+      - id: c
+        text: "About 43 minutes"
+      - id: d
+        text: "About 1 day"
+        why: "One day would be more than 3% of 30 days, much more than 0.1%."
+    answer: [c]
+    explanation: |
+      The error budget is 1 - SLO = 0.1%. 30 days are 43,200 minutes, and 0.1% of that is about
+      43 minutes. When the budget is used up, teams usually slow down risky changes.
+    docs:
+      - https://sre.google/sre-book/service-level-objectives/
+    glossary: [error-budget, slo]
+
+  - id: pca-obs-013
+    difficulty: 2
+    type: single
+    question: "Which is the **best SLI** for a user-facing web API?"
+    options:
+      - id: a
+        text: "The average CPU usage of the API servers"
+        why: "CPU usage is a cause, not something users feel. Users can be happy at 90% CPU."
+      - id: b
+        text: "The number of API servers that are running"
+        why: "Users do not see how many servers run. They see failed and slow requests."
+      - id: c
+        text: "The total number of requests per second"
+        why: "Traffic is useful context, but it does not say whether users get good answers."
+      - id: d
+        text: "The share of requests that succeed in less than 300ms"
+    answer: [d]
+    explanation: |
+      Good SLIs measure what users experience, usually as a ratio of good events to all events
+      (successful and fast requests divided by all requests). With Prometheus you calculate it
+      from counters and histogram buckets.
+    docs:
+      - https://sre.google/sre-book/service-level-objectives/
+      - https://prometheus.io/docs/practices/histograms/#apdex-score
+    glossary: [sli, histogram]
+
+  - id: pca-obs-014
+    difficulty: 1
+    type: multiple
+    question: "Which are the **four golden signals** of monitoring? (Choose 4)"
+    options:
+      - id: a
+        text: "Latency"
+      - id: b
+        text: "Traffic"
+      - id: c
+        text: "Errors"
+      - id: d
+        text: "Saturation"
+      - id: e
+        text: "Uptime"
+        why: "Uptime is not one of the four. Errors and latency say more about what users feel."
+      - id: f
+        text: "Cost"
+        why: "Cost matters, but it is not one of the four golden signals."
+    answer: [a, b, c, d]
+    explanation: |
+      The Google SRE book names latency, traffic, errors and saturation as the four golden
+      signals for user-facing systems. The RED method (rate, errors, duration) is similar for
+      services, and the USE method is for resources.
+    docs:
+      - https://sre.google/sre-book/monitoring-distributed-systems/
+    glossary: [golden-signals]
+
+  - id: pca-obs-015
+    difficulty: 2
+    type: single
+    question: "The **USE method** (utilization, saturation, errors) is mainly used for which kind of thing?"
+    options:
+      - id: a
+        text: "Resources such as CPU, memory, disks and networks"
+      - id: b
+        text: "Request-driven services such as HTTP and gRPC APIs"
+        why: "For services, the RED method (rate, errors, duration) fits better."
+      - id: c
+        text: "Batch jobs that run once a day at night"
+        why: "Batch jobs are usually checked by their last success time and duration."
+      - id: d
+        text: "Business numbers such as sales per hour"
+        why: "Business metrics are not described by utilization and saturation."
+    answer: [a]
+    explanation: |
+      USE looks at each **resource**: how busy it is (utilization), how much work waits
+      (saturation) and how many errors it has. RED looks at each **service**: request rate,
+      errors and duration. Online-serving systems in the Prometheus docs follow the RED idea.
+    docs:
+      - https://prometheus.io/docs/practices/instrumentation/#online-serving-systems
+      - https://sre.google/sre-book/monitoring-distributed-systems/
+    glossary: [golden-signals]
+
+  - id: pca-obs-016
+    difficulty: 3
+    type: single
+    question: "What is an **exemplar** in Prometheus?"
+    options:
+      - id: a
+        text: "An example configuration file shipped with Prometheus"
+        why: "The example config is just a file. Exemplars are data attached to samples."
+      - id: b
+        text: "A trace ID (and value) attached to a sample, linking a metric to a trace"
+      - id: c
+        text: "A recording rule that is used as a template for other rules"
+        why: "Recording rules have no template feature called exemplar."
+      - id: d
+        text: "A sample that Prometheus keeps forever, outside the retention"
+        why: "No sample is kept outside the retention."
+    answer: [b]
+    explanation: |
+      Exemplars are references to data outside the metric, usually a trace ID, stored with a
+      sample (for example a histogram bucket). In Grafana you can jump from a latency spike to
+      a trace of a slow request. Prometheus stores them when `--enable-feature=exemplar-storage`
+      is set, and they are exposed in OpenMetrics format.
+    docs:
+      - https://prometheus.io/docs/prometheus/latest/feature_flags/
+      - https://prometheus.io/docs/instrumenting/exposition_formats/
+    glossary: [exemplar, trace]
+
+  - id: pca-obs-017
+    difficulty: 2
+    type: single
+    question: "How do **OpenTelemetry** and Prometheus relate?"
+    options:
+      - id: a
+        text: "OpenTelemetry replaces PromQL with a new query language"
+        why: "OpenTelemetry defines APIs, SDKs and the OTLP protocol. It has no query language."
+      - id: b
+        text: "They cannot work together; you must choose one of them"
+        why: "They work together. Prometheus can scrape OpenTelemetry exporters and receive OTLP."
+      - id: c
+        text: "OpenTelemetry is the storage backend that Prometheus uses for traces"
+        why: "Prometheus does not store traces at all."
+      - id: d
+        text: "OpenTelemetry can produce metrics, and Prometheus can receive them, for example over OTLP"
+    answer: [d]
+    explanation: |
+      OpenTelemetry is a vendor-neutral standard and toolkit for traces, metrics and logs.
+      Applications instrumented with OpenTelemetry can expose a Prometheus endpoint or send
+      metrics with OTLP. Prometheus 3 can receive OTLP metrics when the OTLP receiver is
+      enabled.
+    docs:
+      - https://prometheus.io/docs/guides/opentelemetry/
+    glossary: [opentelemetry, prometheus]
+
+  - id: pca-obs-018
+    difficulty: 2
+    type: single
+    question: "What is the main difference between **monitoring** and **observability**?"
+    options:
+      - id: a
+        text: "Monitoring uses metrics; observability uses only logs"
+        why: "Observability uses all signals together: metrics, logs and traces."
+      - id: b
+        text: "Monitoring checks known problems; observability helps explain new, unknown problems"
+      - id: c
+        text: "Monitoring is for production; observability is only for test systems"
+        why: "Both are mostly used in production."
+      - id: d
+        text: "They are the same thing with different marketing names"
+        why: "They overlap a lot, but observability is the wider property of a system."
+    answer: [b]
+    explanation: |
+      Monitoring watches known signals and alerts on known failure modes. Observability is the
+      ability to understand the internal state of a system from its outputs (metrics, logs,
+      traces), so you can ask new questions when something unexpected happens.
+    docs:
+      - https://opentelemetry.io/docs/concepts/observability-primer/
+    glossary: [observability]

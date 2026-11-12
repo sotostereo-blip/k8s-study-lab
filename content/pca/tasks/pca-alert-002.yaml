@@ -1,0 +1,76 @@
+id: pca-alert-002
+title: Route an alert to the payments team
+domain: alerting
+difficulty: 2
+minutes: 10
+environment: prometheus
+setup: |
+  cat > /lab/prometheus/rules/payments-alerts.yml <<'YAML'
+  groups:
+    - name: payments-alerts
+      rules:
+        - alert: PaymentsQueueStuck
+          expr: vector(1)
+          labels:
+            team: payments
+            severity: critical
+          annotations:
+            summary: "The payments queue does not move"
+  YAML
+  curl -s -X POST http://prometheus:9090/-/reload >/dev/null || true
+task: |
+  The alert `PaymentsQueueStuck` (label `team="payments"`) is firing. Today Alertmanager sends
+  every alert to the receiver `default` (a webhook at `http://webhook:9000/default`).
+
+  Edit `/lab/alertmanager/alertmanager.yml`:
+
+  1. Add a receiver `payments-webhook` with a webhook to `http://webhook:9000/payments`.
+  2. Add a **child route** under the root route: alerts with `team="payments"` go to
+     `payments-webhook`. All other alerts must still go to `default`.
+  3. Check the file with `amtool check-config`, then reload Alertmanager
+     (`curl -X POST http://alertmanager:9093/-/reload`).
+
+  The receiver keeps every notification: `curl -s http://webhook:9000/alerts | jq`.
+checks:
+  - name: The webhook received `PaymentsQueueStuck` at /payments
+    run: |
+      out=$(curl -sf http://webhook:9000/alerts)
+      echo "$out" | jq -e 'any(.[]; .path == "/payments" and any(.body.alerts[]?; .labels.alertname == "PaymentsQueueStuck"))' >/dev/null
+  - name: 'The routing tree sends team="payments" to payments-webhook'
+    run: |
+      out=$(amtool config routes test --config.file=/lab/alertmanager/alertmanager.yml team=payments alertname=PaymentsQueueStuck 2>/dev/null)
+      [ "$(echo "$out" | tr -d '[:space:]')" = "payments-webhook" ]
+  - name: Other alerts still go to the receiver `default`
+    run: |
+      out=$(amtool config routes test --config.file=/lab/alertmanager/alertmanager.yml alertname=SomethingElse team=web 2>/dev/null)
+      [ "$(echo "$out" | tr -d '[:space:]')" = "default" ]
+    guard: true
+solution: |
+  # Edit /lab/alertmanager/alertmanager.yml so it contains:
+  #
+  # route:
+  #   receiver: default
+  #   group_by: [alertname]
+  #   ...
+  #   routes:
+  #     - matchers: ['team="payments"']
+  #       receiver: payments-webhook
+  # receivers:
+  #   - name: default
+  #     ...
+  #   - name: payments-webhook
+  #     webhook_configs:
+  #       - url: http://webhook:9000/payments
+  amtool check-config /lab/alertmanager/alertmanager.yml
+  amtool config routes test --config.file=/lab/alertmanager/alertmanager.yml team=payments
+  curl -X POST http://alertmanager:9093/-/reload
+  amtool config routes --config.file=/lab/alertmanager/alertmanager.yml   # shows the routing tree
+auto_solution: |
+  f=/lab/alertmanager/alertmanager.yml
+  yq -i '.route.routes += [{"matchers": ["team=\"payments\""], "receiver": "payments-webhook"}]' $f
+  yq -i '.receivers += [{"name": "payments-webhook", "webhook_configs": [{"url": "http://webhook:9000/payments"}]}]' $f
+  amtool check-config $f
+  curl -sf -X POST http://alertmanager:9093/-/reload
+docs:
+  - https://prometheus.io/docs/alerting/latest/configuration/#route
+  - https://prometheus.io/docs/alerting/latest/configuration/#webhook_config

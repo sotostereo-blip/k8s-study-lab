@@ -1,0 +1,39 @@
+id: pca-fund-005
+title: Read server facts with the HTTP API
+domain: fundamentals
+difficulty: 1
+minutes: 5
+environment: prometheus
+task: |
+  Use only the Prometheus **HTTP API** (`curl http://prometheus:9090/api/v1/...` and `jq`) to
+  find these facts, and write each value (only the value, one line) to a file:
+
+  1. `/root/answers/retention.txt`: the value of the flag that sets how long the TSDB keeps
+     data (time-based retention), for example `30d`.
+  2. `/root/answers/version.txt`: the Prometheus version, for example `2.53.0` (no `v`).
+  3. `/root/answers/node-url.txt`: the scrape URL of the target in job `node`.
+
+  Tip: look at `/api/v1/status/flags`, `/api/v1/status/buildinfo` and `/api/v1/targets`.
+checks:
+  - name: /root/answers/retention.txt has the configured retention time
+    run: |
+      want=$(curl -sf http://prometheus:9090/api/v1/status/flags | jq -r '.data["storage.tsdb.retention.time"]')
+      [ -n "$want" ] && [ "$(tr -d '[:space:]' < /root/answers/retention.txt)" = "$want" ]
+  - name: /root/answers/version.txt has the Prometheus version
+    run: |
+      want=$(curl -sf http://prometheus:9090/api/v1/status/buildinfo | jq -r .data.version)
+      [ -n "$want" ] && [ "$(tr -d '[:space:]' < /root/answers/version.txt)" = "$want" ]
+  - name: /root/answers/node-url.txt has the scrape URL of the node target
+    run: |
+      want=$(curl -sf http://prometheus:9090/api/v1/targets | jq -r '.data.activeTargets[] | select(.labels.job == "node") | .scrapeUrl')
+      [ -n "$want" ] && [ "$(tr -d '[:space:]' < /root/answers/node-url.txt)" = "$want" ]
+solution: |
+  mkdir -p /root/answers
+  curl -s http://prometheus:9090/api/v1/status/flags | jq -r '.data["storage.tsdb.retention.time"]' > /root/answers/retention.txt
+  curl -s http://prometheus:9090/api/v1/status/buildinfo | jq -r .data.version > /root/answers/version.txt
+  curl -s http://prometheus:9090/api/v1/targets \
+    | jq -r '.data.activeTargets[] | select(.labels.job == "node") | .scrapeUrl' > /root/answers/node-url.txt
+  # Retention is a command-line flag (--storage.tsdb.retention.time / .size), not part of prometheus.yml.
+docs:
+  - https://prometheus.io/docs/prometheus/latest/querying/api/
+  - https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects

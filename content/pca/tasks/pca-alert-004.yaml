@@ -1,0 +1,63 @@
+id: pca-alert-004
+title: Inhibit warnings when a datacenter is down
+domain: alerting
+difficulty: 3
+minutes: 10
+environment: prometheus
+setup: |
+  cat > /lab/prometheus/rules/dc-alerts.yml <<'YAML'
+  groups:
+    - name: dc-alerts
+      rules:
+        - alert: DatacenterDown
+          expr: vector(1)
+          labels: { dc: west, severity: critical }
+        - alert: ServiceUnreachable
+          expr: vector(1)
+          labels: { dc: west, service: api, severity: warning }
+        - alert: ServiceUnreachable
+          expr: vector(1)
+          labels: { dc: east, service: api, severity: warning }
+  YAML
+  curl -s -X POST http://prometheus:9090/-/reload >/dev/null || true
+task: |
+  When a whole datacenter is down, the on-call engineer gets many useless warnings from the same
+  datacenter. Add an **inhibition rule** to `/lab/alertmanager/alertmanager.yml`:
+
+  - source: alerts with `alertname="DatacenterDown"`
+  - target: alerts with `severity="warning"`
+  - only when source and target have the **same** `dc` label
+
+  Check with `amtool check-config` and reload Alertmanager. Now `ServiceUnreachable` in `dc=west`
+  must be inhibited, but `ServiceUnreachable` in `dc=east` must stay active.
+checks:
+  - name: ServiceUnreachable in dc=west is inhibited
+    run: |
+      out=$(curl -sf 'http://alertmanager:9093/api/v2/alerts?filter=alertname%3D%22ServiceUnreachable%22')
+      echo "$out" | jq -e 'any(.[]; .labels.dc == "west" and .status.state == "suppressed" and (.status.inhibitedBy | length > 0))' >/dev/null
+  - name: ServiceUnreachable in dc=east is still active
+    run: |
+      out=$(curl -sf 'http://alertmanager:9093/api/v2/alerts?filter=alertname%3D%22ServiceUnreachable%22')
+      echo "$out" | jq -e 'any(.[]; .labels.dc == "east" and .status.state == "active")' >/dev/null
+    guard: true
+  - name: alertmanager.yml is valid (amtool check-config)
+    run: amtool check-config /lab/alertmanager/alertmanager.yml >/dev/null 2>&1
+    guard: true
+solution: |
+  # Add this top-level section to /lab/alertmanager/alertmanager.yml:
+  #
+  # inhibit_rules:
+  #   - source_matchers: ['alertname="DatacenterDown"']
+  #     target_matchers: ['severity="warning"']
+  #     equal: [dc]
+  amtool check-config /lab/alertmanager/alertmanager.yml
+  curl -X POST http://alertmanager:9093/-/reload
+  amtool alert query alertname=ServiceUnreachable --inhibited
+auto_solution: |
+  f=/lab/alertmanager/alertmanager.yml
+  yq -i '.inhibit_rules += [{"source_matchers": ["alertname=\"DatacenterDown\""], "target_matchers": ["severity=\"warning\""], "equal": ["dc"]}]' $f
+  amtool check-config $f
+  curl -sf -X POST http://alertmanager:9093/-/reload
+docs:
+  - https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
+  - https://prometheus.io/docs/alerting/latest/alertmanager/#inhibition

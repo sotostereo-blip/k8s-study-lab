@@ -1,0 +1,31 @@
+id: pca-obs-001
+title: Measure an availability SLI
+domain: observability
+difficulty: 2
+minutes: 6
+environment: prometheus
+task: |
+  Your team defines this **SLI** for the shop: "the share of HTTP requests that did **not**
+  fail with a 5xx status". The SLO says it must be above 99% (0.99).
+
+  Write one PromQL query that returns this SLI for job `shop` as **one number** between 0 and 1,
+  using the request rates over the last **10 minutes**.
+
+  Save only the query in `/root/answers/availability-sli.promql`. Is the shop inside its SLO?
+checks:
+  - name: /root/answers/availability-sli.promql returns the share of non-5xx requests of job shop (10m)
+    run: |
+      promql-compare /root/answers/availability-sli.promql \
+        'sum(rate(http_requests_total{job="shop",status!~"5.."}[10m])) / sum(rate(http_requests_total{job="shop"}[10m]))'
+solution: |
+  mkdir -p /root/answers
+  cat > /root/answers/availability-sli.promql <<'Q'
+  sum(rate(http_requests_total{job="shop", status!~"5.."}[10m]))
+    /
+  sum(rate(http_requests_total{job="shop"}[10m]))
+  Q
+  promq "$(cat /root/answers/availability-sli.promql)"
+  # 1 - (5xx rate / total rate) gives the same number. The shop is around 0.98: it misses the 99% SLO.
+docs:
+  - https://prometheus.io/docs/practices/instrumentation/#online-serving-systems
+  - https://prometheus.io/docs/prometheus/latest/querying/examples/

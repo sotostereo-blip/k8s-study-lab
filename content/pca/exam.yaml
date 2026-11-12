@@ -1,0 +1,24 @@
+# Prometheus Certified Associate (PCA) - CNCF / Linux Foundation.
+# Domains and weights from the official curriculum:
+#   https://github.com/cncf/curriculum/blob/master/PCA_Curriculum.pdf
+#   https://training.linuxfoundation.org/certification/prometheus-certified-associate/
+# Questions are written for Prometheus 3.x and Alertmanager 0.2x/0.3x.
+id: pca
+name: Prometheus Certified Associate (PCA)
+format: multiple-choice
+exam_minutes: 90
+exam_questions: 60
+passing_score: 75
+facts_note: >-
+  Official (Linux Foundation page and CNCF curriculum PDF): online, proctored, multiple choice,
+  90 minutes, 5 domains with the weights below, one free retake, certification valid 2 years.
+  Not on the official page: the number of questions and the passing score. 60 questions and
+  75% are the values reported by most candidates and training providers. Note: the README of
+  the cncf/curriculum pca folder (2025) shows a different, 6-domain draft; this bank follows
+  the curriculum published on the exam page.
+domains:
+  - { id: promql, name: "PromQL", weight: 28 }
+  - { id: fundamentals, name: "Prometheus Fundamentals", weight: 20 }
+  - { id: observability, name: "Observability Concepts", weight: 18 }
+  - { id: alerting, name: "Alerting & Dashboarding", weight: 18 }
+  - { id: instrumentation, name: "Instrumentation and Exporters", weight: 16 }

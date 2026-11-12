@@ -1,0 +1,58 @@
+id: pca-alert-003
+title: Silence an alert during maintenance
+domain: alerting
+difficulty: 1
+minutes: 6
+environment: prometheus
+setup: |
+  cat > /lab/prometheus/rules/batch-alerts.yml <<'YAML'
+  groups:
+    - name: batch-alerts
+      rules:
+        - alert: DiskCleanupNeeded
+          expr: vector(1)
+          labels: { host: batch-01, severity: warning }
+        - alert: DiskCleanupNeeded
+          expr: vector(1)
+          labels: { host: batch-02, severity: warning }
+  YAML
+  curl -s -X POST http://prometheus:9090/-/reload >/dev/null || true
+task: |
+  The alert `DiskCleanupNeeded` fires for two hosts. A planned cleanup runs on `batch-01`, so
+  the team does not want notifications for that host.
+
+  Create a **silence** in Alertmanager (with `amtool` or the API):
+
+  - matchers: `alertname="DiskCleanupNeeded"` and `host="batch-01"` (exact match, not regex)
+  - duration: **2 hours**
+  - a comment, for example `planned cleanup`
+
+  The alert for `batch-02` must **not** be silenced.
+checks:
+  - name: 'An active silence matches alertname="DiskCleanupNeeded" and host="batch-01" for about 2h, with a comment'
+    run: |
+      out=$(curl -sf http://alertmanager:9093/api/v2/silences)
+      echo "$out" | jq -e 'def t: sub("\\.[0-9]+"; "") | fromdateiso8601;
+        any(.[]; .status.state == "active"
+          and any(.matchers[]; .name == "alertname" and .value == "DiskCleanupNeeded" and .isEqual != false and (.isRegex | not))
+          and any(.matchers[]; .name == "host" and .value == "batch-01" and .isEqual != false and (.isRegex | not))
+          and ((.endsAt | t) - (.startsAt | t)) >= 7000 and ((.endsAt | t) - (.startsAt | t)) <= 7400
+          and ((.comment // "") | length > 0))' >/dev/null
+  - name: The alert for batch-01 is suppressed in Alertmanager
+    run: |
+      out=$(curl -sf 'http://alertmanager:9093/api/v2/alerts?filter=alertname%3D%22DiskCleanupNeeded%22')
+      echo "$out" | jq -e 'any(.[]; .labels.host == "batch-01" and .status.state == "suppressed" and (.status.silencedBy | length > 0))' >/dev/null
+  - name: The alert for batch-02 is still active (not silenced)
+    run: |
+      out=$(curl -sf 'http://alertmanager:9093/api/v2/alerts?filter=alertname%3D%22DiskCleanupNeeded%22')
+      echo "$out" | jq -e 'any(.[]; .labels.host == "batch-02" and .status.state == "active")' >/dev/null
+    guard: true
+solution: |
+  amtool silence add alertname=DiskCleanupNeeded host=batch-01 \
+    --duration=2h --comment="planned cleanup"
+  amtool silence query                      # list active silences
+  amtool alert query alertname=DiskCleanupNeeded --silenced
+  # (amtool reads the Alertmanager URL from /etc/amtool/config.yml)
+docs:
+  - https://prometheus.io/docs/alerting/latest/alertmanager/#silences
+  - https://github.com/prometheus/alertmanager#amtool

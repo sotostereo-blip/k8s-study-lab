@@ -1,0 +1,39 @@
+id: pca-promql-001
+title: Record the request rate per job
+domain: promql
+difficulty: 2
+minutes: 8
+environment: prometheus
+task: |
+  Dashboards in your team often ask for the request rate of each job. Make it cheap with a
+  **recording rule**.
+
+  1. Create a rule file in `/lab/prometheus/rules/` (for example `http-recording.yml`).
+  2. Add a recording rule named `job:http_requests:rate5m`: the per-second rate of
+     `http_requests_total` over **5 minutes**, summed **by job** (only the `job` label stays).
+  3. Check the file with `promtool check rules` and reload Prometheus.
+checks:
+  - name: 'A recording rule `job:http_requests:rate5m` uses rate(http_requests_total[5m])'
+    run: |
+      out=$(curl -sf 'http://prometheus:9090/api/v1/rules?type=record')
+      echo "$out" | jq -e '[.data.groups[].rules[] | select(.name == "job:http_requests:rate5m")]
+        | length == 1 and (.[0].query | test("rate\\(http_requests_total(\\{[^}]*\\})?\\[5m\\]\\)")) and .[0].health != "err"' >/dev/null
+  - name: 'The series `job:http_requests:rate5m{job="shop"}` exists, with only the label job'
+    run: |
+      promq 'job:http_requests:rate5m{job="shop"}' \
+        | jq -e 'length == 1 and (.[0].metric | keys) == ["__name__", "job"] and (.[0].value[1] | tonumber) > 0' >/dev/null
+solution: |
+  cat > /lab/prometheus/rules/http-recording.yml <<'YAML'
+  groups:
+    - name: http-recording
+      rules:
+        - record: job:http_requests:rate5m          # naming: level:metric:operations
+          expr: sum by (job) (rate(http_requests_total[5m]))
+  YAML
+  promtool check rules /lab/prometheus/rules/http-recording.yml
+  curl -X POST http://prometheus:9090/-/reload
+  # wait one evaluation interval (5s here), then:
+  promq 'job:http_requests:rate5m'
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/
+  - https://prometheus.io/docs/practices/rules/

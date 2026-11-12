@@ -1,0 +1,45 @@
+id: pca-fund-003
+title: Discover targets from a file (file_sd)
+domain: fundamentals
+difficulty: 2
+minutes: 8
+environment: prometheus
+task: |
+  Your team does not want to edit the Prometheus configuration every time a target changes.
+  Use **file-based service discovery**.
+
+  1. Add a scrape job `inventory-sd` that reads its targets with `file_sd_configs` from the
+     files `/lab/prometheus/targets/*.json`.
+  2. Create a target file in `/lab/prometheus/targets/` (JSON) with the target `inventory:8000`
+     and the label `team="billing"`.
+  3. Reload Prometheus once for the new job. Later changes to the target file need **no**
+     reload: Prometheus watches the files.
+checks:
+  - name: 'The job `inventory-sd` has the target `inventory:8000`, up, with label team="billing"'
+    run: |
+      out=$(curl -sf http://prometheus:9090/api/v1/targets)
+      echo "$out" | jq -e 'any(.data.activeTargets[]; .labels.job == "inventory-sd"
+        and .labels.instance == "inventory:8000" and .labels.team == "billing" and .health == "up")' >/dev/null
+  - name: The target comes from a file in /lab/prometheus/targets/ (file_sd)
+    run: |
+      out=$(curl -sf http://prometheus:9090/api/v1/targets)
+      echo "$out" | jq -e 'any(.data.activeTargets[]; .labels.job == "inventory-sd"
+        and ((.discoveredLabels.__meta_filepath // "") | startswith("/lab/prometheus/targets/")))' >/dev/null
+solution: |
+  cat > /lab/prometheus/scrape.d/inventory-sd.yml <<'YAML'
+  scrape_configs:
+    - job_name: inventory-sd
+      file_sd_configs:
+        - files: ["/lab/prometheus/targets/*.json"]
+          refresh_interval: 1m   # files are also watched for changes
+  YAML
+  cat > /lab/prometheus/targets/inventory.json <<'JSON'
+  [
+    { "targets": ["inventory:8000"], "labels": { "team": "billing" } }
+  ]
+  JSON
+  promtool check config /lab/prometheus/prometheus.yml
+  curl -X POST http://prometheus:9090/-/reload
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config
+  - https://prometheus.io/docs/guides/file-sd/

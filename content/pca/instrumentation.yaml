@@ -1,0 +1,407 @@
+domain: instrumentation
+questions:
+  - id: pca-inst-001
+    difficulty: 2
+    type: multiple
+    question: "For which languages does the Prometheus project maintain **official** client libraries? (Choose 3)"
+    options:
+      - id: a
+        text: "Go"
+      - id: b
+        text: "Python"
+      - id: c
+        text: "Java (or Scala)"
+      - id: d
+        text: "PHP"
+        why: "PHP has third-party libraries, but none maintained by the Prometheus project."
+      - id: e
+        text: "C# / .NET"
+        why: ".NET libraries exist, but they are third-party, not official."
+    answer: [a, b, c]
+    explanation: |
+      The official client libraries are for Go, Java or Scala, Python, Ruby and Rust. Many
+      unofficial third-party libraries exist for other languages, such as C#, PHP, Node.js and
+      C++.
+    docs:
+      - https://prometheus.io/docs/instrumenting/clientlibs/
+    glossary: [client-library]
+
+  - id: pca-inst-002
+    difficulty: 1
+    type: single
+    question: "You want to count how many emails your service has sent since it started. Which metric type fits?"
+    options:
+      - id: a
+        text: "Counter"
+      - id: b
+        text: "Gauge"
+        why: "A gauge also works technically, but a value that only goes up should be a counter, so `rate()` works correctly."
+      - id: c
+        text: "Histogram"
+        why: "Histograms are for distributions of values such as durations or sizes."
+      - id: d
+        text: "Summary"
+        why: "Summaries are for distributions, like histograms. They are not plain counts."
+    answer: [a]
+    explanation: |
+      A **counter** is a value that only increases (and resets to 0 on restart). Use it for
+      things like requests, errors or emails sent, and query it with `rate()` or `increase()`.
+    docs:
+      - https://prometheus.io/docs/concepts/metric_types/#counter
+    glossary: [counter]
+
+  - id: pca-inst-003
+    difficulty: 1
+    type: single
+    question: "Which value should be exposed as a **gauge**?"
+    options:
+      - id: a
+        text: "The number of HTTP requests served since start"
+        why: "This only increases, so it is a counter."
+      - id: b
+        text: "The number of jobs waiting in a queue right now"
+      - id: c
+        text: "The time each request took, to calculate percentiles"
+        why: "Durations for percentiles belong in a histogram (or summary)."
+      - id: d
+        text: "The number of errors since the last deployment"
+        why: "A growing count of events is a counter."
+    answer: [b]
+    explanation: |
+      A **gauge** is a value that can go up and down, such as queue length, temperature, memory
+      in use, or the number of active connections.
+    docs:
+      - https://prometheus.io/docs/concepts/metric_types/#gauge
+    glossary: [gauge]
+
+  - id: pca-inst-004
+    difficulty: 2
+    type: single
+    question: "You run 20 instances of a service and need the 99th percentile latency of **all instances together**. Which metric type should the service expose?"
+    options:
+      - id: a
+        text: "A summary with a 0.99 quantile"
+        why: "Summary quantiles are calculated per instance and cannot be combined into a correct overall quantile."
+      - id: b
+        text: "A gauge with the last request duration"
+        why: "A gauge only keeps the last value, so most requests are never seen."
+      - id: c
+        text: "A counter of the total request time"
+        why: "A total gives the average, not a percentile."
+      - id: d
+        text: "A histogram"
+    answer: [d]
+    explanation: |
+      Histogram buckets are counters, so you can add them up across instances
+      (`sum by (le) (rate(..._bucket[5m]))`) and then calculate any quantile with
+      `histogram_quantile()`. Summaries calculate quantiles in the client, and averaging
+      quantiles is statistically wrong.
+    docs:
+      - https://prometheus.io/docs/practices/histograms/#quantiles
+    glossary: [histogram, summary-metric, quantile]
+
+  - id: pca-inst-005
+    difficulty: 2
+    type: single
+    question: "Which is true about the **summary** metric type?"
+    options:
+      - id: a
+        text: "Its quantiles are calculated on the Prometheus server at query time"
+        why: "That is how histograms work. Summaries calculate quantiles in the client."
+      - id: b
+        text: "It has buckets with an `le` label, like a histogram"
+        why: "Summaries expose quantiles with a `quantile` label, not buckets."
+      - id: c
+        text: "It calculates quantiles in the client; you cannot change them later or aggregate them"
+      - id: d
+        text: "It can only be used for gauges"
+        why: "A summary is its own metric type for observations, like durations."
+    answer: [c]
+    explanation: |
+      A summary exposes `_sum`, `_count` and pre-calculated quantiles (`{quantile="0.99"}`) over
+      a sliding time window. The quantiles are accurate for one instance, but you must choose
+      them in advance and you cannot aggregate them across instances.
+    docs:
+      - https://prometheus.io/docs/concepts/metric_types/#summary
+      - https://prometheus.io/docs/practices/histograms/
+    glossary: [summary-metric, quantile]
+
+  - id: pca-inst-006
+    difficulty: 1
+    type: single
+    question: "Which metric name follows the Prometheus naming best practices for a counter of processed bytes?"
+    options:
+      - id: a
+        text: "`ProcessedBytes`"
+        why: "Metric names should be snake_case and start with a prefix for the domain or application."
+      - id: b
+        text: "`myapp_processed_bytes_total`"
+      - id: c
+        text: "`myapp_processed_kilobytes_count`"
+        why: "Use base units (bytes, not kilobytes). `_count` is used by histograms and summaries; counters end in `_total`."
+      - id: d
+        text: "`myapp.processed.bytes`"
+        why: "Dots are not used in classic Prometheus names. Use underscores."
+    answer: [b]
+    explanation: |
+      A good name has an application prefix, uses snake_case, contains the **base unit**
+      (bytes, seconds) in plural, and ends with `_total` for counters.
+    docs:
+      - https://prometheus.io/docs/practices/naming/#metric-names
+    glossary: [counter]
+
+  - id: pca-inst-007
+    difficulty: 2
+    type: multiple
+    question: "Which are naming and labeling best practices for metrics? (Choose 3)"
+    options:
+      - id: a
+        text: "Use base units, such as seconds instead of milliseconds"
+      - id: b
+        text: "Do not put label names into the metric name, such as `requests_get_total`"
+      - id: c
+        text: "One metric should measure one thing in one unit"
+      - id: d
+        text: "Add a label with the hostname inside the app, so every series is unique"
+        why: "Prometheus adds `instance` itself. Adding the hostname again is redundant."
+      - id: e
+        text: "Use the same metric name for a counter and a gauge, with a `type` label"
+        why: "One metric name should have one type. Mixed types break queries."
+    answer: [a, b, c]
+    explanation: |
+      Use base units, describe one thing per metric, and use labels (`method="GET"`) instead of
+      different metric names for dimensions. The sum or average over all label values of a
+      metric should make sense.
+    docs:
+      - https://prometheus.io/docs/practices/naming/
+    glossary: [label, metrics]
+
+  - id: pca-inst-008
+    difficulty: 1
+    type: single
+    question: "When do you use an **exporter** instead of direct instrumentation?"
+    options:
+      - id: a
+        text: "When you cannot add Prometheus metrics to the code, for example a database or Linux"
+      - id: b
+        text: "When the application is written in Go"
+        why: "Go has an official client library, so direct instrumentation is easy."
+      - id: c
+        text: "When you want the metrics to be more accurate"
+        why: "Exporters are not more accurate. They translate metrics from another system."
+      - id: d
+        text: "When the application already exposes `/metrics` in the Prometheus format"
+        why: "Then you can scrape it directly. No exporter is needed."
+    answer: [a]
+    explanation: |
+      Exporters help when you do not control the code (third-party software like MySQL, HAProxy
+      or the Linux kernel). They read the system's own statistics and translate them into
+      Prometheus metrics. For your own code, use a client library.
+    docs:
+      - https://prometheus.io/docs/instrumenting/exporters/
+    glossary: [exporter, instrumentation]
+
+  - id: pca-inst-009
+    difficulty: 1
+    type: single
+    question: "What does **node_exporter** expose, and on which default port?"
+    options:
+      - id: a
+        text: "Container metrics of Docker, on port 8080"
+        why: "Container metrics come from cAdvisor (or the kubelet), often on port 8080."
+      - id: b
+        text: "Kubernetes object state, on port 8443"
+        why: "kube-state-metrics exposes Kubernetes object state."
+      - id: c
+        text: "Host metrics such as CPU, memory, disk and network, on port 9100"
+      - id: d
+        text: "Probe results for HTTP endpoints, on port 9115"
+        why: "9115 is the blackbox exporter, which probes endpoints."
+    answer: [c]
+    explanation: |
+      node_exporter exposes hardware and operating system metrics of Linux and Unix hosts
+      (`node_cpu_seconds_total`, `node_memory_MemAvailable_bytes`, `node_filesystem_*`, ...).
+      Its default port is 9100.
+    docs:
+      - https://prometheus.io/docs/guides/node-exporter/
+      - https://github.com/prometheus/node_exporter
+    glossary: [node-exporter, exporter]
+
+  - id: pca-inst-010
+    difficulty: 3
+    type: single
+    question: "You probe many websites with **one** blackbox exporter. How does Prometheus tell the exporter which website to probe?"
+    options:
+      - id: a
+        text: "Each website gets its own exporter process with a fixed target in its config"
+        why: "That is possible but is not the multi-target pattern. One exporter can probe many targets."
+      - id: b
+        text: "Relabeling moves the site to `__param_target`, the exporter to `__address__`"
+      - id: c
+        text: "The exporter reads the websites from the Prometheus TSDB"
+        why: "Exporters never read the TSDB."
+      - id: d
+        text: "The websites push their health to the exporter"
+        why: "The blackbox exporter probes from the outside. Websites do not push anything."
+    answer: [b]
+    explanation: |
+      In the **multi-target exporter pattern**, the targets in the config are the websites.
+      Relabeling sets `__param_target` (sent as the URL parameter `?target=`) from
+      `__address__`, keeps the website as the `instance` label, and replaces `__address__`
+      with the exporter address. The exporter then probes the website during the scrape.
+    docs:
+      - https://prometheus.io/docs/guides/multi-target-exporter/
+      - https://github.com/prometheus/blackbox_exporter
+    glossary: [blackbox-exporter, relabeling]
+
+  - id: pca-inst-011
+    difficulty: 2
+    type: single
+    question: "A cron job on a server should report when it last succeeded. It cannot run an HTTP server. node_exporter already runs on that server. What is a simple solution?"
+    options:
+      - id: a
+        text: "Write the metric to a `.prom` file read by the node_exporter textfile collector"
+      - id: b
+        text: "Send the metric to Prometheus with `curl -X POST /api/v1/write`"
+        why: "Normal Prometheus servers do not accept pushed samples there. The remote-write receiver is a special feature."
+      - id: c
+        text: "Add the value to `prometheus.yml` as a static label"
+        why: "Labels in the config are fixed. They cannot carry a timestamp that changes."
+      - id: d
+        text: "Log the time and let Prometheus parse the log"
+        why: "Prometheus does not read logs."
+    answer: [a]
+    explanation: |
+      The **textfile collector** reads `*.prom` files from a directory (set with
+      `--collector.textfile.directory`) and exposes their metrics with the node metrics. Write
+      to a temporary file and rename it, so the exporter never reads a half-written file.
+    docs:
+      - https://github.com/prometheus/node_exporter#textfile-collector
+      - https://prometheus.io/docs/practices/instrumentation/#batch-jobs
+    glossary: [textfile-collector, node-exporter]
+
+  - id: pca-inst-012
+    difficulty: 2
+    type: multiple
+    question: "What should an **online-serving** service (for example an HTTP API) expose at minimum? (Choose 3)"
+    options:
+      - id: a
+        text: "The number of requests"
+      - id: b
+        text: "The number of errors"
+      - id: c
+        text: "The latency of requests"
+      - id: d
+        text: "One series per request, with the request ID as a label"
+        why: "Request IDs create a new series for each request (high cardinality)."
+      - id: e
+        text: "Only the time of the last request"
+        why: "The last request time alone hides traffic, errors and latency."
+    answer: [a, b, c]
+    explanation: |
+      For online-serving systems, the key metrics are the number of queries, errors and the
+      latency (and often the number of requests in progress). This matches the RED method.
+    docs:
+      - https://prometheus.io/docs/practices/instrumentation/#online-serving-systems
+    glossary: [golden-signals, instrumentation]
+
+  - id: pca-inst-013
+    difficulty: 3
+    type: single
+    question: "A counter `errors_total` has the label `type`. The series `type=\"timeout\"` appears only after the first timeout. Why can this be a problem, and what is the fix?"
+    options:
+      - id: a
+        text: "Queries like `rate()` see no data before the first error; initialize known label values to 0"
+      - id: b
+        text: "Prometheus rejects new label values after the first scrape; restart the app"
+        why: "New series can appear at any time. Nothing is rejected."
+      - id: c
+        text: "The counter type changes to gauge; set the type again in the code"
+        why: "The type does not change when new label values appear."
+      - id: d
+        text: "Labels must be sorted; add label values in alphabetical order"
+        why: "Label value order is not important."
+    answer: [a]
+    explanation: |
+      Missing series make queries and alerts behave strangely (for example `rate()` gives no
+      result, and the first increase is not visible). If you know the possible label values,
+      create them at start with the value 0.
+    docs:
+      - https://prometheus.io/docs/practices/instrumentation/#avoid-missing-metrics
+    glossary: [counter, label]
+
+  - id: pca-inst-014
+    difficulty: 2
+    type: single
+    question: "In an application, you need the request rate per second. What should you expose?"
+    options:
+      - id: a
+        text: "A gauge with the rate that the app calculates every 10 seconds"
+        why: "A precomputed rate loses data between scrapes and cannot be re-aggregated over other ranges."
+      - id: b
+        text: "A counter of all requests; Prometheus calculates the rate with `rate()`"
+      - id: c
+        text: "A histogram of requests per second"
+        why: "Histograms measure the distribution of observed values, not a rate of events."
+      - id: d
+        text: "A summary with quantile 1.0 of the rate"
+        why: "A quantile of a rate is not what you need, and summaries cannot be aggregated."
+    answer: [b]
+    explanation: |
+      Expose raw counters and let PromQL calculate rates. A counter keeps working even if a
+      scrape is missed, and you can choose any range (`[1m]`, `[1h]`) at query time.
+    docs:
+      - https://prometheus.io/docs/practices/instrumentation/#counter-vs-gauge-summary-vs-histogram
+      - https://prometheus.io/docs/concepts/metric_types/#counter
+    glossary: [counter]
+
+  - id: pca-inst-015
+    difficulty: 3
+    type: single
+    question: "You write an exporter for a third-party system. According to the Prometheus guidelines, when should it collect the values from that system?"
+    options:
+      - id: a
+        text: "In a background loop every second, and cache the values with their timestamps"
+        why: "Caching with own timestamps is discouraged. Collect at scrape time and let Prometheus set the time."
+      - id: b
+        text: "Only once at startup, because metrics do not change"
+        why: "Metrics change all the time. Values would be wrong after a few seconds."
+      - id: c
+        text: "During each scrape, when Prometheus requests `/metrics`"
+      - id: d
+        text: "When the third-party system pushes data to the exporter"
+        why: "Most systems do not push. The exporter should pull at scrape time."
+    answer: [c]
+    explanation: |
+      Metrics should be fetched synchronously on each scrape. Then every scrape returns fresh
+      data and the scrape timestamp is correct. Only very expensive metrics should be cached
+      (for example in a separate job) and exposed with a timestamp metric.
+    docs:
+      - https://prometheus.io/docs/instrumenting/writing_exporters/#scheduling
+    glossary: [exporter]
+
+  - id: pca-inst-016
+    difficulty: 3
+    type: single
+    question: "What is a main advantage of **native histograms** compared with classic histograms?"
+    options:
+      - id: a
+        text: "They are calculated in the client, so they are cheaper than summaries"
+        why: "Both kinds of histograms count observations in the client and calculate quantiles on the server."
+      - id: b
+        text: "They need no client library changes at all"
+        why: "The client library must support them, and they are sent with protobuf (or new text formats)."
+      - id: c
+        text: "They return exact quantiles with no estimation error"
+        why: "Quantiles are still estimated from buckets, only with higher resolution."
+      - id: d
+        text: "They have high-resolution buckets with no manual bucket layout, in one series"
+    answer: [d]
+    explanation: |
+      Classic histograms need hand-chosen buckets, and each bucket is a separate series. Native
+      histograms use automatic exponential buckets and store the whole histogram as one complex
+      sample per scrape. That gives better resolution at a lower cost.
+    docs:
+      - https://prometheus.io/docs/specs/native_histograms/
+      - https://prometheus.io/docs/concepts/metric_types/#histogram
+    glossary: [native-histogram, histogram]

@@ -1,0 +1,42 @@
+id: pca-fund-001
+title: Add a scrape job for the payments service
+domain: fundamentals
+difficulty: 1
+minutes: 5
+environment: prometheus
+task: |
+  The `payments` service exposes metrics at `http://payments:8000/metrics`, but Prometheus
+  does not scrape it yet.
+
+  1. Add a scrape job called `payments` with the target `payments:8000`.
+     Scrape it every **10 seconds** (the global default is 5s).
+     You can edit `/lab/prometheus/prometheus.yml` or create a new file in
+     `/lab/prometheus/scrape.d/` (it is loaded with `scrape_config_files`).
+  2. Check the configuration with `promtool check config` and reload Prometheus
+     (`curl -X POST http://prometheus:9090/-/reload`).
+  3. The target must be `up`.
+checks:
+  - name: 'The target `payments:8000` in job `payments` is up'
+    run: promq 'up{job="payments",instance="payments:8000"} == 1' | jq -e 'length == 1' >/dev/null
+  - name: The `payments` job scrapes every 10s
+    run: |
+      out=$(curl -sf http://prometheus:9090/api/v1/targets)
+      echo "$out" | jq -e '[.data.activeTargets[] | select(.labels.job == "payments")] | length > 0 and all(.scrapeInterval == "10s")' >/dev/null
+  - name: The job `shop` is still scraped
+    run: promq 'up{job="shop"} == 1' | jq -e 'length == 1' >/dev/null
+    guard: true
+solution: |
+  cat > /lab/prometheus/scrape.d/payments.yml <<'YAML'
+  scrape_configs:
+    - job_name: payments
+      scrape_interval: 10s
+      static_configs:
+        - targets: ["payments:8000"]
+  YAML
+  promtool check config /lab/prometheus/prometheus.yml
+  curl -X POST http://prometheus:9090/-/reload
+  # after a few seconds:
+  promq 'up{job="payments"}'
+docs:
+  - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+  - https://prometheus.io/docs/prometheus/latest/getting_started/

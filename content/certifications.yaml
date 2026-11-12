@@ -60,6 +60,13 @@ certifications:
     exam: gha
     track: gha
     description: Multiple choice (Microsoft/GitHub), plus hands-on labs on Gitea Actions, which runs the same workflow syntax.
+  - id: pca
+    name: Prometheus Certified Associate
+    short: PCA
+    area: Observability
+    exam: pca
+    track: pca
+    description: Multiple choice. PromQL, scraping, instrumentation, alerting and observability concepts, plus hands-on labs on a real Prometheus stack.
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

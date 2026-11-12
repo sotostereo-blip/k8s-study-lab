@@ -1,0 +1,289 @@
+# Observability and Prometheus glossary (Prometheus Certified Associate). Shown when you click a
+# highlighted term. Terms already in glossary.yaml are reused there: prometheus, metrics,
+# observability, logs, trace, span, opentelemetry, alertmanager, sli, slo, sla, label.
+terms:
+- id: promql
+  term: "PromQL"
+  match: [PromQL]
+  definition: "The query language of Prometheus. It selects time series and calculates new values from them."
+  es: "Lenguaje de consultas de Prometheus para seleccionar y calcular series temporales."
+- id: time-series
+  term: "Time series"
+  match: [time series]
+  definition: "A stream of timestamped values that share the same metric name and the same set of labels."
+  es: "Serie temporal; secuencia de valores con marca de tiempo con el mismo nombre de métrica y etiquetas."
+- id: prom-sample
+  term: "Sample"
+  match: []
+  definition: "One value of a time series at one moment, a float (or a native histogram) plus a millisecond timestamp."
+  es: "Muestra; un valor de una serie temporal en un instante concreto."
+- id: counter
+  term: "Counter"
+  match: [counter, counters]
+  certs: [pca, interview]
+  definition: "A metric type whose value only goes up (or resets to zero when the process restarts), for example requests served."
+  es: "Contador; tipo de métrica que solo sube (o vuelve a cero al reiniciar el proceso)."
+- id: gauge
+  term: "Gauge"
+  match: [gauge, gauges]
+  certs: [pca, interview]
+  definition: "A metric type whose value can go up and down, for example memory in use or items in a queue."
+  es: "Medidor; tipo de métrica que puede subir y bajar."
+- id: histogram
+  term: "Histogram"
+  match: [histogram, histograms]
+  definition: "A metric type that counts observations in buckets (`_bucket{le=...}`) and also exposes their `_sum` and `_count`; quantiles are calculated on the server."
+  es: "Histograma; cuenta observaciones en buckets y permite calcular cuantiles en el servidor."
+- id: summary-metric
+  term: "Summary (metric type)"
+  match: [summary metric, summary metrics, summary type]
+  definition: "A metric type that calculates quantiles in the client and exposes them with `_sum` and `_count`; its quantiles cannot be aggregated across instances."
+  es: "Tipo de métrica que calcula cuantiles en el cliente; no se pueden agregar entre instancias."
+- id: native-histogram
+  term: "Native histogram"
+  match: [native histogram, native histograms]
+  definition: "A newer histogram format stored as one complex sample per scrape, with automatic, high-resolution buckets."
+  es: "Histograma nativo; formato nuevo con buckets automáticos de alta resolución en una sola serie."
+- id: bucket
+  term: "Bucket"
+  match: [histogram bucket, histogram buckets]
+  definition: "In a histogram, a counter of the observations less than or equal to an upper bound, given in the `le` label."
+  es: "Cubeta de un histograma; cuenta las observaciones menores o iguales que el límite `le`."
+- id: quantile
+  term: "Quantile / percentile"
+  match: [quantile, quantiles, percentile, percentiles]
+  definition: "The value below which a given share of observations falls; the 0.95 quantile (95th percentile) is bigger than 95% of the values."
+  es: "Cuantil o percentil; valor por debajo del cual queda una proporción dada de observaciones."
+- id: exporter
+  term: "Exporter"
+  match: [exporter, exporters]
+  definition: "A program that reads metrics from a system that does not speak the Prometheus format and exposes them on an HTTP endpoint for Prometheus."
+  es: "Programa que traduce métricas de otro sistema al formato de Prometheus y las expone por HTTP."
+- id: node-exporter
+  term: "Node exporter"
+  match: [node-exporter, node_exporter, Node Exporter]
+  definition: "The official exporter for hardware and operating system metrics of Linux and Unix hosts (CPU, memory, disk, network). Default port 9100."
+  es: "Exporter oficial de métricas del sistema operativo y hardware (puerto 9100)."
+- id: blackbox-exporter
+  term: "Blackbox exporter"
+  match: [blackbox exporter, Blackbox Exporter, blackbox_exporter]
+  definition: "An exporter that probes endpoints from the outside over HTTP, TCP, DNS or ICMP and reports results such as `probe_success`."
+  es: "Exporter que prueba endpoints desde fuera (HTTP, TCP, DNS, ICMP)."
+- id: pushgateway
+  term: "Pushgateway"
+  match: [Pushgateway]
+  definition: "A service that keeps metrics pushed by short-lived batch jobs so that Prometheus can scrape them later."
+  es: "Servicio que guarda métricas enviadas por trabajos batch cortos para que Prometheus las recoja."
+- id: textfile-collector
+  term: "Textfile collector"
+  match: [textfile collector]
+  definition: "A node exporter feature that reads `*.prom` files from a directory and exposes the metrics written in them."
+  es: "Función de node exporter que expone métricas escritas en ficheros `.prom`."
+- id: scrape-target
+  term: "Target / instance"
+  match: [scrape target, scrape targets]
+  definition: "An endpoint that Prometheus scrapes, usually host:port; it gets the `instance` label. A group of targets with the same purpose is a job."
+  es: "Endpoint que Prometheus consulta; recibe la etiqueta `instance`. Un grupo de ellos es un job."
+- id: scrape-job
+  term: "Scrape job"
+  match: [scrape job, scrape jobs, scrape_configs, scrape config, job_name]
+  definition: "One entry in `scrape_configs`. It names the job (the `job` label) and says how to find and scrape its targets."
+  es: "Entrada de `scrape_configs` que define cómo descubrir y consultar un grupo de targets."
+- id: scrape-interval
+  term: "Scrape interval"
+  match: [scrape interval, scrape_interval, scrape_timeout]
+  definition: "How often Prometheus scrapes a target (default 1m); `scrape_timeout` is how long one scrape may take (default 10s)."
+  es: "Cada cuánto Prometheus consulta un target (por defecto 1m)."
+- id: service-discovery
+  term: "Service discovery"
+  match: [service discovery]
+  definition: "A way for Prometheus to find its targets automatically from a source such as Kubernetes, Consul, DNS, a cloud API or files."
+  es: "Descubrimiento de servicios; Prometheus encuentra sus targets automáticamente."
+- id: file-sd
+  term: "File-based service discovery"
+  match: [file_sd_configs, file_sd, file-based service discovery]
+  definition: "Service discovery that reads targets and labels from JSON or YAML files and reloads them when the files change."
+  es: "Descubrimiento de servicios a partir de ficheros JSON o YAML vigilados por Prometheus."
+- id: relabeling
+  term: "Relabeling"
+  match: [relabeling, relabel_configs, relabel, relabeled]
+  definition: "Rules that rewrite, keep or drop targets and labels. `relabel_configs` runs on targets before the scrape."
+  es: "Reetiquetado; reglas que cambian, mantienen o descartan targets y etiquetas."
+- id: metric-relabeling
+  term: "Metric relabeling"
+  match: [metric_relabel_configs, metric relabeling]
+  definition: "Relabeling that runs on every scraped series after the scrape and before storage, for example to drop expensive series."
+  es: "Reetiquetado de series después del scrape y antes de guardarlas."
+- id: honor-labels
+  term: "honor_labels"
+  match: [honor_labels]
+  definition: "A scrape setting; when true, labels from the scraped data win over target labels such as job and instance (used for the Pushgateway and federation)."
+  es: "Opción de scrape que conserva las etiquetas de los datos recogidos en caso de conflicto."
+- id: external-labels
+  term: "External labels"
+  match: [external_labels, external labels]
+  definition: "Labels added to every series or alert when it leaves a Prometheus server (federation, remote write, Alertmanager), to show where it came from."
+  es: "Etiquetas que se añaden a los datos cuando salen del servidor Prometheus."
+- id: recording-rule
+  term: "Recording rule"
+  match: [recording rule, recording rules]
+  definition: "A rule that evaluates a PromQL expression at regular intervals and saves the result as a new time series."
+  es: "Regla que evalúa una expresión periódicamente y guarda el resultado como una serie nueva."
+- id: alerting-rule
+  term: "Alerting rule"
+  match: [alerting rule, alerting rules]
+  definition: "A rule with a PromQL condition; every series it returns becomes an alert that is pending and then firing, and is sent to Alertmanager."
+  es: "Regla con una condición PromQL que genera alertas y las envía a Alertmanager."
+- id: instant-vector
+  term: "Instant vector"
+  match: [instant vector, instant vectors]
+  definition: "A set of time series with one sample each, all at the same timestamp."
+  es: "Vector instantáneo; conjunto de series con una muestra cada una en el mismo instante."
+- id: range-vector
+  term: "Range vector"
+  match: [range vector, range vectors, range selector, range selectors]
+  definition: "A set of time series with all their samples inside a time range, written with a duration in brackets such as `[5m]`."
+  es: "Vector de rango; series con todas sus muestras en un intervalo, como `[5m]`."
+- id: label-matcher
+  term: "Label matcher"
+  match: [label matcher, label matchers, matcher, matchers]
+  definition: "A condition on a label inside a selector or route, using `=`, `!=`, `=~` (regex) or `!~` (negative regex)."
+  es: "Condición sobre una etiqueta: `=`, `!=`, `=~` o `!~`."
+- id: vector-matching
+  term: "Vector matching"
+  match: [vector matching, group_left, group_right]
+  definition: "How a binary operator pairs series from the left and right side, by default on all labels; `on`, `ignoring`, `group_left` and `group_right` change it."
+  es: "Forma en que un operador binario empareja series de ambos lados."
+- id: subquery
+  term: "Subquery"
+  match: [subquery, subqueries]
+  definition: "A query that runs an instant query at a fixed step over a range, written `expr[range:step]`, giving a range vector."
+  es: "Subconsulta; evalúa una expresión en un rango con un paso fijo."
+- id: staleness
+  term: "Staleness"
+  match: [staleness, staleness marker]
+  definition: "Prometheus marks a series as stale when it disappears from a scrape or its target is gone; queries then stop returning it."
+  es: "Obsolescencia; Prometheus marca una serie como obsoleta cuando deja de aparecer."
+- id: cardinality
+  term: "Cardinality"
+  match: [cardinality, high cardinality, high-cardinality]
+  definition: "The number of different time series; labels with many values (user IDs, request IDs) create high cardinality and use a lot of memory."
+  es: "Cardinalidad; número de series distintas."
+- id: tsdb
+  term: "TSDB"
+  match: [TSDB, time series database]
+  definition: "Time series database. Prometheus has a local TSDB that stores data in 2-hour blocks plus a write-ahead log (WAL)."
+  es: "Base de datos de series temporales."
+- id: wal
+  term: "Write-ahead log (WAL)"
+  match: [WAL, write-ahead log]
+  definition: "A log where Prometheus writes new samples first, so the in-memory head block can be rebuilt after a crash."
+  es: "Registro de escritura anticipada que permite recuperar datos tras un fallo."
+- id: retention
+  term: "Retention"
+  match: [retention time, TSDB retention]
+  definition: "How long Prometheus keeps local data, set by `--storage.tsdb.retention.time` (default 15d) or `--storage.tsdb.retention.size`."
+  es: "Tiempo que Prometheus conserva los datos locales."
+- id: exposition-format
+  term: "Exposition format"
+  match: [exposition format, text format, OpenMetrics]
+  definition: "The format of the `/metrics` page; the Prometheus text format and OpenMetrics list each sample as `name{labels} value`, with `# HELP` and `# TYPE` lines."
+  es: "Formato en que se exponen las métricas en `/metrics`."
+- id: client-library
+  term: "Client library"
+  match: [client library, client libraries, prometheus_client]
+  definition: "A library used inside application code to define metrics and expose them over HTTP."
+  es: "Librería que se usa en el código para definir y exponer métricas."
+- id: instrumentation
+  term: "Instrumentation"
+  match: [instrumentation, instrumented]
+  definition: "Adding code to an application so it produces metrics, logs or traces about its own work."
+  es: "Instrumentación; añadir código para que una aplicación produzca telemetría."
+- id: federation
+  term: "Federation"
+  match: [federation, /federate]
+  definition: "A Prometheus server scrapes selected series from another Prometheus server through its `/federate` endpoint."
+  es: "Un servidor Prometheus recoge series seleccionadas de otro."
+- id: remote-write
+  term: "Remote write"
+  match: [remote write, remote_write, remote read, remote_read]
+  definition: "A protocol to send samples to (or read them from) another storage system, often for long-term or global storage."
+  es: "Protocolo para enviar o leer muestras de un almacenamiento remoto."
+- id: agent-mode
+  term: "Agent mode"
+  match: [agent mode]
+  definition: "A Prometheus mode (`--agent`) that only scrapes and sends data with remote write; it has no local queries, rules or alerts."
+  es: "Modo de Prometheus que solo recoge y reenvía datos."
+- id: promtool
+  term: "promtool"
+  match: [promtool]
+  definition: "The command-line tool of Prometheus to check configs and rules, run rule unit tests, lint metrics and query a server."
+  es: "Herramienta de línea de comandos para validar y probar configuración y reglas."
+- id: amtool
+  term: "amtool"
+  match: [amtool]
+  definition: "The command-line tool of Alertmanager to check its config, test routes, list alerts and manage silences."
+  es: "Herramienta de Alertmanager para validar configuración, probar rutas y gestionar silencios."
+- id: silence
+  term: "Silence"
+  match: [silence, silences, silenced]
+  certs: [pca, interview]
+  definition: "A rule in Alertmanager that mutes notifications for alerts that match some matchers, for a limited time."
+  es: "Silencio; silencia notificaciones de alertas que coinciden, durante un tiempo."
+- id: inhibition
+  term: "Inhibition"
+  match: [inhibition, inhibition rule, inhibition rules, inhibit_rules, inhibited]
+  definition: "An Alertmanager rule that mutes some alerts (targets) while another alert (the source) fires, for example warnings during a full outage."
+  es: "Inhibición; silencia unas alertas mientras otra alerta está activa."
+- id: am-receiver
+  term: "Receiver"
+  match: [receiver, receivers]
+  certs: [pca, interview]
+  definition: "A named notification destination in Alertmanager, such as email, Slack, PagerDuty or a webhook."
+  es: "Destino de notificaciones de Alertmanager."
+- id: routing-tree
+  term: "Routing tree"
+  match: [routing tree, child route, child routes]
+  definition: "The tree of routes in Alertmanager; an alert enters at the root route and goes to the receiver of the matching route."
+  es: "Árbol de rutas que decide a qué receiver va cada alerta."
+- id: alert-grouping
+  term: "Alert grouping"
+  match: [group_by, group_wait, group_interval, repeat_interval]
+  definition: "Alertmanager joins similar alerts (same values of the `group_by` labels) into one notification; the timers control when it is sent and resent."
+  es: "Agrupación de alertas similares en una sola notificación."
+- id: grafana
+  term: "Grafana"
+  match: [Grafana]
+  definition: "An open source tool to build dashboards; it can use Prometheus as a data source and run PromQL queries."
+  es: "Herramienta de código abierto para crear dashboards."
+- id: dashboard
+  term: "Dashboard"
+  match: [dashboard, dashboards]
+  certs: [pca, interview]
+  definition: "A page of panels (graphs, tables, single values) that shows the state of a system."
+  es: "Panel de control con gráficas que muestran el estado de un sistema."
+- id: error-budget
+  term: "Error budget"
+  match: [error budget, error budgets]
+  definition: "The amount of failure an SLO allows (1 - SLO); for a 99.9% SLO the error budget is 0.1% of requests or time."
+  es: "Presupuesto de errores; cantidad de fallos que permite un SLO."
+- id: golden-signals
+  term: "Golden signals / RED / USE"
+  match: [golden signals, RED method, USE method]
+  definition: "Common sets of key metrics; golden signals are latency, traffic, errors and saturation, RED is rate, errors and duration, USE is utilization, saturation and errors."
+  es: "Conjuntos de métricas clave: latencia, tráfico, errores, saturación (y variantes RED y USE)."
+- id: exemplar
+  term: "Exemplar"
+  match: [exemplar, exemplars]
+  definition: "An example trace ID attached to a metric sample, so you can jump from a metric to a matching trace."
+  es: "Ejemplo (ID de traza) asociado a una muestra de métrica."
+- id: pull-model
+  term: "Pull model"
+  match: [pull model, push model, pull-based, push-based]
+  definition: "In a pull model the monitoring server fetches metrics from targets (Prometheus); in a push model the applications send them."
+  es: "Modelo pull (el servidor recoge métricas) frente a push (las aplicaciones las envían)."
+- id: long-term-storage
+  term: "Long-term storage"
+  match: [long-term storage, Thanos, Cortex, Mimir]
+  definition: "Systems such as Thanos, Cortex or Grafana Mimir that keep Prometheus data for a long time and give a global view of many servers."
+  es: "Sistemas que guardan datos de Prometheus a largo plazo y con vista global."

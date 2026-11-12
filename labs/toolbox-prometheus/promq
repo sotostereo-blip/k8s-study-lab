@@ -1,0 +1,4 @@
+#!/bin/bash
+# promq 'QUERY' - run an instant PromQL query through the HTTP API and print the result list as JSON.
+set -o pipefail
+curl -sf "${PROM:-http://prometheus:9090}/api/v1/query" --data-urlencode "query=$1" | jq '.data.result'
