@@ -1,0 +1,74 @@
+id: gha-flow-007
+title: A release job that runs only for tags
+domain: workflows
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/tag-release/.github/workflows && cd /root/tag-release
+  echo "# tag-release" > README.md
+  cat > .github/workflows/ci.yml <<'YAML'
+  name: CI
+  on:
+    push:
+      branches: [main]
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Tests passed"
+  YAML
+  lab-publish /root/tag-release "Add CI"
+task: |
+  In `student/tag-release`, the workflow `CI` runs the tests on pushes to `main`. Extend it:
+
+  1. The workflow must also run when a tag that starts with `v` is pushed.
+  2. Add a job `release` that runs **after** `test` and **only for tags** that start with
+     `v`. It prints `Publishing release <tag name>` (use `github.ref_name`).
+  3. Push your change to `main`, then create the tag `v1.0.0` and push it.
+
+  The run for the tag must print `Publishing release v1.0.0`. The run for `main` must not
+  publish anything.
+
+  *Gitea vs GitHub:* tag filters (`on.push.tags`), `github.ref` and `github.ref_name` work the
+  same. In the Gitea API the run's `path` ends with the ref, for example
+  `ci.yml@refs/tags/v1.0.0`.
+checks:
+  - name: 'The run for tag `v1.0.0` succeeded and printed `Publishing release v1.0.0`'
+    run: |
+      id=$(lab-ok tag-release '.path | endswith("@refs/tags/v1.0.0")') || exit 1
+      lab-has-line tag-release "$id" "Publishing release v1.0.0"
+  - name: 'The job `release` needs `test`, and the newest run on `main` succeeded without publishing'
+    run: |
+      lab-file tag-release .github/workflows/ci.yml | yq -e '[.jobs.release.needs] | flatten | any_c(. == "test")' >/dev/null || exit 1
+      id=$(lab-ok tag-release ".head_sha==\"$(lab-head tag-release)\" and .head_branch==\"main\"") || exit 1
+      logs=$(lab-logs tag-release "$id") || exit 1
+      ! printf '%s\n' "$logs" | sed -E 's/^[^ ]+Z //' | grep -q '^Publishing release'
+solution: |
+  cd /root/tag-release
+  cat > .github/workflows/ci.yml <<'YAML'
+  name: CI
+  on:
+    push:
+      branches: [main]
+      tags: ['v*']
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Tests passed"
+    release:
+      needs: test
+      if: startsWith(github.ref, 'refs/tags/v')
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Publishing release ${{ github.ref_name }}"
+  YAML
+  git commit -am "Release job for tags"
+  git push
+  git tag v1.0.0
+  git push origin v1.0.0
+  lab-wait tag-release '.path | endswith("@refs/tags/v1.0.0")'
+docs:
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/contexts

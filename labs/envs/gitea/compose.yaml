@@ -1,0 +1,56 @@
+# GitHub Actions lab: a Gitea server with Gitea Actions (GitHub Actions compatible), one act_runner
+# and a terminal (toolbox) with git, tea, curl and jq. Only the toolbox publishes a host port.
+x-runner-token: &runner-token
+  GITEA_RUNNER_REGISTRATION_TOKEN: "studylabrunnertoken0123456789abcdefABCDEF"
+
+services:
+  gitea:
+    image: gitea/gitea:28.3.0
+    entrypoint: ["/bin/sh", "/lab/gitea-start.sh"]
+    stop_grace_period: 3s
+    environment:
+      <<: *runner-token
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__security__PASSWORD_COMPLEXITY: "off"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__DOMAIN: gitea
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__ROOT_URL: http://gitea:3000/
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__server__START_SSH_SERVER: "false"
+      GITEA__server__OFFLINE_MODE: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__repository__DEFAULT_BRANCH: main
+      GITEA__repository__ENABLE_PUSH_CREATE_USER: "true"
+      GITEA__actions__ENABLED: "true"
+      GITEA__actions__DEFAULT_ACTIONS_URL: github
+      GITEA__log__LEVEL: warn
+      GITEA__mailer__ENABLED: "false"
+    volumes:
+      - ./gitea-start.sh:/lab/gitea-start.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:3000/api/v1/users/student"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+      start_period: 5s
+
+  runner:
+    build: ../../gitea-runner
+    image: k8s-study-lab/gitea-runner:1
+    stop_grace_period: 2s
+    depends_on:
+      gitea: { condition: service_healthy }
+    environment:
+      <<: *runner-token
+      GITEA_INSTANCE_URL: http://gitea:3000
+      GITEA_RUNNER_NAME: lab-runner
+      GITEA_RUNNER_LABELS: "ubuntu-latest:host,ubuntu-24.04:host,linux:host"
+      CONFIG_FILE: /etc/act_runner/config.yaml
+
+  toolbox:
+    build: ../../toolbox-gitea
+    image: k8s-study-lab/toolbox-gitea:1
+    depends_on: [gitea]
+    stop_grace_period: 2s
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]

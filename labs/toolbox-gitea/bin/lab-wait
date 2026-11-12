@@ -1,0 +1,10 @@
+#!/bin/bash
+# lab-wait REPO [JQ_CONDITION] [SECONDS] - wait until the newest matching run is completed;
+# prints its conclusion. Handy after a git push: lab-wait hello '.event=="push"'
+repo="${1:?usage: lab-wait REPO [JQ_CONDITION] [SECONDS]}"; cond="${2:-true}"; end=$((SECONDS + ${3:-180}))
+while [ $SECONDS -lt $end ]; do
+  r="$(lab-run "$repo" "$cond" 2>/dev/null)" && [ "$(echo "$r" | jq -r .status)" = completed ] \
+    && { echo "$r" | jq -r .conclusion; exit 0; }
+  sleep 3
+done
+echo "timeout"; exit 1

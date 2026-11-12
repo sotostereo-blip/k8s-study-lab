@@ -1,0 +1,77 @@
+id: gha-act-001
+title: Write a composite action
+domain: actions
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/composite-greet/.github/workflows && cd /root/composite-greet
+  echo "# composite-greet" > README.md
+  cat > .github/workflows/greet.yml <<'YAML'
+  name: Greet
+  on: push
+  jobs:
+    greet:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - id: hello
+          uses: ./.github/actions/greet
+          with:
+            who: Gitea learner
+        - run: |
+            echo "Greeting: ${{ steps.hello.outputs.greeting }}"
+  YAML
+  lab-publish /root/composite-greet "Add greet workflow"
+task: |
+  The workflow in `student/composite-greet` uses a local action `./.github/actions/greet`,
+  but the action does not exist yet, so the run fails.
+
+  Create `.github/actions/greet/action.yml`, a **composite action** with:
+  - a required input `who`;
+  - an output `greeting` with the value `Hello, <who>!`, made by a `run` step inside the action.
+
+  Do not change the workflow. Push the action. The run for your commit must succeed and print
+  `Greeting: Hello, Gitea learner!`.
+
+  *Gitea vs GitHub:* composite actions work the same. Remember that every `run` step in a
+  composite action needs `shell:`, and each output needs a `value:`.
+checks:
+  - name: '`.github/actions/greet/action.yml` is a composite action with the input `who`'
+    run: lab-file composite-greet .github/actions/greet/action.yml | yq -e '.runs.using == "composite" and (.inputs | has("who"))' >/dev/null
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok composite-greet ".head_sha==\"$(lab-head composite-greet)\" and .event==\"push\"" >/dev/null
+  - name: 'The run printed `Greeting: Hello, Gitea learner!`'
+    run: |
+      id=$(lab-ok composite-greet ".head_sha==\"$(lab-head composite-greet)\" and .event==\"push\"") || exit 1
+      lab-has-line composite-greet "$id" "Greeting: Hello, Gitea learner!"
+solution: |
+  cd /root/composite-greet
+  mkdir -p .github/actions/greet
+  cat > .github/actions/greet/action.yml <<'YAML'
+  name: Greet
+  description: Make a greeting for someone
+  inputs:
+    who:
+      description: Who to greet
+      required: true
+  outputs:
+    greeting:
+      description: The greeting text
+      value: ${{ steps.make.outputs.greeting }}
+  runs:
+    using: composite
+    steps:
+      - id: make
+        shell: bash
+        env:
+          WHO: ${{ inputs.who }}
+        run: echo "greeting=Hello, ${WHO}!" >> "$GITHUB_OUTPUT"
+  YAML
+  git add .github/actions
+  git commit -m "Add the greet composite action"
+  git push
+  lab-wait composite-greet ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax

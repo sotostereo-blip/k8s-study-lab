@@ -1,0 +1,268 @@
+# CI/CD and GitHub Actions glossary (GH-200). Shown when you click a highlighted term.
+terms:
+- id: gha-github-actions
+  term: "GitHub Actions"
+  match: [GitHub Actions]
+  definition: "The CI/CD and automation platform built into GitHub. Workflows in a repository run jobs on runners when events happen."
+  es: "Plataforma de CI/CD y automatización integrada en GitHub."
+- id: gha-workflow
+  term: "Workflow"
+  match: [workflow, workflows, workflow file, workflow files]
+  certs: [gha, interview]
+  definition: "An automated process defined in a YAML file in `.github/workflows`. It runs one or more jobs when an event triggers it."
+  es: "Proceso automatizado definido en un archivo YAML en `.github/workflows`."
+- id: gha-workflow-run
+  term: "Workflow run"
+  match: [workflow run, workflow runs, run attempt]
+  definition: "One execution of a workflow, started by one event. It has its own jobs, logs, artifacts and result."
+  es: "Una ejecución concreta de un workflow, con sus jobs, logs y artefactos."
+- id: gha-step
+  term: "Step"
+  match: [step, steps]
+  certs: [gha, interview]
+  definition: "One task inside a job. A step runs a shell command (`run`) or an action (`uses`). Steps of a job run in order on the same runner."
+  es: "Una tarea dentro de un job; ejecuta un comando o una acción."
+- id: gha-job-dependency
+  term: "Job dependency (needs)"
+  match: [job dependency, job dependencies]
+  definition: "A rule, written with `needs`, that makes a job wait until other jobs finish successfully. Without it, jobs run in parallel."
+  es: "Dependencia entre jobs declarada con `needs`."
+- id: gha-runner
+  term: "Runner"
+  match: [runner, runners]
+  certs: [gha, interview]
+  definition: "A machine that runs the jobs of a workflow. It can be hosted by GitHub or by you (self-hosted)."
+  es: "Máquina que ejecuta los jobs de un workflow."
+- id: gha-github-hosted-runner
+  term: "GitHub-hosted runner"
+  match: [GitHub-hosted runner, GitHub-hosted runners, hosted runner, hosted runners]
+  definition: "A fresh virtual machine that GitHub provides for each job, with an image such as `ubuntu-latest` and many tools preinstalled."
+  es: "Máquina virtual nueva que GitHub proporciona para cada job."
+- id: gha-self-hosted-runner
+  term: "Self-hosted runner"
+  match: [self-hosted runner, self-hosted runners]
+  definition: "A machine that you manage and connect to GitHub with the runner application. You control its hardware, software and network."
+  es: "Runner propio que tú gestionas y conectas a GitHub."
+- id: gha-larger-runner
+  term: "Larger runner"
+  match: [larger runner, larger runners]
+  definition: "A GitHub-hosted runner with more CPU and memory, or options such as GPU, ARM or static IP addresses. Admins configure it."
+  es: "Runner alojado por GitHub con más recursos u opciones (GPU, ARM, IP fija)."
+- id: gha-runner-group
+  term: "Runner group"
+  match: [runner group, runner groups]
+  definition: "A set of runners at organization or enterprise level, with rules that decide which repositories and workflows may use them."
+  es: "Grupo de runners con reglas sobre qué repositorios pueden usarlos."
+- id: gha-arc
+  term: "Actions Runner Controller (ARC)"
+  match: [Actions Runner Controller, ARC, runner scale set, runner scale sets]
+  definition: "A Kubernetes operator that creates and removes self-hosted runners automatically, based on the number of jobs."
+  es: "Operador de Kubernetes que escala runners propios según la demanda."
+- id: gha-tool-cache
+  term: "Tool cache"
+  match: [tool cache, toolcache]
+  definition: "A folder on the runner with ready versions of tools (Python, Node.js, Go...). Setup actions use it before downloading."
+  es: "Carpeta del runner con versiones preinstaladas de herramientas."
+- id: gha-matrix
+  term: "Matrix strategy"
+  match: [matrix, matrix strategy, matrix jobs, matrix job]
+  certs: [gha, interview]
+  definition: "A `strategy.matrix` that creates one job for each combination of variables, such as OS and language version."
+  es: "Estrategia que crea un job por cada combinación de variables."
+- id: gha-fail-fast
+  term: "fail-fast / max-parallel"
+  match: [fail-fast, max-parallel]
+  definition: "Matrix settings. `fail-fast` cancels other matrix jobs when one fails (default true); `max-parallel` limits how many run at once."
+  es: "Opciones de la matriz para cancelar al primer fallo y limitar el paralelismo."
+- id: gha-context
+  term: "Context"
+  match: [context, contexts]
+  definition: "An object with data about the run, such as `github`, `env`, `vars`, `secrets`, `matrix`, `needs` or `steps`, used in expressions."
+  es: "Objeto con datos de la ejecución que se usa en expresiones."
+  certs: [gha, interview]
+- id: gha-expression
+  term: "Expression"
+  match: [expression, expressions]
+  definition: "Code inside `${{ }}` that the runner evaluates, with contexts, operators and functions such as `contains()` or `success()`."
+  es: "Código dentro de `${{ }}` que se evalúa en la ejecución."
+  certs: [gha, interview]
+- id: gha-variable
+  term: "Configuration variable"
+  match: [configuration variable, configuration variables, vars context]
+  definition: "A non-secret value stored at organization, repository or environment level and read with `${{ vars.NAME }}`."
+  es: "Valor no secreto guardado en GitHub y leído con `vars`."
+- id: gha-encrypted-secret
+  term: "Encrypted secret (GitHub Actions)"
+  match: [encrypted secret, encrypted secrets, repository secret, repository secrets, organization secret, organization secrets, environment secret, environment secrets]
+  definition: "A sensitive value stored encrypted in GitHub and read with `${{ secrets.NAME }}`. It is masked in logs and cannot be read back."
+  es: "Valor sensible guardado cifrado en GitHub y enmascarado en los logs."
+- id: gha-github-token
+  term: "GITHUB_TOKEN"
+  match: [GITHUB_TOKEN, GITEA_TOKEN]
+  definition: "A short-lived token that GitHub creates for each job to call the API for the repository. `permissions` controls its scopes."
+  es: "Token temporal que GitHub crea para cada job; sus permisos se controlan con `permissions`."
+- id: gha-pat
+  term: "Personal access token (PAT)"
+  match: [personal access token, personal access tokens, PAT]
+  definition: "A token that acts as a user account. It is long-lived, so prefer GITHUB_TOKEN or a GitHub App token in workflows."
+  es: "Token que actúa como un usuario; de larga duración."
+- id: gha-environment
+  term: "Deployment environment"
+  match: [deployment environment, deployment environments, protection rule, protection rules, required reviewers]
+  definition: "A named target such as `production`, with its own secrets, variables and protection rules (reviewers, wait timer, allowed branches)."
+  es: "Destino de despliegue con secretos propios y reglas de protección."
+- id: gha-concurrency
+  term: "Concurrency group"
+  match: [concurrency, concurrency group, concurrency groups]
+  definition: "A `concurrency` setting that allows only one running job or run per group; `cancel-in-progress` cancels the older one."
+  es: "Grupo que limita a una ejecución activa; puede cancelar la anterior."
+  certs: [gha, interview]
+- id: gha-service-container
+  term: "Service container"
+  match: [service container, service containers]
+  definition: "A Docker container, such as a database, that runs next to a job (`services:`) so tests can use it."
+  es: "Contenedor auxiliar (por ejemplo una base de datos) que acompaña a un job."
+- id: gha-artifact
+  term: "Workflow artifact"
+  match: [artifact, artifacts, workflow artifact, workflow artifacts]
+  certs: [gha, interview]
+  definition: "Files that a job uploads during a run (reports, binaries). Other jobs or people can download them until they expire."
+  es: "Archivos que un job sube durante una ejecución para compartirlos."
+- id: gha-cache
+  term: "Dependency cache"
+  match: [cache, caches, dependency caching, cache key, cache hit]
+  certs: [gha, interview]
+  definition: "Files saved by `actions/cache` under a key and restored in later runs to avoid downloading dependencies again."
+  es: "Archivos guardados con una clave y restaurados en ejecuciones posteriores."
+- id: gha-retention
+  term: "Retention period"
+  match: [retention period, retention policy, retention-days]
+  definition: "How long GitHub keeps logs and artifacts before deleting them (90 days by default)."
+  es: "Tiempo que se conservan logs y artefactos."
+- id: gha-github-output
+  term: "GITHUB_OUTPUT"
+  match: [GITHUB_OUTPUT, step output, step outputs]
+  definition: "An environment file. A step writes `name=value` to it to create an output that later steps read with `steps.<id>.outputs`."
+  es: "Archivo de entorno donde un step escribe sus salidas."
+- id: gha-github-env
+  term: "GITHUB_ENV"
+  match: [GITHUB_ENV, environment file, environment files]
+  definition: "An environment file. Writing `NAME=value` to it sets an environment variable for the next steps of the same job."
+  es: "Archivo de entorno para definir variables en los siguientes steps."
+- id: gha-job-output
+  term: "Job output"
+  match: [job output, job outputs]
+  definition: "A value a job exposes with `outputs:` so that jobs that `need` it can read it with `needs.<job>.outputs`."
+  es: "Valor que un job expone a otros jobs que dependen de él."
+- id: gha-step-summary
+  term: "Job summary"
+  match: [GITHUB_STEP_SUMMARY, job summary, job summaries]
+  definition: "Markdown that steps write to `GITHUB_STEP_SUMMARY`; GitHub shows it on the workflow run summary page."
+  es: "Resumen en Markdown que aparece en la página de la ejecución."
+- id: gha-workflow-command
+  term: "Workflow command"
+  match: [workflow command, workflow commands]
+  definition: "A special line printed by a step, such as `::error::`, `::group::` or `::add-mask::`, that tells the runner to do something."
+  es: "Línea especial que un step imprime para dar órdenes al runner."
+- id: gha-status-badge
+  term: "Status badge"
+  match: [status badge, status badges]
+  definition: "An SVG image that shows whether a workflow passes; you add it to a README."
+  es: "Imagen que muestra si un workflow pasa."
+- id: gha-workflow-dispatch
+  term: "workflow_dispatch"
+  match: [workflow_dispatch, manual trigger]
+  definition: "An event that starts a workflow by hand (UI, CLI or API), optionally with typed inputs."
+  es: "Evento para lanzar un workflow manualmente, con entradas opcionales."
+- id: gha-reusable-workflow
+  term: "Reusable workflow"
+  match: [reusable workflow, reusable workflows, workflow_call]
+  definition: "A workflow with `on: workflow_call` that other workflows call from a job with `uses:`, passing inputs and secrets."
+  es: "Workflow que otros workflows llaman con `uses:` a nivel de job."
+- id: gha-workflow-template
+  term: "Workflow template (starter workflow)"
+  match: [workflow template, workflow templates, starter workflow, starter workflows]
+  definition: "A ready workflow file that you copy into a repository from the New workflow page. After copying, it does not change with the template."
+  es: "Plantilla de workflow que se copia en un repositorio."
+- id: gha-custom-action
+  term: "Custom action"
+  match: [custom action, custom actions, local action, local actions]
+  definition: "A reusable unit of steps with an `action.yml`, called with `uses:` in a step. It can be JavaScript, Docker or composite."
+  es: "Acción propia, reutilizable, definida con `action.yml`."
+- id: gha-composite-action
+  term: "Composite action"
+  match: [composite action, composite actions]
+  definition: "An action whose `action.yml` has `runs.using: composite` and a list of steps that run inside the calling job."
+  es: "Acción formada por una lista de steps."
+- id: gha-javascript-action
+  term: "JavaScript action"
+  match: [JavaScript action, JavaScript actions]
+  definition: "An action that runs a Node.js file (`runs.using: node20` or `node24`) directly on the runner. It works on all runner systems."
+  es: "Acción que ejecuta código Node.js directamente en el runner."
+- id: gha-docker-action
+  term: "Docker container action"
+  match: [Docker container action, Docker container actions, Docker action, Docker actions]
+  definition: "An action that runs in a container built from a Dockerfile or image (`runs.using: docker`). It runs only on Linux runners."
+  es: "Acción que se ejecuta en un contenedor; solo en runners Linux."
+- id: gha-action-metadata
+  term: "Action metadata file"
+  match: [action.yml, action.yaml, metadata file]
+  definition: "The `action.yml` file that defines an action's name, inputs, outputs, branding and how it runs."
+  es: "Archivo `action.yml` que define una acción."
+- id: gha-marketplace
+  term: "GitHub Marketplace"
+  match: [GitHub Marketplace, Marketplace]
+  definition: "The public catalog where people find and share actions and apps."
+  es: "Catálogo público de acciones y aplicaciones."
+  certs: [gha, interview]
+- id: gha-immutable-release
+  term: "Immutable release"
+  match: [immutable release, immutable releases]
+  definition: "A release whose tag and assets cannot be changed or deleted after it is published, which protects users of an action."
+  es: "Release cuyo tag y archivos no se pueden cambiar tras publicarse."
+- id: gha-sha-pinning
+  term: "Pinning to a commit SHA"
+  match: [commit SHA, full-length commit SHA, pinned to a full-length commit SHA]
+  definition: "Referencing an action by the full 40-character commit hash, so the code you run cannot change."
+  es: "Referenciar una acción por el hash completo de un commit."
+- id: gha-script-injection
+  term: "Script injection"
+  match: [script injection, script injections]
+  definition: "An attack where untrusted text (a PR title, a branch name) placed in `${{ }}` inside `run` becomes shell code."
+  es: "Ataque donde texto no confiable se convierte en código del script."
+- id: gha-actions-policy
+  term: "Actions policy (allowed actions)"
+  match: [allowed actions, actions policy, actions policies]
+  definition: "An organization or enterprise setting that limits which actions and reusable workflows may run, and can require SHA pinning."
+  es: "Política que limita qué acciones se pueden usar."
+- id: gha-ip-allow-list
+  term: "IP allow list"
+  match: [IP allow list, IP allow lists]
+  definition: "A list of IP addresses that may access an organization or enterprise; runners must connect from allowed addresses."
+  es: "Lista de IPs autorizadas para acceder a la organización."
+- id: gha-artifact-attestation
+  term: "Artifact attestation"
+  match: [artifact attestation, artifact attestations]
+  definition: "A signed statement that links a built file to the workflow, repository and commit that produced it."
+  es: "Declaración firmada que vincula un archivo con el workflow que lo construyó."
+- id: gha-yaml-anchor
+  term: "YAML anchor and alias"
+  match: [YAML anchor, YAML anchors, anchor, anchors, alias, aliases]
+  definition: "YAML syntax to reuse content in one file. `&name` marks a node (anchor) and `*name` repeats it (alias)."
+  es: "Sintaxis YAML para reutilizar contenido dentro de un archivo (`&` y `*`)."
+  certs: [gha, interview]
+- id: yaml
+  term: "YAML"
+  match: [YAML]
+  definition: "A text format for data that uses indentation for structure. Workflows and action metadata are written in YAML."
+  es: "Formato de texto para datos que usa la sangría para la estructura."
+- id: gha-gitea
+  term: "Gitea Actions"
+  match: [Gitea, Gitea Actions]
+  definition: "Gitea is a self-hosted Git service. Gitea Actions is its CI system, compatible with most GitHub Actions workflow syntax."
+  es: "Gitea es un servicio Git autoalojado; Gitea Actions es su CI compatible con GitHub Actions."
+- id: gha-act-runner
+  term: "act_runner"
+  match: [act_runner]
+  definition: "The runner program for Gitea Actions. It registers with Gitea, takes jobs and runs them (here in host mode)."
+  es: "Programa runner de Gitea Actions."

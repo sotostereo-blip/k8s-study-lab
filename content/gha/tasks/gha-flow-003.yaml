@@ -1,0 +1,71 @@
+id: gha-flow-003
+title: Pass a value from one job to another
+domain: workflows
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/job-outputs/.github/workflows && cd /root/job-outputs
+  echo "2.4.1" > VERSION
+  cat > .github/workflows/release.yml <<'YAML'
+  name: Release
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - run: echo "The VERSION file says $(cat VERSION)"
+    release:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Releasing version $VERSION"
+  YAML
+  lab-publish /root/job-outputs "Add release workflow"
+task: |
+  In `student/job-outputs`, the job `release` prints `Releasing version ` with an empty value,
+  because it cannot see the `VERSION` file that the job `build` reads.
+
+  Change `.github/workflows/release.yml`:
+  - in `build`, a step reads `VERSION` and writes it as a **step output** called `version`
+    (use `$GITHUB_OUTPUT`);
+  - `build` exposes it as a **job output** `version`;
+  - `release` waits for `build` (`needs`) and prints `Releasing version 2.4.1` using
+    `needs.build.outputs.version`.
+
+  Push the change. The run for your commit must succeed.
+
+  *Gitea vs GitHub:* `GITHUB_OUTPUT`, job `outputs` and the `needs` context work the same.
+checks:
+  - name: 'The job `release` printed `Releasing version 2.4.1`'
+    run: |
+      id=$(lab-ok job-outputs ".head_sha==\"$(lab-head job-outputs)\" and .event==\"push\"") || exit 1
+      lab-has-line job-outputs "$id" "Releasing version 2.4.1"
+  - name: 'The job `release` needs the job `build`'
+    run: lab-file job-outputs .github/workflows/release.yml | yq -e '[.jobs.release.needs] | flatten | any_c(. == "build")' >/dev/null
+solution: |
+  cd /root/job-outputs
+  cat > .github/workflows/release.yml <<'YAML'
+  name: Release
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      outputs:
+        version: ${{ steps.read.outputs.version }}
+      steps:
+        - uses: actions/checkout@v4
+        - id: read
+          run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+    release:
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Releasing version ${{ needs.build.outputs.version }}"
+  YAML
+  git commit -am "Pass the version between jobs"
+  git push
+  lab-wait job-outputs ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/pass-job-outputs
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands

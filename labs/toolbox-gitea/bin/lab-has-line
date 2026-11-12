@@ -1,0 +1,4 @@
+#!/bin/bash
+# lab-has-line REPO RUN_ID TEXT - exit 0 if a job of the run printed exactly the line TEXT.
+logs="$(lab-logs "${1:?usage: lab-has-line REPO RUN_ID TEXT}" "${2:?}")" || exit 1
+printf '%s\n' "$logs" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //' | grep -qxF -- "${3:?}"

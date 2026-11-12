@@ -1,0 +1,74 @@
+id: gha-ent-001
+title: Use a repository secret and a variable
+domain: enterprise
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/deploy-config/.github/workflows && cd /root/deploy-config
+  echo "# deploy-config" > README.md
+  cat > .github/workflows/deploy.yml <<'YAML'
+  name: Deploy
+  on: push
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Deploy
+          env:
+            TARGET_ENV: ${{ vars.TARGET_ENV }}
+            TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          run: |
+            [ -n "$TOKEN" ] || { echo "DEPLOY_TOKEN is missing"; exit 1; }
+            echo "Deploying to ${TARGET_ENV:-nowhere}"
+            echo "Token length: ${#TOKEN}"
+  YAML
+  lab-publish /root/deploy-config "Add deploy workflow"
+task: |
+  The workflow `Deploy` in `student/deploy-config` fails: `DEPLOY_TOKEN is missing`.
+
+  1. Create a **repository secret** `DEPLOY_TOKEN` with the value `tok-1234-abcd`.
+  2. Create a **repository variable** `TARGET_ENV` with the value `staging`.
+  3. Start the workflow again (for example push an empty commit:
+     `git commit --allow-empty -m retry && git push` in `/root/deploy-config`).
+
+  The newest run must succeed and print `Deploying to staging` and `Token length: 13`.
+  The secret value must never appear in the logs.
+
+  Use the Gitea API, which has the same paths as the GitHub REST API:
+  - secret: `gapi repos/student/deploy-config/actions/secrets/DEPLOY_TOKEN -X PUT -d '{"data":"..."}'`
+  - variable: `gapi repos/student/deploy-config/actions/variables/TARGET_ENV -X POST -d '{"value":"..."}'`
+
+  *Gitea vs GitHub:* on GitHub the API needs the secret **encrypted** with the repository public
+  key (`gh secret set` does it for you); Gitea accepts the plain value over HTTPS/HTTP.
+  `gh variable set` / `gh secret set` have no Gitea version, but `tea` and the API do the same job.
+checks:
+  - name: 'The repository secret `DEPLOY_TOKEN` exists'
+    run: gapi repos/student/deploy-config/actions/secrets | jq -e 'any(.[]; .name=="DEPLOY_TOKEN")' >/dev/null
+  - name: 'The repository variable `TARGET_ENV` is `staging`'
+    run: gapi repos/student/deploy-config/actions/variables/TARGET_ENV | jq -e '.data=="staging"' >/dev/null
+  - name: 'The newest run succeeded and printed `Deploying to staging` and `Token length: 13`'
+    run: |
+      id=$(lab-ok deploy-config) || exit 1
+      lab-has-line deploy-config "$id" "Deploying to staging" && lab-has-line deploy-config "$id" "Token length: 13"
+  - name: 'The secret value never appears in a log'
+    guard: true
+    run: |
+      for id in $(lab-runs deploy-config | jq -r '.[].id'); do
+        logs=$(lab-logs deploy-config "$id") || exit 1
+        if printf '%s' "$logs" | grep -qF 'tok-1234-abcd'; then exit 1; fi
+      done
+solution: |
+  gapi repos/student/deploy-config/actions/secrets/DEPLOY_TOKEN -X PUT -d '{"data":"tok-1234-abcd"}'
+  gapi repos/student/deploy-config/actions/variables/TARGET_ENV -X POST -d '{"value":"staging"}'
+  gapi repos/student/deploy-config/actions/secrets | jq '.[].name'     # values are never shown
+  cd /root/deploy-config
+  git commit --allow-empty -m "Retry deploy"
+  git push
+  lab-wait deploy-config ".head_sha==\"$(git rev-parse HEAD)\""
+  lab-logs deploy-config "$(lab-run deploy-config | jq .id)" | grep -E "Deploying|Token"
+docs:
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
+  - https://docs.github.com/en/rest/actions/secrets
+  - https://docs.github.com/en/rest/actions/variables

@@ -1,0 +1,368 @@
+domain: security
+questions:
+  - id: gha-sec-001
+    difficulty: 2
+    type: single
+    question: "A workflow runs `run: echo \"Title: ${{ github.event.pull_request.title }}\"`. Why is this dangerous, and what is the fix?"
+    options:
+      - id: a
+        text: "The title can inject shell commands; pass it in `env` and use `\"$TITLE\"` in the script"
+      - id: b
+        text: "The title may be too long for the log; cut it with `substring()`"
+        why: "Length is not the problem. An attacker can put shell syntax such as `$(...)` in the title."
+      - id: c
+        text: "PR titles are secret; mask them with `::add-mask::`"
+        why: "Titles are public data. The risk is that the runner puts them into the script before the shell runs."
+      - id: d
+        text: "Expressions are not allowed in `run`; use a JavaScript action"
+        why: "Expressions are allowed. A JavaScript action is one safe option, but the usual fix is an environment variable."
+    answer: [a]
+    explanation: |
+      The runner replaces `${{ }}` before the shell runs, so untrusted text (PR titles,
+      branch names, issue bodies) becomes part of the command. Put it in an
+      environment variable (`env: TITLE: ${{ github.event.pull_request.title }}`) and
+      use `"$TITLE"`, so the shell treats it as data.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/script-injections
+      - https://docs.github.com/en/actions/reference/security/secure-use
+    glossary: [gha-script-injection, gha-expression]
+
+  - id: gha-sec-002
+    difficulty: 1
+    type: single
+    question: "What is the safest way to reference a third-party action from Marketplace?"
+    options:
+      - id: a
+        text: "Pin it to a full-length commit SHA, for example `uses: owner/action@<40-character SHA>`"
+      - id: b
+        text: "Use `@main`, so you always get the newest fixes"
+        why: "`@main` can change at any time, including to malicious code. It is the least safe option."
+      - id: c
+        text: "Use a major tag such as `@v4`, because tags cannot be moved"
+        why: "Normal Git tags can be moved or deleted by the owner. Only a commit SHA (or an immutable release) is fixed."
+      - id: d
+        text: "Copy only the action name, because GitHub picks a safe version"
+        why: "A version is required, and GitHub does not pick one for you."
+    answer: [a]
+    explanation: |
+      A full-length commit SHA is the only reference that cannot change. Add a comment
+      with the version (`# v4.2.2`) so people can read it, and let a tool such as
+      Dependabot update the SHA.
+    docs:
+      - https://docs.github.com/en/actions/reference/security/secure-use
+    glossary: [gha-sha-pinning]
+
+  - id: gha-sec-003
+    difficulty: 2
+    type: single
+    question: "A workflow only checks out code and runs tests. Which `permissions` block follows least privilege?"
+    options:
+      - id: a
+        text: "`permissions: { contents: read }`"
+      - id: b
+        text: "`permissions: write-all`"
+        why: "`write-all` gives the token write access to every scope, which the job does not need."
+      - id: c
+        text: "No `permissions` block, because `GITHUB_TOKEN` is always read-only"
+        why: "The default depends on repository and organization settings and can include write access."
+      - id: d
+        text: "`permissions: { id-token: write, contents: write }`"
+        why: "Tests need neither an OIDC token nor write access to contents."
+    answer: [a]
+    explanation: |
+      Set `permissions` at the workflow or job level to give `GITHUB_TOKEN` only the
+      scopes it needs. When you set any permission, all scopes you do not list are set
+      to `none` (except `metadata`, which is read).
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/github_token
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+    glossary: [gha-github-token, least-privilege]
+
+  - id: gha-sec-004
+    difficulty: 2
+    type: multiple
+    question: "Which statements about `GITHUB_TOKEN` are true? (Choose two.)"
+    options:
+      - id: a
+        text: "GitHub creates it for each job, and it expires when the job ends (or after 24 hours at most)"
+      - id: b
+        text: "Its permissions are limited to the repository that contains the workflow"
+      - id: c
+        text: "It is a personal access token of the user who pushed the commit"
+        why: "It is an installation token of a GitHub App, not a PAT. It does not act as the user."
+      - id: d
+        text: "You must create it as a repository secret before workflows can use it"
+        why: "GitHub creates it automatically. You read it with `secrets.GITHUB_TOKEN` or `github.token`."
+    answer: [a, b]
+    explanation: |
+      At the start of each job, GitHub makes a short-lived installation access token
+      for the repository. It expires when the job finishes or after 24 hours. For
+      access to other repositories, use a GitHub App token or a fine-grained personal
+      access token.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/github_token
+    glossary: [gha-github-token, gha-pat]
+
+  - id: gha-sec-005
+    difficulty: 2
+    type: single
+    question: "A workflow deploys to a cloud provider with a long-lived access key stored as a secret. How can you remove the stored key?"
+    options:
+      - id: a
+        text: "Use OIDC with `id-token: write` and a cloud trust policy"
+      - id: b
+        text: "Store the key as a configuration variable instead of a secret"
+        why: "Variables are not encrypted. That makes the key less safe, not more."
+      - id: c
+        text: "Rotate the stored key once every year"
+        why: "Rotation helps, but a long-lived key is still stored. OIDC removes it."
+      - id: d
+        text: "Put the key in the workflow file in base64"
+        why: "Base64 is not encryption. Anyone who can read the file can read the key."
+    answer: [a]
+    explanation: |
+      With OpenID Connect, the job asks GitHub for a signed token (needs
+      `permissions: id-token: write`). The cloud provider checks its claims, such as
+      the repository and branch, and returns short-lived credentials. No cloud secret
+      is stored in GitHub.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/openid-connect
+      - https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws
+    glossary: [oidc]
+
+  - id: gha-sec-006
+    difficulty: 3
+    type: single
+    question: "In the cloud trust policy for GitHub OIDC, which claim do you check so that only jobs in the `production` environment of `octo-org/app` get access?"
+    options:
+      - id: a
+        text: "`sub` = `repo:octo-org/app:environment:production`"
+      - id: b
+        text: "`aud` equal to `production` for every token"
+        why: "`aud` is the audience, usually the cloud provider's value. The environment is part of `sub`."
+      - id: c
+        text: "`iss` equal to `octo-org/app` for the repository"
+        why: "`iss` is the issuer, `https://token.actions.githubusercontent.com`. It is the same for every repository."
+      - id: d
+        text: "`jti` equal to `production` for each job"
+        why: "`jti` is a unique token ID. It changes for every token."
+    answer: [a]
+    explanation: |
+      The `sub` (subject) claim describes where the job runs. For a job with an
+      environment it looks like `repo:ORG/REPO:environment:NAME`. Cloud trust
+      policies should check `sub` (and `aud`) so that other repositories cannot get
+      credentials.
+    docs:
+      - https://docs.github.com/en/actions/reference/security/oidc
+      - https://docs.github.com/en/actions/concepts/security/openid-connect
+    glossary: [oidc]
+
+  - id: gha-sec-007
+    difficulty: 2
+    type: single
+    question: "You want users to verify where a released binary was built. Which GitHub feature helps?"
+    options:
+      - id: a
+        text: "Artifact attestations, checked with `gh attestation verify`"
+      - id: b
+        text: "A workflow status badge in the README file"
+        why: "A badge shows whether a workflow passes. It does not prove where a file was built."
+      - id: c
+        text: "Uploading the binary as a workflow artifact"
+        why: "An artifact stores the file for a while. It does not include signed build provenance."
+      - id: d
+        text: "Masking the binary name in logs with `::add-mask::`"
+        why: "Masking hides text in logs. It has nothing to do with provenance."
+    answer: [a]
+    explanation: |
+      Artifact attestations create signed provenance (SLSA build provenance) that
+      links a file to the workflow, repository and commit that built it. The job needs
+      `id-token: write` and `attestations: write`. Consumers verify it with the GitHub
+      CLI.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/artifact-attestations
+      - https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+    glossary: [gha-artifact-attestation, slsa, provenance]
+
+  - id: gha-sec-008
+    difficulty: 2
+    type: multiple
+    question: "Which signs help you decide that a Marketplace action is trustworthy? (Choose two.)"
+    options:
+      - id: a
+        text: "It is created by GitHub or by a verified creator"
+      - id: b
+        text: "Its source is public, maintained, and you reviewed what it does"
+      - id: c
+        text: "It has a nice icon and colour in Marketplace"
+        why: "Branding is chosen by the author. It says nothing about safety."
+      - id: d
+        text: "It asks for `permissions: write-all` so it never fails"
+        why: "Asking for more access than needed is a warning sign, not a sign of trust."
+    answer: [a, b]
+    explanation: |
+      Prefer actions from GitHub or verified creators, read their code and
+      `action.yml`, check that they are maintained, and pin them to a commit SHA. Give
+      the job only the permissions the action needs.
+    docs:
+      - https://docs.github.com/en/actions/reference/security/secure-use
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/find-and-customize-actions
+    glossary: [gha-marketplace, gha-sha-pinning]
+
+  - id: gha-sec-009
+    difficulty: 3
+    type: single
+    question: "An organization wants every workflow to fail if it uses an action that is not pinned to a full commit SHA. What can an admin turn on?"
+    options:
+      - id: a
+        text: "The policy \"Require actions to be pinned to a full-length commit SHA\""
+      - id: b
+        text: "Branch protection with required signed commits"
+        why: "Signed commits protect the repository history, not the versions of actions."
+      - id: c
+        text: "Secret scanning push protection"
+        why: "Push protection blocks pushes with secrets. It does not check action references."
+      - id: d
+        text: "Dependabot version updates"
+        why: "Dependabot can update pinned SHAs, but it does not stop workflows that use tags."
+    answer: [a]
+    explanation: |
+      The allowed-actions policy at organization and enterprise level has an option
+      that requires every action to be pinned to a full-length commit SHA. Workflows
+      that use tags or branches then fail.
+    docs:
+      - https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization
+    glossary: [gha-sha-pinning, gha-actions-policy]
+
+  - id: gha-sec-010
+    difficulty: 2
+    type: single
+    question: "A workflow installs npm packages in every run, which takes 3 minutes. Which change saves the most time?"
+    options:
+      - id: a
+        text: "Cache the npm folder with a key based on the lock file hash"
+      - id: b
+        text: "Upload `node_modules` as an artifact and download it in the next run"
+        why: "Artifacts are for sharing results of a run. Caches are made for reusing dependencies between runs."
+      - id: c
+        text: "Add `max-parallel: 10` to the job strategy"
+        why: "`max-parallel` limits matrix jobs. It does not make installs faster."
+      - id: d
+        text: "Set `timeout-minutes: 1` on the slow install step"
+        why: "A timeout makes the step fail. It does not speed it up."
+    answer: [a]
+    explanation: |
+      Dependency caching stores files such as the npm cache and restores them in later
+      runs when the key matches. Using `hashFiles('**/package-lock.json')` in the key
+      makes a new cache when dependencies change. Setup actions can do this for you.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching
+    glossary: [gha-cache]
+
+  - id: gha-sec-011
+    difficulty: 3
+    type: multiple
+    question: "Which statements about the Actions cache on github.com are true? (Choose two.)"
+    options:
+      - id: a
+        text: "Cache entries not accessed for 7 days are removed"
+      - id: b
+        text: "When the exact key is not found, `restore-keys` can restore a partial match"
+      - id: c
+        text: "A cache made in a feature branch is available to every other branch"
+        why: "A run can restore caches from its own branch and the default branch, not from unrelated branches."
+      - id: d
+        text: "Caches are kept for 90 days, the same as artifacts"
+        why: "Caches are removed after 7 days without access, or when the repository goes over its cache limit."
+    answer: [a, b]
+    explanation: |
+      `actions/cache` first looks for the exact `key`, then tries the `restore-keys`
+      prefixes. Caches are scoped to branches (a branch can use the default branch's
+      cache), entries unused for 7 days are deleted, and old entries are evicted when
+      the repository reaches its cache size limit.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching
+    glossary: [gha-cache]
+
+  - id: gha-sec-012
+    difficulty: 2
+    type: single
+    question: "Your organization stores many large artifacts and storage costs grow. Which change helps without breaking workflows?"
+    options:
+      - id: a
+        text: "Lower the artifact and log retention period"
+      - id: b
+        text: "Turn off GitHub Actions for the whole organization"
+        why: "That stops all automation. Shorter retention reduces storage while workflows keep working."
+      - id: c
+        text: "Rename artifacts so they replace each other"
+        why: "Artifacts belong to runs. Names do not make old runs delete their files."
+      - id: d
+        text: "Move artifacts into the Git repository"
+        why: "Large binaries in Git make the repository slow and are kept forever."
+    answer: [a]
+    explanation: |
+      Retention can be set for the enterprise, organization or repository, in the UI
+      or with the REST API (`.../actions/permissions/artifact-and-log-retention`). A
+      workflow can also set `retention-days` for one artifact. Shorter retention means
+      less storage.
+    docs:
+      - https://docs.github.com/en/rest/actions/permissions
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
+    glossary: [gha-retention, gha-artifact]
+
+  - id: gha-sec-013
+    difficulty: 2
+    type: single
+    question: "A pipeline runs a 20-minute test suite in one job. How can you make it finish faster on GitHub-hosted runners?"
+    options:
+      - id: a
+        text: "Split the tests into shards and run them in parallel with a matrix"
+      - id: b
+        text: "Add more steps that run the same tests"
+        why: "Steps in one job run one after another, so more steps make it slower."
+      - id: c
+        text: "Use `needs` between every test step"
+        why: "`needs` connects jobs, not steps, and it adds order rather than parallelism."
+      - id: d
+        text: "Set `fail-fast: false` on a job without a matrix"
+        why: "`fail-fast` only matters for matrix jobs, and it does not change speed."
+    answer: [a]
+    explanation: |
+      Jobs run in parallel on separate runners. A matrix that splits tests into
+      shards can cut the total time, together with caching and running only the jobs
+      that are needed (path filters, `if:` conditions, `concurrency` to cancel old
+      runs).
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+    glossary: [gha-matrix]
+
+  - id: gha-sec-014
+    difficulty: 3
+    type: single
+    question: "A workflow uses `on: pull_request_target` and checks out the pull request head code, then runs `npm install`. Why is this a problem?"
+    options:
+      - id: a
+        text: "Untrusted PR code runs with the base repository's secrets and a write token"
+      - id: b
+        text: "`pull_request_target` cannot check out code at all"
+        why: "It can check out any ref. The problem is running untrusted code with high privileges."
+      - id: c
+        text: "`npm install` is not allowed on hosted runners"
+        why: "`npm install` works on hosted runners. The risk is the code that it runs."
+      - id: d
+        text: "It only fails on forks with more than 100 files"
+        why: "There is no file limit. Any fork PR can attack this workflow."
+    answer: [a]
+    explanation: |
+      `pull_request_target` runs in the context of the base branch, with secrets and
+      a token that can write. If it builds or runs code from the PR (install scripts,
+      tests), an attacker can steal secrets. Use `pull_request` for untrusted code, or
+      split the work so privileged steps never run PR code.
+    docs:
+      - https://docs.github.com/en/actions/reference/security/secure-use
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+    glossary: [gha-script-injection, gha-github-token]

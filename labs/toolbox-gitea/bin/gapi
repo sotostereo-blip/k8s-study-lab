@@ -1,0 +1,7 @@
+#!/bin/bash
+# gapi PATH [curl options] - call the Gitea REST API as the lab user.
+#   gapi repos/student/hello/actions/runs | jq .
+#   gapi repos/student/hello/actions/secrets/TOKEN -X PUT -d '{"data":"s3cr3t"}'
+path="${1#/}"; shift
+exec curl -sSL --fail-with-body -u "${GITEA_USER}:${GITEA_PASSWORD}" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' "${GITEA_URL}/api/v1/${path}" "$@"

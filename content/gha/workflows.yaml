@@ -1,0 +1,627 @@
+domain: workflows
+questions:
+  - id: gha-wf-001
+    difficulty: 1
+    type: multiple
+    question: "Which of these files does GitHub Actions treat as workflows? (Choose two.)"
+    options:
+      - id: a
+        text: "`.github/workflows/ci.yml`"
+      - id: b
+        text: "`.github/workflows/release.yaml`"
+      - id: c
+        text: "`.github/actions/build.yml`"
+        why: "Many teams keep local custom actions under `.github/actions`, but workflows must be in `.github/workflows`."
+      - id: d
+        text: "`workflows/deploy.yml` in the repository root"
+        why: "GitHub does not read workflow files from other folders. A valid workflow outside `.github/workflows` is never triggered."
+    answer: [a, b]
+    explanation: |
+      GitHub Actions reads workflow files only from `.github/workflows` in the
+      repository. Each file is a YAML file with the `.yml` or `.yaml` extension and
+      describes one workflow.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+      - https://docs.github.com/en/actions/get-started/understand-github-actions
+    glossary: [gha-workflow, yaml]
+
+  - id: gha-wf-002
+    difficulty: 1
+    type: single
+    question: "A workflow must run every day at 03:30 UTC. Which trigger do you add?"
+    options:
+      - id: a
+        text: "`on: schedule` with `- cron: '30 3 * * *'`"
+      - id: b
+        text: "`on: schedule` with `- cron: '3 30 * * *'`"
+        why: "The first cron field is the minute and the second is the hour. `3 30` is not a valid time, because the hour field goes from 0 to 23."
+      - id: c
+        text: "`on: workflow_dispatch` with `time: '03:30'`"
+        why: "`workflow_dispatch` is a manual trigger. It has no `time` key and never runs on a timer."
+      - id: d
+        text: "`on: push` with `schedule: daily-03:30`"
+        why: "`push` runs when commits are pushed. There is no `schedule` filter inside the `push` event."
+    answer: [a]
+    explanation: |
+      The `schedule` event uses POSIX cron syntax in UTC: minute, hour, day of month,
+      month, day of week. `30 3 * * *` means "at minute 30 of hour 3, every day".
+      Scheduled workflows run on the latest commit of the default branch.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+    glossary: [gha-workflow]
+
+  - id: gha-wf-003
+    difficulty: 2
+    type: single
+    question: "This workflow uses `on: push` with `branches: [main]` and `paths: ['docs/**']`. A developer pushes a commit to `main` that changes only `src/app.js`. What happens?"
+    options:
+      - id: a
+        text: "The workflow does not run, because no changed file matches `docs/**`"
+      - id: b
+        text: "The workflow runs, because the branch filter matches `main`"
+        why: "When you use both `branches` and `paths`, both filters must match. The branch matches, but the path filter does not."
+      - id: c
+        text: "The workflow runs, but every job is marked as skipped"
+        why: "Filters are checked before a run is created. If they do not match, there is no run at all, not a run with skipped jobs."
+      - id: d
+        text: "The workflow fails, because `paths` cannot be used with `branches`"
+        why: "You can combine `branches` and `paths` in one event. You cannot combine `paths` and `paths-ignore` for the same event."
+    answer: [a]
+    explanation: |
+      For `push` and `pull_request`, all configured filters must match. With
+      `branches: [main]` and `paths: ['docs/**']`, the workflow runs only when a push
+      to `main` changes at least one file under `docs/`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+    glossary: [gha-workflow]
+
+  - id: gha-wf-004
+    difficulty: 2
+    type: single
+    question: "You add a manual trigger with an input that must be one of `dev`, `staging` or `prod`, with `dev` as the default. Which definition is correct?"
+    options:
+      - id: a
+        text: "`workflow_dispatch: inputs: env: { type: choice, options: [dev, staging, prod], default: dev }`"
+      - id: b
+        text: "`workflow_dispatch: inputs: env: { type: string, values: [dev, staging, prod], default: dev }`"
+        why: "A `string` input accepts any text. The list of allowed values belongs to a `choice` input, and the key is `options`, not `values`."
+      - id: c
+        text: "`workflow_dispatch: env: { type: enum, options: [dev, staging, prod], default: dev }`"
+        why: "Inputs live under `inputs`, and the type is called `choice`. There is no `enum` type."
+      - id: d
+        text: "`repository_dispatch: inputs: env: { type: choice, options: [dev, staging, prod] }`"
+        why: "`repository_dispatch` is started through the REST API with a `client_payload`. It does not define typed inputs."
+    answer: [a]
+    explanation: |
+      `workflow_dispatch` inputs support the types `boolean`, `choice`, `number`,
+      `environment` and `string`. A `choice` input lists its allowed values in
+      `options`, and `default` must be one of them. You read the value with
+      `inputs.env`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
+    glossary: [gha-workflow-dispatch]
+
+  - id: gha-wf-005
+    difficulty: 2
+    type: multiple
+    question: "Which statements about the `workflow_dispatch` event are true? (Choose two.)"
+    options:
+      - id: a
+        text: "The workflow file must be on the default branch to show the Run workflow button"
+      - id: b
+        text: "You can start it with the REST API or with `gh workflow run`"
+      - id: c
+        text: "It starts automatically after every push to the default branch"
+        why: "`workflow_dispatch` only starts when a person or a tool asks for a run. Pushes use the `push` event."
+      - id: d
+        text: "Its inputs are only available in the `github.event.client_payload` object"
+        why: "`client_payload` belongs to `repository_dispatch`. Manual inputs are in the `inputs` context and in `github.event.inputs`."
+    answer: [a, b]
+    explanation: |
+      To trigger `workflow_dispatch` from the UI, the workflow must exist on the
+      default branch. You can also start it with the REST API (`POST
+      /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches`) or the GitHub
+      CLI. Input values are in the `inputs` context.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
+      - https://docs.github.com/en/rest/actions/workflows
+    glossary: [gha-workflow-dispatch]
+
+  - id: gha-wf-006
+    difficulty: 1
+    type: single
+    question: "Job `deploy` must start only after job `test` finishes successfully. What do you add to `deploy`?"
+    options:
+      - id: a
+        text: "`needs: test`"
+      - id: b
+        text: "`after: test`"
+        why: "There is no `after` keyword in workflow syntax. Job order is declared with `needs`."
+      - id: c
+        text: "`depends-on: test`"
+        why: "`depends-on` is not a workflow keyword. Without `needs`, jobs run in parallel."
+      - id: d
+        text: "`if: jobs.test.result == 'success'`"
+        why: "A job cannot read other jobs this way unless it already lists them in `needs`, and the `jobs` context is only for reusable workflow outputs."
+    answer: [a]
+    explanation: |
+      By default, the jobs of a workflow run in parallel. `jobs.<job_id>.needs`
+      lists the jobs that must complete successfully first. If a needed job fails or
+      is skipped, the dependent job is skipped too, unless it uses a condition like
+      `if: always()`.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+    glossary: [gha-job-dependency]
+
+  - id: gha-wf-007
+    difficulty: 2
+    type: single
+    question: "A job has `needs: build`. The `build` job fails. You want a `notify` step in this job to run anyway. Which job condition makes the job run even though `build` failed?"
+    options:
+      - id: a
+        text: "`if: always()`"
+      - id: b
+        text: "`if: success()`"
+        why: "`success()` is the default condition. It returns false when a needed job failed, so the job is skipped."
+      - id: c
+        text: "`continue-on-error: true`"
+        why: "`continue-on-error` lets a run continue when this job itself fails. It does not start a job whose dependency already failed."
+      - id: d
+        text: "`if: needs.build.outputs == 'failure'`"
+        why: "`needs.build.outputs` holds output values, not the result. The result is in `needs.build.result`, and you still need a status function so the job is not skipped."
+    answer: [a]
+    explanation: |
+      Jobs and steps have an implicit `success()` condition. To run after a failure,
+      use a status check function: `always()` runs in any case, and `failure()` runs
+      only when something before it failed. You can combine them, for example
+      `if: failure() && needs.build.result == 'failure'`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions
+    glossary: [gha-expression, gha-job-dependency]
+
+  - id: gha-wf-008
+    difficulty: 2
+    type: single
+    question: "A step runs `echo \"APP_VERSION=1.4.0\" >> \"$GITHUB_ENV\"`. Where can `APP_VERSION` be used?"
+    options:
+      - id: a
+        text: "In the next steps of the same job, as an environment variable"
+      - id: b
+        text: "In every job of the workflow that starts after this job"
+        why: "`GITHUB_ENV` is per job. Other jobs run on other runners and need job outputs or artifacts to get the value."
+      - id: c
+        text: "Only in the same step, because environment files are read at once"
+        why: "The runner reads `GITHUB_ENV` after the step ends, so the variable is available in the steps that follow, not in the step that wrote it."
+      - id: d
+        text: "In the workflow-level `env` block of the next run"
+        why: "Values written to `GITHUB_ENV` do not persist between workflow runs. Use configuration variables for that."
+    answer: [a]
+    explanation: |
+      Writing `NAME=value` to the file in `GITHUB_ENV` defines an environment
+      variable for all following steps in the same job. To share data with another
+      job, write to `GITHUB_OUTPUT`, map it to a job output, and read it with
+      `needs.<job>.outputs`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+    glossary: [gha-github-env, gha-step]
+
+  - id: gha-wf-009
+    difficulty: 2
+    type: single
+    question: "Job `build` has a step with `id: meta` that writes `tag=v2` to `$GITHUB_OUTPUT`. Job `release` has `needs: build`. Which setup lets `release` read the value?"
+    options:
+      - id: a
+        text: "In `build`: `outputs: tag: ${{ steps.meta.outputs.tag }}`; in `release`: `${{ needs.build.outputs.tag }}`"
+      - id: b
+        text: "In `release`: `${{ steps.meta.outputs.tag }}`, with no extra configuration"
+        why: "The `steps` context only has the steps of the current job. `release` cannot see the steps of `build`."
+      - id: c
+        text: "In `build`: `env: tag: v2`; in `release`: `${{ env.tag }}`"
+        why: "Job-level `env` is not shared with other jobs. Each job has its own environment."
+      - id: d
+        text: "In `release`: `${{ jobs.build.steps.meta.tag }}`, because `needs` exposes all steps"
+        why: "`needs` exposes only `result` and the declared `outputs` of a job, never its steps."
+    answer: [a]
+    explanation: |
+      Step outputs become job outputs only when you map them in
+      `jobs.<job_id>.outputs`. A dependent job reads them through the `needs`
+      context. Job outputs are strings, and outputs that contain a secret are not sent
+      to the next job.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/pass-job-outputs
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/contexts
+    glossary: [gha-job-output, gha-github-output, gha-context]
+
+  - id: gha-wf-010
+    difficulty: 2
+    type: single
+    question: "A matrix has `os: [ubuntu-latest, windows-latest]` and `node: [20, 22]`, and an `exclude` entry for `os: windows-latest, node: 20`. How many jobs does it create?"
+    options:
+      - id: a
+        text: "4"
+        why: "Four would be the full product of 2 x 2. The `exclude` entry removes one combination."
+      - id: b
+        text: "3"
+      - id: c
+        text: "2"
+        why: "`exclude` removes only the combinations that match all of its keys. Only one combination matches here."
+      - id: d
+        text: "5"
+        why: "`exclude` never adds jobs. Extra combinations come only from `include`."
+    answer: [b]
+    explanation: |
+      The matrix first builds every combination of the variables (2 x 2 = 4). Then
+      `exclude` removes the combination `windows-latest` + `20`, which leaves 3 jobs.
+      `include` is applied after `exclude` and can add new combinations or extra
+      values.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+    glossary: [gha-matrix]
+
+  - id: gha-wf-011
+    difficulty: 3
+    type: single
+    question: "A matrix has `version: [1, 2]` and an `include` entry `- version: 3` with `experimental: true`. Which jobs run?"
+    options:
+      - id: a
+        text: "Three jobs: version 1, version 2, and version 3 with `experimental: true`"
+      - id: b
+        text: "Two jobs: version 1 and version 2, both with `experimental: true`"
+        why: "An `include` entry only adds a value to existing combinations when it does not overwrite an original matrix value. `version: 3` matches no original combination, so it becomes a new job."
+      - id: c
+        text: "One job for version 3, because `include` replaces the matrix"
+        why: "`include` extends the matrix. It never removes the combinations built from the matrix variables."
+      - id: d
+        text: "The workflow fails, because `experimental` is not a matrix variable"
+        why: "`include` may add keys that are not in the original matrix. This is a common way to mark one job."
+    answer: [a]
+    explanation: |
+      For each `include` object, GitHub tries to add its key-value pairs to the
+      existing combinations without changing original values. If that is not
+      possible, the object is added as a new combination. Here `version: 3` creates a
+      third job that also has `matrix.experimental` set to `true`.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+    glossary: [gha-matrix]
+
+  - id: gha-wf-012
+    difficulty: 2
+    type: multiple
+    question: "Which settings in `strategy` control how matrix jobs run? (Choose two.)"
+    options:
+      - id: a
+        text: "`fail-fast: false` keeps the other jobs running when one job fails"
+      - id: b
+        text: "`max-parallel: 2` runs at most two matrix jobs at the same time"
+      - id: c
+        text: "`timeout-minutes` sets the time limit for the whole matrix"
+        why: "`timeout-minutes` is set on a job or a step, not in `strategy`. Each matrix job has its own time limit."
+      - id: d
+        text: "`retry: 3` reruns failed matrix jobs automatically"
+        why: "There is no `retry` key in `strategy`. You rerun failed jobs from the UI, the CLI or the API."
+    answer: [a, b]
+    explanation: |
+      `strategy.fail-fast` is `true` by default: if one matrix job fails, GitHub
+      cancels the jobs that are still in progress or queued. `strategy.max-parallel`
+      limits how many matrix jobs run at once, which can save cost or protect a
+      shared resource.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+    glossary: [gha-matrix, gha-fail-fast]
+
+  - id: gha-wf-013
+    difficulty: 2
+    type: single
+    question: "A job runs directly on an `ubuntu-latest` runner (not in a container). It defines a service container `db` with `image: postgres:16` and `ports: ['5432:5432']`. How do the steps reach the database?"
+    options:
+      - id: a
+        text: "At `localhost:5432`"
+      - id: b
+        text: "At `db:5432`, using the service label as the host name"
+        why: "The service label works as a host name only when the job itself runs in a container on the same Docker network."
+      - id: c
+        text: "At `postgres:5432`, using the image name"
+        why: "The image name is never a host name. Containers are reached by service label (container job) or by localhost and mapped port (runner job)."
+      - id: d
+        text: "They cannot, because service containers need a self-hosted runner"
+        why: "Service containers work on GitHub-hosted Linux runners. They need Docker, which Ubuntu runners have."
+    answer: [a]
+    explanation: |
+      When the job runs on the runner machine, the steps reach a service container
+      through `localhost` and the port you map with `ports`. When the job runs inside
+      a container, the steps use the service label (here `db`) as the host name, and
+      no port mapping is needed.
+    docs:
+      - https://docs.github.com/en/actions/tutorials/use-containerized-services/use-docker-service-containers
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+    glossary: [gha-service-container]
+
+  - id: gha-wf-014
+    difficulty: 2
+    type: single
+    question: "You want the service container `redis` to be healthy before the steps start. Where do you set the health check?"
+    options:
+      - id: a
+        text: "In `services.redis.options`, for example `--health-cmd \"redis-cli ping\" --health-interval 5s`"
+      - id: b
+        text: "In a `healthcheck:` key under `services.redis`, like in Docker Compose"
+        why: "Workflow syntax has no `healthcheck` key for services. Docker options are passed as a string in `options`."
+      - id: c
+        text: "In a first step that runs `sleep 30`, because Actions cannot wait for health"
+        why: "A fixed sleep is slow and unreliable. With `--health-cmd`, the runner waits until the container reports healthy."
+      - id: d
+        text: "In `jobs.<id>.container.healthcheck`, which applies to all services"
+        why: "`container` configures the job container. There is no shared health check for services."
+    answer: [a]
+    explanation: |
+      `jobs.<job_id>.services.<id>.options` passes extra options to `docker create`.
+      With `--health-cmd` and related flags, the runner waits for the service to be
+      healthy before it runs the steps.
+    docs:
+      - https://docs.github.com/en/actions/tutorials/use-containerized-services/use-docker-service-containers
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+    glossary: [gha-service-container]
+
+  - id: gha-wf-015
+    difficulty: 3
+    type: single
+    question: "A workflow repeats the same `env` block in three jobs. You want to write it once in the same file, without a new file. Which feature fits?"
+    options:
+      - id: a
+        text: "A YAML anchor `&common-env` and aliases `*common-env`"
+      - id: b
+        text: "A reusable workflow called with `uses:` from each job"
+        why: "A reusable workflow is a separate file that holds whole jobs. It is too heavy for sharing one `env` mapping."
+      - id: c
+        text: "A composite action that sets the variables in `GITHUB_ENV`"
+        why: "A composite action is a separate `action.yml`. It also only sets variables for the steps after it, not a job `env` block."
+      - id: d
+        text: "The `extends:` keyword at the top of each of the jobs"
+        why: "There is no `extends` keyword in GitHub Actions workflow syntax."
+    answer: [a]
+    explanation: |
+      GitHub Actions supports YAML anchors and aliases inside one workflow file. You
+      mark a mapping with an anchor (`&name`) and repeat it with an alias (`*name`).
+      They do not work across files; for that you use reusable workflows or composite
+      actions.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
+    glossary: [gha-yaml-anchor, yaml]
+
+  - id: gha-wf-016
+    difficulty: 1
+    type: multiple
+    question: "Which give the name of the event that started the workflow, such as `push` or `pull_request`? (Choose two.)"
+    options:
+      - id: a
+        text: "`github.event_name`"
+      - id: b
+        text: "`runner.event`"
+        why: "The `runner` context describes the machine (`runner.os`, `runner.temp`), not the event."
+      - id: c
+        text: "`$GITHUB_EVENT_NAME` in a shell script"
+      - id: d
+        text: "`job.trigger`"
+        why: "The `job` context has data about the current job, such as `job.status` and `job.services`, not the event."
+    answer: [a, c]
+    explanation: |
+      `github.event_name` is the name of the triggering event. The full webhook
+      payload is in `github.event`, and the same name is also available to scripts as
+      the environment variable `GITHUB_EVENT_NAME`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/contexts
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/variables
+    glossary: [gha-context]
+
+  - id: gha-wf-017
+    difficulty: 3
+    type: single
+    question: "In a step you write `run: echo \"Branch ${{ github.head_ref }}\"`. When is the `${{ }}` expression replaced?"
+    options:
+      - id: a
+        text: "Before the shell starts: the runner puts the value into the script text"
+      - id: b
+        text: "By the shell at run time, like a normal environment variable"
+        why: "The shell never sees `${{ }}`. The runner replaces it first, which is why untrusted values here can inject commands."
+      - id: c
+        text: "When the workflow file is pushed, so the value is fixed in the file"
+        why: "Expressions are evaluated for each run, not stored in the file at push time."
+      - id: d
+        text: "Never; in `run` you must use `$GITHUB_HEAD_REF` instead"
+        why: "Expressions do work in `run`. Using an environment variable is safer, but `${{ }}` is valid."
+    answer: [a]
+    explanation: |
+      The runner evaluates expressions and puts the result into the script before the
+      shell runs it. If the value comes from an attacker (for example a branch name or
+      a PR title), it can change the command. Pass such values in `env` and use the
+      shell variable instead.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/script-injections
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
+    glossary: [gha-expression, gha-script-injection]
+
+  - id: gha-wf-018
+    difficulty: 2
+    type: single
+    question: "Which expression is true only for a push of a tag that starts with `v`?"
+    options:
+      - id: a
+        text: "`startsWith(github.ref, 'refs/tags/v')`"
+      - id: b
+        text: "`github.ref == 'v*'`"
+        why: "Expressions do not expand wildcards with `==`. Also, `github.ref` is the full ref, such as `refs/tags/v1.0.0`."
+      - id: c
+        text: "`contains(github.ref_name, 'tags/v')`"
+        why: "`github.ref_name` is only the short name (`v1.0.0`). It does not contain `tags/`."
+      - id: d
+        text: "`github.ref_type == 'branch' && startsWith(github.ref, 'v')`"
+        why: "For a tag, `github.ref_type` is `tag`, not `branch`, and the full ref starts with `refs/`."
+    answer: [a]
+    explanation: |
+      For a tag push, `github.ref` is `refs/tags/<tag>`, `github.ref_name` is the
+      tag name and `github.ref_type` is `tag`. `startsWith(github.ref, 'refs/tags/v')`
+      is a common job or step condition. You can also filter tags in the trigger with
+      `on.push.tags`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/contexts
+    glossary: [gha-expression, gha-context]
+
+  - id: gha-wf-019
+    difficulty: 1
+    type: single
+    question: "A step writes Markdown to `$GITHUB_STEP_SUMMARY`. Where do people see it?"
+    options:
+      - id: a
+        text: "On the summary page of the workflow run, below the job graph"
+      - id: b
+        text: "As a comment on the pull request that started the run"
+        why: "Job summaries are shown on the run page. Commenting on a PR needs an API call or an action."
+      - id: c
+        text: "Only in the raw log file you download from the run"
+        why: "The summary is rendered as Markdown on the run summary page. It is not part of the step log."
+      - id: d
+        text: "In the repository README, next to the status badge"
+        why: "Actions never edits the README. Badges are images that you add to the README yourself."
+    answer: [a]
+    explanation: |
+      Each job can write GitHub Flavored Markdown to the file in
+      `GITHUB_STEP_SUMMARY`. GitHub shows the result on the workflow run summary page,
+      which is useful for test results, coverage or links.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+    glossary: [gha-step-summary]
+
+  - id: gha-wf-020
+    difficulty: 1
+    type: single
+    question: "Which URL shows a status badge for the workflow file `ci.yml` in `octo-org/app`?"
+    options:
+      - id: a
+        text: "`https://github.com/octo-org/app/actions/workflows/ci.yml/badge.svg`"
+      - id: b
+        text: "`https://github.com/octo-org/app/badges/ci.svg`"
+        why: "Badges are served under the workflow path in `actions/workflows`, not under a `badges` folder."
+      - id: c
+        text: "`https://actions.github.com/octo-org/app/ci/status.png`"
+        why: "There is no such host. Badges are served by github.com as SVG files."
+      - id: d
+        text: "`https://github.com/octo-org/app/workflows/badge?file=ci`"
+        why: "The badge path uses the workflow file name in the path, followed by `badge.svg`."
+    answer: [a]
+    explanation: |
+      A workflow badge is at
+      `https://github.com/OWNER/REPO/actions/workflows/FILE/badge.svg`. You can add
+      `?branch=` or `?event=` to show the status for one branch or event.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
+    glossary: [gha-status-badge]
+
+  - id: gha-wf-021
+    difficulty: 2
+    type: single
+    question: "Two pushes to the same branch start two deploy runs. Only the newest run should continue. What do you add?"
+    options:
+      - id: a
+        text: "`concurrency: { group: deploy-${{ github.ref }}, cancel-in-progress: true }`"
+      - id: b
+        text: "`strategy: { max-parallel: 1 }` at the workflow level"
+        why: "`max-parallel` limits matrix jobs inside one run. It does not affect other runs."
+      - id: c
+        text: "`timeout-minutes: 1` so that the old run stops quickly"
+        why: "A timeout stops a job after a time, old or new. It does not compare runs."
+      - id: d
+        text: "`needs: previous-run` in the deploy job"
+        why: "`needs` refers to jobs in the same run. A job cannot depend on another run."
+    answer: [a]
+    explanation: |
+      A `concurrency` group allows only one running and one pending run or job per
+      group. With `cancel-in-progress: true`, a new run cancels the run that is
+      already in progress in the same group. Using `github.ref` in the group name
+      gives one group per branch.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+    glossary: [gha-concurrency]
+
+  - id: gha-wf-022
+    difficulty: 2
+    type: multiple
+    question: "A reusable workflow declares `on: workflow_call` with an input `target` and a secret `token`. Which caller jobs pass them correctly? (Choose two.)"
+    options:
+      - id: a
+        text: "`uses: ./.github/workflows/deploy.yml` with `with: { target: prod }` and `secrets: { token: ${{ secrets.DEPLOY_TOKEN }} }`"
+      - id: b
+        text: "`uses: octo-org/ci/.github/workflows/deploy.yml@v1` with `with: { target: prod }` and `secrets: inherit`"
+      - id: c
+        text: "A step `- uses: ./.github/workflows/deploy.yml` with `env: { target: prod }`"
+        why: "Reusable workflows are called at the job level, not as a step. Inputs go in `with`, not `env`."
+      - id: d
+        text: "`uses: ./.github/workflows/deploy.yml` with `inputs: { target: prod, token: secret }`"
+        why: "The caller uses `with` for inputs and `secrets` for secrets. There is no `inputs` key in the calling job."
+    answer: [a, b]
+    explanation: |
+      A caller job uses `jobs.<id>.uses` and passes inputs in `with` and secrets in
+      `secrets`. `secrets: inherit` passes all the caller's secrets to a workflow in
+      the same organization or enterprise. Other keys, such as `steps` or
+      `runs-on`, are not allowed in a calling job.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows
+    glossary: [gha-reusable-workflow]
+
+  - id: gha-wf-023
+    difficulty: 2
+    type: single
+    question: "A deploy job uses `environment: production`. The environment has a required reviewer. What happens when the job is reached?"
+    options:
+      - id: a
+        text: "The job waits until a reviewer approves, and only then gets the environment secrets"
+      - id: b
+        text: "The job runs, and the reviewer gets an e-mail with the result"
+        why: "Required reviewers are a gate before the job. The job does not start until someone approves."
+      - id: c
+        text: "The workflow fails, because environments need a manual trigger"
+        why: "Any event can start a job that uses an environment. Protection rules decide whether it continues."
+      - id: d
+        text: "The job runs, but environment secrets are empty until approval"
+        why: "The job does not start at all before approval. Secrets are given to the job only after all rules pass."
+    answer: [a]
+    explanation: |
+      Deployment protection rules, such as required reviewers or a wait timer, must
+      pass before a job that references the environment starts. The job can read
+      environment secrets only after it starts, so they stay protected.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments
+      - https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/review-deployments
+    glossary: [gha-environment]
+
+  - id: gha-wf-024
+    difficulty: 3
+    type: multiple
+    question: "Your workflows use `runs-on: ubuntu-20.04` and `runs-on: windows-latest`. Which statements about runner images are true? (Choose two.)"
+    options:
+      - id: a
+        text: "Jobs that ask for `ubuntu-20.04` no longer find a GitHub-hosted runner, because that image was retired"
+      - id: b
+        text: "`windows-latest` points to a newer Windows Server image over time, so tools on it can change"
+      - id: c
+        text: "A `-latest` label is fixed for a repository at the date of its first workflow run"
+        why: "`-latest` labels move to new images for all repositories. Pin a version label, such as `ubuntu-24.04`, if you need stability."
+      - id: d
+        text: "GitHub keeps every old image forever, so pinning a version never breaks"
+        why: "GitHub retires old images. Workflows that pin a retired label must be updated."
+    answer: [a, b]
+    explanation: |
+      GitHub retired the Ubuntu 20.04 image in 2025, so jobs that ask for it cannot
+      run on GitHub-hosted runners. `-latest` labels move to newer images (for
+      example `windows-latest` moved to Windows Server 2025). Check the image release
+      notes and pin a version label when tool versions matter.
+    docs:
+      - https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+      - https://docs.github.com/en/actions/concepts/runners/github-hosted-runners
+    glossary: [gha-github-hosted-runner]

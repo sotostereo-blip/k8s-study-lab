@@ -1,0 +1,85 @@
+id: gha-sec-001
+title: Speed up a workflow with a cache
+domain: security
+difficulty: 2
+minutes: 12
+environment: gitea
+setup: |
+  mkdir -p /root/cache-deps/.github/workflows && cd /root/cache-deps
+  printf 'left-pad 1.3.0\nlodash 4.17.21\n' > deps.txt
+  cat > install.sh <<'SH'
+  #!/bin/bash
+  # Pretends to download the dependencies listed in deps.txt into .deps/
+  if [ -f .deps/installed.txt ]; then
+    echo "Dependencies restored from cache"
+  else
+    echo "Downloading dependencies (slow)..."
+    sleep 8
+    mkdir -p .deps && cp deps.txt .deps/installed.txt
+    echo "Downloaded dependencies"
+  fi
+  SH
+  chmod +x install.sh
+  cat > .github/workflows/ci.yml <<'YAML'
+  name: CI
+  on: push
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - run: ./install.sh
+        - run: echo "Tests passed"
+  YAML
+  lab-publish /root/cache-deps "Add CI"
+task: |
+  Every run of `CI` in `student/cache-deps` downloads its dependencies again (`install.sh`
+  is slow). Use the dependency cache:
+
+  1. Add `actions/cache@v4` to `.github/workflows/ci.yml`, **before** `./install.sh`. Cache the
+     folder `.deps` (in the workspace) with a key that changes when `deps.txt` changes
+     (use `hashFiles('deps.txt')`).
+  2. Push. The first run saves the cache.
+  3. When it has finished, start a second run (for example an empty commit). It must print
+     `Dependencies restored from cache`.
+
+  *Gitea vs GitHub:* `actions/cache` works with the cache server that is built into
+  `act_runner`. On GitHub, caches are stored by GitHub, scoped by branch, and removed after 7
+  days without use.
+checks:
+  - name: 'The workflow on `main` uses `actions/cache`'
+    run: |
+      wf=$(lab-file cache-deps .github/workflows/ci.yml) || exit 1
+      echo "$wf" | grep -q 'actions/cache@'
+  - name: 'A successful run printed `Dependencies restored from cache`'
+    run: |
+      for id in $(lab-runs cache-deps '.conclusion=="success"' | jq -r '.[].id'); do
+        lab-has-line cache-deps "$id" "Dependencies restored from cache" && exit 0
+      done
+      exit 1
+solution: |
+  cd /root/cache-deps
+  cat > .github/workflows/ci.yml <<'YAML'
+  name: CI
+  on: push
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/cache@v4
+          with:
+            path: .deps
+            key: deps-${{ hashFiles('deps.txt') }}
+        - run: ./install.sh
+        - run: echo "Tests passed"
+  YAML
+  git commit -am "Cache the dependencies"
+  git push
+  lab-wait cache-deps ".head_sha==\"$(git rev-parse HEAD)\""      # first run: "Cache saved"
+  git commit --allow-empty -m "Second run"
+  git push
+  lab-wait cache-deps ".head_sha==\"$(git rev-parse HEAD)\""      # second run: restored
+docs:
+  - https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching

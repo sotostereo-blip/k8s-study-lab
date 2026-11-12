@@ -1,0 +1,11 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+export EDITOR=vim
+PS1='\[\e[34m\]gha-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+GitHub Actions lab - Gitea Actions at http://gitea:3000 (user student, password studylab123).
+git push already works (credentials saved). Workflows run on the runner "lab-runner".
+  gapi PATH [curl opts]   call the Gitea API     e.g. gapi repos/student/REPO/actions/runs | jq
+  lab-runs REPO           list workflow runs     lab-logs REPO RUN_ID   show the logs of a run
+  lab-wait REPO           wait for the newest run and print its conclusion
+  actionlint              check workflow files   tea                    Gitea CLI
+MSG

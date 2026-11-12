@@ -1,0 +1,13 @@
+#!/bin/bash
+# lab-publish DIR [MESSAGE] - commit everything in DIR and push it to student/<basename DIR>
+# on the lab Gitea (the repository is created if it does not exist). Used by the lab setups.
+set -e
+dir="${1:?usage: lab-publish DIR [MESSAGE]}"; msg="${2:-Initial commit}"
+name="$(basename "$dir")"
+gapi "repos/student/$name" >/dev/null 2>&1 || gapi user/repos -X POST -d "{\"name\":\"$name\",\"auto_init\":false}" >/dev/null
+cd "$dir"
+[ -d .git ] || git init -q -b main
+git remote get-url origin >/dev/null 2>&1 || git remote add origin "$GITEA_URL/student/$name.git"
+git add -A
+git commit -qm "$msg"
+git push -q -u origin HEAD 2>&1 | grep -v '^remote:' || true

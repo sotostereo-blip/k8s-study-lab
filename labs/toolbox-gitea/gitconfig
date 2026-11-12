@@ -1,0 +1,11 @@
+[user]
+	name = Student
+	email = student@lab.local
+[init]
+	defaultBranch = main
+[credential]
+	helper = store
+[pull]
+	rebase = false
+[advice]
+	detachedHead = false

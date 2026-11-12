@@ -1,0 +1,73 @@
+id: gha-flow-006
+title: Add a manual trigger with an input
+domain: workflows
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/manual-deploy/.github/workflows && cd /root/manual-deploy
+  echo "# manual-deploy" > README.md
+  cat > .github/workflows/deploy.yml <<'YAML'
+  name: Manual deploy
+  on: push
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - run: |
+            echo "Target: ${TARGET:-none}"
+  YAML
+  lab-publish /root/manual-deploy "Add deploy workflow"
+task: |
+  The team wants to start `.github/workflows/deploy.yml` in `student/manual-deploy` **by hand**.
+
+  1. Add a `workflow_dispatch` trigger with an input `environment`: type `choice`, options
+     `dev` and `prod`, default `dev`, required. (Keep or remove the `push` trigger, as you like.)
+  2. Make the step print `Target: <the input value>` (pass the input through `env`).
+  3. Push the change, then **start the workflow manually** with `environment` = `prod`.
+
+  Start it with the API (same path as on GitHub):
+  `gapi repos/student/manual-deploy/actions/workflows/deploy.yml/dispatches -X POST -d '{"ref":"main","inputs":{"environment":"prod"}}'`
+
+  *Gitea vs GitHub:* on GitHub you would use the Run workflow button or
+  `gh workflow run deploy.yml -f environment=prod`. Gitea also has a Run workflow button in its
+  web UI, but this lab only gives you the terminal.
+checks:
+  - name: 'The workflow on `main` has a `workflow_dispatch` input `environment` of type `choice`'
+    run: lab-file manual-deploy .github/workflows/deploy.yml | yq -e '.on.workflow_dispatch.inputs.environment.type == "choice"' >/dev/null
+  - name: 'The newest manual run succeeded and printed `Target: prod`'
+    run: |
+      id=$(lab-ok manual-deploy '.event=="workflow_dispatch"') || exit 1
+      lab-has-line manual-deploy "$id" "Target: prod"
+solution: |
+  cd /root/manual-deploy
+  cat > .github/workflows/deploy.yml <<'YAML'
+  name: Manual deploy
+  on:
+    push:
+    workflow_dispatch:
+      inputs:
+        environment:
+          description: Where to deploy
+          type: choice
+          options: [dev, prod]
+          default: dev
+          required: true
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - env:
+            TARGET: ${{ inputs.environment }}
+          run: |
+            echo "Target: ${TARGET:-none}"
+  YAML
+  git commit -am "Add a manual trigger"
+  git push
+  gapi repos/student/manual-deploy/actions/workflows/deploy.yml/dispatches -X POST \
+    -d '{"ref":"main","inputs":{"environment":"prod"}}'
+  lab-wait manual-deploy '.event=="workflow_dispatch"'
+docs:
+  - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+  - https://docs.github.com/en/rest/actions/workflows

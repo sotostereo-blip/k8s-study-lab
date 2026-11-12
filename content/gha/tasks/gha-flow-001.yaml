@@ -1,0 +1,64 @@
+id: gha-flow-001
+title: Your first workflow on push
+domain: workflows
+difficulty: 1
+minutes: 8
+environment: gitea
+setup: |
+  mkdir -p /root/hello-ci && cd /root/hello-ci
+  cat > app.sh <<'SH'
+  #!/bin/bash
+  echo "App says hi"
+  SH
+  chmod +x app.sh
+  echo "# hello-ci" > README.md
+  lab-publish /root/hello-ci "Add the app script"
+task: |
+  The repository `student/hello-ci` is cloned in `/root/hello-ci`. It has a script `app.sh`
+  but no workflow yet.
+
+  Create the workflow `.github/workflows/ci.yml`:
+  - name `CI`, triggered on every **push**;
+  - one job `greet` that runs on `ubuntu-latest`;
+  - steps: check out the code with `actions/checkout@v4`, run `./app.sh`, and print the line
+    `Hello from CI`.
+
+  Commit and push it. The run for your commit must succeed. Watch it with `lab-wait hello-ci`
+  and read the logs with `lab-logs hello-ci <run id>` (run ids: `lab-runs hello-ci | jq '.[].id'`).
+
+  *Gitea vs GitHub:* Gitea reads `.github/workflows` like GitHub (and `.gitea/workflows`
+  first, if that folder exists). Here `ubuntu-latest` is just a label of the lab runner: jobs run
+  inside the runner's Alpine Linux container, not on a fresh Ubuntu VM.
+checks:
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok hello-ci ".head_sha==\"$(lab-head hello-ci)\" and .event==\"push\"" >/dev/null
+  - name: 'The job printed the line `Hello from CI`'
+    run: |
+      id=$(lab-ok hello-ci ".head_sha==\"$(lab-head hello-ci)\" and .event==\"push\"") || exit 1
+      lab-has-line hello-ci "$id" "Hello from CI"
+  - name: 'The job ran `./app.sh` from the checked-out code (it printed `App says hi`)'
+    run: |
+      id=$(lab-ok hello-ci ".head_sha==\"$(lab-head hello-ci)\" and .event==\"push\"") || exit 1
+      lab-has-line hello-ci "$id" "App says hi"
+solution: |
+  cd /root/hello-ci
+  mkdir -p .github/workflows
+  cat > .github/workflows/ci.yml <<'YAML'
+  name: CI
+  on: push
+  jobs:
+    greet:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - run: ./app.sh
+        - run: echo "Hello from CI"
+  YAML
+  git add .github/workflows/ci.yml
+  git commit -m "Add CI workflow"
+  git push
+  lab-wait hello-ci          # prints: success
+docs:
+  - https://docs.github.com/en/actions/get-started/quickstart
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+  - https://docs.gitea.com/usage/actions/overview

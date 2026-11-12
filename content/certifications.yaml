@@ -53,6 +53,13 @@ certifications:
     exam: dca
     track: dca
     description: Multiple choice exam (Mirantis), plus hands-on labs on a real Docker Engine with Swarm, Compose and a local registry.
+  - id: gha
+    name: GitHub Actions (GH-200)
+    short: GH-200
+    area: CI/CD and GitOps
+    exam: gha
+    track: gha
+    description: Multiple choice (Microsoft/GitHub), plus hands-on labs on Gitea Actions, which runs the same workflow syntax.
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

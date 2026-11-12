@@ -1,0 +1,104 @@
+# Everyday exam English used in the GitHub Actions (GH-200) questions and labs.
+words:
+  - id: untrusted
+    word: "untrusted"
+    match: ["untrusted"]
+    definition: "Coming from someone or something you cannot be sure is safe."
+    example: "Never run untrusted code from a pull request with write access."
+    es: "no confiable"
+  - id: mask
+    word: "mask"
+    match: ["mask", "masks", "masked", "masking"]
+    definition: "To hide something by covering it, for example by showing *** instead of a value."
+    example: "GitHub masks secret values in the logs."
+    es: "enmascarar, ocultar"
+  - id: trustworthy
+    word: "trustworthy"
+    match: ["trustworthy"]
+    definition: "Safe to rely on; you can believe it will do what it says."
+    example: "Prefer trustworthy actions from verified creators."
+    es: "confiable, fiable"
+  - id: attacker
+    word: "attacker"
+    match: ["attacker", "attackers"]
+    definition: "A person who tries to break into a system or harm it."
+    example: "An attacker can put shell commands in a branch name."
+    es: "atacante"
+  - id: dangerous
+    word: "dangerous"
+    match: ["dangerous"]
+    definition: "Able to cause harm or damage."
+    example: "Deploying from every branch is dangerous."
+    es: "peligroso"
+  - id: fresh
+    word: "fresh"
+    match: ["fresh"]
+    definition: "New and clean; not used before."
+    example: "Each job gets a fresh virtual machine."
+    es: "nuevo, limpio"
+  - id: stable
+    word: "stable"
+    match: ["stable", "stability"]
+    definition: "Not changing suddenly; steady and reliable."
+    example: "Pin a version label if you need a stable tool set."
+    es: "estable"
+  - id: central
+    word: "central"
+    match: ["central"]
+    definition: "In one main place that others use."
+    example: "A reusable workflow gives one central definition."
+    es: "central, en un solo lugar"
+  - id: extend
+    word: "extend"
+    match: ["extend", "extends", "extended"]
+    definition: "To make something bigger or longer, or add more to it."
+    example: "The include key extends the matrix with new jobs."
+    es: "ampliar, extender"
+  - id: nested
+    word: "nested"
+    match: ["nested"]
+    definition: "Placed inside another thing of the same kind."
+    example: "Nested reusable workflows can go up to ten levels deep."
+    es: "anidado"
+  - id: bundle
+    word: "bundle"
+    match: ["bundle", "bundles"]
+    definition: "To put several things together into one package."
+    example: "Bundle the code into one file with ncc."
+    es: "empaquetar, agrupar"
+  - id: loop
+    word: "loop"
+    match: ["loop", "loops"]
+    definition: "Something that repeats again and again, sometimes without an end."
+    example: "GitHub prevents loops of workflows that start each other."
+    es: "bucle"
+  - id: likely
+    word: "likely"
+    match: ["likely"]
+    definition: "Probably true or probably going to happen."
+    example: "What is the most likely cause of the error?"
+    es: "probable"
+  - id: usual
+    word: "usual"
+    match: ["usual", "usually"]
+    definition: "Normal; what happens most of the time."
+    example: "The usual fix is to pass the value in an environment variable."
+    es: "habitual; normalmente"
+  - id: rather
+    word: "rather"
+    match: ["rather"]
+    definition: "Used to say what is more correct or preferred ('rather than' = instead of)."
+    example: "Use a variable rather than a secret for a value that is not sensitive."
+    es: "más bien, en lugar de"
+  - id: wins
+    word: "win"
+    match: ["wins"]
+    definition: "Here: is the one that is chosen when several values compete."
+    example: "The environment secret wins over the repository secret."
+    es: "gana, prevalece"
+  - id: lowest
+    word: "lowest"
+    match: ["lowest"]
+    definition: "The most low; at the bottom of a list or order."
+    example: "The organization level has the lowest priority."
+    es: "el más bajo"

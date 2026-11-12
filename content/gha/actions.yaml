@@ -1,0 +1,477 @@
+domain: actions
+questions:
+  - id: gha-act-001
+    difficulty: 1
+    type: single
+    question: "Which file must every custom action have in its directory?"
+    options:
+      - id: a
+        text: "A metadata file called `action.yml` or `action.yaml`"
+      - id: b
+        text: "A `package.json` file with the action name"
+        why: "`package.json` is used by JavaScript actions for dependencies. GitHub reads the action definition from `action.yml`."
+      - id: c
+        text: "A `Dockerfile`, even for JavaScript actions"
+        why: "Only Docker container actions need a Dockerfile or an image. JavaScript and composite actions do not."
+      - id: d
+        text: "A workflow file in `.github/workflows` that runs the action"
+        why: "An action is used by workflows, but it does not need a workflow of its own."
+    answer: [a]
+    explanation: |
+      The metadata file `action.yml` (or `action.yaml`) defines the action's name,
+      description, inputs, outputs and the `runs` section that says how it runs.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+    glossary: [gha-action-metadata]
+
+  - id: gha-act-002
+    difficulty: 1
+    type: single
+    question: "Which value of `runs.using` makes a composite action?"
+    options:
+      - id: a
+        text: "`composite`"
+      - id: b
+        text: "`steps`"
+        why: "`steps` is the key that holds the list of steps inside `runs`. The value of `using` is `composite`."
+      - id: c
+        text: "`node24`"
+        why: "`node24` (or `node20`) makes a JavaScript action that runs a file with Node.js."
+      - id: d
+        text: "`docker`"
+        why: "`docker` makes a Docker container action that runs in a container."
+    answer: [a]
+    explanation: |
+      The three action types are chosen with `runs.using`: `composite` for composite
+      actions, `node20`/`node24` for JavaScript actions, and `docker` for Docker
+      container actions.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions
+    glossary: [gha-composite-action]
+
+  - id: gha-act-003
+    difficulty: 2
+    type: single
+    question: "A composite action has a step `- run: ./build.sh` and fails with an error about a missing key. What is missing?"
+    options:
+      - id: a
+        text: "`shell: bash` (or another shell) on the `run` step"
+      - id: b
+        text: "`runs-on: ubuntu-latest` in the action metadata"
+        why: "Actions never choose a runner. They run on the runner of the job that calls them."
+      - id: c
+        text: "`name:` on the step, because composite steps need names"
+        why: "Step names are optional in composite actions. The `shell` key is the required one for `run` steps."
+      - id: d
+        text: "`permissions:` in the action metadata"
+        why: "Actions cannot set token permissions. Permissions are set in the workflow."
+    answer: [a]
+    explanation: |
+      In a composite action, every `run` step must set `shell`. Workflows have a
+      default shell, but composite actions do not take defaults from the caller.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+      - https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action
+    glossary: [gha-composite-action]
+
+  - id: gha-act-004
+    difficulty: 2
+    type: single
+    question: "A composite action must return the value of `steps.calc.outputs.total` to the workflow. How do you declare the output?"
+    options:
+      - id: a
+        text: "`outputs: total: { description: ..., value: ${{ steps.calc.outputs.total }} }`"
+      - id: b
+        text: "`outputs: total: { description: ... }` and nothing else"
+        why: "That works for JavaScript and Docker actions, which write outputs at run time. Composite actions must map each output with `value`."
+      - id: c
+        text: "`env: total: ${{ steps.calc.outputs.total }}` in the action metadata"
+        why: "`env` does not create outputs. Callers read outputs with `steps.<id>.outputs`."
+      - id: d
+        text: "`runs: outputs: [total]`"
+        why: "Outputs are declared at the top level of `action.yml`, not inside `runs`."
+    answer: [a]
+    explanation: |
+      Composite action outputs need a `value` that points to a step output inside
+      the action. The workflow then reads it with
+      `steps.<step-id-in-workflow>.outputs.total`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+    glossary: [gha-composite-action, gha-action-metadata]
+
+  - id: gha-act-005
+    difficulty: 2
+    type: single
+    question: "An action has an input `who-to-greet`. Inside a JavaScript action, which environment variable holds its value?"
+    options:
+      - id: a
+        text: "`INPUT_WHO-TO-GREET`"
+      - id: b
+        text: "`WHO_TO_GREET`"
+        why: "Input variables always start with `INPUT_`. The rest of the name is the input name in upper case."
+      - id: c
+        text: "`GITHUB_INPUT_WHO_TO_GREET`"
+        why: "There is no `GITHUB_INPUT_` prefix. The prefix is `INPUT_`."
+      - id: d
+        text: "`inputs.who-to-greet`"
+        why: "That is an expression, not an environment variable. JavaScript code reads environment variables or uses `core.getInput()`."
+    answer: [a]
+    explanation: |
+      For each input, the runner creates an environment variable named `INPUT_`
+      plus the input name in upper case (spaces become `_`, other characters stay). The
+      toolkit function `core.getInput('who-to-greet')` reads it for you.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+      - https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action
+    glossary: [gha-javascript-action]
+
+  - id: gha-act-006
+    difficulty: 2
+    type: multiple
+    question: "Which statements about Docker container actions are true? (Choose two.)"
+    options:
+      - id: a
+        text: "They run only on Linux runners"
+      - id: b
+        text: "They can use a `Dockerfile` in the action repository or a published image"
+      - id: c
+        text: "They start faster than JavaScript actions"
+        why: "Docker actions must build or pull an image first, so they are usually slower than JavaScript actions."
+      - id: d
+        text: "They run on Windows and macOS hosted runners too"
+        why: "Docker container actions need a Linux runner with Docker. Use JavaScript actions for all platforms."
+    answer: [a, b]
+    explanation: |
+      A Docker container action sets `runs.using: docker` and `runs.image` to a
+      `Dockerfile` or an image such as `docker://alpine:3.20`. It packs its own
+      environment, but it only runs on Linux runners and needs time to build or pull.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions
+      - https://docs.github.com/en/actions/tutorials/use-containerized-services/create-a-docker-container-action
+    glossary: [gha-docker-action]
+
+  - id: gha-act-007
+    difficulty: 2
+    type: single
+    question: "You need an action that works on Linux, Windows and macOS runners and starts fast. Which type do you choose?"
+    options:
+      - id: a
+        text: "A JavaScript action"
+      - id: b
+        text: "A Docker container action"
+        why: "Docker container actions run only on Linux runners."
+      - id: c
+        text: "A reusable workflow"
+        why: "A reusable workflow is not an action. It holds jobs and is called at the job level."
+      - id: d
+        text: "A workflow template"
+        why: "A template is copied into repositories. It does not run as a step."
+    answer: [a]
+    explanation: |
+      JavaScript actions run directly on the runner with Node.js, so they work on all
+      runner platforms and start quickly. Composite actions are also portable if their
+      scripts are.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions
+    glossary: [gha-javascript-action]
+
+  - id: gha-act-008
+    difficulty: 2
+    type: single
+    question: "A JavaScript action uses `@actions/core` from `node_modules`. The action fails with `Cannot find module '@actions/core'`. What is the usual fix?"
+    options:
+      - id: a
+        text: "Commit the dependencies, or bundle the code into one file (for example with `ncc` or `rollup`)"
+      - id: b
+        text: "Add a step `npm install` in every workflow that uses the action"
+        why: "Users of an action should not install its dependencies. The action must ship them."
+      - id: c
+        text: "Change `runs.using` to `composite`"
+        why: "That changes the action type. The JavaScript code still needs its modules."
+      - id: d
+        text: "Add `@actions/core` to the `inputs` section of `action.yml`"
+        why: "Inputs are values passed by the workflow. They do not install packages."
+    answer: [a]
+    explanation: |
+      The runner does not run `npm install` for an action. A JavaScript action must
+      include its dependencies: either commit `node_modules`, or compile everything
+      into a single file and point `runs.main` to it.
+    docs:
+      - https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action
+    glossary: [gha-javascript-action]
+
+  - id: gha-act-009
+    difficulty: 2
+    type: single
+    question: "Inside an action, a script must hide a token that it got from an API, so it never appears in the logs. Which workflow command does this?"
+    options:
+      - id: a
+        text: "`echo \"::add-mask::$TOKEN\"`"
+      - id: b
+        text: "`echo \"::secret::$TOKEN\"`"
+        why: "There is no `secret` workflow command. Masking is done with `add-mask`."
+      - id: c
+        text: "`echo \"::debug::$TOKEN\"`"
+        why: "`debug` prints the value in debug logs. It shows the token instead of hiding it."
+      - id: d
+        text: "`echo \"TOKEN=$TOKEN\" >> \"$GITHUB_SECRETS\"`"
+        why: "There is no `GITHUB_SECRETS` file. Secrets are created in settings or through the API."
+    answer: [a]
+    explanation: |
+      `::add-mask::VALUE` tells the runner to replace that value with `***` in all
+      later log output. Secrets from the `secrets` context are masked automatically,
+      but values made at run time must be masked by you.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+    glossary: [gha-workflow-command]
+
+  - id: gha-act-010
+    difficulty: 1
+    type: multiple
+    question: "Which workflow commands create annotations that GitHub shows on the run summary? (Choose two.)"
+    options:
+      - id: a
+        text: "`::error file=app.js,line=10::Missing semicolon`"
+      - id: b
+        text: "`::warning::Deprecated option used`"
+      - id: c
+        text: "`::group::Install`"
+        why: "`group` folds log lines in the log view. It does not make an annotation."
+      - id: d
+        text: "`::stop-commands::token`"
+        why: "`stop-commands` turns off command parsing for a while. It does not create an annotation."
+    answer: [a, b]
+    explanation: |
+      `::error::`, `::warning::` and `::notice::` create annotations. You can add
+      `file`, `line`, `col` and `title` so the message points to a place in the code.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+    glossary: [gha-workflow-command]
+
+  - id: gha-act-011
+    difficulty: 2
+    type: single
+    question: "The old command `::set-output name=result::ok` is deprecated. What should an action script use instead?"
+    options:
+      - id: a
+        text: "`echo \"result=ok\" >> \"$GITHUB_OUTPUT\"`"
+      - id: b
+        text: "`echo \"result=ok\" >> \"$GITHUB_ENV\"`"
+        why: "`GITHUB_ENV` creates an environment variable for later steps. It does not create a step output."
+      - id: c
+        text: "`export RESULT=ok`"
+        why: "An exported variable ends with the step's shell. Outputs must be written to a file."
+      - id: d
+        text: "`echo \"::output::result=ok\"`"
+        why: "There is no `output` command. Outputs use the `GITHUB_OUTPUT` environment file."
+    answer: [a]
+    explanation: |
+      Environment files replaced `set-output` and `set-env`. Write `name=value` to
+      the file in `GITHUB_OUTPUT` to set a step output. For multi-line values, use a
+      delimiter (`name<<EOF` ... `EOF`).
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+    glossary: [gha-github-output, gha-workflow-command]
+
+  - id: gha-act-012
+    difficulty: 3
+    type: single
+    question: "A JavaScript action must clean up a temporary server after the job, even when later steps fail. Which metadata key helps?"
+    options:
+      - id: a
+        text: "`runs.post` with a script, and optionally `runs.post-if`"
+      - id: b
+        text: "`runs.finally` with a cleanup script"
+        why: "There is no `finally` key. JavaScript actions use `pre` and `post`."
+      - id: c
+        text: "`outputs.cleanup` set to the script path"
+        why: "Outputs return values. They do not run code."
+      - id: d
+        text: "`branding.cleanup: true` in the metadata"
+        why: "`branding` sets the icon and colour in GitHub Marketplace."
+    answer: [a]
+    explanation: |
+      JavaScript actions can define `runs.pre` (runs at the start of the job) and
+      `runs.post` (runs at the end of the job). `post-if` controls when the post
+      script runs; by default it is `always()`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+    glossary: [gha-javascript-action, gha-action-metadata]
+
+  - id: gha-act-013
+    difficulty: 1
+    type: single
+    question: "A workflow in the same repository uses an action stored in `.github/actions/setup-env`. How does the step reference it?"
+    options:
+      - id: a
+        text: "`uses: ./.github/actions/setup-env`, after a checkout step"
+      - id: b
+        text: "`uses: setup-env@main`"
+        why: "That looks like a public action without an owner. Local actions use a path that starts with `./`."
+      - id: c
+        text: "`run: .github/actions/setup-env/action.yml`"
+        why: "`run` runs shell commands. An action is called with `uses`."
+      - id: d
+        text: "`uses: ./.github/actions/setup-env`, with no checkout"
+        why: "The local path is read from the workspace, so the repository must be checked out first."
+    answer: [a]
+    explanation: |
+      A local action is referenced with a path relative to the workspace, such as
+      `./.github/actions/setup-env`. The files must be in the workspace, so you need
+      `actions/checkout` before this step.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/find-and-customize-actions
+    glossary: [gha-custom-action]
+
+  - id: gha-act-014
+    difficulty: 2
+    type: multiple
+    question: "You want to publish your action in GitHub Marketplace. Which requirements apply? (Choose two.)"
+    options:
+      - id: a
+        text: "The repository must be public, with the metadata file in the root"
+      - id: b
+        text: "The action name must be unique in Marketplace"
+      - id: c
+        text: "The action must be a Docker container action"
+        why: "Any action type can be published. Composite and JavaScript actions are common in Marketplace."
+      - id: d
+        text: "The repository must be private, so the code is protected"
+        why: "Marketplace actions must be in public repositories."
+    answer: [a, b]
+    explanation: |
+      To publish, the action must be in a public repository with a single
+      `action.yml` in the root, and its `name` must be unique (it cannot match an
+      existing Marketplace name or a user or organization you do not own). You
+      publish by drafting a release and choosing to publish it to Marketplace.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/create-and-publish-actions/publish-in-github-marketplace
+    glossary: [gha-marketplace]
+
+  - id: gha-act-015
+    difficulty: 2
+    type: single
+    question: "You release version `v2.3.1` of your action. Users reference it with `@v2`. What is the recommended release practice?"
+    options:
+      - id: a
+        text: "Create the tag `v2.3.1` and move the major tag `v2` to the same commit"
+      - id: b
+        text: "Delete `v2` and ask users to switch to `@main`"
+        why: "`@main` changes with every commit, so it is not a stable version for users."
+      - id: c
+        text: "Create a new repository for each version"
+        why: "Versions are managed with tags and releases in one repository."
+      - id: d
+        text: "Only create `v2.3.1`; users of `@v2` get it after the next major release"
+        why: "If `v2` does not move, users of `@v2` stay on the old commit."
+    answer: [a]
+    explanation: |
+      Use semantic versioning tags for each release and keep a major version tag
+      (`v2`) pointing to the latest compatible release. Users who want stability can
+      pin a full commit SHA or a full version tag.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/create-and-publish-actions/release-and-maintain-actions
+    glossary: [gha-custom-action]
+
+  - id: gha-act-016
+    difficulty: 3
+    type: single
+    question: "Your action repository uses immutable releases. What changes for users who pin a release tag?"
+    options:
+      - id: a
+        text: "The tag and assets of a published release cannot be changed or moved"
+      - id: b
+        text: "Users no longer need to pin versions, because `@main` becomes stable"
+        why: "Immutable releases protect release tags. Branches such as `main` still change."
+      - id: c
+        text: "The action runs faster, because GitHub keeps it in memory"
+        why: "Immutability is about integrity, not speed."
+      - id: d
+        text: "Users must reference the action by its Marketplace ID"
+        why: "References stay `owner/repo@ref`. Only the protection of the release changes."
+    answer: [a]
+    explanation: |
+      With immutable releases, a published release's tag cannot be moved or deleted
+      and its assets cannot be changed. This protects users against a tag being
+      changed to point to malicious code.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/create-and-publish-actions/using-immutable-releases-and-tags-to-manage-your-actions-releases
+      - https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases
+    glossary: [gha-immutable-release]
+
+  - id: gha-act-017
+    difficulty: 2
+    type: single
+    question: "A team wants to share an action only with repositories in its organization. The code must not be public. What do they do?"
+    options:
+      - id: a
+        text: "Use a private repository and allow organization access in its Actions settings"
+      - id: b
+        text: "Publish it in Marketplace with visibility set to private"
+        why: "Marketplace only lists public actions. There is no private Marketplace listing."
+      - id: c
+        text: "Copy the action code into every repository that uses it"
+        why: "Copying works, but it is hard to maintain. Private actions can be shared from one repository."
+      - id: d
+        text: "Store it as an artifact and download it in each workflow run"
+        why: "Artifacts are for files of runs. Actions are referenced from repositories."
+    answer: [a]
+    explanation: |
+      Actions in private or internal repositories can be used by other repositories
+      of the same organization or enterprise when access is allowed in the action
+      repository settings.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization
+    glossary: [gha-custom-action]
+
+  - id: gha-act-018
+    difficulty: 2
+    type: single
+    question: "A step that calls your action fails with `Input required and not supplied: api-url`. What is the cause?"
+    options:
+      - id: a
+        text: "The input is marked `required: true` and the workflow has no `with: api-url:`"
+      - id: b
+        text: "The runner has no internet connection"
+        why: "The message is about a missing input, not about the network."
+      - id: c
+        text: "The action needs `permissions: api-url: write`"
+        why: "Inputs are not permissions. The workflow must pass a value with `with`."
+      - id: d
+        text: "The input name must be written in upper case in the workflow"
+        why: "Input names in `with` are written as declared. The upper-case form is only the environment variable."
+    answer: [a]
+    explanation: |
+      `core.getInput('api-url', { required: true })` fails when the workflow does
+      not pass the input. Add `with: api-url: ...` to the step, or give the input a
+      `default` in `action.yml`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+      - https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action
+    glossary: [gha-action-metadata]
+
+  - id: gha-act-019
+    difficulty: 1
+    type: single
+    question: "What does the `branding` section in `action.yml` do?"
+    options:
+      - id: a
+        text: "It sets the icon and colour of the action in GitHub Marketplace"
+      - id: b
+        text: "It sets the name shown in the workflow log for every step"
+        why: "Step names come from `name` in the workflow or the action. `branding` is only used in Marketplace."
+      - id: c
+        text: "It adds the company logo to the job summary"
+        why: "Job summaries come from `GITHUB_STEP_SUMMARY`. `branding` has no effect there."
+      - id: d
+        text: "It signs the action so that GitHub marks it as verified"
+        why: "The verified badge is for verified creators. `branding` only changes the look of the listing."
+    answer: [a]
+    explanation: |
+      `branding.icon` (a Feather icon name) and `branding.color` change how the
+      action looks in GitHub Marketplace. They do not change how it runs.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+    glossary: [gha-marketplace, gha-action-metadata]

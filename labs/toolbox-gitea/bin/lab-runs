@@ -1,0 +1,5 @@
+#!/bin/bash
+# lab-runs REPO [JQ_CONDITION] - JSON list of the workflow runs of student/REPO (newest first),
+# optionally only those that match a jq condition, e.g. lab-runs hello '.event=="push"'
+gapi "repos/student/${1:?usage: lab-runs REPO [JQ_CONDITION]}/actions/runs?limit=50" \
+  | jq "[.workflow_runs[] | select(${2:-true})]"

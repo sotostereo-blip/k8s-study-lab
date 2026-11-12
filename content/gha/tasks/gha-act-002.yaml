@@ -1,0 +1,80 @@
+id: gha-act-002
+title: Write a small JavaScript action
+domain: actions
+difficulty: 3
+minutes: 12
+environment: gitea
+setup: |
+  mkdir -p /root/js-action/.github/workflows && cd /root/js-action
+  echo "# js-action" > README.md
+  cat > .github/workflows/count.yml <<'YAML'
+  name: Count words
+  on: push
+  jobs:
+    count:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - id: wc
+          uses: ./.github/actions/word-count
+          with:
+            text: GitHub Actions makes CI easy
+        - run: |
+            echo "Words: ${{ steps.wc.outputs.count }}"
+  YAML
+  lab-publish /root/js-action "Add count workflow"
+task: |
+  The workflow in `student/js-action` calls a local action `./.github/actions/word-count`.
+  Write it as a **JavaScript action** (no npm packages needed):
+
+  - `.github/actions/word-count/action.yml` with an input `text` (required), an output
+    `count`, and `runs.using: node20` (or `node24`) with `main: index.js`;
+  - `.github/actions/word-count/index.js` reads the input from the environment variable
+    `INPUT_TEXT`, counts the words, appends `count=<number>` to the file in
+    `process.env.GITHUB_OUTPUT`, and logs `Counted <number> words`.
+
+  Push it. The run for your commit must succeed and print `Words: 5`.
+
+  *Gitea vs GitHub:* the runner here runs JavaScript actions with its own Node.js (version 24),
+  like a GitHub runner does. On GitHub you would normally use `@actions/core` and bundle the
+  code with `ncc`; plain Node.js is enough for this task.
+checks:
+  - name: '`action.yml` is a JavaScript action (`runs.using: node...` and `runs.main`)'
+    run: lab-file js-action .github/actions/word-count/action.yml | yq -e '(.runs.using | test("^node")) and (.runs.main | length > 0)' >/dev/null
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok js-action ".head_sha==\"$(lab-head js-action)\" and .event==\"push\"" >/dev/null
+  - name: 'The run printed `Words: 5`'
+    run: |
+      id=$(lab-ok js-action ".head_sha==\"$(lab-head js-action)\" and .event==\"push\"") || exit 1
+      lab-has-line js-action "$id" "Words: 5"
+solution: |
+  cd /root/js-action
+  mkdir -p .github/actions/word-count
+  cat > .github/actions/word-count/action.yml <<'YAML'
+  name: Word count
+  description: Count the words in a text
+  inputs:
+    text:
+      description: The text to count
+      required: true
+  outputs:
+    count:
+      description: Number of words
+  runs:
+    using: node24
+    main: index.js
+  YAML
+  cat > .github/actions/word-count/index.js <<'JS'
+  const fs = require('fs');
+  const text = (process.env.INPUT_TEXT || '').trim();
+  const count = text === '' ? 0 : text.split(/\s+/).length;
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${count}\n`);
+  console.log(`Counted ${count} words`);
+  JS
+  git add .github/actions
+  git commit -m "Add the word-count JavaScript action"
+  git push
+  lab-wait js-action ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax

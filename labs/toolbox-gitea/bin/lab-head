@@ -1,0 +1,3 @@
+#!/bin/bash
+# lab-head REPO [BRANCH] - commit SHA at the tip of a branch (default main) of student/REPO.
+gapi "repos/student/${1:?usage: lab-head REPO [BRANCH]}/branches/${2:-main}" | jq -er .commit.id

@@ -1,0 +1,85 @@
+id: gha-sec-002
+title: Stop a script injection
+domain: security
+difficulty: 3
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/safe-input/.github/workflows && cd /root/safe-input
+  echo "# safe-input" > README.md
+  cat > .github/workflows/triage.yml <<'YAML'
+  name: Triage
+  on:
+    workflow_dispatch:
+      inputs:
+        title:
+          description: Issue title
+          type: string
+          required: true
+  jobs:
+    triage:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Show the title
+          run: |
+            echo "Issue title: ${{ inputs.title }}"
+  YAML
+  lab-publish /root/safe-input "Add triage workflow"
+task: |
+  The workflow `Triage` in `student/safe-input` puts the input `title` straight into a shell
+  script with `${{ }}`. A title like `$(echo HACKED)` would run as a command.
+
+  1. Fix `.github/workflows/triage.yml`: pass the input to the step in an environment variable
+     and use the variable in the script (no `${{ }}` with `inputs` or `github.event` inside
+     `run`). Push it.
+  2. Start the workflow with the title `$(echo HACKED)`:
+     `gapi repos/student/safe-input/actions/workflows/triage.yml/dispatches -X POST -d '{"ref":"main","inputs":{"title":"$(echo HACKED)"}}'`
+
+  The log must show the text as it is: `Issue title: $(echo HACKED)`.
+
+  *Gitea vs GitHub:* the risk and the fix are the same. On GitHub this matters most for
+  events with text from other people, such as `issues`, `pull_request` titles and branch names.
+checks:
+  - name: 'No `run:` script uses `${{ inputs... }}` or `${{ github.event... }}`'
+    run: |
+      wf=$(lab-file safe-input .github/workflows/triage.yml) || exit 1
+      runs=$(echo "$wf" | yq '.jobs[].steps[].run // ""') || exit 1
+      ! echo "$runs" | grep -Eq '\$\{\{[^}]*(inputs\.|github\.event)'
+  - name: 'The workflow still reads the input `title`'
+    guard: true
+    run: lab-file safe-input .github/workflows/triage.yml | grep -q 'inputs\.title'
+  - name: 'A manual run succeeded and printed `Issue title: $(echo HACKED)` as text'
+    run: |
+      for id in $(lab-runs safe-input '.event=="workflow_dispatch" and .conclusion=="success"' | jq -r '.[].id'); do
+        lab-has-line safe-input "$id" 'Issue title: $(echo HACKED)' && exit 0
+      done
+      exit 1
+solution: |
+  cd /root/safe-input
+  cat > .github/workflows/triage.yml <<'YAML'
+  name: Triage
+  on:
+    workflow_dispatch:
+      inputs:
+        title:
+          description: Issue title
+          type: string
+          required: true
+  jobs:
+    triage:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Show the title
+          env:
+            TITLE: ${{ inputs.title }}
+          run: |
+            echo "Issue title: $TITLE"
+  YAML
+  git commit -am "Pass the title in an environment variable"
+  git push
+  gapi repos/student/safe-input/actions/workflows/triage.yml/dispatches -X POST \
+    -d '{"ref":"main","inputs":{"title":"$(echo HACKED)"}}'
+  lab-wait safe-input '.event=="workflow_dispatch"'
+docs:
+  - https://docs.github.com/en/actions/concepts/security/script-injections
+  - https://docs.github.com/en/actions/reference/security/secure-use

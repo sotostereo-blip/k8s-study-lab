@@ -1,0 +1,81 @@
+id: gha-ent-002
+title: Create a reusable workflow
+domain: enterprise
+difficulty: 3
+minutes: 12
+environment: gitea
+setup: |
+  mkdir -p /root/reusable-build/.github/workflows && cd /root/reusable-build
+  echo "# reusable-build" > README.md
+  cat > .github/workflows/pipeline.yml <<'YAML'
+  name: Pipeline
+  on: push
+  jobs:
+    build:
+      uses: ./.github/workflows/build-reusable.yml
+      with:
+        platform: linux-arm64
+    report:
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - run: |
+            echo "Built: ${{ needs.build.outputs.artifact-name }}"
+  YAML
+  lab-publish /root/reusable-build "Add pipeline"
+task: |
+  The platform team wants one shared build definition. The workflow `pipeline.yml` in
+  `student/reusable-build` already calls it, but the file is missing.
+
+  Create `.github/workflows/build-reusable.yml`, a **reusable workflow**:
+  - trigger `workflow_call` with a required string input `platform`;
+  - one job that prints `Building for <platform>`;
+  - a workflow output `artifact-name` with the value `app-<platform>.tar.gz`
+    (make it a step output, then a job output, then a `workflow_call` output).
+
+  Do not change `pipeline.yml`. Push the file. The run must succeed and the `report` job must
+  print `Built: app-linux-arm64.tar.gz`.
+
+  *Gitea vs GitHub:* Gitea runs local reusable workflows (`uses: ./.github/workflows/...`) and
+  reusable workflows from other repositories on the same Gitea server. On GitHub you can also
+  share them across an organization and use `secrets: inherit`.
+checks:
+  - name: '`build-reusable.yml` has `on.workflow_call` with the input `platform`'
+    run: lab-file reusable-build .github/workflows/build-reusable.yml | yq -e '.on.workflow_call.inputs | has("platform")' >/dev/null
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok reusable-build ".head_sha==\"$(lab-head reusable-build)\" and .event==\"push\"" >/dev/null
+  - name: 'The run printed `Building for linux-arm64` and `Built: app-linux-arm64.tar.gz`'
+    run: |
+      id=$(lab-ok reusable-build ".head_sha==\"$(lab-head reusable-build)\" and .event==\"push\"") || exit 1
+      lab-has-line reusable-build "$id" "Building for linux-arm64" && lab-has-line reusable-build "$id" "Built: app-linux-arm64.tar.gz"
+solution: |
+  cd /root/reusable-build
+  cat > .github/workflows/build-reusable.yml <<'YAML'
+  name: Reusable build
+  on:
+    workflow_call:
+      inputs:
+        platform:
+          type: string
+          required: true
+      outputs:
+        artifact-name:
+          description: Name of the built file
+          value: ${{ jobs.build.outputs.artifact-name }}
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      outputs:
+        artifact-name: ${{ steps.name.outputs.artifact-name }}
+      steps:
+        - run: echo "Building for ${{ inputs.platform }}"
+        - id: name
+          run: echo "artifact-name=app-${{ inputs.platform }}.tar.gz" >> "$GITHUB_OUTPUT"
+  YAML
+  git add .github/workflows/build-reusable.yml
+  git commit -m "Add the reusable build workflow"
+  git push
+  lab-wait reusable-build ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows

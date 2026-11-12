@@ -1,0 +1,64 @@
+id: gha-ts-001
+title: Fix a workflow with YAML errors
+domain: consume
+difficulty: 1
+minutes: 8
+environment: gitea
+setup: |
+  mkdir -p /root/broken-yaml/.github/workflows && cd /root/broken-yaml
+  echo "# broken-yaml" > README.md
+  cat > .github/workflows/build.yml <<'YAML'
+  name: Build
+  on: push
+  jobs:
+    build:
+      run-on: ubuntu-latest
+      steps:
+        - name: Compile
+          run: echo "Build OK"
+         - name: Test
+          run: echo "Tests OK"
+  YAML
+  lab-publish /root/broken-yaml "Add build workflow"
+task: |
+  The repository `student/broken-yaml` (cloned in `/root/broken-yaml`) has a workflow
+  `.github/workflows/build.yml`, but its runs fail at once and no job starts.
+  The file has **two mistakes**.
+
+  Find and fix them, then push. The run for your commit must succeed, and its logs must show
+  `Build OK` and `Tests OK`.
+
+  Tip: `actionlint` checks workflow files and tells you the line of each problem.
+
+  *Gitea vs GitHub:* GitHub shows an invalid workflow file as an error in the Actions tab and
+  creates no run. Gitea creates a failed run with no jobs. The fix is the same.
+checks:
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok broken-yaml ".head_sha==\"$(lab-head broken-yaml)\" and .event==\"push\"" >/dev/null
+  - name: 'The logs show `Build OK` and `Tests OK`'
+    run: |
+      id=$(lab-ok broken-yaml ".head_sha==\"$(lab-head broken-yaml)\" and .event==\"push\"") || exit 1
+      lab-has-line broken-yaml "$id" "Build OK" && lab-has-line broken-yaml "$id" "Tests OK"
+solution: |
+  cd /root/broken-yaml
+  actionlint                 # shows both problems
+  # 1. `run-on` must be `runs-on`
+  # 2. the second step `- name: Test` has one extra space: list items must line up
+  cat > .github/workflows/build.yml <<'YAML'
+  name: Build
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Compile
+          run: echo "Build OK"
+        - name: Test
+          run: echo "Tests OK"
+  YAML
+  git commit -am "Fix build workflow"
+  git push
+  lab-wait broken-yaml ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+  - https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs

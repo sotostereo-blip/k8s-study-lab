@@ -1,0 +1,85 @@
+id: gha-flow-004
+title: Share files between jobs with artifacts
+domain: workflows
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/artifact-pass/.github/workflows && cd /root/artifact-pass
+  cat > build.sh <<'SH'
+  #!/bin/bash
+  mkdir -p dist
+  echo "report-id: 7Q2-artifact" > dist/report.txt
+  echo "Report written to dist/report.txt"
+  SH
+  chmod +x build.sh
+  cat > .github/workflows/build.yml <<'YAML'
+  name: Build
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - run: ./build.sh
+  YAML
+  lab-publish /root/artifact-pass "Add build workflow"
+task: |
+  In `student/artifact-pass`, the job `build` creates `dist/report.txt`. Another job must read it.
+
+  Change `.github/workflows/build.yml`:
+  1. In `build`, upload `dist/report.txt` as an artifact named `report`.
+  2. Add a job `verify` that runs after `build`, **downloads** the artifact `report` (do not
+     check out or build again) and prints the file with `cat report.txt`.
+
+  Push the change. The run for your commit must succeed, and the `verify` job log must show
+  `report-id: 7Q2-artifact`.
+
+  *Gitea vs GitHub:* on GitHub use `actions/upload-artifact@v4` and
+  `actions/download-artifact@v4`. Those v4 actions refuse to run on servers that are not
+  github.com, so in Gitea use the drop-in copies `christopherhx/gitea-upload-artifact@v4` and
+  `christopherhx/gitea-download-artifact@v4` (same inputs). The old `@v3` actions also work in
+  Gitea, but GitHub no longer accepts them.
+checks:
+  - name: 'The workflow uploads and downloads an artifact'
+    run: |
+      wf=$(lab-file artifact-pass .github/workflows/build.yml) || exit 1
+      echo "$wf" | grep -q 'upload-artifact@' && echo "$wf" | grep -q 'download-artifact@'
+  - name: 'The `verify` job printed `report-id: 7Q2-artifact`'
+    run: |
+      id=$(lab-ok artifact-pass ".head_sha==\"$(lab-head artifact-pass)\" and .event==\"push\"") || exit 1
+      job=$(lab-jobs artifact-pass "$id" | jq -er '.[] | select(.name=="verify") | .id') || exit 1
+      logs=$(gapi "repos/student/artifact-pass/actions/jobs/$job/logs") || exit 1
+      printf '%s\n' "$logs" | sed -E 's/^[^ ]+Z //' | grep -qxF 'report-id: 7Q2-artifact'
+solution: |
+  cd /root/artifact-pass
+  cat > .github/workflows/build.yml <<'YAML'
+  name: Build
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - run: ./build.sh
+        - uses: christopherhx/gitea-upload-artifact@v4     # GitHub: actions/upload-artifact@v4
+          with:
+            name: report
+            path: dist/report.txt
+    verify:
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - uses: christopherhx/gitea-download-artifact@v4   # GitHub: actions/download-artifact@v4
+          with:
+            name: report
+        - run: cat report.txt
+  YAML
+  git commit -am "Share the report with an artifact"
+  git push
+  lab-wait artifact-pass ".head_sha==\"$(git rev-parse HEAD)\""
+  gapi repos/student/artifact-pass/actions/artifacts | jq '.artifacts[] | {id, name}'
+docs:
+  - https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow
+  - https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
+  - https://docs.gitea.com/usage/actions/comparison

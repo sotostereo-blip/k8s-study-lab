@@ -1,0 +1,496 @@
+domain: consume
+questions:
+  - id: gha-use-001
+    difficulty: 1
+    type: multiple
+    question: "A run failed. Where can you read the output of the step that failed? (Choose two.)"
+    options:
+      - id: a
+        text: "In the Actions tab: open the run, select the job, and expand the failed step"
+      - id: b
+        text: "In the repository Insights tab, under Traffic"
+        why: "Insights shows repository statistics. Workflow logs are in the Actions tab, inside each run."
+      - id: c
+        text: "In the commit message of the commit that started the run"
+        why: "Commit messages are written by people. The commit page shows a status check that links to the run, not the logs."
+      - id: d
+        text: "In a terminal, with `gh run view <run-id> --log-failed`"
+    answer: [a, d]
+    explanation: |
+      Every workflow run has a page in the Actions tab. Select a job to see its
+      steps; a failed step is marked with a red icon and opens to show its log. You
+      can also search the log and download all logs as a zip file. In a terminal,
+      `gh run view <run-id> --log-failed` prints only the logs of failed steps.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs
+    glossary: [gha-workflow-run]
+
+  - id: gha-use-002
+    difficulty: 2
+    type: single
+    question: "A step fails and the normal log does not show why. You want more detailed logs from the steps in the next run. What do you do?"
+    options:
+      - id: a
+        text: "Set the secret or variable `ACTIONS_STEP_DEBUG` to `true` and run the workflow again"
+      - id: b
+        text: "Add `debug: true` at the top of the workflow file"
+        why: "There is no `debug` key in workflow syntax. Debug logging is turned on with a secret or variable, or when you re-run with debug logging."
+      - id: c
+        text: "Set `ACTIONS_RUNNER_DEBUG` to `true` to see more step output"
+        why: "`ACTIONS_RUNNER_DEBUG` adds runner diagnostic log files about the runner itself. Step debug output needs `ACTIONS_STEP_DEBUG`."
+      - id: d
+        text: "Change the shell to `bash -x` in every step"
+        why: "That prints the shell commands of one step only. It does not show the debug messages of actions."
+    answer: [a]
+    explanation: |
+      Step debug logging shows extra messages, including `::debug::` lines from
+      actions. You turn it on with a secret or variable `ACTIONS_STEP_DEBUG=true`, or
+      by choosing "Enable debug logging" when you re-run jobs.
+      `ACTIONS_RUNNER_DEBUG=true` adds runner diagnostic logs.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/monitor-workflows/enable-debug-logging
+    glossary: [gha-workflow-run]
+
+  - id: gha-use-003
+    difficulty: 2
+    type: single
+    question: "A matrix creates 6 jobs. One job, `test (windows-latest, 22)`, failed because a test server was slow. What is the fastest way to try only that job again?"
+    options:
+      - id: a
+        text: "Open the failed job and use Re-run this job (or Re-run failed jobs)"
+      - id: b
+        text: "Push an empty commit to start the whole matrix again"
+        why: "That starts all 6 jobs again and creates a new run. Re-running only the failed job is faster and cheaper."
+      - id: c
+        text: "Edit the matrix to have only that combination, then push"
+        why: "Changing the workflow is not needed. You can re-run single jobs of an existing run."
+      - id: d
+        text: "Delete the run, so GitHub starts it again automatically"
+        why: "Deleting a run removes it and its logs. It never starts a new run."
+    answer: [a]
+    explanation: |
+      You can re-run a whole run, only its failed jobs, or one specific job. Matrix
+      job names include the matrix values, so you can find the failing variant and
+      re-run only it. Re-runs use the same commit and the same event.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs
+    glossary: [gha-matrix, gha-workflow-run]
+
+  - id: gha-use-004
+    difficulty: 2
+    type: single
+    question: "The job list of a run shows `build (ubuntu-latest, 20)` and `build (ubuntu-latest, 22)`. What does the text in parentheses tell you?"
+    options:
+      - id: a
+        text: "The matrix values used by that job"
+      - id: b
+        text: "The runner group and the queue number"
+        why: "Runner groups are not shown in the job name. The parentheses list the matrix values."
+      - id: c
+        text: "The labels of the self-hosted runner that ran the job"
+        why: "The runner is shown in the job log, under Set up job. The name shows matrix values."
+      - id: d
+        text: "The number of times the job was re-run"
+        why: "Re-runs are shown as attempts of the run, not inside the job name."
+    answer: [a]
+    explanation: |
+      When a job has no custom `name`, GitHub adds the matrix values to the job ID,
+      such as `build (ubuntu-latest, 20)`. You can set `name:` with matrix expressions
+      to make the names clearer.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+    glossary: [gha-matrix]
+
+  - id: gha-use-005
+    difficulty: 1
+    type: single
+    question: "A run uploaded an artifact called `test-report`. How can a team member get it without the API?"
+    options:
+      - id: a
+        text: "Open the run summary page and download it from the Artifacts section"
+      - id: b
+        text: "Look for it in the repository Releases page"
+        why: "Releases hold files that you attach to a release. Workflow artifacts are listed on the run page."
+      - id: c
+        text: "Clone the repository; artifacts are committed to the `artifacts` branch"
+        why: "Artifacts are stored by GitHub Actions, outside the Git repository. They are never committed."
+      - id: d
+        text: "Open the Packages tab, where all artifacts are published"
+        why: "GitHub Packages holds packages such as container images. Artifacts are a different storage."
+    answer: [a]
+    explanation: |
+      The Artifacts section of a run summary lists the artifacts that the run
+      uploaded. People with read access can download them as zip files until the
+      retention period ends. You can also use `gh run download` or the REST API.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts
+    glossary: [gha-artifact]
+
+  - id: gha-use-006
+    difficulty: 2
+    type: multiple
+    question: "Which commands or API calls give you the artifacts of a workflow run? (Choose two.)"
+    options:
+      - id: a
+        text: "`gh run download <run-id>`"
+      - id: b
+        text: "`GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts`"
+      - id: c
+        text: "`git fetch origin refs/artifacts/<run-id>`"
+        why: "Artifacts are not Git objects, so `git fetch` cannot get them."
+      - id: d
+        text: "`GET /repos/{owner}/{repo}/releases/latest/assets`"
+        why: "This lists release assets. Artifacts belong to workflow runs, not to releases."
+    answer: [a, b]
+    explanation: |
+      The GitHub CLI can download the artifacts of a run with `gh run download`. The
+      REST API lists them with `GET .../actions/runs/{run_id}/artifacts` and downloads
+      one as a zip with `GET .../actions/artifacts/{artifact_id}/zip`.
+    docs:
+      - https://docs.github.com/en/rest/actions/artifacts
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts
+    glossary: [gha-artifact]
+
+  - id: gha-use-007
+    difficulty: 2
+    type: single
+    question: "A workflow file is pushed to `main`, but no run appears. The Actions tab shows a message about the file. What is the most likely cause?"
+    options:
+      - id: a
+        text: "The YAML is not valid, for example wrong indentation or an unknown key"
+      - id: b
+        text: "The runner is offline, so GitHub hides the workflow"
+        why: "An offline runner leaves jobs queued. The run still appears in the list."
+      - id: c
+        text: "Workflow files on `main` only run at midnight"
+        why: "Workflows run when their events happen. Only `schedule` uses a time."
+      - id: d
+        text: "The repository has too many secrets"
+        why: "The number of secrets does not stop a workflow from being read."
+    answer: [a]
+    explanation: |
+      When a workflow file has a syntax error, GitHub cannot read it and shows an
+      error for that file in the Actions tab, with the line that has the problem. Tools
+      like the GitHub Actions extension for VS Code or `actionlint` find these errors
+      before you push.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+      - https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs
+    glossary: [yaml, gha-workflow]
+
+  - id: gha-use-008
+    difficulty: 3
+    type: single
+    question: "A workflow uses `on: pull_request` with no filters. A contributor opens a pull request from a fork. Which statement is true by default?"
+    options:
+      - id: a
+        text: "The run gets no repository secrets, and `GITHUB_TOKEN` is read-only"
+      - id: b
+        text: "The run gets all repository secrets, because the PR targets the repository"
+        why: "Secrets are not passed to runs started by pull requests from forks, to protect them from untrusted code."
+      - id: c
+        text: "The run uses the workflow from the base branch with write access"
+        why: "That describes `pull_request_target`, which runs in the context of the base branch and must be used carefully."
+      - id: d
+        text: "The run is blocked, because forks can never run workflows"
+        why: "Fork PRs can run workflows. Maintainers may need to approve runs for first-time contributors."
+    answer: [a]
+    explanation: |
+      For `pull_request` events from forks, GitHub does not pass secrets (except
+      `GITHUB_TOKEN`), and the token has read-only permissions. `pull_request_target`
+      runs with the base repository's context and secrets, so it must never run
+      untrusted code from the PR.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+      - https://docs.github.com/en/actions/reference/security/secure-use
+    glossary: [gha-github-token, gha-encrypted-secret]
+
+  - id: gha-use-009
+    difficulty: 3
+    type: single
+    question: "A step pushes a commit using `GITHUB_TOKEN`. The repository also has a workflow that runs `on: push`. What happens?"
+    options:
+      - id: a
+        text: "No new run starts for that push, to avoid loops"
+      - id: b
+        text: "A new run starts, and it can start another one, without a limit"
+        why: "GitHub prevents this loop. Events caused by `GITHUB_TOKEN` do not start new workflow runs (except `workflow_dispatch` and `repository_dispatch`)."
+      - id: c
+        text: "The push is rejected, because `GITHUB_TOKEN` cannot write"
+        why: "With `contents: write`, `GITHUB_TOKEN` can push. The push works, but it does not start `push` workflows."
+      - id: d
+        text: "A new run starts only if the workflow file changed"
+        why: "The rule does not depend on which files changed. Pushes made with `GITHUB_TOKEN` do not trigger `push` runs."
+    answer: [a]
+    explanation: |
+      Events created with the repository's `GITHUB_TOKEN` do not create new workflow
+      runs, except `workflow_dispatch` and `repository_dispatch`. If you need a push
+      to start other workflows, use a GitHub App token or a personal access token.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/github_token
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow
+    glossary: [gha-github-token]
+
+  - id: gha-use-010
+    difficulty: 2
+    type: single
+    question: "What is the difference between disabling a workflow and deleting its file?"
+    options:
+      - id: a
+        text: "Disabling stops new runs but keeps the file and old runs; deleting the file removes the workflow"
+      - id: b
+        text: "Disabling deletes all past runs; deleting the file keeps them"
+        why: "Disabling does not delete runs. It only stops the workflow from being triggered."
+      - id: c
+        text: "There is no difference; both remove the file from the repository"
+        why: "Disabling is a setting in the Actions tab or API. The file stays in the repository."
+      - id: d
+        text: "Disabling works only for scheduled workflows"
+        why: "You can disable any workflow, whatever its triggers are."
+    answer: [a]
+    explanation: |
+      A disabled workflow is not triggered by any event, but its file stays in the
+      repository and you can enable it again later. To remove a workflow for good,
+      delete its file from `.github/workflows` (old runs stay in history until you
+      delete them).
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows
+    glossary: [gha-workflow]
+
+  - id: gha-use-011
+    difficulty: 2
+    type: single
+    question: "Your organization has workflow templates in its `.github` repository. Where do people use them?"
+    options:
+      - id: a
+        text: "In a repository, Actions tab > New workflow, in the section for the organization"
+      - id: b
+        text: "With `uses: org/.github@main` in any job"
+        why: "That is how you call a reusable workflow or an action. A template is copied, not called."
+      - id: c
+        text: "In the organization settings, where they run for every repository"
+        why: "Templates do not run on their own. A user copies one into a repository as a new workflow file."
+      - id: d
+        text: "Only in the `.github` repository itself"
+        why: "Templates are offered to other repositories of the organization that can see them."
+    answer: [a]
+    explanation: |
+      Workflow templates are stored in the `workflow-templates` directory of the
+      organization's `.github` repository, each with a `.properties.json` metadata
+      file. Members see them on the New workflow page and copy one into their
+      repository.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/create-workflow-templates
+      - https://docs.github.com/en/actions/how-tos/write-workflows/use-workflow-templates
+    glossary: [gha-workflow-template]
+
+  - id: gha-use-012
+    difficulty: 2
+    type: single
+    question: "A team copied a workflow template into 40 repositories. Later the template is fixed. What happens to the 40 copies?"
+    options:
+      - id: a
+        text: "Nothing; each copy is an independent file that must be updated on its own"
+      - id: b
+        text: "They update automatically at the next run"
+        why: "Templates are copied once. Automatic updates are the benefit of reusable workflows, which are called by reference."
+      - id: c
+        text: "GitHub opens a pull request in each repository with the change"
+        why: "GitHub does not track template copies. Tools like Dependabot update action versions, not template content."
+      - id: d
+        text: "The copies are disabled until someone accepts the new version"
+        why: "Changing a template has no effect on existing workflows."
+    answer: [a]
+    explanation: |
+      A workflow template is a starting point: after you copy it, the new workflow
+      has no link to the template. If you need one central definition that many
+      repositories use and that you can version, use a reusable workflow called with
+      `workflow_call`.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/create-workflow-templates
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
+    glossary: [gha-workflow-template, gha-reusable-workflow]
+
+  - id: gha-use-013
+    difficulty: 3
+    type: multiple
+    question: "Match the reuse tool to its behaviour. Which statements are correct? (Choose three.)"
+    options:
+      - id: a
+        text: "A workflow template is copied into the repository and then changes independently"
+      - id: b
+        text: "A reusable workflow holds whole jobs and is called from a job with `uses:`"
+      - id: c
+        text: "A composite action holds steps and is called from a step with `uses:`"
+      - id: d
+        text: "A composite action can define jobs that run on different runners"
+        why: "A composite action is a list of steps. It runs inside the job that calls it, on that job's runner."
+      - id: e
+        text: "A reusable workflow is called from a step, like any action"
+        why: "Reusable workflows are called with `jobs.<id>.uses`. A step cannot call a workflow."
+    answer: [a, b, c]
+    explanation: |
+      Workflow templates are copied scaffolds. Reusable workflows (`on: workflow_call`)
+      can contain several jobs, each with its own runner, and are called at the job
+      level. Composite actions bundle steps and run as one step in the caller's job.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
+      - https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action
+    glossary: [gha-workflow-template, gha-reusable-workflow, gha-composite-action]
+
+  - id: gha-use-014
+    difficulty: 2
+    type: single
+    question: "A workflow in repository `octo-org/app` calls `octo-org/shared/.github/workflows/build.yml@v2`, but the run fails with an error that the workflow was not found. `octo-org/shared` is private. What is the likely fix?"
+    options:
+      - id: a
+        text: "In `octo-org/shared` Actions settings, allow access from the organization"
+      - id: b
+        text: "Make the calling repository `octo-org/app` public"
+        why: "The caller does not need to be public. The called repository must allow access to its workflows."
+      - id: c
+        text: "Copy all the secrets of `octo-org/shared` into `octo-org/app`"
+        why: "Secrets do not give access to another repository's workflows. Access is a repository Actions setting."
+      - id: d
+        text: "Change the ref from `@v2` to `@latest` in the caller job"
+        why: "`latest` is not a special ref. Without access, no ref works."
+    answer: [a]
+    explanation: |
+      Reusable workflows and actions in a private repository can be shared with other
+      repositories in the same organization or enterprise. The owner turns this on in
+      the repository's Actions settings, under Access.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization
+      - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
+    glossary: [gha-reusable-workflow]
+
+  - id: gha-use-015
+    difficulty: 1
+    type: single
+    question: "A job is stuck with the message \"Waiting for a runner to pick up this job\". What does this usually mean?"
+    options:
+      - id: a
+        text: "No online runner has all the labels listed in `runs-on`"
+      - id: b
+        text: "The job finished, but the logs are still uploading"
+        why: "Waiting for a runner happens before the job starts. No step has run yet."
+      - id: c
+        text: "The workflow has a syntax error"
+        why: "A syntax error prevents the run from being created. A queued job means the file was read correctly."
+      - id: d
+        text: "A step is waiting for user input"
+        why: "Steps cannot ask for input. The message is about finding a runner."
+    answer: [a]
+    explanation: |
+      A job is sent to a runner whose labels match all labels in `runs-on`. If no
+      such runner is online (for example a typo in a label, or all self-hosted runners
+      are offline or busy), the job stays queued. Self-hosted jobs are cancelled after
+      24 hours in the queue.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job
+      - https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/monitor-and-troubleshoot
+    glossary: [gha-runner, gha-self-hosted-runner]
+
+  - id: gha-use-016
+    difficulty: 2
+    type: single
+    question: "Which statement about how long logs and artifacts are kept is correct?"
+    options:
+      - id: a
+        text: "By default they are kept for 90 days, and admins can set a shorter retention period"
+      - id: b
+        text: "They are kept forever, unless you delete the repository"
+        why: "Logs and artifacts expire after the retention period. The default is 90 days."
+      - id: c
+        text: "They are deleted when the next run of the same workflow finishes"
+        why: "Each run keeps its own logs and artifacts until they expire or someone deletes them."
+      - id: d
+        text: "They are kept for 7 days, the same as caches"
+        why: "Seven days is the time after which unused cache entries are removed. Artifacts and logs use the retention period."
+    answer: [a]
+    explanation: |
+      GitHub keeps workflow logs and artifacts for 90 days by default. Repository,
+      organization and enterprise admins can change the retention period, and a
+      workflow can set `retention-days` on an artifact upload.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
+      - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
+    glossary: [gha-artifact, gha-retention]
+
+  - id: gha-use-017
+    difficulty: 3
+    type: single
+    question: "A workflow uses this YAML: `defaults: &shared {runs-on: ubuntu-latest, timeout-minutes: 10}` in job `a`, and `test: *shared` as job `b`. What does job `b` get?"
+    options:
+      - id: a
+        text: "The same `runs-on` and `timeout-minutes` values as the anchored mapping"
+      - id: b
+        text: "An empty job, because aliases only work for strings"
+        why: "Aliases can repeat any YAML node, including whole mappings."
+      - id: c
+        text: "A reference that changes when job `a` changes at run time"
+        why: "Anchors are expanded when the YAML is read. The result is a normal copy of the mapping."
+      - id: d
+        text: "A syntax error, because anchors are not allowed in workflows"
+        why: "GitHub Actions supports YAML anchors and aliases since 2025."
+    answer: [a]
+    explanation: |
+      An alias (`*shared`) repeats the content of the node marked with the anchor
+      (`&shared`). When you read a workflow, expand the aliases in your head: job `b`
+      is a copy of the mapping with `runs-on` and `timeout-minutes`.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
+    glossary: [gha-yaml-anchor]
+
+  - id: gha-use-018
+    difficulty: 2
+    type: single
+    question: "A workflow has `on: [push, pull_request]`. A developer pushes a commit to a branch that has an open pull request. How many runs start?"
+    options:
+      - id: a
+        text: "Two: one for the `push` event and one for the `pull_request` event"
+      - id: b
+        text: "One, because GitHub merges events for the same commit"
+        why: "Each event that matches starts its own run. GitHub does not combine them."
+      - id: c
+        text: "None, because the two events cancel each other"
+        why: "Events never cancel each other. Only a `concurrency` group can cancel runs."
+      - id: d
+        text: "One for `pull_request` only, because the branch has a PR"
+        why: "The push still happens on the branch, so the `push` event also matches."
+    answer: [a]
+    explanation: |
+      A push to a PR branch creates a `push` event and a `pull_request` event
+      (activity type `synchronize`). With both triggers, two runs start. Use branch
+      filters or one event to avoid double work.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+    glossary: [gha-workflow-run]
+
+  - id: gha-use-019
+    difficulty: 1
+    type: multiple
+    question: "You need the list of recent runs of `ci.yml` with their status in a script. Which tools fit? (Choose two.)"
+    options:
+      - id: a
+        text: "`gh run list --workflow ci.yml`"
+      - id: e
+        text: "`GET /repos/{owner}/{repo}/actions/workflows/ci.yml/runs`"
+      - id: b
+        text: "`git log --grep ci.yml`"
+        why: "Git history shows commits, not workflow runs. Runs are stored by GitHub Actions."
+      - id: c
+        text: "`gh repo clone` and read the `.github/runs` folder"
+        why: "There is no `.github/runs` folder. Run data comes from the API."
+      - id: d
+        text: "The repository traffic API"
+        why: "The traffic API shows views and clones of the repository, not workflow runs."
+    answer: [a, e]
+    explanation: |
+      `gh run list` lists workflow runs and can filter by workflow, branch or status.
+      The REST API endpoint `GET /repos/{owner}/{repo}/actions/workflows/{id}/runs`
+      returns the same data in JSON.
+    docs:
+      - https://docs.github.com/en/rest/actions/workflow-runs
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-github-cli
+    glossary: [gha-workflow-run]

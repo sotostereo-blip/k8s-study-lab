@@ -1,0 +1,5 @@
+#!/bin/bash
+# lab-ok REPO [JQ_CONDITION] - print the id of the newest matching run; exit 1 unless it
+# completed with conclusion "success".
+r="$(lab-run "${1:?usage: lab-ok REPO [JQ_CONDITION]}" "${2:-true}")" || exit 1
+echo "$r" | jq -e 'select(.status=="completed" and .conclusion=="success") | .id'

@@ -1,0 +1,19 @@
+log:
+  level: info
+runner:
+  file: .runner
+  capacity: 4
+  timeout: 30m
+  shutdown_timeout: 0s
+  fetch_timeout: 5s
+  fetch_interval: 1s
+  fetch_interval_max: 2s
+  log_report_interval: 2s
+  log_report_max_latency: 1s
+  state_report_interval: 2s
+  labels: []
+cache:
+  enabled: true
+  dir: /data/actcache
+host:
+  workdir_parent: /data/work

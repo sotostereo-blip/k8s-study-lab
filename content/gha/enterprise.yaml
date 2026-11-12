@@ -1,0 +1,614 @@
+domain: enterprise
+questions:
+  - id: gha-ent-001
+    difficulty: 1
+    type: single
+    question: "At which levels can you create encrypted secrets for GitHub Actions on github.com?"
+    options:
+      - id: a
+        text: "Organization, repository and environment"
+      - id: b
+        text: "Only repository"
+        why: "Repository secrets are one level. Organizations and environments can also have secrets."
+      - id: c
+        text: "Workflow, job and step"
+        why: "Workflows read secrets, but secrets are not created inside workflow files."
+      - id: d
+        text: "User account and team only"
+        why: "Actions secrets belong to organizations, repositories and environments. Codespaces and Dependabot have their own secret lists."
+    answer: [a]
+    explanation: |
+      Actions secrets can be created for an organization (shared with all, private
+      or selected repositories), for a repository, and for an environment.
+      Enterprise accounts can also share secrets with organizations on some plans.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/secrets
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+    glossary: [gha-encrypted-secret]
+
+  - id: gha-ent-002
+    difficulty: 2
+    type: single
+    question: "A secret named `API_KEY` exists at the organization, the repository and the `production` environment. A job uses `environment: production`. Which value does `secrets.API_KEY` give?"
+    options:
+      - id: a
+        text: "The environment value"
+      - id: b
+        text: "The organization value"
+        why: "The organization level has the lowest priority. Lower levels override it."
+      - id: c
+        text: "The repository value"
+        why: "The repository value overrides the organization value, but the environment value wins when the job uses that environment."
+      - id: d
+        text: "The workflow fails because the name is not unique"
+        why: "The same name at several levels is allowed. GitHub uses the most specific one."
+    answer: [a]
+    explanation: |
+      When a secret with the same name exists at several levels, the lowest level
+      wins: environment, then repository, then organization. The same order applies
+      to configuration variables.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+      - https://docs.github.com/en/actions/concepts/security/secrets
+    glossary: [gha-encrypted-secret, gha-environment]
+
+  - id: gha-ent-003
+    difficulty: 2
+    type: single
+    question: "You need a non-secret value, `REGION=eu-west-1`, in many repositories of the organization. What is the best option?"
+    options:
+      - id: a
+        text: "An organization configuration variable, read with `${{ vars.REGION }}`"
+      - id: b
+        text: "An organization secret, read with `${{ secrets.REGION }}`"
+        why: "Secrets work, but they are masked in logs and cannot be read back. Non-sensitive values belong in variables."
+      - id: c
+        text: "A workflow-level `env` block copied into every workflow"
+        why: "Copies must be changed one by one. A variable is defined once."
+      - id: d
+        text: "A file `region.txt` committed in each repository"
+        why: "Files must be updated in every repository. Variables are central."
+    answer: [a]
+    explanation: |
+      Configuration variables store non-sensitive settings at organization,
+      repository or environment level. Workflows read them through the `vars`
+      context, and their values are shown in plain text in logs.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/variables
+    glossary: [gha-variable]
+
+  - id: gha-ent-004
+    difficulty: 3
+    type: single
+    question: "A script creates a repository secret with the REST API. What must it do before calling `PUT /repos/{owner}/{repo}/actions/secrets/{name}`?"
+    options:
+      - id: a
+        text: "Get the repository public key and encrypt the value with it (libsodium sealed box)"
+      - id: b
+        text: "Encode the value in base64 only; GitHub encrypts it on the server"
+        why: "The API expects a value that is already encrypted with the repository public key, then base64 encoded."
+      - id: c
+        text: "Create an environment first, because repository secrets need one"
+        why: "Repository secrets do not need an environment."
+      - id: d
+        text: "Send the value in plain text with header `X-Encrypt: true`"
+        why: "There is no such header. The client must encrypt the value."
+    answer: [a]
+    explanation: |
+      The REST API never accepts plain secret values. The client gets the public key
+      with `GET .../actions/secrets/public-key`, encrypts the value with libsodium,
+      and sends `encrypted_value` and `key_id`. The GitHub CLI (`gh secret set`) does
+      this for you.
+    docs:
+      - https://docs.github.com/en/rest/actions/secrets
+    glossary: [gha-encrypted-secret]
+
+  - id: gha-ent-005
+    difficulty: 2
+    type: multiple
+    question: "Which statements about secrets in workflows are true? (Choose two.)"
+    options:
+      - id: a
+        text: "Secret values are masked as `***` when they appear in logs"
+      - id: b
+        text: "Secrets cannot be used directly in `if:` conditions; set them in `env` first"
+      - id: c
+        text: "A secret can be read back in plain text in the repository settings"
+        why: "After a secret is saved, nobody can see its value in the UI or API. You can only update or delete it."
+      - id: d
+        text: "Secrets are passed automatically to workflows started from forks"
+        why: "Secrets are not given to `pull_request` runs from forks."
+    answer: [a, b]
+    explanation: |
+      GitHub masks secret values in logs. You cannot reference `secrets` in `if:`
+      directly; a common pattern is to put the secret in a job `env` variable and test
+      the variable. Secrets cannot be read back after you save them.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+    glossary: [gha-encrypted-secret]
+
+  - id: gha-ent-006
+    difficulty: 1
+    type: single
+    question: "What is a self-hosted runner?"
+    options:
+      - id: a
+        text: "A machine you manage that runs the runner application and takes jobs from GitHub"
+      - id: b
+        text: "A GitHub-hosted virtual machine that is reserved for one repository"
+        why: "Reserved GitHub-hosted machines with more power are larger runners. Self-hosted runners are your own machines."
+      - id: c
+        text: "A container that GitHub starts on your laptop for each job"
+        why: "GitHub never starts machines in your network. You install the runner application yourself."
+      - id: d
+        text: "A workflow that runs another workflow"
+        why: "That describes a reusable workflow call, not a runner."
+    answer: [a]
+    explanation: |
+      A self-hosted runner is a physical, virtual or container machine that you
+      provide and maintain. It runs the open-source runner application, which connects
+      to GitHub and runs jobs. You can add it to a repository, an organization or an
+      enterprise.
+    docs:
+      - https://docs.github.com/en/actions/concepts/runners/self-hosted-runners
+    glossary: [gha-self-hosted-runner]
+
+  - id: gha-ent-007
+    difficulty: 2
+    type: single
+    question: "A job has `runs-on: [self-hosted, linux, gpu]`. Which runner can take the job?"
+    options:
+      - id: a
+        text: "A self-hosted runner that has all three labels"
+      - id: b
+        text: "Any runner that has at least one of the labels"
+        why: "Labels in a list are combined with AND. A runner must have every label."
+      - id: c
+        text: "A GitHub-hosted runner with a GPU"
+        why: "The `self-hosted` label is only on self-hosted runners."
+      - id: d
+        text: "Only a runner whose name is `gpu`"
+        why: "`runs-on` matches labels, not runner names (though a name can also be a label if you add it)."
+    answer: [a]
+    explanation: |
+      When `runs-on` lists several labels, a runner must have all of them. Self-hosted
+      runners get default labels such as `self-hosted`, the OS (`linux`) and the
+      architecture (`x64`), and you can add custom labels like `gpu`.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/apply-labels
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job
+    glossary: [gha-self-hosted-runner, gha-runner]
+
+  - id: gha-ent-008
+    difficulty: 2
+    type: single
+    question: "An organization wants only repositories of the payments team to use three special self-hosted runners. What should the admin set up?"
+    options:
+      - id: a
+        text: "A runner group with the three runners, limited to the selected repositories"
+      - id: b
+        text: "A custom label `payments` and trust that other teams do not use it"
+        why: "Labels select runners, but they do not stop other repositories from using them. Runner groups control access."
+      - id: c
+        text: "An environment secret on each runner"
+        why: "Secrets do not control which repositories can send jobs to a runner."
+      - id: d
+        text: "A branch protection rule on the payments repositories"
+        why: "Branch protection controls merges. It has nothing to do with runner access."
+    answer: [a]
+    explanation: |
+      Runner groups collect runners at the organization or enterprise level and
+      control which repositories (and, optionally, which workflows) may use them. A
+      job can target a group with `runs-on: group: <name>`.
+    docs:
+      - https://docs.github.com/en/actions/concepts/runners/runner-groups
+      - https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access
+    glossary: [gha-runner-group]
+
+  - id: gha-ent-009
+    difficulty: 3
+    type: single
+    question: "Why does GitHub recommend not using self-hosted runners with public repositories?"
+    options:
+      - id: a
+        text: "Pull requests from forks could run untrusted code on your machine and network"
+      - id: b
+        text: "Public repositories cannot send jobs to self-hosted runners"
+        why: "They can, which is why it is risky. GitHub warns against it rather than blocking it."
+      - id: c
+        text: "Self-hosted runners cost more minutes for public repositories"
+        why: "Self-hosted runners do not use GitHub-hosted minutes at all."
+      - id: d
+        text: "Public repositories cannot use labels"
+        why: "Labels work the same in public and private repositories."
+    answer: [a]
+    explanation: |
+      Anyone can open a pull request on a public repository. A workflow could then
+      run their code on your self-hosted runner, which may keep data between jobs and
+      can reach your internal network. Use GitHub-hosted runners, or ephemeral and
+      isolated runners, for untrusted code.
+    docs:
+      - https://docs.github.com/en/actions/reference/security/secure-use
+      - https://docs.github.com/en/actions/concepts/runners/self-hosted-runners
+    glossary: [gha-self-hosted-runner]
+
+  - id: gha-ent-010
+    difficulty: 2
+    type: single
+    question: "Your Kubernetes team wants self-hosted runners that scale up and down with the number of queued jobs. Which GitHub-supported tool fits?"
+    options:
+      - id: a
+        text: "Actions Runner Controller (ARC) with runner scale sets"
+      - id: b
+        text: "A matrix with `max-parallel: 100`"
+        why: "A matrix makes more jobs. It does not create runners."
+      - id: c
+        text: "A larger runner with 64 cores"
+        why: "Larger runners are GitHub-hosted machines. They do not run in your Kubernetes cluster."
+      - id: d
+        text: "A reusable workflow that installs runners"
+        why: "Workflows need a runner to run, so they cannot be the scaling system."
+    answer: [a]
+    explanation: |
+      Actions Runner Controller is a Kubernetes operator that creates and removes
+      ephemeral runner pods based on demand, using runner scale sets. It is the
+      GitHub-supported way to autoscale self-hosted runners on Kubernetes.
+    docs:
+      - https://docs.github.com/en/actions/concepts/runners/actions-runner-controller
+    glossary: [gha-arc, gha-self-hosted-runner]
+
+  - id: gha-ent-011
+    difficulty: 2
+    type: multiple
+    question: "Your organization uses an IP allow list. Which runner options can reach the organization's resources? (Choose two.)"
+    options:
+      - id: a
+        text: "Self-hosted runners whose IP addresses are in the allow list"
+      - id: b
+        text: "Larger runners with static IP addresses that are added to the list"
+      - id: c
+        text: "Standard GitHub-hosted runners, because GitHub adds them automatically"
+        why: "Standard hosted runners use changing IP ranges, so they are not a good fit for an allow list."
+      - id: d
+        text: "Any runner, because allow lists do not apply to Actions"
+        why: "IP allow lists apply to Actions too. Runners must connect from allowed addresses."
+    answer: [a, b]
+    explanation: |
+      With an IP allow list, runners must connect from an allowed address. You can add
+      the addresses of self-hosted runners, or use larger runners with static IP
+      ranges and add those ranges to the list.
+    docs:
+      - https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/managing-allowed-ip-addresses-for-your-organization
+      - https://docs.github.com/en/actions/concepts/runners/larger-runners
+    glossary: [gha-ip-allow-list, gha-larger-runner]
+
+  - id: gha-ent-012
+    difficulty: 2
+    type: single
+    question: "A job needs Python 3.12, but you are not sure which versions are on the `ubuntu-latest` image. Where do you check?"
+    options:
+      - id: a
+        text: "In the runner image software list or the Set up job log"
+      - id: b
+        text: "In the `requirements.txt` file of the repository"
+        why: "That file lists your Python packages. It does not say what is installed on the runner."
+      - id: c
+        text: "In the billing page of the organization settings"
+        why: "Billing shows minutes and costs, not installed software."
+      - id: d
+        text: "Nowhere; hosted runners have no software installed"
+        why: "GitHub-hosted runners come with many tools preinstalled, and the list is published."
+    answer: [a]
+    explanation: |
+      GitHub publishes the software list of each hosted runner image, and every job
+      log shows the image version in Set up job. To be sure of a version, use a setup
+      action such as `actions/setup-python`, which uses the tool cache or downloads the
+      version you ask for.
+    docs:
+      - https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+      - https://docs.github.com/en/actions/how-tos/manage-runners/github-hosted-runners/customize-runners
+    glossary: [gha-github-hosted-runner, gha-tool-cache]
+
+  - id: gha-ent-013
+    difficulty: 2
+    type: single
+    question: "Your job needs a system package that is not on the hosted runner image. What is the usual approach?"
+    options:
+      - id: a
+        text: "Install it in a step with `sudo apt-get install -y <pkg>`"
+      - id: b
+        text: "Ask GitHub support to add it to your runner"
+        why: "You cannot change GitHub's images for your account, but you can install software in a job."
+      - id: c
+        text: "Add the package name to `runs-on` as a label"
+        why: "Labels select a runner. They do not install software."
+      - id: d
+        text: "Put the package name in a job `env: PACKAGES` value"
+        why: "Environment variables do not install anything."
+    answer: [a]
+    explanation: |
+      GitHub-hosted runners allow passwordless `sudo`, so you can install packages
+      with the system package manager during the job. Other options are setup actions,
+      a job `container` image, or a custom image for larger or self-hosted runners.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-runners/github-hosted-runners/customize-runners
+    glossary: [gha-github-hosted-runner]
+
+  - id: gha-ent-014
+    difficulty: 2
+    type: single
+    question: "A self-hosted runner shows Offline in the settings. What is a good first check?"
+    options:
+      - id: a
+        text: "Check that the runner service runs and can reach GitHub"
+      - id: b
+        text: "Re-run the workflow with debug logging"
+        why: "Debug logging helps with step problems. An offline runner never starts the job, so there is no step log."
+      - id: c
+        text: "Delete the workflow file and create it again from scratch"
+        why: "The workflow is not the problem. The runner is not connected."
+      - id: d
+        text: "Add the `offline` label to the `runs-on` list of the job"
+        why: "There is no `offline` label. The job needs an online runner."
+    answer: [a]
+    explanation: |
+      A runner is offline when the runner application is stopped or cannot connect
+      to GitHub. Check the service status and the runner's `_diag` log files, and
+      make sure the machine can reach GitHub's hosts (directly or through a proxy).
+    docs:
+      - https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/monitor-and-troubleshoot
+    glossary: [gha-self-hosted-runner]
+
+  - id: gha-ent-015
+    difficulty: 2
+    type: single
+    question: "An organization admin wants workflows to use only actions created by GitHub, by verified creators, and from the organization itself. Where is this set?"
+    options:
+      - id: a
+        text: "In the organization Actions settings, under allowed actions"
+      - id: b
+        text: "In each workflow, with `permissions: actions: verified`"
+        why: "`permissions` sets `GITHUB_TOKEN` scopes. It cannot limit which actions are allowed."
+      - id: c
+        text: "In the CODEOWNERS file of every repository in the organization"
+        why: "CODEOWNERS requests reviews. It does not block actions."
+      - id: d
+        text: "In the Marketplace listing page of each allowed action"
+        why: "Action authors cannot decide who may use their action. The organization policy does."
+    answer: [a]
+    explanation: |
+      Organization and enterprise policies can allow all actions, only local ones, or
+      local ones plus selected non-local actions: those created by GitHub, by verified
+      Marketplace creators, or listed by pattern.
+    docs:
+      - https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization
+    glossary: [gha-actions-policy]
+
+  - id: gha-ent-016
+    difficulty: 3
+    type: single
+    question: "The allowed-actions list contains `octo-org/*, !octo-org/legacy-deploy@*`. What happens to a workflow that uses `octo-org/legacy-deploy@v1`?"
+    options:
+      - id: a
+        text: "It is blocked, because the `!` pattern blocks that action"
+      - id: b
+        text: "It runs, because `octo-org/*` allows every action in the organization"
+        why: "A pattern with `!` blocks matching actions, even when another pattern allows them."
+      - id: c
+        text: "It runs only on self-hosted runners"
+        why: "Action policies apply to all runners."
+      - id: d
+        text: "It runs with a warning in the log"
+        why: "Blocked actions fail the run; there is no warning-only mode."
+    answer: [a]
+    explanation: |
+      In the allow list, you can use the `!` prefix to block actions and reusable
+      workflows that match a pattern. Here every action from `octo-org` is allowed
+      except `octo-org/legacy-deploy`.
+    docs:
+      - https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization
+    glossary: [gha-actions-policy]
+
+  - id: gha-ent-017
+    difficulty: 2
+    type: single
+    question: "Where do you store workflow templates so that every member of the organization can use them?"
+    options:
+      - id: a
+        text: "In the `workflow-templates` folder of the organization's `.github` repository"
+      - id: b
+        text: "In `.github/workflows` of any repository marked as a template repository"
+        why: "Template repositories copy a whole repository. Workflow templates live in the `.github` repository."
+      - id: c
+        text: "In the organization settings, under Secrets"
+        why: "Secrets store sensitive values, not workflow files."
+      - id: d
+        text: "In GitHub Marketplace, as a private listing"
+        why: "Marketplace lists actions and apps. Templates come from the organization's `.github` repository."
+    answer: [a]
+    explanation: |
+      Create a `workflow-templates` directory in the `.github` repository of the
+      organization. Each template needs a YAML file and a `.properties.json` file with
+      the same name. Templates can also be offered from a non-public `.github`
+      repository to organization members.
+    docs:
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/create-workflow-templates
+    glossary: [gha-workflow-template]
+
+  - id: gha-ent-018
+    difficulty: 2
+    type: multiple
+    question: "Which are good reasons to put shared CI logic in a reusable workflow kept in a central repository? (Choose two.)"
+    options:
+      - id: a
+        text: "Teams call one versioned definition, so a fix reaches every caller that uses the moved tag"
+      - id: b
+        text: "The reusable workflow can contain several jobs with their own runners and environments"
+      - id: c
+        text: "It removes the need for runners, because GitHub runs reusable workflows itself"
+        why: "Jobs in reusable workflows still need runners, chosen with `runs-on` inside the called workflow."
+      - id: d
+        text: "Secrets of the central repository are given to every caller automatically"
+        why: "The called workflow uses secrets passed by the caller. The central repository's secrets are not shared."
+    answer: [a, b]
+    explanation: |
+      Reusable workflows give one maintained, versioned definition. They can contain
+      whole jobs, including environments and different runners. Callers pass inputs
+      and secrets, and can pin a tag, branch or commit SHA.
+    docs:
+      - https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
+      - https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows
+    glossary: [gha-reusable-workflow]
+
+  - id: gha-ent-019
+    difficulty: 3
+    type: single
+    question: "How deep can reusable workflows be nested, and how many unique reusable workflows can one workflow call in total?"
+    options:
+      - id: a
+        text: "Up to 10 levels, and up to 50 unique reusable workflows"
+      - id: b
+        text: "Only 1 level, and up to 20 unique workflows"
+        why: "Nesting is allowed. The current limits are 10 levels and 50 unique workflows."
+      - id: c
+        text: "Unlimited levels, and up to 4 unique workflows"
+        why: "There is a nesting limit, and the call limit is much higher than 4."
+      - id: d
+        text: "Up to 3 levels, and no limit on the number of workflows"
+        why: "The limits are 10 levels of nesting and 50 unique reusable workflows."
+    answer: [a]
+    explanation: |
+      You can connect up to ten levels of workflows. A workflow tree can call at most 50 unique reusable
+      workflows, counting nested ones.
+    docs:
+      - https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
+    glossary: [gha-reusable-workflow]
+
+  - id: gha-ent-020
+    difficulty: 2
+    type: single
+    question: "A script must list the self-hosted runners of an organization and their status. Which tool can do this?"
+    options:
+      - id: a
+        text: "The REST API endpoint `GET /orgs/{org}/actions/runners`"
+      - id: b
+        text: "`git ls-remote` on the organization's repositories"
+        why: "Git commands show refs in repositories. Runners are managed by the Actions API."
+      - id: c
+        text: "The `runner` context in any workflow"
+        why: "The `runner` context only describes the runner of the current job."
+      - id: d
+        text: "The Dependabot alerts API"
+        why: "Dependabot alerts are about vulnerable dependencies, not runners."
+    answer: [a]
+    explanation: |
+      The self-hosted runners REST API lists runners with their status, labels and
+      busy flag at repository, organization and enterprise level. It also creates
+      registration and removal tokens.
+    docs:
+      - https://docs.github.com/en/rest/actions/self-hosted-runners
+    glossary: [gha-self-hosted-runner]
+
+  - id: gha-ent-021
+    difficulty: 2
+    type: single
+    question: "A team needs GitHub-hosted runners with more CPU and RAM, ARM processors and a static IP range. What should they use?"
+    options:
+      - id: a
+        text: "Larger runners configured for the organization or enterprise"
+      - id: b
+        text: "`runs-on: ubuntu-latest-xl`, available to every repository"
+        why: "Larger runners are created by admins with their own names. There is no general `-xl` label."
+      - id: c
+        text: "A matrix with more jobs"
+        why: "More jobs do not give each job more CPU or a static IP."
+      - id: d
+        text: "Self-hosted runners only, because hosted runners cannot change size"
+        why: "GitHub offers larger hosted runners on Team and Enterprise plans."
+    answer: [a]
+    explanation: |
+      Larger runners are GitHub-hosted runners with more resources, extra options
+      such as GPU or ARM, static IP addresses and runner group access control. They
+      are billed per minute and managed by organization or enterprise admins.
+    docs:
+      - https://docs.github.com/en/actions/concepts/runners/larger-runners
+      - https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/control-access
+    glossary: [gha-larger-runner]
+
+  - id: gha-ent-022
+    difficulty: 1
+    type: single
+    question: "Which REST API call creates or updates a repository configuration variable?"
+    options:
+      - id: a
+        text: "`POST /repos/{owner}/{repo}/actions/variables` (create) or `PATCH .../actions/variables/{name}` (update)"
+      - id: b
+        text: "`PUT /repos/{owner}/{repo}/actions/secrets/{name}` with `visibility: plain`"
+        why: "That endpoint creates encrypted secrets. Variables have their own endpoints."
+      - id: c
+        text: "`POST /repos/{owner}/{repo}/environments/{name}/env`"
+        why: "There is no such endpoint. Environment variables use the variables API under the environment."
+      - id: d
+        text: "`PUT /repos/{owner}/{repo}/contents/.github/vars.yml`"
+        why: "That would commit a file. Configuration variables are stored as Actions settings."
+    answer: [a]
+    explanation: |
+      The Actions variables API manages variables at organization, repository and
+      environment level. Variables are not encrypted, so you send the plain value. The
+      CLI command `gh variable set` uses the same API.
+    docs:
+      - https://docs.github.com/en/rest/actions/variables
+    glossary: [gha-variable]
+
+  - id: gha-ent-023
+    difficulty: 3
+    type: multiple
+    question: "Which statements about organization secrets are true? (Choose two.)"
+    options:
+      - id: a
+        text: "Their access can be set to all repositories, private repositories, or selected repositories"
+      - id: b
+        text: "A repository secret with the same name overrides the organization secret"
+      - id: c
+        text: "They are available to every repository, even when access is set to selected repositories"
+        why: "With selected repositories, only those repositories can read the secret."
+      - id: d
+        text: "Their names may start with `GITHUB_`"
+        why: "Secret names cannot start with the `GITHUB_` prefix."
+    answer: [a, b]
+    explanation: |
+      Organization secrets have an access policy that controls which repositories
+      can use them. If a repository or environment secret has the same name, the more
+      specific one is used. Names may contain only letters, numbers and underscores and
+      must not start with `GITHUB_` or a number.
+    docs:
+      - https://docs.github.com/en/actions/concepts/security/secrets
+      - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+    glossary: [gha-encrypted-secret]
+
+  - id: gha-ent-024
+    difficulty: 2
+    type: single
+    question: "An admin wants to make sure that a set of repositories cannot use Actions at all. What is the right control?"
+    options:
+      - id: a
+        text: "Enable Actions only for selected repositories in the organization"
+      - id: b
+        text: "Delete all self-hosted runners of the organization"
+        why: "GitHub-hosted runners would still run jobs. The Actions policy is the right control."
+      - id: c
+        text: "Remove all secrets and variables from those repositories"
+        why: "Workflows can run without secrets."
+      - id: d
+        text: "Add `if: false` to every workflow"
+        why: "Anyone with write access can remove it. A policy cannot be bypassed by editing files."
+    answer: [a]
+    explanation: |
+      Organization owners can enable GitHub Actions for all repositories, for
+      selected repositories, or disable it completely. Enterprise owners can set the
+      same policy for all organizations.
+    docs:
+      - https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization
+      - https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/enforcing-policies-for-github-actions-in-your-enterprise
+    glossary: [gha-actions-policy]

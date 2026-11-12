@@ -1,0 +1,59 @@
+id: gha-ent-003
+title: A job that waits for a runner forever
+domain: enterprise
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/runner-labels/.github/workflows && cd /root/runner-labels
+  echo "# runner-labels" > README.md
+  cat > .github/workflows/build.yml <<'YAML'
+  name: Build
+  on: push
+  jobs:
+    build:
+      runs-on: windows-latest
+      steps:
+        - run: echo "Build finished on ${{ runner.os }}"
+  YAML
+  lab-publish /root/runner-labels "Add build workflow"
+task: |
+  The run of `Build` in `student/runner-labels` never starts: its job waits for a runner.
+
+  1. Find out which runners this Gitea server has and which **labels** they offer. Write the
+     **name** of the runner to `/root/runner-name.txt`.
+  2. Change `runs-on` in `.github/workflows/build.yml` to a label that the runner has, and push.
+     The new run must succeed.
+  3. **Cancel** the old run that is still waiting, so no run of this repository is left queued.
+
+  Useful API paths: `gapi admin/actions/runners` (runners of the whole server),
+  `gapi repos/student/runner-labels/actions/runs/<run id>/cancel -X POST`.
+
+  *Gitea vs GitHub:* on GitHub, `runs-on: windows-latest` would get a GitHub-hosted Windows
+  VM. Here the only runner is `act_runner` in host mode with Linux labels. The runner list is
+  like the GitHub API `GET /orgs/{org}/actions/runners`, and a self-hosted job on GitHub is
+  cancelled after 24 hours in the queue.
+checks:
+  - name: '`/root/runner-name.txt` has the name of the lab runner'
+    run: |
+      want=$(gapi admin/actions/runners | jq -r '.runners[0].name') || exit 1
+      [ "$(tr -d '[:space:]' < /root/runner-name.txt 2>/dev/null)" = "$want" ]
+  - name: 'The push run for the newest commit on `main` succeeded'
+    run: lab-ok runner-labels ".head_sha==\"$(lab-head runner-labels)\" and .event==\"push\"" >/dev/null
+  - name: 'No run of `runner-labels` is still queued or waiting'
+    run: lab-runs runner-labels '.status != "completed"' | jq -e 'length == 0' >/dev/null
+solution: |
+  gapi admin/actions/runners | jq '.runners[] | {name, status, labels: [.labels[].name]}'
+  echo lab-runner > /root/runner-name.txt
+  old=$(lab-run runner-labels '.status != "completed"' | jq .id)
+  gapi repos/student/runner-labels/actions/runs/$old/cancel -X POST
+  cd /root/runner-labels
+  sed -i 's/runs-on: windows-latest/runs-on: ubuntu-latest/' .github/workflows/build.yml
+  git commit -am "Use a label the runner has"
+  git push
+  lab-wait runner-labels ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job
+  - https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/monitor-and-troubleshoot
+  - https://docs.github.com/en/rest/actions/self-hosted-runners
+  - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/cancel-a-workflow-run

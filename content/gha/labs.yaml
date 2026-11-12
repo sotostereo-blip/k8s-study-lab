@@ -1,0 +1,24 @@
+# Hands-on GitHub Actions labs. The GH-200 exam is multiple choice, but these tasks build the
+# skills behind it with real workflows. GitHub.com cannot run locally, so the lab uses Gitea with
+# Gitea Actions, which runs the same workflow syntax (and the same actions from github.com).
+id: gha
+name: GitHub Actions (GH-200)
+exam_minutes: 100
+passing_score: 70
+intro: "a Gitea server with Gitea Actions (GitHub Actions compatible), a runner and a terminal"
+domains:
+  - { id: workflows, name: "Author and manage workflows", weight: 35 }
+  - { id: consume, name: "Consume and troubleshoot workflows", weight: 20 }
+  - { id: actions, name: "Author and maintain actions", weight: 15 }
+  - { id: enterprise, name: "Manage GitHub Actions for the enterprise", weight: 15 }
+  - { id: security, name: "Secure and optimize automation", weight: 15 }
+environments:
+  gitea:
+    name: "Gitea 28.3 with Gitea Actions + act_runner 0.6 (GitHub Actions compatible)"
+    nodes: 0
+    label: "Gitea Actions"
+    tools: "`git` (push already works), `gapi` (Gitea API), `lab-runs` / `lab-logs` / `lab-wait`, `tea`, `actionlint`, `jq`, `vim`"
+    ready: "lab-ready"
+    ready_timeout: 300
+mock: true
+mock_environment: gitea

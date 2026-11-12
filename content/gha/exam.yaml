@@ -1,0 +1,22 @@
+# GitHub Actions certification (exam GH-200), skills measured as of January 2026.
+# Source: https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/gh-200
+# Official weights are ranges (20-25%, 15-20%, 15-20%, 20-25%, 10-15%); the weights below use the
+# middle of each range, scaled to 100.
+id: gha
+name: GitHub Actions (GH-200)
+format: multiple-choice
+exam_minutes: 100
+exam_questions: 65
+passing_score: 70
+facts_note: >-
+  Official (Microsoft Learn, skills measured as of January 2026): exam GH-200, 100 minutes,
+  proctored, a score of 700 or greater out of 1000 is required to pass, five skill areas with
+  weight ranges. Not published: the exact number of questions (65 is used here) and exact
+  weights (the middle of each official range is used). The passing score is a scaled score,
+  shown here as 70%.
+domains:
+  - { id: workflows, name: "Author and manage workflows", weight: 24 }
+  - { id: consume, name: "Consume and troubleshoot workflows", weight: 19 }
+  - { id: actions, name: "Author and maintain actions", weight: 19 }
+  - { id: enterprise, name: "Manage GitHub Actions for the enterprise", weight: 24 }
+  - { id: security, name: "Secure and optimize automation", weight: 14 }

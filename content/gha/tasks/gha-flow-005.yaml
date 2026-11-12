@@ -1,0 +1,72 @@
+id: gha-flow-005
+title: Deploy only from the main branch
+domain: workflows
+difficulty: 2
+minutes: 10
+environment: gitea
+setup: |
+  mkdir -p /root/conditional-steps/.github/workflows && cd /root/conditional-steps
+  echo "# conditional-steps" > README.md
+  cat > .github/workflows/pipeline.yml <<'YAML'
+  name: Pipeline
+  on: push
+  jobs:
+    pipeline:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Build
+          run: echo "Build done"
+        - name: Deploy
+          run: echo "Deploying the app"
+  YAML
+  lab-publish /root/conditional-steps "Add pipeline"
+task: |
+  The workflow `Pipeline` in `student/conditional-steps` runs on pushes to **every** branch,
+  and it deploys every time. That is dangerous.
+
+  1. Add a condition to the step `Deploy` so that it runs **only for pushes to `main`**.
+     The step `Build` must still run on every branch.
+  2. Push your change to `main`.
+  3. Create a branch `feature/login` from `main` and push it.
+
+  The run on `main` must print `Deploying the app`. The run on `feature/login` must succeed
+  **without** deploying.
+
+  *Gitea vs GitHub:* `if:` conditions and the `github.ref` context are the same in Gitea
+  (Gitea also offers `gitea.ref` as an alias of `github.ref`).
+checks:
+  - name: 'The Deploy step has an `if:` condition, and the newest run on `main` still deployed'
+    run: |
+      lab-file conditional-steps .github/workflows/pipeline.yml | yq -e '.jobs[].steps[] | select(.name=="Deploy") | has("if")' >/dev/null || exit 1
+      id=$(lab-ok conditional-steps ".head_sha==\"$(lab-head conditional-steps)\" and .head_branch==\"main\"") || exit 1
+      lab-has-line conditional-steps "$id" "Deploying the app"
+  - name: 'The newest run on `feature/login` succeeded and built, but did not deploy'
+    run: |
+      id=$(lab-ok conditional-steps '.head_branch=="feature/login"') || exit 1
+      lab-has-line conditional-steps "$id" "Build done" || exit 1
+      ! lab-has-line conditional-steps "$id" "Deploying the app"
+solution: |
+  cd /root/conditional-steps
+  cat > .github/workflows/pipeline.yml <<'YAML'
+  name: Pipeline
+  on: push
+  jobs:
+    pipeline:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Build
+          run: echo "Build done"
+        - name: Deploy
+          if: github.ref == 'refs/heads/main'
+          run: echo "Deploying the app"
+  YAML
+  git commit -am "Deploy only from main"
+  git push
+  git switch -c feature/login
+  git push -u origin feature/login
+  git switch main
+  lab-runs conditional-steps | jq '.[] | {id, head_branch, conclusion}'
+docs:
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/contexts

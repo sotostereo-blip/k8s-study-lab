@@ -1,0 +1,9 @@
+#!/bin/bash
+# Exit 0 when Gitea answers, the lab user exists and the runner is online.
+gapi users/student >/dev/null 2>&1 || exit 1
+gapi admin/actions/runners 2>/dev/null | jq -e '[.runners[]? | select(.status=="online")] | length > 0' >/dev/null || exit 1
+if [ ! -s /root/.config/tea/config.yml ]; then
+  tea login add --name lab --url "$GITEA_URL" --user "$GITEA_USER" --password "$GITEA_PASSWORD" >/dev/null 2>&1 \
+    && tea login default lab >/dev/null 2>&1
+fi
+exit 0

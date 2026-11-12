@@ -1,0 +1,64 @@
+id: gha-flow-002
+title: Test on several versions with a matrix
+domain: workflows
+difficulty: 2
+minutes: 8
+environment: gitea
+setup: |
+  mkdir -p /root/matrix-demo/.github/workflows && cd /root/matrix-demo
+  echo "# matrix-demo" > README.md
+  cat > .github/workflows/test.yml <<'YAML'
+  name: Test
+  on: push
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo "Testing with Node 20"
+  YAML
+  lab-publish /root/matrix-demo "Add test workflow"
+task: |
+  The workflow `.github/workflows/test.yml` in `student/matrix-demo` (cloned in
+  `/root/matrix-demo`) tests only one version.
+
+  Change the job `test` so that it uses a **matrix** with the variable `node` and the values
+  `18`, `20` and `22`:
+  - each matrix job prints `Testing with Node <version>` (use the matrix value);
+  - one failing version must **not** cancel the other jobs.
+
+  Push the change. The run for your commit must succeed with three `test` jobs.
+
+  *Gitea vs GitHub:* the matrix syntax is the same. Gitea names the jobs like GitHub, for
+  example `test (18)`. All jobs run on the same lab runner (up to 4 at the same time).
+checks:
+  - name: 'The push run for the newest commit on `main` succeeded with at least 3 jobs'
+    run: |
+      id=$(lab-ok matrix-demo ".head_sha==\"$(lab-head matrix-demo)\" and .event==\"push\"") || exit 1
+      lab-jobs matrix-demo "$id" | jq -e 'length >= 3' >/dev/null
+  - name: 'The logs show `Testing with Node 18`, `20` and `22`'
+    run: |
+      id=$(lab-ok matrix-demo ".head_sha==\"$(lab-head matrix-demo)\" and .event==\"push\"") || exit 1
+      for v in 18 20 22; do lab-has-line matrix-demo "$id" "Testing with Node $v" || exit 1; done
+  - name: '`fail-fast` is turned off for the matrix of job `test`'
+    run: lab-file matrix-demo .github/workflows/test.yml | yq -e '.jobs.test.strategy["fail-fast"] == false' >/dev/null
+solution: |
+  cd /root/matrix-demo
+  cat > .github/workflows/test.yml <<'YAML'
+  name: Test
+  on: push
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      strategy:
+        fail-fast: false
+        matrix:
+          node: [18, 20, 22]
+      steps:
+        - run: echo "Testing with Node ${{ matrix.node }}"
+  YAML
+  git commit -am "Test with a matrix"
+  git push
+  lab-wait matrix-demo ".head_sha==\"$(git rev-parse HEAD)\""
+docs:
+  - https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax

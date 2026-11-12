@@ -1,0 +1,92 @@
+id: gha-ts-003
+title: Investigate a run with the API
+domain: consume
+difficulty: 3
+minutes: 12
+environment: gitea
+setup: |
+  mkdir -p /root/build-info/.github/workflows && cd /root/build-info
+  echo "# build-info" > README.md
+  cat > .github/workflows/nightly.yml <<'YAML'
+  name: Nightly
+  on: push
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Make build code
+          run: |
+            mkdir -p out
+            echo "BUILD-$(date +%s)-$RANDOM" > out/build-code.txt
+            echo "Build code written to out/build-code.txt"
+        - uses: christopherhx/gitea-upload-artifact@v4
+          with:
+            name: build-info
+            path: out/build-code.txt
+    lint:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check formatting
+          run: echo "Formatting OK"
+        - name: Check spelling
+          run: |
+            echo "Found 3 spelling errors"
+            exit 1
+        - name: Check links
+          run: echo "Links OK"
+  YAML
+  lab-publish /root/build-info "Add nightly workflow"
+task: |
+  The workflow `Nightly` in `student/build-info` already ran (wait for it: `lab-wait build-info`).
+  Use only the API and the logs; do not change the repository.
+
+  1. The run uploaded an artifact called `build-info`. Download it, and write the build code
+     that is inside it (one line like `BUILD-...`) to `/root/build-code.txt`.
+  2. One job failed. Write the **name of the step** that failed to `/root/failed-step.txt`.
+
+  Useful API paths (the same as on GitHub):
+  - `gapi repos/student/build-info/actions/runs` and `.../actions/runs/<run id>/jobs`
+  - `gapi repos/student/build-info/actions/runs/<run id>/artifacts`
+  - `gapi repos/student/build-info/actions/artifacts/<artifact id>/zip -o /tmp/a.zip` (then `unzip`).
+    The API answers with a redirect (HTTP 302) to the file, like GitHub does; `gapi` follows it
+    (`curl -L`).
+  - `gapi repos/student/build-info/actions/jobs/<job id>/logs`
+
+  *Gitea vs GitHub:* on GitHub, `gh run view <id> --log-failed` and `gh run download <id>` do
+  this quickly. Gitea job logs also contain many runner debug lines; look for `Failure - `.
+checks:
+  - name: '`/root/build-code.txt` has the build code from the artifact'
+    run: |
+      [ -s /root/build-code.txt ] || exit 1
+      rid=$(lab-run build-info | jq -er .id) || exit 1
+      aid=$(gapi "repos/student/build-info/actions/runs/$rid/artifacts" | jq -er '.artifacts[] | select(.name=="build-info") | .id') || exit 1
+      rm -f /tmp/check-bi.zip
+      gapi "repos/student/build-info/actions/artifacts/$aid/zip" -o /tmp/check-bi.zip || exit 1
+      want=$(unzip -p /tmp/check-bi.zip build-code.txt | tr -d '[:space:]')
+      [ -n "$want" ] && [ "$(tr -d '[:space:]' < /root/build-code.txt)" = "$want" ]
+  - name: '`/root/failed-step.txt` names the step that failed'
+    run: '[ "$(tr -d "\r" < /root/failed-step.txt 2>/dev/null | sed "s/^ *//; s/ *$//")" = "Check spelling" ]'
+  - name: 'The repository still has only the setup commit'
+    guard: true
+    run: '[ "$(gapi "repos/student/build-info/commits?limit=5" | jq length)" = 1 ]'
+solution: |
+  lab-wait build-info
+  rid=$(lab-run build-info | jq .id)
+  lab-jobs build-info "$rid" | jq '.[] | {id, name, conclusion, steps: [.steps[] | {name, conclusion}]}'
+  # The job "lint" failed; its step "Check spelling" has conclusion "failure".
+  echo "Check spelling" > /root/failed-step.txt
+  aid=$(gapi repos/student/build-info/actions/runs/$rid/artifacts | jq '.artifacts[] | select(.name=="build-info") | .id')
+  gapi repos/student/build-info/actions/artifacts/$aid/zip -o /tmp/a.zip
+  unzip -p /tmp/a.zip build-code.txt > /root/build-code.txt
+  cat /root/build-code.txt
+auto_solution: |
+  lab-wait build-info >/dev/null
+  rid=$(lab-run build-info | jq .id)
+  lab-jobs build-info "$rid" | jq -r '.[].steps[]? | select(.conclusion=="failure") | .name' | head -1 > /root/failed-step.txt
+  aid=$(gapi repos/student/build-info/actions/runs/$rid/artifacts | jq '.artifacts[] | select(.name=="build-info") | .id')
+  gapi repos/student/build-info/actions/artifacts/$aid/zip -o /tmp/a.zip
+  unzip -p /tmp/a.zip build-code.txt > /root/build-code.txt
+docs:
+  - https://docs.github.com/en/rest/actions/artifacts
+  - https://docs.github.com/en/rest/actions/workflow-jobs
+  - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts

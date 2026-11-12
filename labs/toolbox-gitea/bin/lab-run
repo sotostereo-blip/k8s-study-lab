@@ -1,0 +1,3 @@
+#!/bin/bash
+# lab-run REPO [JQ_CONDITION] - the newest run of student/REPO that matches; exit 1 if there is none.
+lab-runs "$@" | jq -e 'first'
