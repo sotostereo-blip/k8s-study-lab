@@ -1,0 +1,301 @@
+domain: argo-events
+questions:
+  - id: capa-ev-001
+    difficulty: 1
+    type: single
+    question: "What is Argo Events?"
+    options:
+      - id: a
+        text: "An event-driven automation framework that runs actions when events happen"
+      - id: b
+        text: "A tool that saves Kubernetes events to a database"
+        why: "Argo Events is not an event logger. It reacts to events from many sources by running triggers."
+      - id: c
+        text: "The audit log of Argo CD"
+        why: "Argo CD has its own events and logs. Argo Events is a separate project."
+      - id: d
+        text: "A metrics provider for Argo Rollouts analysis"
+        why: "Metric providers are tools like Prometheus. Argo Events does not measure releases."
+    answer: [a]
+    explanation: |
+      Argo Events is an event-driven workflow automation framework for Kubernetes. It gets events
+      from many sources (webhooks, S3, Kafka, schedules...) and runs triggers such as Argo Workflows,
+      Kubernetes objects or HTTP requests.
+    docs:
+      - https://argoproj.github.io/argo-events/
+    glossary: [argo-events]
+
+  - id: capa-ev-002
+    difficulty: 1
+    type: multiple
+    question: "Which are the main custom resources of Argo Events? (Choose three.)"
+    options:
+      - id: a
+        text: "`EventSource`"
+      - id: b
+        text: "`EventBus`"
+      - id: c
+        text: "`Sensor`"
+      - id: d
+        text: "`AnalysisRun`"
+        why: "AnalysisRun belongs to Argo Rollouts."
+      - id: e
+        text: "`ApplicationSet`"
+        why: "ApplicationSet belongs to Argo CD."
+    answer: [a, b, c]
+    explanation: |
+      An `EventSource` gets events from outside and publishes them. The `EventBus` carries them. A
+      `Sensor` listens for event dependencies and runs triggers when its conditions are met.
+    docs:
+      - https://argoproj.github.io/argo-events/concepts/architecture/
+    glossary: [argo-event-source, argo-eventbus, argo-sensor]
+
+  - id: capa-ev-003
+    difficulty: 1
+    type: single
+    question: "What is the job of an `EventSource`?"
+    options:
+      - id: a
+        text: "It gets events from outside and writes them to the EventBus"
+      - id: b
+        text: "It decides which workflow to start for each event"
+        why: "Deciding what to run is the job of a Sensor and its triggers."
+      - id: c
+        text: "It stores all events for one year in a database"
+        why: "EventSources do not keep a long history. They pass events on."
+      - id: d
+        text: "It creates the EventBus and the Sensors"
+        why: "The EventBus is its own resource, usually created once per namespace."
+    answer: [a]
+    explanation: |
+      An EventSource defines how to consume events from a source, such as a webhook, AWS SNS/SQS,
+      Kafka, GitHub, a calendar or a resource change. It converts them into CloudEvents and
+      publishes them on the EventBus.
+    docs:
+      - https://argoproj.github.io/argo-events/concepts/event_source/
+    glossary: [argo-event-source, argo-eventbus]
+
+  - id: capa-ev-004
+    difficulty: 2
+    type: multiple
+    question: "Which technologies can back an Argo Events `EventBus`? (Choose two.)"
+    options:
+      - id: a
+        text: "NATS JetStream"
+      - id: b
+        text: "Kafka"
+      - id: c
+        text: "Redis Pub/Sub"
+        why: "Redis is not an EventBus option. The supported options are NATS (Streaming and JetStream) and Kafka."
+      - id: d
+        text: "etcd watch events"
+        why: "etcd stores cluster state. Argo Events does not use it as a message bus."
+    answer: [a, b]
+    explanation: |
+      The EventBus is the transport layer between EventSources and Sensors. It can use NATS
+      Streaming (the older option), NATS JetStream or Kafka. The common practice is one EventBus
+      called `default` in each namespace.
+    docs:
+      - https://argoproj.github.io/argo-events/eventbus/eventbus/
+      - https://argoproj.github.io/argo-events/eventbus/jetstream/
+    glossary: [argo-eventbus]
+
+  - id: capa-ev-005
+    difficulty: 2
+    type: single
+    question: "An EventSource and a Sensor do not set `eventBusName`. Which EventBus do they use?"
+    options:
+      - id: a
+        text: "The EventBus called `default` in the same namespace"
+      - id: b
+        text: "The first EventBus created in the cluster"
+        why: "The name decides, not the creation order, and the EventBus must be in the same namespace."
+      - id: c
+        text: "A built-in in-memory bus inside the Sensor"
+        why: "There is no in-memory bus. Without an EventBus, events cannot reach the Sensor."
+      - id: d
+        text: "The EventBus in the `argo-events` namespace"
+        why: "EventSources and Sensors use an EventBus in their own namespace."
+    answer: [a]
+    explanation: |
+      By default, EventSources and Sensors connect to the EventBus named `default` in their
+      namespace. If you use another name, or several EventBuses, set `eventBusName` in both specs.
+    docs:
+      - https://argoproj.github.io/argo-events/eventbus/eventbus/
+    glossary: [argo-eventbus, argo-event-source, argo-sensor]
+
+  - id: capa-ev-006
+    difficulty: 2
+    type: single
+    question: "What are the two main parts of a `Sensor` spec?"
+    options:
+      - id: a
+        text: "`dependencies` and `triggers`"
+      - id: b
+        text: "`source` and `destination`"
+        why: "Those are fields of an Argo CD Application."
+      - id: c
+        text: "`steps` and `analysis`"
+        why: "Those belong to an Argo Rollouts canary strategy."
+      - id: d
+        text: "`entrypoint` and `templates`"
+        why: "Those belong to an Argo Workflows spec."
+    answer: [a]
+    explanation: |
+      A Sensor lists event `dependencies` (each one names an EventSource and an event) and
+      `triggers`. When the dependencies are resolved, the Sensor runs the triggers.
+    docs:
+      - https://argoproj.github.io/argo-events/concepts/sensor/
+    glossary: [argo-sensor]
+
+  - id: capa-ev-007
+    difficulty: 2
+    type: multiple
+    question: "Which of these can a Sensor trigger do? (Choose three.)"
+    options:
+      - id: a
+        text: "Submit an Argo Workflow"
+      - id: b
+        text: "Create or patch a Kubernetes object"
+      - id: c
+        text: "Send an HTTP request"
+      - id: d
+        text: "Change the replicas of the EventBus"
+        why: "Triggers act on targets for your automation, not on the Argo Events infrastructure."
+      - id: e
+        text: "Edit the Sensor's own dependencies"
+        why: "A trigger cannot rewrite its own Sensor. Dependencies are set in the spec."
+    answer: [a, b, c]
+    explanation: |
+      Trigger types include Argo Workflow, Kubernetes object (create, update, patch, delete), HTTP,
+      AWS Lambda, Kafka, NATS, Slack, Azure Event Hubs, Pulsar, log, and custom triggers.
+    docs:
+      - https://argoproj.github.io/argo-events/concepts/trigger/
+      - https://argoproj.github.io/argo-events/sensors/triggers/argo-workflow/
+    glossary: [argo-sensor]
+
+  - id: capa-ev-008
+    difficulty: 3
+    type: single
+    question: "A Sensor has dependencies `dep-a` and `dep-b`. A trigger should run only when BOTH events arrived. How do you say that?"
+    options:
+      - id: a
+        text: "Set `conditions: \"dep-a && dep-b\"` on the trigger"
+      - id: b
+        text: "Create two Sensors, one for each event"
+        why: "Two Sensors would each trigger alone. They cannot wait for each other."
+      - id: c
+        text: "Set `parallelism: 2` on the Sensor"
+        why: "Sensors have no `parallelism` field for this. Conditions decide which dependencies are needed."
+      - id: d
+        text: "Put both events in one EventSource"
+        why: "The EventSource only produces events. The logic of waiting for events is in the Sensor."
+    answer: [a]
+    explanation: |
+      Trigger `conditions` is a boolean expression of dependency names with `&&` and `||`. Without
+      conditions, a trigger needs all dependencies. With conditions, different triggers can wait for
+      different combinations.
+    docs:
+      - https://argoproj.github.io/argo-events/sensors/trigger-conditions/
+    glossary: [argo-sensor]
+
+  - id: capa-ev-009
+    difficulty: 3
+    type: single
+    question: "A webhook sends many events, but the Sensor should only react when `body.action` is `published`. What do you use?"
+    options:
+      - id: a
+        text: "A data filter on the dependency"
+      - id: b
+        text: "A `when` condition in the workflow"
+        why: "This would start the workflow for every event and only skip steps. Filters stop the event earlier."
+      - id: c
+        text: "A NetworkPolicy on the EventSource Pod"
+        why: "NetworkPolicies filter connections, not fields inside the event payload."
+      - id: d
+        text: "A sync wave on the trigger"
+        why: "Sync waves are an Argo CD feature for ordering resources."
+    answer: [a]
+    explanation: |
+      Dependencies can have filters: `data` (match fields of the payload), `exprs` (expressions),
+      `context` (CloudEvent attributes), `time` and `script`. Only events that pass the filters
+      resolve the dependency.
+    docs:
+      - https://argoproj.github.io/argo-events/sensors/filters/intro/
+      - https://argoproj.github.io/argo-events/sensors/filters/data/
+    glossary: [argo-sensor]
+
+  - id: capa-ev-010
+    difficulty: 3
+    type: single
+    question: "A trigger submits a Workflow. How can you put a value from the event payload into the Workflow?"
+    options:
+      - id: a
+        text: "With trigger `parameters`: `src` (dependency and `dataKey`) and `dest` (a path in the resource)"
+      - id: b
+        text: "With `{{event.body}}` written directly in the Workflow manifest"
+        why: "Argo Events does not template the manifest like this. Values are copied with trigger parameters."
+      - id: c
+        text: "The Workflow reads the EventBus by itself"
+        why: "Workflows do not connect to the EventBus. The Sensor passes data to them."
+      - id: d
+        text: "With an environment variable `EVENT_PAYLOAD` in every Pod"
+        why: "There is no such automatic variable."
+    answer: [a]
+    explanation: |
+      Parameterization copies data from events into the trigger resource. `src.dependencyName` and
+      `src.dataKey` (or `dataTemplate`) choose the value; `dest` is the path to replace, such as
+      `spec.arguments.parameters.0.value`.
+    docs:
+      - https://argoproj.github.io/argo-events/tutorials/02-parameterization/
+    glossary: [argo-sensor]
+
+  - id: capa-ev-011
+    difficulty: 2
+    type: single
+    question: "You want to run an action every 10 minutes with Argo Events. Which EventSource type fits?"
+    options:
+      - id: a
+        text: "Calendar"
+      - id: b
+        text: "Webhook"
+        why: "A webhook waits for HTTP calls from outside. It does not create events by time."
+      - id: c
+        text: "Resource"
+        why: "The resource EventSource watches Kubernetes objects for changes, not time."
+      - id: d
+        text: "File"
+        why: "The file EventSource watches files for changes."
+    answer: [a]
+    explanation: |
+      The calendar EventSource produces events on a schedule, with `interval` (like `10m`) or a cron
+      `schedule`, and can exclude dates. A Sensor then triggers the action.
+    docs:
+      - https://argoproj.github.io/argo-events/eventsources/setup/calendar/
+    glossary: [argo-event-source]
+
+  - id: capa-ev-012
+    difficulty: 2
+    type: single
+    question: "A Sensor trigger creates Workflows, but nothing is created and the logs show `forbidden`. What should you check first?"
+    options:
+      - id: a
+        text: "The RBAC rights of the Sensor service account"
+      - id: b
+        text: "The number of EventBus replicas"
+        why: "If the EventBus were down, the Sensor would not get events at all, not a `forbidden` error."
+      - id: c
+        text: "The sync policy of the Argo CD Application"
+        why: "Argo CD is not involved when a Sensor creates a Workflow."
+      - id: d
+        text: "The canary steps of the Rollout"
+        why: "Rollouts have nothing to do with Sensor triggers."
+    answer: [a]
+    explanation: |
+      A Sensor runs triggers with its service account (`spec.template.serviceAccountName`). It needs
+      RBAC rights for the objects it creates, for example `create` on `workflows` in the
+      `argoproj.io` API group.
+    docs:
+      - https://argoproj.github.io/argo-events/service-accounts/
+      - https://argoproj.github.io/argo-events/sensors/triggers/argo-workflow/
+    glossary: [argo-sensor, service-account, rbac]

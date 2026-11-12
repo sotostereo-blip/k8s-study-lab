@@ -1,0 +1,34 @@
+#!/bin/bash
+# Runs once in the background when the lab starts: makes git.lab resolvable inside the cluster,
+# installs Argo CD, Argo Rollouts and Argo Workflows, then logs the argocd CLI in as admin.
+# Log: /var/log/lab-bootstrap.log. lab-ready waits for /run/lab-bootstrap.done.
+exec >>/var/log/lab-bootstrap.log 2>&1
+set -x
+until kubectl get --raw /readyz >/dev/null 2>&1; do sleep 2; done
+
+# Pods use CoreDNS, which cannot see Docker's DNS: add a hosts entry for the Git server.
+until ip=$(getent hosts git.lab | awk '{print $1; exit}') && [ -n "$ip" ]; do sleep 1; done
+until kubectl apply -f - <<YAML
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: coredns-custom, namespace: kube-system }
+data:
+  gitlab.server: |
+    git.lab:53 {
+      hosts {
+        $ip git.lab
+      }
+    }
+YAML
+do sleep 2; done
+kubectl -n kube-system rollout restart deploy coredns || true
+
+for ns in argocd argo-rollouts argo; do kubectl create namespace $ns 2>/dev/null; done
+until kubectl apply --server-side --force-conflicts -k /opt/argocd >/dev/null; do sleep 3; done
+until kubectl apply --server-side --force-conflicts -k /opt/rollouts >/dev/null; do sleep 3; done
+until kubectl apply --server-side --force-conflicts -k /opt/workflows >/dev/null; do sleep 3; done
+
+set +x
+until pw=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d) \
+  && [ -n "$pw" ] && argocd login server:30080 --plaintext --username admin --password "$pw" >/dev/null; do sleep 3; done
+touch /run/lab-bootstrap.done

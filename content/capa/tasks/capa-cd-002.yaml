@@ -1,0 +1,70 @@
+id: capa-cd-002
+title: Fix a Degraded application through Git
+domain: argo-cd
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/app
+  cat > $d/app/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: fix-web }
+  spec:
+    replicas: 2
+    progressDeadlineSeconds: 15
+    selector: { matchLabels: { app: fix-web } }
+    template:
+      metadata: { labels: { app: fix-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpinee" }]
+  YAML
+  lab-repo cd-fix $d >/dev/null
+  argocd app create cd-fix --repo http://git.lab/cd-fix.git --path app \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-fix --sync-option CreateNamespace=true >/dev/null
+  argocd app sync cd-fix --async >/dev/null
+task: |
+  The Argo CD Application `cd-fix` is `Degraded`: its Pods do not start.
+  Its manifests are in `http://git.lab/cd-fix.git` (path `app`, branch `main`).
+
+  1. Find the cause (look at the Application resources and the Pod events).
+  2. Fix it **in Git**: clone the repository, change the manifest, commit and push.
+     The Deployment must run the image `nginx:1.27-alpine`.
+  3. Sync the Application so that it is `Synced` and `Healthy`.
+
+  Do not change the live objects with kubectl: Argo CD would show them as `OutOfSync`.
+checks:
+  - name: Application `cd-fix` is Synced and Healthy
+    run: |
+      [ "$(kubectl -n argocd get app cd-fix -o jsonpath='{.status.sync.status}/{.status.health.status}')" = Synced/Healthy ]
+  - name: Deployment `fix-web` runs `nginx:1.27-alpine` with 2 ready replicas
+    run: |
+      [ "$(kubectl -n cd-fix get deploy fix-web -o jsonpath='{.spec.template.spec.containers[0].image}/{.status.readyReplicas}')" = "nginx:1.27-alpine/2" ]
+  - name: The fix is in Git (main has the right image)
+    run: |
+      rm -rf /tmp/.chk-cd-fix && git clone -q http://git.lab/cd-fix.git /tmp/.chk-cd-fix
+      out=$(cat /tmp/.chk-cd-fix/app/*.yaml); rm -rf /tmp/.chk-cd-fix
+      echo "$out" | grep -q 'nginx:1.27-alpine' && ! echo "$out" | grep -q 'alpinee'
+  - name: Application `cd-fix` still uses path `app` of `cd-fix.git`
+    guard: true
+    run: |
+      [ "$(kubectl -n argocd get app cd-fix -o jsonpath='{.spec.source.repoURL}|{.spec.source.path}')" = "http://git.lab/cd-fix.git|app" ]
+solution: |
+  argocd app get cd-fix                      # Health Status: Degraded
+  kubectl -n cd-fix get pods                 # ErrImagePull / ImagePullBackOff
+  kubectl -n cd-fix describe pod -l app=fix-web | grep -i image   # the tag "1.27-alpinee" has a typo
+  git clone http://git.lab/cd-fix.git && cd cd-fix
+  sed -i 's/nginx:1.27-alpinee/nginx:1.27-alpine/' app/deployment.yaml
+  git commit -am "Fix the image tag" && git push
+  argocd app sync cd-fix
+  argocd app wait cd-fix --health
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-kubectl/
+auto_solution: |
+  set -e
+  cd $(mktemp -d) && git clone -q http://git.lab/cd-fix.git && cd cd-fix
+  sed -i 's/nginx:1.27-alpinee/nginx:1.27-alpine/' app/deployment.yaml
+  git commit -qam "Fix the image tag" && git push -q
+  argocd app sync cd-fix --timeout 120

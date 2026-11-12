@@ -1,0 +1,58 @@
+id: capa-cd-001
+title: Create an Argo CD Application from a Git repository
+domain: argo-cd
+difficulty: 1
+minutes: 6
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/manifests
+  cat > $d/manifests/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: first-web }
+  spec:
+    replicas: 2
+    selector: { matchLabels: { app: first-web } }
+    template:
+      metadata: { labels: { app: first-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  cat > $d/manifests/service.yaml <<'YAML'
+  apiVersion: v1
+  kind: Service
+  metadata: { name: first-web }
+  spec:
+    selector: { app: first-web }
+    ports: [{ port: 80 }]
+  YAML
+  lab-repo cd-first $d >/dev/null
+task: |
+  The Git repository `http://git.lab/cd-first.git` has Kubernetes manifests in the folder `manifests`
+  (branch `main`).
+
+  1. Create an Argo CD Application called `cd-first` in the project `default`.
+  2. Source: that repository, path `manifests`. Destination: the cluster where Argo CD runs
+     (`https://kubernetes.default.svc`), namespace `cd-first`. The namespace does not exist yet.
+  3. Sync the Application so that it is `Synced` and `Healthy`.
+checks:
+  - name: Application `cd-first` uses repo `cd-first.git`, path `manifests`, namespace `cd-first`
+    run: |
+      [ "$(kubectl -n argocd get app cd-first -o jsonpath='{.spec.source.repoURL}|{.spec.source.path}|{.spec.destination.namespace}')" = "http://git.lab/cd-first.git|manifests|cd-first" ]
+  - name: Application `cd-first` is Synced and Healthy
+    run: |
+      [ "$(kubectl -n argocd get app cd-first -o jsonpath='{.status.sync.status}/{.status.health.status}')" = Synced/Healthy ]
+  - name: Deployment `first-web` in namespace `cd-first` has 2 ready replicas
+    run: '[ "$(kubectl -n cd-first get deploy first-web -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+solution: |
+  argocd app create cd-first \
+    --repo http://git.lab/cd-first.git --path manifests --revision main \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-first \
+    --sync-option CreateNamespace=true
+  argocd app sync cd-first
+  argocd app get cd-first        # Sync Status: Synced, Health Status: Healthy
+  # (or kubectl create namespace cd-first and skip the CreateNamespace option)
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/getting_started/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/

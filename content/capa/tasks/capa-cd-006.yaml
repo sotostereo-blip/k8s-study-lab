@@ -1,0 +1,61 @@
+id: capa-cd-006
+title: Deploy a Kustomize overlay and override the image
+domain: argo-cd
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/base $d/overlays/prod
+  cat > $d/base/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: web }
+  spec:
+    replicas: 1
+    selector: { matchLabels: { app: kust-web } }
+    template:
+      metadata: { labels: { app: kust-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  printf 'resources:\n- deployment.yaml\n' > $d/base/kustomization.yaml
+  cat > $d/overlays/prod/kustomization.yaml <<'YAML'
+  resources:
+  - ../../base
+  namePrefix: prod-
+  replicas:
+  - name: web
+    count: 2
+  YAML
+  lab-repo cd-kust $d >/dev/null
+task: |
+  The repository `http://git.lab/cd-kust.git` has a Kustomize `base` and an overlay
+  `overlays/prod` (it adds the name prefix `prod-` and sets 2 replicas).
+
+  1. Create an Application `cd-kust` that deploys the overlay `overlays/prod` to this cluster,
+     namespace `cd-kust`.
+  2. **Without changing Git**, use the Kustomize options of the Application to change the image
+     `nginx` to `nginx:1.28-alpine`.
+  3. Sync it: the Deployment `prod-web` must run `nginx:1.28-alpine` with 2 ready replicas.
+checks:
+  - name: Application `cd-kust` uses path `overlays/prod` and a Kustomize image override
+    run: |
+      out=$(kubectl -n argocd get app cd-kust -o jsonpath='{.spec.source.path} {.spec.source.kustomize.images}')
+      echo "$out" | grep -q '^overlays/prod/\? ' && echo "$out" | grep -q 'nginx:1.28-alpine'
+  - name: Application `cd-kust` is a Kustomize application, Synced and Healthy
+    run: |
+      [ "$(kubectl -n argocd get app cd-kust -o jsonpath='{.status.sourceType}/{.status.sync.status}/{.status.health.status}')" = Kustomize/Synced/Healthy ]
+  - name: Deployment `prod-web` runs `nginx:1.28-alpine` with 2 ready replicas
+    run: |
+      [ "$(kubectl -n cd-kust get deploy prod-web -o jsonpath='{.spec.template.spec.containers[0].image}/{.status.readyReplicas}')" = "nginx:1.28-alpine/2" ]
+solution: |
+  argocd app create cd-kust \
+    --repo http://git.lab/cd-kust.git --path overlays/prod \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-kust \
+    --sync-option CreateNamespace=true \
+    --kustomize-image nginx=nginx:1.28-alpine
+  argocd app sync cd-kust
+  # In YAML: spec.source.kustomize.images: ["nginx=nginx:1.28-alpine"]
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/

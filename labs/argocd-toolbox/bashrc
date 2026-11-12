@@ -1,0 +1,17 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+source <(kubectl completion bash)
+source <(helm completion bash)
+source <(argocd completion bash 2>/dev/null)
+source <(argo completion bash 2>/dev/null)
+alias k=kubectl
+complete -o default -F __start_kubectl k
+export do="--dry-run=client -o yaml"
+export EDITOR=vim
+PS1='\[\e[34m\]lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Argo lab ready. Argo CD, Argo Rollouts and Argo Workflows run in the cluster.
+  argocd app list               (the argocd CLI is logged in as admin)
+  kubectl argo rollouts list rollouts -A      argo list -A
+  Git server: http://git.lab/<name>.git (no login). Create a repo: lab-repo <name>
+Shortcuts: k=kubectl, $do = --dry-run=client -o yaml
+MSG

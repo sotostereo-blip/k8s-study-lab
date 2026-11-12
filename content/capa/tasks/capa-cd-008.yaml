@@ -1,0 +1,60 @@
+id: capa-cd-008
+title: Restrict an application with an AppProject
+domain: argo-cd
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/app
+  cat > $d/app/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: proj-web }
+  spec:
+    replicas: 1
+    selector: { matchLabels: { app: proj-web } }
+    template:
+      metadata: { labels: { app: proj-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  lab-repo cd-proj $d >/dev/null
+  kubectl create namespace team-a-web >/dev/null
+  argocd app create proj-web --repo http://git.lab/cd-proj.git --path app \
+    --dest-server https://kubernetes.default.svc --dest-namespace team-a-web >/dev/null
+  argocd app sync proj-web --timeout 150 >/dev/null
+task: |
+  The Application `proj-web` is in the project `default`, which allows everything.
+  Team A must only deploy from our Git server into their own namespaces.
+
+  1. Create an AppProject called `team-a` (in the namespace `argocd`) that allows:
+     - source repositories: only `http://git.lab/*`
+     - destinations: only namespaces that match `team-a-*` on this cluster
+       (`https://kubernetes.default.svc`)
+     - no cluster-scoped resources (this is the default when you do not list any)
+  2. Move the Application `proj-web` to the project `team-a`. It must stay `Synced` and `Healthy`.
+checks:
+  - name: AppProject `team-a` allows only the source repos `http://git.lab/*`
+    run: |
+      [ "$(kubectl -n argocd get appproject team-a -o jsonpath='{.spec.sourceRepos}')" = '["http://git.lab/*"]' ]
+  - name: AppProject `team-a` allows only namespaces `team-a-*` on this cluster
+    run: |
+      out=$(kubectl -n argocd get appproject team-a -o json | jq -c '[.spec.destinations[] | {namespace, s: (.server // .name)}]')
+      [ "$out" = '[{"namespace":"team-a-*","s":"https://kubernetes.default.svc"}]' ] || [ "$out" = '[{"namespace":"team-a-*","s":"in-cluster"}]' ]
+  - name: AppProject `team-a` allows no cluster-scoped resources
+    run: |
+      [ "$(kubectl -n argocd get appproject team-a -o json | jq '.spec.clusterResourceWhitelist // [] | length')" = 0 ]
+  - name: Application `proj-web` is in project `team-a`, Synced and Healthy
+    run: |
+      [ "$(kubectl -n argocd get app proj-web -o jsonpath='{.spec.project}/{.status.sync.status}/{.status.health.status}')" = team-a/Synced/Healthy ]
+solution: |
+  argocd proj create team-a \
+    --src 'http://git.lab/*' \
+    --dest 'https://kubernetes.default.svc,team-a-*'
+  argocd proj get team-a
+  argocd app set proj-web --project team-a
+  argocd app get proj-web           # Synced / Healthy
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/projects/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#projects

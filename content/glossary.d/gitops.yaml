@@ -1,0 +1,175 @@
+# GitOps and Argo project glossary (CAPA: Argo CD, Argo Workflows, Argo Rollouts, Argo Events).
+# Shown when you click a highlighted term. Generic terms (gitops, helm, kustomize, canary...) are in glossary.yaml.
+terms:
+- id: argo-cd
+  term: Argo CD
+  match: [Argo CD]
+  definition: A declarative GitOps continuous delivery tool for Kubernetes. It keeps the cluster in sync with manifests stored in Git.
+  es: Herramienta de entrega continua GitOps para Kubernetes; mantiene el clúster igual que los manifiestos en Git.
+- id: argo-application
+  term: Argo CD Application
+  match: [Argo CD Application, Argo CD Applications]
+  definition: "The Argo CD custom resource that connects a source (Git repo, path, revision) to a destination (cluster and namespace)."
+  es: Recurso de Argo CD que une un origen (repo Git, ruta, revisión) con un destino (clúster y namespace).
+- id: argo-appproject
+  term: AppProject
+  match: [AppProject, AppProjects]
+  definition: An Argo CD project. It groups Applications and limits their source repos, destinations and resource kinds.
+  es: Proyecto de Argo CD; agrupa Applications y limita repos, destinos y tipos de recursos.
+- id: argo-applicationset
+  term: ApplicationSet
+  match: [ApplicationSet, ApplicationSets]
+  definition: An Argo CD resource that creates many Applications from one template, using generators.
+  es: Recurso de Argo CD que crea muchas Applications a partir de una plantilla y generadores.
+- id: argo-appset-generator
+  term: Generator (ApplicationSet)
+  match: [generator, generators]
+  definition: The part of an ApplicationSet that produces parameters (list, cluster, Git, matrix...). Each set of parameters becomes one Application.
+  es: Parte de un ApplicationSet que produce parámetros; cada conjunto genera una Application.
+- id: argo-sync
+  term: Sync (Argo CD)
+  match: [sync, syncs, syncing]
+  certs: [capa]
+  definition: The Argo CD operation that applies the desired state from Git to the cluster.
+  es: Operación de Argo CD que aplica en el clúster el estado deseado de Git.
+- id: argo-sync-status
+  term: Sync status
+  match: [sync status, OutOfSync, Synced]
+  definition: "Says if the live state matches Git: Synced (equal) or OutOfSync (different)."
+  es: "Indica si el estado real coincide con Git: Synced u OutOfSync."
+- id: argo-health-status
+  term: Health status
+  match: [health status, Degraded]
+  definition: "Says if the resources of an Application work: Healthy, Progressing, Degraded, Suspended, Missing or Unknown."
+  es: "Indica si los recursos funcionan: Healthy, Progressing, Degraded, Suspended, Missing o Unknown."
+- id: argo-auto-sync
+  term: Automated sync
+  match: [automated sync, auto-sync]
+  definition: An Argo CD sync policy that syncs the Application by itself when Git changes.
+  es: Política que sincroniza la Application automáticamente cuando cambia Git.
+- id: argo-prune
+  term: Prune
+  match: [prune, pruned, pruning]
+  definition: Deleting live resources that are no longer in Git. Argo CD does it only when pruning is enabled.
+  es: Borrar recursos vivos que ya no están en Git.
+- id: argo-self-heal
+  term: Self-heal
+  match: [self-heal, selfHeal]
+  definition: An automated sync option. Argo CD undoes manual changes in the cluster so it matches Git again.
+  es: Opción que deshace cambios manuales en el clúster para volver a igualar Git.
+- id: argo-sync-option
+  term: Sync option
+  match: [sync option, sync options]
+  definition: A setting that changes how Argo CD syncs, such as CreateNamespace=true or ServerSideApply=true.
+  es: Ajuste que cambia cómo sincroniza Argo CD, p. ej. CreateNamespace=true.
+- id: argo-sync-wave
+  term: Sync wave
+  match: [sync wave, sync waves]
+  definition: A number in an annotation that orders resources in a sync. Lower waves are applied first; the default is 0.
+  es: Número en una anotación que ordena los recursos en una sincronización; las olas bajas van primero.
+- id: argo-resource-hook
+  term: Resource hook
+  match: [resource hook, resource hooks, PreSync, PostSync, SyncFail]
+  definition: A resource (often a Job) that Argo CD runs at a phase of the sync, such as PreSync or PostSync.
+  es: Recurso (a menudo un Job) que Argo CD ejecuta en una fase de la sincronización.
+- id: argo-repo-server
+  term: Repo server
+  match: [repo server, repository server, argocd-repo-server]
+  definition: The Argo CD component that clones Git repositories and renders manifests with Helm, Kustomize or plain YAML.
+  es: Componente de Argo CD que clona repos Git y genera los manifiestos.
+- id: argo-app-controller
+  term: Application controller
+  match: [application controller, argocd-application-controller]
+  definition: The Argo CD component that compares live and desired state and runs syncs.
+  es: Componente de Argo CD que compara estado real y deseado y ejecuta sincronizaciones.
+- id: argo-app-of-apps
+  term: App of apps
+  match: [app of apps]
+  definition: A pattern where one Argo CD Application deploys other Application manifests, often to bootstrap a cluster.
+  es: Patrón donde una Application despliega otras Applications.
+- id: argo-workflows
+  term: Argo Workflows
+  match: [Argo Workflows]
+  definition: A container-native workflow engine for Kubernetes. Each step of a workflow runs in its own Pod.
+  es: Motor de flujos de trabajo para Kubernetes; cada paso se ejecuta en su propio Pod.
+- id: argo-workflow-template
+  term: WorkflowTemplate
+  match: [WorkflowTemplate, WorkflowTemplates, ClusterWorkflowTemplate, ClusterWorkflowTemplates]
+  definition: A reusable workflow definition stored in the cluster (namespaced, or cluster-scoped for ClusterWorkflowTemplate).
+  es: Definición reutilizable de workflow guardada en el clúster.
+- id: argo-cron-workflow
+  term: CronWorkflow
+  match: [CronWorkflow, CronWorkflows]
+  definition: An Argo Workflows resource that runs a workflow on a cron schedule.
+  es: Recurso que ejecuta un workflow según una programación cron.
+- id: argo-dag
+  term: DAG
+  match: [DAG, DAGs, directed acyclic graph]
+  definition: Directed acyclic graph. A template type where tasks run when the tasks they depend on are done.
+  es: Grafo acíclico dirigido; las tareas se ejecutan cuando terminan sus dependencias.
+- id: argo-artifact-repository
+  term: Artifact repository
+  match: [artifact repository, artifact repositories]
+  definition: Storage (S3, GCS, MinIO...) where Argo Workflows saves output artifacts and reads input artifacts.
+  es: Almacenamiento donde Argo Workflows guarda y lee artefactos.
+- id: argo-exit-handler
+  term: Exit handler
+  match: [exit handler, exit handlers, onExit]
+  definition: A template set in `spec.onExit` that always runs at the end of a workflow, after success or failure.
+  es: Plantilla que siempre se ejecuta al final de un workflow.
+- id: argo-workflow-controller
+  term: Workflow controller
+  match: [workflow controller]
+  definition: The Argo Workflows component that reconciles Workflow resources and creates the Pods for each step.
+  es: Componente que procesa los Workflows y crea los Pods de cada paso.
+- id: argo-executor
+  term: Workflow executor
+  match: [executor, emissary, argoexec]
+  definition: The `argoexec` process in workflow Pods (init and wait containers) that handles inputs, outputs and results.
+  es: Proceso argoexec en los Pods del workflow que gestiona entradas, salidas y resultados.
+- id: argo-rollouts
+  term: Argo Rollouts
+  match: [Argo Rollouts]
+  definition: A Kubernetes controller and CRDs for progressive delivery, with blue-green and canary strategies and automated analysis.
+  es: Controlador y CRDs para entrega progresiva (blue-green, canary, análisis automático).
+- id: argo-progressive-delivery
+  term: Progressive delivery
+  match: [progressive delivery]
+  definition: Releasing a new version step by step to more users, checking metrics before each step.
+  es: Liberar una versión nueva poco a poco, comprobando métricas en cada paso.
+- id: argo-traffic-routing
+  term: Traffic routing
+  match: [traffic routing, traffic router, traffic routers]
+  definition: Integration with a service mesh or ingress so Argo Rollouts can send an exact share of requests to a version.
+  es: Integración con un mesh o ingress para enviar un porcentaje exacto de tráfico a una versión.
+- id: argo-analysis-template
+  term: AnalysisTemplate
+  match: [AnalysisTemplate, AnalysisTemplates, ClusterAnalysisTemplate]
+  definition: An Argo Rollouts resource that defines metrics and success conditions used to judge a release.
+  es: Recurso que define métricas y condiciones para evaluar una versión.
+- id: argo-analysis-run
+  term: AnalysisRun
+  match: [AnalysisRun, AnalysisRuns]
+  definition: One execution of an AnalysisTemplate during a rollout. Its result can promote or abort the release.
+  es: Una ejecución de un AnalysisTemplate durante un rollout.
+- id: argo-events
+  term: Argo Events
+  match: [Argo Events]
+  definition: An event-driven automation framework for Kubernetes. It runs triggers (like workflows) when events arrive.
+  es: Framework de automatización por eventos para Kubernetes.
+- id: argo-event-source
+  term: EventSource
+  match: [EventSource, EventSources, event source, event sources]
+  definition: An Argo Events resource that receives events from an external system and publishes them on the EventBus.
+  es: Recurso que recibe eventos externos y los publica en el EventBus.
+- id: argo-eventbus
+  term: EventBus
+  match: [EventBus, EventBuses]
+  definition: The transport layer of Argo Events (NATS or Kafka) between EventSources and Sensors.
+  es: Capa de transporte (NATS o Kafka) entre EventSources y Sensors.
+- id: argo-sensor
+  term: Sensor
+  match: [Sensor, Sensors]
+  certs: [capa]
+  definition: An Argo Events resource that waits for event dependencies and runs triggers.
+  es: Recurso que espera dependencias de eventos y ejecuta triggers.

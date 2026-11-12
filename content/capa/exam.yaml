@@ -1,0 +1,20 @@
+# Certified Argo Project Associate (CAPA) - Linux Foundation / CNCF, online proctored, multiple choice.
+# Domains and weights: https://training.linuxfoundation.org/certification/certified-argo-project-associate-capa/
+# and the curriculum PDF https://github.com/cncf/curriculum (CAPA_Curriculum.pdf).
+id: capa
+name: Certified Argo Project Associate (CAPA)
+format: multiple-choice
+exam_minutes: 90
+exam_questions: 60
+passing_score: 75
+facts_note: >-
+  Official (Linux Foundation page and CNCF curriculum PDF): online, proctored, multiple choice,
+  90 minutes, one free retake; domains Argo Workflows 36%, Argo CD 34%, Argo Rollouts 18%,
+  Argo Events 12%. Not on the official page: the number of questions and the passing score;
+  60 questions and 75% are the values commonly reported by candidates. Questions here are
+  checked against Argo CD 3.5, Argo Workflows 4.1, Argo Rollouts 1.10 and Argo Events docs.
+domains:
+  - { id: argo-workflows, name: "Argo Workflows", weight: 36 }
+  - { id: argo-cd, name: "Argo CD", weight: 34 }
+  - { id: argo-rollouts, name: "Argo Rollouts", weight: 18 }
+  - { id: argo-events, name: "Argo Events", weight: 12 }

@@ -1,0 +1,30 @@
+# Argo CD for a small lab: no Dex (no SSO) and no notifications controller, plain HTTP UI/API
+# on NodePort 30080, and a short reconciliation interval so Git changes show up fast.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources: [install.yaml]
+patches:
+  - target: { kind: Deployment, name: "argocd-(dex-server|notifications-controller)" }
+    patch: |-
+      - op: add
+        path: /spec/replicas
+        value: 0
+  - target: { kind: Service, name: argocd-server }
+    patch: |-
+      - { op: add, path: /spec/type, value: NodePort }
+      - { op: add, path: /spec/ports/0/nodePort, value: 30080 }
+      - { op: add, path: /spec/ports/1/nodePort, value: 30443 }
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata: { name: argocd-cmd-params-cm }
+      data:
+        server.insecure: "true"
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata: { name: argocd-cm }
+      data:
+        timeout.reconciliation: 20s
+        timeout.reconciliation.jitter: 0s

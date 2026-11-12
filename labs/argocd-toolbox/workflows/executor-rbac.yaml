@@ -1,0 +1,15 @@
+# Lets the Pods of any workflow (any namespace, any service account) report their results.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: lab-argo-executor }
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [workflowtaskresults]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: lab-argo-executor }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lab-argo-executor }
+subjects:
+  - { apiGroup: rbac.authorization.k8s.io, kind: Group, name: "system:serviceaccounts" }

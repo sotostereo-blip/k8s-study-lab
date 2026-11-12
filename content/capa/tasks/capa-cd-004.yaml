@@ -1,0 +1,59 @@
+id: capa-cd-004
+title: Roll back an application to a previous revision
+domain: argo-cd
+difficulty: 2
+minutes: 6
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/app
+  cat > $d/app/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: hist-web }
+  spec:
+    replicas: 2
+    selector: { matchLabels: { app: hist-web } }
+    template:
+      metadata: { labels: { app: hist-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  lab-repo cd-hist $d "Version 1" >/dev/null
+  argocd app create cd-hist --repo http://git.lab/cd-hist.git --path app \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-hist --sync-option CreateNamespace=true >/dev/null
+  argocd app sync cd-hist --timeout 150 >/dev/null
+  sed -i 's/nginx:1.27-alpine/nginx:1.28-alpine/' $d/app/deployment.yaml
+  lab-repo cd-hist $d "Version 2" >/dev/null
+  argocd app sync cd-hist --timeout 150 >/dev/null
+  mkdir -p /var/lib/lab-state
+  git ls-remote http://git.lab/cd-hist.git refs/heads/main | cut -f1 > /var/lib/lab-state/cd-hist.sha
+task: |
+  The Application `cd-hist` was synced twice: first with `nginx:1.27-alpine`, then with
+  `nginx:1.28-alpine`. The team found a problem in the new version.
+
+  Roll back `cd-hist` to the **previous deployed revision** with Argo CD (look at the
+  application history). Do **not** change the Git repository; the fix in Git will come later.
+  The Deployment `hist-web` must run `nginx:1.27-alpine` again with 2 ready replicas.
+checks:
+  - name: Deployment `hist-web` runs `nginx:1.27-alpine` with 2 ready replicas
+    run: |
+      [ "$(kubectl -n cd-hist get deploy hist-web -o jsonpath='{.spec.template.spec.containers[0].image}/{.status.readyReplicas}/{.status.updatedReplicas}')" = "nginx:1.27-alpine/2/2" ]
+  - name: Application `cd-hist` is Healthy
+    run: |
+      [ "$(kubectl -n argocd get app cd-hist -o jsonpath='{.status.health.status}')" = Healthy ] &&
+      [ "$(kubectl -n cd-hist get deploy hist-web -o jsonpath='{.spec.template.spec.containers[0].image}')" = nginx:1.27-alpine ]
+  - name: The Git repository `cd-hist` was not changed
+    guard: true
+    run: '[ "$(git ls-remote http://git.lab/cd-hist.git refs/heads/main | cut -f1)" = "$(cat /var/lib/lab-state/cd-hist.sha)" ]'
+solution: |
+  argocd app history cd-hist        # ID 0 = version 1, ID 1 = version 2
+  argocd app rollback cd-hist 0     # the history ID of the first deployment
+  argocd app get cd-hist            # OutOfSync (the cluster no longer matches Git) but Healthy
+  # Rollback only works when automated sync is off; otherwise Argo CD would sync Git again.
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_rollback/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_history/
+auto_solution: |
+  id=$(kubectl -n argocd get app cd-hist -o json | jq -r '.status.history | sort_by(.id) | .[0].id')
+  argocd app rollback cd-hist "$id" --timeout 150

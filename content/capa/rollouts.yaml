@@ -1,0 +1,453 @@
+domain: argo-rollouts
+questions:
+  - id: capa-ro-001
+    difficulty: 1
+    type: single
+    question: "What does Argo Rollouts add to Kubernetes?"
+    options:
+      - id: a
+        text: "A controller and CRDs for progressive delivery, such as canary and blue-green"
+      - id: b
+        text: "A new scheduler that places Pods on the fastest nodes"
+        why: "Argo Rollouts does not schedule Pods. The normal kube-scheduler still does that."
+      - id: c
+        text: "A GitOps agent that syncs manifests from Git"
+        why: "That is Argo CD. Argo Rollouts works well with Argo CD, but it does not read Git."
+      - id: d
+        text: "A service mesh that encrypts traffic between Pods"
+        why: "Argo Rollouts is not a mesh. It can use meshes such as Istio to split traffic."
+    answer: [a]
+    explanation: |
+      Argo Rollouts is a Kubernetes controller with CRDs (`Rollout`, `AnalysisTemplate`,
+      `AnalysisRun`, `Experiment`) that gives advanced deployment strategies: blue-green, canary,
+      traffic shifting and automated analysis for promotion or rollback.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/
+    glossary: [argo-rollouts, argo-progressive-delivery, crd]
+
+  - id: capa-ro-002
+    difficulty: 1
+    type: single
+    question: "Why can a normal Deployment not do a real canary release by itself?"
+    options:
+      - id: a
+        text: "Its rolling update cannot pause at a weight or check metrics"
+      - id: b
+        text: "Deployments cannot run more than one ReplicaSet at a time"
+        why: "During a rolling update a Deployment does have an old and a new ReplicaSet."
+      - id: c
+        text: "Deployments cannot change the image of a running container"
+        why: "Changing the image is the most common Deployment update."
+      - id: d
+        text: "Deployments only work together with StatefulSets"
+        why: "Deployments and StatefulSets are separate workload kinds."
+    answer: [a]
+    explanation: |
+      A RollingUpdate only controls speed (maxSurge, maxUnavailable). It cannot hold the new version
+      at a small share of traffic, query metrics, or roll back on its own. Argo Rollouts adds these
+      controls.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/
+      - https://argoproj.github.io/argo-rollouts/concepts/
+    glossary: [argo-rollouts, rolling-update, canary]
+
+  - id: capa-ro-003
+    difficulty: 2
+    type: single
+    question: "You have a Deployment and want to move it to Argo Rollouts with few changes. What can a Rollout use instead of its own Pod template?"
+    options:
+      - id: a
+        text: "`workloadRef` that points to the existing Deployment"
+      - id: b
+        text: "`deploymentName` in the canary strategy"
+        why: "There is no such field. The reference to a Deployment is `workloadRef`."
+      - id: c
+        text: "An annotation on the Deployment: `rollouts.argoproj.io/enabled`"
+        why: "An annotation does not turn a Deployment into a Rollout."
+      - id: d
+        text: "A Helm hook that renames the Deployment"
+        why: "Renaming does not change the controller that manages the Pods."
+    answer: [a]
+    explanation: |
+      A Rollout can embed a Pod template (like a Deployment) or use `workloadRef` to take the
+      template from an existing Deployment. With `scaleDown` options it can also scale down the old
+      Deployment.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/migrating/
+    glossary: [argo-rollouts, deployment]
+
+  - id: capa-ro-004
+    difficulty: 1
+    type: multiple
+    question: "Which strategies can you set in `spec.strategy` of a Rollout? (Choose two.)"
+    options:
+      - id: a
+        text: "`blueGreen`"
+      - id: b
+        text: "`canary`"
+      - id: c
+        text: "`recreate`"
+        why: "Recreate is a Deployment strategy. Rollouts offer blue-green and canary."
+      - id: d
+        text: "`shadow`"
+        why: "There is no shadow strategy. (Traffic mirroring is a feature of some traffic routers.)"
+    answer: [a, b]
+    explanation: |
+      A Rollout uses `blueGreen` (two full versions, switch the active Service) or `canary` (shift
+      traffic step by step). A canary without steps acts like a rolling update.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/specification/
+    glossary: [blue-green, canary]
+
+  - id: capa-ro-005
+    difficulty: 2
+    type: multiple
+    question: "Which are valid steps in a canary strategy? (Choose three.)"
+    options:
+      - id: a
+        text: "`setWeight`"
+      - id: b
+        text: "`pause`"
+      - id: c
+        text: "`analysis`"
+      - id: d
+        text: "`approve`"
+        why: "There is no approve step. Manual approval is a `pause` without duration, then `promote`."
+      - id: e
+        text: "`rollback`"
+        why: "There is no rollback step. A failed analysis aborts the rollout instead."
+    answer: [a, b, c]
+    explanation: |
+      Canary steps include `setWeight`, `pause` (with or without `duration`), `analysis`,
+      `experiment`, `setCanaryScale`, `setHeaderRoute` and `setMirrorRoute` (with traffic routing),
+      and `plugin`.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/canary/
+    glossary: [canary, argo-rollouts]
+
+  - id: capa-ro-006
+    difficulty: 1
+    type: single
+    question: "A canary step is `pause: {}` (no duration). When does the rollout continue?"
+    options:
+      - id: a
+        text: "When someone promotes it (for example with the CLI)"
+      - id: b
+        text: "After the default pause of 30 seconds"
+        why: "There is no default duration. An empty pause waits forever."
+      - id: c
+        text: "When all canary Pods are Ready"
+        why: "Ready Pods are needed, but they do not end an indefinite pause."
+      - id: d
+        text: "Never; the rollout must be deleted and created again"
+        why: "A promote (or an abort) ends the pause. Deleting is not needed."
+    answer: [a]
+    explanation: |
+      A pause without `duration` waits until it is promoted (CLI, UI, or by removing the pause
+      condition). With a duration like `pause: { duration: 10m }` the rollout continues by itself.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/canary/
+      - https://argoproj.github.io/argo-rollouts/generated/kubectl-argo-rollouts/kubectl-argo-rollouts_promote/
+    glossary: [canary]
+
+  - id: capa-ro-007
+    difficulty: 2
+    type: single
+    question: "A canary Rollout has 10 replicas and NO traffic routing. A step is `setWeight: 20`. What happens?"
+    options:
+      - id: a
+        text: "About 2 Pods run the new version and Services split traffic by Pod count"
+      - id: b
+        text: "Exactly 20% of requests go to the new version"
+        why: "Exact percentages need a traffic router (mesh or ingress). Without one, the split depends on Pod numbers."
+      - id: c
+        text: "The step is ignored, because weights need a service mesh"
+        why: "Weights work without a mesh. Argo Rollouts then scales ReplicaSets to match the weight."
+      - id: d
+        text: "20 new Pods are added next to the 10 old ones"
+        why: "The weight is a percentage of replicas, not a number of Pods."
+    answer: [a]
+    explanation: |
+      Without traffic routing, Argo Rollouts approximates the weight by scaling the canary and
+      stable ReplicaSets. A Service in front sends traffic to all Pods, so 2 of 10 Pods get about
+      20% of the requests.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/canary/
+    glossary: [canary, replicaset]
+
+  - id: capa-ro-008
+    difficulty: 2
+    type: multiple
+    question: "Which can Argo Rollouts use to send an exact share of traffic to a canary? (Choose three.)"
+    options:
+      - id: a
+        text: "Istio"
+      - id: b
+        text: "NGINX Ingress Controller"
+      - id: c
+        text: "AWS Application Load Balancer"
+      - id: d
+        text: "CoreDNS"
+        why: "CoreDNS resolves names; it cannot split traffic by percentage."
+      - id: e
+        text: "kube-scheduler"
+        why: "The scheduler places Pods on nodes. It does not route requests."
+    answer: [a, b, c]
+    explanation: |
+      Supported traffic routers include Istio, Linkerd and SMI, NGINX Ingress, AWS ALB, Ambassador,
+      Traefik, Apache APISIX, and more through plugins (for example the Gateway API plugin).
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/traffic-management/
+    glossary: [argo-traffic-routing, service-mesh]
+
+  - id: capa-ro-009
+    difficulty: 2
+    type: single
+    question: "In a blue-green Rollout, what does the `previewService` do?"
+    options:
+      - id: a
+        text: "It sends traffic to the new version before it is promoted, so you can test it"
+      - id: b
+        text: "It sends production traffic to the old version after promotion"
+        why: "Production traffic always uses the active Service."
+      - id: c
+        text: "It mirrors a copy of all production requests to the new version"
+        why: "Traffic mirroring is a canary feature with a traffic router, not the preview Service."
+      - id: d
+        text: "It is the Service that the controller deletes after promotion"
+        why: "The controller only changes Service selectors. It never deletes your Services."
+    answer: [a]
+    explanation: |
+      The controller changes Service selectors (it adds the `rollouts-pod-template-hash`). The
+      `activeService` points to the stable version; the `previewService` points to the new version
+      before promotion. At promotion, the active Service switches to the new version.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/bluegreen/
+    glossary: [blue-green, service]
+
+  - id: capa-ro-010
+    difficulty: 2
+    type: single
+    question: "A blue-green Rollout has `autoPromotionEnabled: false`. A new version is ready. What happens?"
+    options:
+      - id: a
+        text: "The Rollout pauses; the active Service keeps the old version until a promote"
+      - id: b
+        text: "The active Service switches to the new version at once"
+        why: "That is the default behavior (`autoPromotionEnabled: true`)."
+      - id: c
+        text: "The new version is deleted"
+        why: "Nothing is deleted. The new ReplicaSet waits for promotion."
+      - id: d
+        text: "The Rollout is converted into a canary"
+        why: "The strategy never changes by itself."
+    answer: [a]
+    explanation: |
+      With `autoPromotionEnabled: false`, the Rollout pauses before switching the active Service.
+      You promote it manually. `autoPromotionSeconds` can promote after a delay, and
+      `scaleDownDelaySeconds` (default 30) keeps the old version for a short time after the switch.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/bluegreen/
+    glossary: [blue-green]
+
+  - id: capa-ro-011
+    difficulty: 3
+    type: single
+    question: "In a blue-green Rollout, which field runs an analysis on the new version BEFORE traffic switches to it?"
+    options:
+      - id: a
+        text: "`prePromotionAnalysis`"
+      - id: b
+        text: "`postPromotionAnalysis`"
+        why: "This analysis runs after the switch. If it fails, traffic goes back to the old version."
+      - id: c
+        text: "`steps[].analysis`"
+        why: "Steps belong to the canary strategy. Blue-green has no steps."
+      - id: d
+        text: "`previewReplicaCount`"
+        why: "This sets how many Pods the preview version has. It does not run analysis."
+    answer: [a]
+    explanation: |
+      Blue-green supports `prePromotionAnalysis` (must succeed before the active Service is switched)
+      and `postPromotionAnalysis` (runs after the switch; failure aborts and switches back).
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/bluegreen/
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+    glossary: [blue-green, argo-analysis-run]
+
+  - id: capa-ro-012
+    difficulty: 1
+    type: single
+    question: "What is the relation between an `AnalysisTemplate` and an `AnalysisRun`?"
+    options:
+      - id: a
+        text: "The template defines metrics; the Rollout creates an AnalysisRun from it to measure one release"
+      - id: b
+        text: "They are two names for the same resource"
+        why: "They are different kinds: one is a reusable definition, the other one execution."
+      - id: c
+        text: "An AnalysisRun is a cluster-scoped AnalysisTemplate"
+        why: "The cluster-scoped kind is `ClusterAnalysisTemplate`."
+      - id: d
+        text: "An AnalysisRun creates new AnalysisTemplates when metrics fail"
+        why: "AnalysisRuns never create templates. They report Successful, Failed or Inconclusive."
+    answer: [a]
+    explanation: |
+      An `AnalysisTemplate` (namespaced) or `ClusterAnalysisTemplate` describes how to measure:
+      metrics, providers, intervals and conditions. During a rollout the controller creates an
+      `AnalysisRun` from it; its result decides if the rollout continues or aborts.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+    glossary: [argo-analysis-template, argo-analysis-run]
+
+  - id: capa-ro-013
+    difficulty: 2
+    type: multiple
+    question: "Which are metric providers that an AnalysisTemplate can use? (Choose three.)"
+    options:
+      - id: a
+        text: "Prometheus"
+      - id: b
+        text: "A Kubernetes Job"
+      - id: c
+        text: "Web (an HTTP request to an endpoint)"
+      - id: d
+        text: "etcd"
+        why: "etcd stores cluster state. It is not a metric provider."
+      - id: e
+        text: "A ConfigMap value"
+        why: "ConfigMaps are not metric providers. Metrics come from monitoring systems, HTTP calls or Jobs."
+    answer: [a, b, c]
+    explanation: |
+      Providers include Prometheus, Datadog, New Relic, Wavefront, Graphite, InfluxDB, CloudWatch,
+      Kayenta, Web (HTTP), Job (a Kubernetes Job: success = exit code 0) and plugins.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+      - https://argoproj.github.io/argo-rollouts/analysis/job/
+    glossary: [argo-analysis-template, prometheus, job]
+
+  - id: capa-ro-014
+    difficulty: 3
+    type: single
+    question: "A metric has `interval: 1m`, `count: 5`, `successCondition: result[0] >= 0.95` and `failureLimit: 2`. When does the analysis fail?"
+    options:
+      - id: a
+        text: "When more than 2 of the measurements do not meet the success condition"
+      - id: b
+        text: "When the first measurement is below 0.95"
+        why: "With `failureLimit: 2`, two failed measurements are allowed before the analysis fails."
+      - id: c
+        text: "After exactly 2 minutes, whatever the results"
+        why: "Time alone does not fail an analysis. The results of the measurements decide."
+      - id: d
+        text: "Only when all 5 measurements are below 0.95"
+        why: "The limit is 2: a third failed measurement already fails the analysis."
+    answer: [a]
+    explanation: |
+      The metric is measured every minute, 5 times. Each value is checked with `successCondition`
+      (and `failureCondition` if set). The analysis fails when failed measurements exceed
+      `failureLimit` (here, 3 failures). `inconclusiveLimit` works the same way for unclear results.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+    glossary: [argo-analysis-template, argo-analysis-run]
+
+  - id: capa-ro-015
+    difficulty: 3
+    type: single
+    question: "What is a background analysis in a canary Rollout?"
+    options:
+      - id: a
+        text: "An analysis set in `strategy.canary.analysis` that runs during the steps"
+      - id: b
+        text: "An analysis step that runs only after the last step"
+        why: "An `analysis` step is inline: the rollout waits for it at that point. Background analysis runs in parallel."
+      - id: c
+        text: "An AnalysisRun created by a CronWorkflow"
+        why: "Argo Rollouts creates AnalysisRuns itself. CronWorkflows are part of Argo Workflows."
+      - id: d
+        text: "Analysis of the stable version only"
+        why: "Background analysis usually measures the canary while it receives traffic."
+    answer: [a]
+    explanation: |
+      Background analysis (`strategy.canary.analysis`) starts with the rollout (or from a given step)
+      and runs while the steps go on. If it fails, the rollout aborts. An inline `analysis` step
+      blocks the steps until the AnalysisRun finishes.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+    glossary: [argo-analysis-run, canary]
+
+  - id: capa-ro-016
+    difficulty: 2
+    type: single
+    question: "During a canary, an analysis fails. What does Argo Rollouts do?"
+    options:
+      - id: a
+        text: "It aborts and sends all traffic back to the stable version"
+      - id: b
+        text: "It promotes the canary to stable to finish fast"
+        why: "A failed analysis never promotes. Promotion needs success."
+      - id: c
+        text: "It deletes the Rollout and all its ReplicaSets"
+        why: "The Rollout object stays. Only the canary is scaled down."
+      - id: d
+        text: "It waits forever for a person to choose"
+        why: "Abort happens automatically after a failed analysis."
+    answer: [a]
+    explanation: |
+      On failure the rollout is aborted: the stable ReplicaSet gets all traffic again, the canary is
+      scaled down, and the status is Degraded. You can `retry` or change the spec (for example
+      `undo`) to continue.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/analysis/
+      - https://argoproj.github.io/argo-rollouts/generated/kubectl-argo-rollouts/kubectl-argo-rollouts_abort/
+    glossary: [argo-analysis-run, canary]
+
+  - id: capa-ro-017
+    difficulty: 1
+    type: multiple
+    question: "Which commands does the `kubectl argo rollouts` plugin have? (Choose three.)"
+    options:
+      - id: a
+        text: "`promote`"
+      - id: b
+        text: "`abort`"
+      - id: c
+        text: "`undo`"
+      - id: d
+        text: "`sync`"
+        why: "`sync` is an argocd CLI command for Applications."
+      - id: e
+        text: "`submit`"
+        why: "`submit` is an argo CLI command for workflows."
+    answer: [a, b, c]
+    explanation: |
+      Useful commands: `get rollout` (with `--watch`), `promote` (next step, or `--full`), `abort`,
+      `retry`, `undo` (back to an earlier revision), `set image`, `pause`, `restart` and `dashboard`.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/kubectl-plugin/
+    glossary: [argo-rollouts]
+
+  - id: capa-ro-018
+    difficulty: 3
+    type: single
+    question: "What is an Argo Rollouts `Experiment`?"
+    options:
+      - id: a
+        text: "A short-lived run of one or more ReplicaSets, often compared with analysis"
+      - id: b
+        text: "A test environment that copies the whole namespace"
+        why: "Experiments only create ReplicaSets (and analysis), not copies of namespaces."
+      - id: c
+        text: "A Rollout with `replicas: 0`"
+        why: "An Experiment is its own kind with templates and a duration."
+      - id: d
+        text: "A feature flag stored in a ConfigMap"
+        why: "Argo Rollouts does not manage feature flags."
+    answer: [a]
+    explanation: |
+      An `Experiment` runs one or more ReplicaSets (for example baseline and canary) for a limited
+      time, often with AnalysisRuns to compare them. It can be used alone or as an `experiment` step
+      in a canary strategy.
+    docs:
+      - https://argoproj.github.io/argo-rollouts/features/experiment/
+    glossary: [argo-rollouts, replicaset]

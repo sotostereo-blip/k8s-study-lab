@@ -1,0 +1,11 @@
+# Argo Workflows controller only (the argo CLI talks to the Kubernetes API directly).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argo
+resources: [install.yaml, executor-rbac.yaml]
+patches:
+  - target: { kind: Deployment, name: argo-server }
+    patch: |-
+      - op: add
+        path: /spec/replicas
+        value: 0

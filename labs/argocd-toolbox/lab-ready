@@ -1,0 +1,13 @@
+#!/bin/bash
+# Exit 0 when Argo CD (server, repo server, controller, ApplicationSet controller), Argo Rollouts,
+# Argo Workflows and the Git server are usable, and the argocd CLI is logged in.
+[ -f /run/lab-bootstrap.done ] || exit 1
+for d in argocd/argocd-server argocd/argocd-repo-server argocd/argocd-redis argocd/argocd-applicationset-controller \
+         argo-rollouts/argo-rollouts argo/workflow-controller; do
+  kubectl -n "${d%%/*}" rollout status deploy "${d#*/}" --timeout=5s >/dev/null 2>&1 || exit 1
+done
+kubectl -n argocd rollout status statefulset argocd-application-controller --timeout=5s >/dev/null 2>&1 || exit 1
+git ls-remote http://git.lab/lab-check.git >/dev/null 2>&1 || exit 1
+# the repo server (inside the cluster) must reach the Git server too
+kubectl -n argocd exec deploy/argocd-repo-server -- git ls-remote http://git.lab/lab-check.git >/dev/null 2>&1 || exit 1
+argocd app list >/dev/null 2>&1

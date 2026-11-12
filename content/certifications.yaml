@@ -60,6 +60,13 @@ certifications:
     exam: gha
     track: gha
     description: Multiple choice (Microsoft/GitHub), plus hands-on labs on Gitea Actions, which runs the same workflow syntax.
+  - id: capa
+    name: Certified Argo Project Associate
+    short: CAPA
+    area: CI/CD and GitOps
+    exam: capa
+    track: capa
+    description: Multiple choice. Argo Workflows, Argo CD, Argo Rollouts and Argo Events, plus hands-on labs on a cluster with Argo and a Git server.
   - id: pca
     name: Prometheus Certified Associate
     short: PCA

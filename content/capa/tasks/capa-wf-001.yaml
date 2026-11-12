@@ -1,0 +1,50 @@
+id: capa-wf-001
+title: Create a WorkflowTemplate and submit a Workflow from it
+domain: argo-workflows
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  kubectl create namespace wf-tmpl >/dev/null
+task: |
+  Argo Workflows runs in the cluster. The `argo` CLI talks to the Kubernetes API.
+
+  1. In the namespace `wf-tmpl`, create a **WorkflowTemplate** called `say` with:
+     - entrypoint `main`
+     - a workflow parameter `message` with the default value `hello`
+     - one container template `main` (image `busybox:1.36`) that runs `echo` with the message
+  2. Submit a Workflow **from the template** (the Workflow must reference `say`, not copy it)
+     with `message` = `argo-rocks`. It must finish with phase `Succeeded`.
+checks:
+  - name: WorkflowTemplate `say` has the parameter `message`
+    run: |
+      out=$(kubectl -n wf-tmpl get workflowtemplate say -o json | jq -r '[.spec.arguments.parameters[]?.name, .spec.templates[]?.inputs.parameters[]?.name] | join(" ")')
+      echo " $out " | grep -q ' message '
+  - name: A Workflow that references `say` with message `argo-rocks` Succeeded
+    run: |
+      out=$(kubectl -n wf-tmpl get workflows -o json | jq '[.items[] | select(.spec.workflowTemplateRef.name == "say" and .status.phase == "Succeeded")
+        | select([.spec.arguments.parameters[]? | select(.name == "message" and .value == "argo-rocks")] | length > 0)] | length')
+      [ "$out" -ge 1 ]
+solution: |
+  kubectl apply -n wf-tmpl -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: WorkflowTemplate
+  metadata:
+    name: say
+  spec:
+    entrypoint: main
+    arguments:
+      parameters:
+      - name: message
+        value: hello
+    templates:
+    - name: main
+      container:
+        image: busybox:1.36
+        command: [echo, "{{workflow.parameters.message}}"]
+  YAML
+  argo submit -n wf-tmpl --from workflowtemplate/say -p message=argo-rocks --wait
+  argo list -n wf-tmpl
+docs:
+  - https://argo-workflows.readthedocs.io/en/latest/workflow-templates/
+  - https://argo-workflows.readthedocs.io/en/latest/walk-through/parameters/

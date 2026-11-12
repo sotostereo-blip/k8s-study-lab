@@ -1,0 +1,32 @@
+# Argo lab: one-node k3s with Argo CD, Argo Rollouts and Argo Workflows (installed by the toolbox at
+# start; all images preloaded in the server image), a Git server (http://git.lab) and a browser
+# terminal. Debug: docker compose -p argolab -f labs/envs/argocd/compose.yaml up -d --build
+services:
+  server:
+    build: ../../argocd-k3s
+    image: k8s-study-lab/argocd-k3s:1
+    hostname: controlplane
+    command: server --disable=traefik --disable=servicelb --tls-san=server --node-name=controlplane
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_TOKEN: study-lab
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      K3S_KUBECONFIG_MODE: "644"
+    volumes: [kubeconfig:/output]
+  git:
+    build: ../../argocd-git
+    image: k8s-study-lab/argocd-git:1
+    networks:
+      default:
+        aliases: [git.lab]
+    volumes: [repos:/srv/git]
+  toolbox:
+    build: ../../argocd-toolbox
+    image: k8s-study-lab/argocd-toolbox:1
+    depends_on: [server, git]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: [kubeconfig:/output:ro, repos:/srv/git]
+volumes:
+  kubeconfig:
+  repos:

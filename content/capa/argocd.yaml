@@ -1,0 +1,853 @@
+domain: argo-cd
+questions:
+  - id: capa-cd-001
+    difficulty: 1
+    type: single
+    question: "What is Argo CD?"
+    options:
+      - id: a
+        text: "A declarative GitOps continuous delivery tool for Kubernetes"
+      - id: b
+        text: "A CI server that builds container images on every commit"
+        why: "Argo CD does not build images. Building is the job of CI tools; Argo CD deploys what is declared in Git."
+      - id: c
+        text: "A package manager that installs charts with `install` and `upgrade`"
+        why: "That describes Helm. Argo CD can render Helm charts, but it is not a package manager."
+      - id: d
+        text: "A workflow engine that runs multi-step jobs as Pods"
+        why: "That describes Argo Workflows, another Argo project."
+    answer: [a]
+    explanation: |
+      Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes. It runs as a
+      controller in the cluster, compares the desired state in Git with the live state, and can
+      sync the cluster to match Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/
+    glossary: [argo-cd, gitops]
+
+  - id: capa-cd-002
+    difficulty: 1
+    type: single
+    question: "How does Argo CD usually get changes into the cluster?"
+    options:
+      - id: a
+        text: "A CI pipeline pushes manifests to the cluster with kubectl"
+        why: "That is a push model. With Argo CD the CI pipeline only changes Git; the agent in the cluster does the rest."
+      - id: b
+        text: "An agent in the cluster pulls the desired state from Git and applies it"
+      - id: c
+        text: "Developers run `argocd apply` on their laptops for each release"
+        why: "There is no such command, and manual deploys from laptops are what GitOps tries to avoid."
+      - id: d
+        text: "The Kubernetes API server reads Git directly"
+        why: "The API server knows nothing about Git. A controller like Argo CD must read Git and call the API."
+    answer: [b]
+    explanation: |
+      Argo CD follows the pull model of GitOps: it runs inside the cluster, watches Git
+      repositories, and reconciles the cluster to the desired state. CI systems do not need
+      cluster credentials; they only update Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/best_practices/
+    glossary: [argo-cd, gitops, reconciliation]
+
+  - id: capa-cd-003
+    difficulty: 2
+    type: multiple
+    question: "Which are core components of an Argo CD installation? (Choose three.)"
+    options:
+      - id: a
+        text: "API server (`argocd-server`)"
+      - id: b
+        text: "Repository server (`argocd-repo-server`)"
+      - id: c
+        text: "Application controller (`argocd-application-controller`)"
+      - id: d
+        text: "Workflow controller (`workflow-controller`)"
+        why: "The workflow controller is part of Argo Workflows, not Argo CD."
+      - id: e
+        text: "Sensor controller (`sensor-controller`)"
+        why: "Sensors are part of Argo Events. Argo CD does not use them."
+    answer: [a, b, c]
+    explanation: |
+      The API server serves the UI, CLI and API. The repository server clones Git repos and
+      renders manifests. The application controller compares live and desired state and runs
+      syncs. Other parts are Redis (cache), Dex (SSO), the ApplicationSet controller and the
+      notifications controller.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/
+    glossary: [argo-cd, argo-repo-server, argo-app-controller]
+
+  - id: capa-cd-004
+    difficulty: 2
+    type: single
+    question: "Which Argo CD component runs `helm template` or `kustomize build` to produce the manifests?"
+    options:
+      - id: a
+        text: "The application controller"
+        why: "The controller asks the repo server for the manifests, then compares and applies them."
+      - id: b
+        text: "The repository server"
+      - id: c
+        text: "The API server"
+        why: "The API server handles users and API calls. It does not render manifests."
+      - id: d
+        text: "Redis"
+        why: "Redis is only a cache. It can hold rendered manifests but does not create them."
+    answer: [b]
+    explanation: |
+      The repo server keeps a local cache of Git repositories and generates Kubernetes manifests
+      from them, using plain YAML, Helm, Kustomize, Jsonnet or a config management plugin.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/
+    glossary: [argo-repo-server, helm, kustomize]
+
+  - id: capa-cd-005
+    difficulty: 1
+    type: multiple
+    question: "Which fields does an Argo CD `Application` use to say what to deploy and where? (Choose two.)"
+    options:
+      - id: a
+        text: "`spec.source` (repoURL, path, targetRevision)"
+      - id: b
+        text: "`spec.destination` (server or name, namespace)"
+      - id: c
+        text: "`spec.template` (Pod template)"
+        why: "Pod templates belong to workloads like Deployments. An ApplicationSet has a `template`, but for Applications."
+      - id: d
+        text: "`spec.selector` (label selector)"
+        why: "Applications do not select objects with labels. They point to a source and a destination."
+    answer: [a, b]
+    explanation: |
+      An Application connects a source (a Git repo, Helm repo or OCI registry, with path and
+      revision) to a destination (a cluster and namespace). It also belongs to a `project` and can
+      have a `syncPolicy`.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/core_concepts/
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/
+    glossary: [argo-application]
+
+  - id: capa-cd-006
+    difficulty: 1
+    type: single
+    question: "An Application shows sync status `OutOfSync`. What does that mean?"
+    options:
+      - id: a
+        text: "The live state is different from the desired state in Git"
+      - id: b
+        text: "The Pods of the application are crashing again and again"
+        why: "Crashing Pods affect the health status (for example Degraded), not the sync status."
+      - id: c
+        text: "Argo CD cannot reach the Git repository"
+        why: "An unreachable repo shows a comparison error (Unknown status), not OutOfSync."
+      - id: d
+        text: "Automated sync is turned off for this Application"
+        why: "Manual sync is a normal setting. An app with manual sync can be fully Synced."
+    answer: [a]
+    explanation: |
+      Sync status compares desired and live state: `Synced` when they match, `OutOfSync` when they
+      differ. Health status is separate and says if the resources work (Healthy, Progressing,
+      Degraded...).
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/core_concepts/
+    glossary: [argo-sync-status]
+
+  - id: capa-cd-007
+    difficulty: 2
+    type: multiple
+    question: "Which values are Argo CD health statuses? (Choose three.)"
+    options:
+      - id: a
+        text: "`Healthy`"
+      - id: b
+        text: "`Degraded`"
+      - id: c
+        text: "`Progressing`"
+      - id: d
+        text: "`OutOfSync`"
+        why: "OutOfSync is a sync status. Sync status and health status are two different things."
+      - id: e
+        text: "`Pruned`"
+        why: "Pruned describes what a sync did to a resource. It is not a health status."
+    answer: [a, b, c]
+    explanation: |
+      Health statuses are `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Missing` and
+      `Unknown`. Argo CD has built-in health checks for common kinds (Deployment, Service, Ingress,
+      PVC...) and supports custom checks written in Lua.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+    glossary: [argo-health-status]
+
+  - id: capa-cd-008
+    difficulty: 2
+    type: single
+    question: "By default, about how often does Argo CD check Git for changes when no webhook is set?"
+    options:
+      - id: a
+        text: "Every 10 seconds"
+        why: "That would put a lot of load on Git servers. The default is a few minutes."
+      - id: b
+        text: "About every 3 minutes (120 seconds plus up to 60 seconds of jitter)"
+      - id: c
+        text: "Once an hour"
+        why: "This is far too slow for continuous delivery. The default is minutes."
+      - id: d
+        text: "Never; it only syncs when someone clicks Sync"
+        why: "Argo CD always polls Git to update the sync status, even when sync is manual."
+    answer: [b]
+    explanation: |
+      Argo CD polls Git about every 3 minutes: `timeout.reconciliation` (120s) plus
+      `timeout.reconciliation.jitter` (up to 60s) in `argocd-cm`. A Git webhook removes this delay
+      because the Git server tells Argo CD about each push.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/faq/
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/webhook/
+    glossary: [argo-cd, reconciliation]
+
+  - id: capa-cd-009
+    difficulty: 2
+    type: single
+    question: "Automated sync is on, without other options. A Deployment is deleted from Git. What happens in the cluster?"
+    options:
+      - id: a
+        text: "The Deployment is deleted at the next automated sync"
+        why: "Automated sync does not delete resources unless pruning is enabled."
+      - id: b
+        text: "It stays, and the app shows OutOfSync"
+      - id: c
+        text: "Argo CD scales the Deployment to 0 replicas"
+        why: "Argo CD never changes replicas to handle removed resources."
+      - id: d
+        text: "The whole Application is deleted"
+        why: "Removing one resource from Git does not delete the Application."
+    answer: [b]
+    explanation: |
+      For safety, automated sync does not prune by default. The resource stays and is shown as
+      needing pruning (OutOfSync). Set `prune: true` (or `--auto-prune`) to delete resources that
+      are no longer in Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+    glossary: [argo-auto-sync, argo-prune]
+
+  - id: capa-cd-010
+    difficulty: 2
+    type: single
+    question: "Automated sync is on. Someone runs `kubectl scale` on a managed Deployment. Git did not change. What makes Argo CD undo this change?"
+    options:
+      - id: a
+        text: "`selfHeal: true` in the automated sync policy"
+      - id: b
+        text: "`prune: true` in the automated sync policy"
+        why: "Prune deletes resources that were removed from Git. It does not fix changed fields."
+      - id: c
+        text: "Nothing; automated sync already undoes all live changes"
+        why: "Without selfHeal, automated sync only runs when Git (or the app spec) changes."
+      - id: d
+        text: "The sync option `Replace=true`"
+        why: "Replace changes how resources are applied (`replace` instead of `apply`). It does not start syncs."
+    answer: [a]
+    explanation: |
+      Automated sync normally runs only for new commits or app spec changes. With `selfHeal: true`
+      Argo CD also syncs when the live state drifts from Git, so manual changes in the cluster are
+      reverted (after a short self-heal timeout).
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+    glossary: [argo-self-heal, argo-auto-sync]
+
+  - id: capa-cd-011
+    difficulty: 3
+    type: single
+    question: "Automated sync of a commit failed. Nothing changes in Git or in the app spec. What does Argo CD do?"
+    options:
+      - id: a
+        text: "It does not try to sync the same commit again automatically"
+      - id: b
+        text: "It retries every 3 minutes forever"
+        why: "Automated sync is attempted once per commit and parameter set. Retries only happen if `syncPolicy.retry` is set."
+      - id: c
+        text: "It rolls back to the last good commit"
+        why: "Argo CD has no automatic rollback in automated sync."
+      - id: d
+        text: "It deletes the Application"
+        why: "A failed sync never deletes the Application."
+    answer: [a]
+    explanation: |
+      Automated sync runs once for each unique combination of commit SHA and app parameters. If it
+      fails, Argo CD does not try again for the same combination. You can add `syncPolicy.retry`
+      with a limit and backoff, or push a fix to Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+    glossary: [argo-auto-sync]
+
+  - id: capa-cd-012
+    difficulty: 2
+    type: single
+    question: "You try `argocd app rollback` and get an error. Which setting most likely blocks it?"
+    options:
+      - id: a
+        text: "Automated sync is enabled on the Application"
+      - id: b
+        text: "The project is `default`"
+        why: "The default project allows rollback like any other project."
+      - id: c
+        text: "The Application uses Kustomize"
+        why: "Rollback works for every tool type, because it reuses a deployed revision from the history."
+      - id: d
+        text: "The destination namespace has a ResourceQuota"
+        why: "Quotas can make a sync fail, but they do not block the rollback command."
+    answer: [a]
+    explanation: |
+      Rollback is not allowed for Applications with automated sync, because Argo CD would sync
+      Git again at once. Disable automated sync, roll back to a history ID, and later fix Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_rollback/
+    glossary: [argo-auto-sync, rollback]
+
+  - id: capa-cd-013
+    difficulty: 1
+    type: single
+    question: "The destination namespace of an Application does not exist. Which sync option tells Argo CD to create it?"
+    options:
+      - id: a
+        text: "`CreateNamespace=true`"
+      - id: b
+        text: "`PruneLast=true`"
+        why: "PruneLast deletes pruned resources at the end of the sync. It does not create namespaces."
+      - id: c
+        text: "`ApplyOutOfSyncOnly=true`"
+        why: "This option applies only resources that are OutOfSync, to make big syncs faster."
+      - id: d
+        text: "`Validate=false`"
+        why: "This turns off kubectl schema validation. It does not create namespaces."
+    answer: [a]
+    explanation: |
+      `CreateNamespace=true` in `syncPolicy.syncOptions` (or `--sync-option CreateNamespace=true`)
+      creates the destination namespace if it is missing. `managedNamespaceMetadata` can add labels
+      and annotations to it.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/
+    glossary: [argo-sync-option, namespace]
+
+  - id: capa-cd-014
+    difficulty: 3
+    type: single
+    question: "Syncing a large CRD fails with `metadata.annotations: Too long`. Which sync option fixes this?"
+    options:
+      - id: a
+        text: "`ServerSideApply=true`"
+      - id: b
+        text: "`Prune=false`"
+        why: "This annotation stops Argo CD from pruning one resource. It does not change how it is applied."
+      - id: c
+        text: "`SkipDryRunOnMissingResource=true`"
+        why: "This helps when a CRD does not exist yet. It does not reduce annotation size."
+      - id: d
+        text: "`FailOnSharedResource=true`"
+        why: "This makes a sync fail when another Application already manages a resource."
+    answer: [a]
+    explanation: |
+      Client-side apply stores the whole object in the `last-applied-configuration` annotation,
+      which has a size limit. With `ServerSideApply=true`, the API server tracks fields itself, so
+      big objects such as CRDs can be applied.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/
+    glossary: [argo-sync-option, crd]
+
+  - id: capa-cd-015
+    difficulty: 1
+    type: single
+    question: "Which annotation puts a resource in a sync wave?"
+    options:
+      - id: a
+        text: "`argocd.argoproj.io/sync-wave: \"5\"`"
+      - id: b
+        text: "`argocd.argoproj.io/hook: \"5\"`"
+        why: "The hook annotation takes a hook type such as PreSync, not a number."
+      - id: c
+        text: "`argocd.argoproj.io/sync-options: Wave=5`"
+        why: "There is no Wave sync option. Waves use their own annotation."
+      - id: d
+        text: "`helm.sh/hook-weight: \"5\"`"
+        why: "Argo CD maps Helm hook weights to waves for Helm hooks, but the Argo CD annotation is sync-wave."
+    answer: [a]
+    explanation: |
+      The `argocd.argoproj.io/sync-wave` annotation takes an integer (it can be negative). Lower
+      waves are applied first; resources without the annotation are in wave 0. Argo CD waits until
+      a wave is healthy before it starts the next one.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
+    glossary: [argo-sync-wave]
+
+  - id: capa-cd-016
+    difficulty: 3
+    type: single
+    question: "Inside one sync, in which order does Argo CD sort resources?"
+    options:
+      - id: a
+        text: "Phase, then wave, then kind, then name"
+      - id: b
+        text: "Name, then kind, then wave"
+        why: "Name is the last tie-breaker, not the first. Phase and wave come first."
+      - id: c
+        text: "Only by the order of files in Git"
+        why: "File order does not matter. Argo CD sorts resources by its own rules."
+      - id: d
+        text: "Wave, then phase, then creation time"
+        why: "Phase (PreSync, Sync, PostSync) comes before wave, and creation time is not used."
+    answer: [a]
+    explanation: |
+      Argo CD orders by phase (PreSync, Sync, PostSync), then by wave (lower first), then by kind
+      (namespaces first, then other Kubernetes kinds, then custom resources), and then by name.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
+    glossary: [argo-sync-wave, argo-resource-hook]
+
+  - id: capa-cd-017
+    difficulty: 2
+    type: single
+    question: "A database migration Job must run before the new version of the app is applied. Which hook do you use?"
+    options:
+      - id: a
+        text: "`PreSync`"
+      - id: b
+        text: "`PostSync`"
+        why: "PostSync runs after the sync is done and the app is healthy: too late for a migration."
+      - id: c
+        text: "`SyncFail`"
+        why: "SyncFail runs only when a sync fails, for example to clean up."
+      - id: d
+        text: "`Skip`"
+        why: "Skip tells Argo CD not to apply the manifest at all."
+    answer: [a]
+    explanation: |
+      Hooks are set with `argocd.argoproj.io/hook`. `PreSync` runs before the manifests are applied,
+      `Sync` runs with them, `PostSync` after a healthy sync, `SyncFail` after a failed sync, and
+      `PostDelete` after the app is deleted.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/
+    glossary: [argo-resource-hook, job]
+
+  - id: capa-cd-018
+    difficulty: 2
+    type: single
+    question: "A hook has no `argocd.argoproj.io/hook-delete-policy`. What does Argo CD do with the old hook object?"
+    options:
+      - id: a
+        text: "It replaces it at the next sync (`BeforeHookCreation`)"
+      - id: b
+        text: "It deletes the hook right after it succeeds"
+        why: "That is `HookSucceeded`. You must set it yourself."
+      - id: c
+        text: "It never deletes hooks"
+        why: "Without a policy Argo CD still uses `BeforeHookCreation`, so the next sync can recreate the hook."
+      - id: d
+        text: "It deletes the hook only after it fails"
+        why: "That is `HookFailed`, which you must set yourself."
+    answer: [a]
+    explanation: |
+      The delete policies are `HookSucceeded`, `HookFailed` and `BeforeHookCreation`. If none is
+      set, `BeforeHookCreation` is used: the hook stays after it runs (so you can read its logs) and
+      is replaced at the next sync.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/
+    glossary: [argo-resource-hook]
+
+  - id: capa-cd-019
+    difficulty: 2
+    type: single
+    question: "Argo CD deploys a Helm chart. Why does `helm list` in that namespace show nothing?"
+    options:
+      - id: a
+        text: "Argo CD renders the chart with `helm template` and applies the manifests itself"
+      - id: b
+        text: "Argo CD stores Helm releases in Redis"
+        why: "Redis is only a cache. Argo CD does not create Helm release records at all."
+      - id: c
+        text: "`helm list` only shows releases from the default namespace"
+        why: "`helm list -n <ns>` shows releases in other namespaces too. There is simply no release."
+      - id: d
+        text: "Argo CD uses Helm 2, which keeps releases in Tiller"
+        why: "Argo CD uses Helm 3 for rendering, and Tiller no longer exists."
+    answer: [a]
+    explanation: |
+      Argo CD uses Helm only to inflate the chart (`helm template`). The output is managed like any
+      other manifests, so there is no Helm release object. Use `argocd app` commands (or the UI) to
+      see and manage it.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/helm/
+    glossary: [helm, argo-cd]
+
+  - id: capa-cd-020
+    difficulty: 3
+    type: multiple
+    question: "Which Application fields can set Helm values without changing the chart in Git? (Choose three.)"
+    options:
+      - id: a
+        text: "`spec.source.helm.parameters`"
+      - id: b
+        text: "`spec.source.helm.valueFiles`"
+      - id: c
+        text: "`spec.source.helm.valuesObject`"
+      - id: d
+        text: "`spec.source.helm.overlays`"
+        why: "Overlays are a Kustomize idea. Helm options are parameters, value files and values."
+      - id: e
+        text: "`spec.destination.values`"
+        why: "The destination only says where to deploy (cluster and namespace)."
+    answer: [a, b, c]
+    explanation: |
+      Helm options: `valueFiles` (files from the repo), `values` (a YAML string) or `valuesObject`
+      (YAML as an object), and `parameters` (like `--set`). Parameters have the highest priority.
+      The CLI flags are `--values` and `--helm-set`.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/helm/
+    glossary: [helm, argo-application]
+
+  - id: capa-cd-021
+    difficulty: 1
+    type: single
+    question: "How does Argo CD decide that a Git directory is a Kustomize application?"
+    options:
+      - id: a
+        text: "The directory has a `kustomization.yaml` file"
+      - id: b
+        text: "The directory has a `Chart.yaml` file"
+        why: "A `Chart.yaml` file marks a Helm chart."
+      - id: c
+        text: "The directory name ends with `-kustomize`"
+        why: "Argo CD looks at files, not at the directory name."
+      - id: d
+        text: "You must always set `--tool kustomize`"
+        why: "Argo CD detects the tool automatically. Setting it is optional."
+    answer: [a]
+    explanation: |
+      Tool detection: a `Chart.yaml` means Helm, a `kustomization.yaml` (or `.yml`, or
+      `Kustomization`) means Kustomize, otherwise the directory is treated as plain YAML/JSON
+      manifests (or Jsonnet). You can also set the tool explicitly.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/tool_detection/
+    glossary: [kustomize]
+
+  - id: capa-cd-022
+    difficulty: 2
+    type: multiple
+    question: "Which settings can an Application set in `spec.source.kustomize` without changing Git? (Choose two.)"
+    options:
+      - id: a
+        text: "`images` to change image names or tags"
+      - id: b
+        text: "`namePrefix` to add a prefix to resource names"
+      - id: c
+        text: "`valueFiles` to load Helm values"
+        why: "`valueFiles` is a Helm option, not a Kustomize option."
+      - id: d
+        text: "`syncWave` to order the resources"
+        why: "Waves are set with an annotation on each resource, not in the Kustomize options."
+    answer: [a, b]
+    explanation: |
+      Kustomize options in an Application include `images`, `namePrefix`, `nameSuffix`,
+      `commonLabels`, `commonAnnotations`, `namespace`, `replicas` and `patches`. They are applied
+      on top of the kustomization from Git.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/
+    glossary: [kustomize, argo-application]
+
+  - id: capa-cd-023
+    difficulty: 1
+    type: single
+    question: "What is an Argo CD `AppProject` used for?"
+    options:
+      - id: a
+        text: "Grouping Applications and limiting their source repos, destinations and resource kinds"
+      - id: b
+        text: "Building container images for a team"
+        why: "Argo CD does not build images. Projects are about permissions and limits."
+      - id: c
+        text: "Running Applications in a separate Argo CD installation"
+        why: "All projects are handled by the same Argo CD. They are a logical grouping."
+      - id: d
+        text: "Storing the Helm values of an Application"
+        why: "Helm values are in the Application source or in Git, not in a project."
+    answer: [a]
+    explanation: |
+      An AppProject restricts what Applications can do: `sourceRepos`, `destinations`,
+      `clusterResourceWhitelist` and namespace resource lists, roles with policies, and sync
+      windows. Every Application belongs to one project; `default` allows everything.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/projects/
+    glossary: [argo-appproject]
+
+  - id: capa-cd-024
+    difficulty: 2
+    type: single
+    question: "An AppProject lists no `clusterResourceWhitelist`. An Application in it tries to create a ClusterRole. What happens?"
+    options:
+      - id: a
+        text: "The sync fails, because cluster-scoped resources are denied by default"
+      - id: b
+        text: "The ClusterRole is created, because all kinds are allowed by default"
+        why: "In a new project, cluster-scoped kinds are denied unless they are whitelisted."
+      - id: c
+        text: "The ClusterRole is created as a Role in the destination namespace"
+        why: "Argo CD never changes the kind of a resource."
+      - id: d
+        text: "Argo CD asks an admin to approve it in the UI"
+        why: "Argo CD has no approval step for this. The project rules decide."
+    answer: [a]
+    explanation: |
+      Projects deny cluster-scoped resources unless they are listed in `clusterResourceWhitelist`.
+      Namespaced resources are allowed unless blocked with `namespaceResourceBlacklist` (or not in a
+      whitelist). The `default` project allows everything.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/projects/
+    glossary: [argo-appproject, rbac]
+
+  - id: capa-cd-025
+    difficulty: 2
+    type: multiple
+    question: "Which are ApplicationSet generators? (Choose three.)"
+    options:
+      - id: a
+        text: "List generator"
+      - id: b
+        text: "Cluster generator"
+      - id: c
+        text: "Git generator"
+      - id: d
+        text: "Canary generator"
+        why: "There is no canary generator. Canary is a strategy of Argo Rollouts."
+      - id: e
+        text: "Cron generator"
+        why: "ApplicationSets have no time-based generator. Scheduling is done by CronWorkflows in Argo Workflows."
+    answer: [a, b, c]
+    explanation: |
+      Generators produce parameters for the Application template: List, Cluster, Git (directories
+      or files), Matrix, Merge, SCM Provider, Pull Request, Cluster Decision Resource and Plugin.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators/
+    glossary: [argo-applicationset, argo-appset-generator]
+
+  - id: capa-cd-026
+    difficulty: 2
+    type: single
+    question: "Each team adds a folder under `apps/` in a Git repo. You want one Application per folder, created automatically. What fits best?"
+    options:
+      - id: a
+        text: "An ApplicationSet with a Git directory generator"
+      - id: b
+        text: "An ApplicationSet with a list generator"
+        why: "A list generator needs every element written by hand, so new folders are not picked up."
+      - id: c
+        text: "One Application with `directory.recurse: true`"
+        why: "This makes one big Application with all folders, not one Application per team."
+      - id: d
+        text: "An AppProject with `sourceRepos: [apps/*]`"
+        why: "Projects only limit what Applications may use. They never create Applications."
+    answer: [a]
+    explanation: |
+      The Git generator (directories) scans a repository for folders that match a path pattern and
+      makes one set of parameters per folder (`path`, `path.basename`...). New folders produce new
+      Applications without changing the ApplicationSet.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/
+    glossary: [argo-applicationset, argo-appset-generator]
+
+  - id: capa-cd-027
+    difficulty: 2
+    type: single
+    question: "What is the app of apps pattern?"
+    options:
+      - id: a
+        text: "One Application whose Git path contains other Application manifests"
+      - id: b
+        text: "One Pod that runs many applications in different containers"
+        why: "That is about Pods and sidecars, not about Argo CD Applications."
+      - id: c
+        text: "A project that includes all other projects"
+        why: "Projects cannot include other projects."
+      - id: d
+        text: "Deploying the same app to many clusters with Helm"
+        why: "Multi-cluster deployment is usually done with ApplicationSets or several Applications."
+    answer: [a]
+    explanation: |
+      In the app of apps pattern, a parent Application points to a folder of `Application`
+      manifests. Syncing the parent creates the child Applications. It is often used to bootstrap a
+      cluster declaratively.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/
+    glossary: [argo-app-of-apps]
+
+  - id: capa-cd-028
+    difficulty: 2
+    type: single
+    question: "An HPA changes `spec.replicas` of a Deployment, so the Application is always OutOfSync. What is the best fix?"
+    options:
+      - id: a
+        text: "Add `ignoreDifferences` for `/spec/replicas`"
+      - id: b
+        text: "Enable self-heal so Argo CD resets the replicas to the Git value"
+        why: "Self-heal would fight the HPA and undo every scaling decision."
+      - id: c
+        text: "Delete the HPA and set the replicas by hand"
+        why: "This removes autoscaling, which the team wants to keep."
+      - id: d
+        text: "Turn off the health checks for Deployments"
+        why: "The problem is the sync status (diff), not health."
+    answer: [a]
+    explanation: |
+      `ignoreDifferences` (in the Application or globally in `argocd-cm`) tells Argo CD to ignore
+      some fields when it compares. With the `RespectIgnoreDifferences=true` sync option, those
+      fields are also kept during sync. Removing `replicas` from Git is a good practice with HPA.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/diffing/
+    glossary: [hpa, argo-sync-status]
+
+  - id: capa-cd-029
+    difficulty: 1
+    type: single
+    question: "Which command shows what would change if you synced the Application `shop`?"
+    options:
+      - id: a
+        text: "`argocd app diff shop`"
+      - id: b
+        text: "`argocd app history shop`"
+        why: "History lists past syncs. It does not compare live state with Git."
+      - id: c
+        text: "`argocd app logs shop`"
+        why: "This shows container logs of the app, not differences."
+      - id: d
+        text: "`argocd app wait shop`"
+        why: "This waits until the app reaches a status. It does not print a diff."
+    answer: [a]
+    explanation: |
+      `argocd app diff` compares the live state with the target state and prints the differences.
+      `argocd app sync` applies them; `argocd app get` shows the sync and health status.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_diff/
+    glossary: [argo-cd]
+
+  - id: capa-cd-030
+    difficulty: 3
+    type: single
+    question: "You delete an Application with kubectl and want its resources in the cluster to be deleted too. What must the Application have?"
+    options:
+      - id: a
+        text: "The finalizer `resources-finalizer.argocd.argoproj.io`"
+      - id: b
+        text: "The sync option `Prune=true`"
+        why: "Prune deletes resources removed from Git during a sync. It does not affect deleting the Application."
+      - id: c
+        text: "An owner reference to the namespace"
+        why: "Applications live in the argocd namespace. Owner references are not used for this."
+      - id: d
+        text: "The label `argocd.argoproj.io/instance`"
+        why: "This label tracks which app owns a resource. It does not start a cascade delete."
+    answer: [a]
+    explanation: |
+      With the `resources-finalizer.argocd.argoproj.io` finalizer, deleting an Application also
+      deletes its resources (cascade). Without it, `kubectl delete` removes only the Application.
+      `argocd app delete` does a cascade delete by default.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/
+    glossary: [argo-application]
+
+  - id: capa-cd-031
+    difficulty: 1
+    type: multiple
+    question: "Which values can you use in `targetRevision` of a Git source? (Choose three.)"
+    options:
+      - id: a
+        text: "A branch name, such as `main`"
+      - id: b
+        text: "A tag, such as `v1.4.0`"
+      - id: c
+        text: "A commit SHA"
+      - id: d
+        text: "A Pod name"
+        why: "Pods are cluster objects. A revision must point to something in Git."
+      - id: e
+        text: "A namespace name"
+        why: "The namespace belongs to the destination, not to the revision."
+    answer: [a, b, c]
+    explanation: |
+      For Git, `targetRevision` can be a branch, a tag, a commit SHA or `HEAD`. A branch follows new
+      commits; a tag or SHA pins a version. For Helm repositories it is the chart version.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/tracking_strategies/
+    glossary: [argo-application]
+
+  - id: capa-cd-032
+    difficulty: 3
+    type: single
+    question: "In a declarative setup, how do you add a private Git repository to Argo CD?"
+    options:
+      - id: a
+        text: "A Secret with the label `argocd.argoproj.io/secret-type: repository`"
+      - id: b
+        text: "A ConfigMap called `argocd-repos` in every namespace"
+        why: "Repositories are stored as labeled Secrets in the Argo CD namespace, not as ConfigMaps."
+      - id: c
+        text: "An AppProject with the Git password in `sourceRepos`"
+        why: "`sourceRepos` only lists allowed URLs. It never holds credentials."
+      - id: d
+        text: "An annotation with the password on each Application"
+        why: "Applications do not carry credentials. Argo CD looks them up by repo URL."
+    answer: [a]
+    explanation: |
+      Repositories and credentials are Kubernetes Secrets in the Argo CD namespace with the label
+      `argocd.argoproj.io/secret-type: repository` (or `repo-creds` for credential templates).
+      Clusters use `secret-type: cluster`.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/
+    glossary: [argo-cd, secret]
+
+  - id: capa-cd-033
+    difficulty: 3
+    type: single
+    question: "An Application must take a Helm chart from a Helm repository and the values file from a Git repository. What feature do you use?"
+    options:
+      - id: a
+        text: "Multiple sources (`spec.sources`) with a `ref` to the Git source"
+      - id: b
+        text: "An ApplicationSet with a matrix generator"
+        why: "Matrix combines generators to create many Applications. It does not mix sources in one Application."
+      - id: c
+        text: "Two Applications with the same name in different projects"
+        why: "Application names are unique in a namespace, and two apps would not share values."
+      - id: d
+        text: "A PreSync hook that downloads the values file"
+        why: "Hooks run in the cluster during sync. They cannot change how the repo server renders the chart."
+    answer: [a]
+    explanation: |
+      With `spec.sources`, one Application can use several sources. A Git source with `ref: values`
+      can be used in a Helm source as `$values/path/values.yaml` in `valueFiles`.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/
+    glossary: [argo-application, helm]
+
+  - id: capa-cd-034
+    difficulty: 2
+    type: single
+    question: "Which reconciliation pattern do you get with automated sync, prune and self-heal all enabled?"
+    options:
+      - id: a
+        text: "Git is the only source of truth: the cluster always follows Git, also after manual changes"
+      - id: b
+        text: "The cluster is the source of truth, and Argo CD commits live changes back to Git"
+        why: "Argo CD does not write cluster changes to Git. It moves the cluster toward Git."
+      - id: c
+        text: "Argo CD only reports drift and never changes the cluster"
+        why: "That is manual sync. With automated sync, Argo CD applies changes itself."
+      - id: d
+        text: "Changes are applied only during sync windows set in the Application"
+        why: "Sync windows are set in AppProjects and are a separate feature."
+    answer: [a]
+    explanation: |
+      With automated sync, new commits are applied; prune deletes resources removed from Git;
+      self-heal reverts drift in the cluster. Together they make Git the single source of truth.
+      Manual sync is the other common pattern: Argo CD shows drift and a person decides when to sync.
+    docs:
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/best_practices/
+    glossary: [argo-auto-sync, argo-prune, argo-self-heal, gitops]

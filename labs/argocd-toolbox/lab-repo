@@ -1,0 +1,16 @@
+#!/bin/bash
+# lab-repo NAME [DIR]  - create the Git repository http://git.lab/NAME.git (a bare repo in /srv/git).
+#                        With DIR, replace the repo content with the files of DIR, commit and push them to the main branch.
+set -e
+name=${1:?usage: lab-repo NAME [DIR]}
+repo=/srv/git/$name.git
+[ -d "$repo" ] || git init -q --bare "$repo"
+if [ -n "$2" ]; then
+  tmp=$(mktemp -d)
+  git clone -q "http://git.lab/$name.git" "$tmp/w" 2>/dev/null
+  find "$tmp/w" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +   # the repo gets exactly the files of DIR
+  cp -a "$2"/. "$tmp/w"/
+  cd "$tmp/w" && git add -A && { git diff --cached --quiet || git commit -qm "${3:-Add files}"; } && git push -q origin HEAD:main
+  rm -rf "$tmp"
+fi
+echo "http://git.lab/$name.git"

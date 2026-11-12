@@ -1,0 +1,63 @@
+id: capa-cd-003
+title: Turn on automated sync with prune and self-heal
+domain: argo-cd
+difficulty: 2
+minutes: 6
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/app
+  cat > $d/app/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: auto-web }
+  spec:
+    replicas: 1
+    selector: { matchLabels: { app: auto-web } }
+    template:
+      metadata: { labels: { app: auto-web } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  cat > $d/app/old-config.yaml <<'YAML'
+  apiVersion: v1
+  kind: ConfigMap
+  metadata: { name: auto-old }
+  data: { mode: legacy }
+  YAML
+  lab-repo cd-auto $d >/dev/null
+  argocd app create cd-auto --repo http://git.lab/cd-auto.git --path app \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-auto --sync-option CreateNamespace=true >/dev/null
+  argocd app sync cd-auto --timeout 150 >/dev/null
+  # a new commit: the ConfigMap is removed and the Deployment gets 2 replicas
+  rm $d/app/old-config.yaml
+  sed -i 's/replicas: 1/replicas: 2/' $d/app/deployment.yaml
+  lab-repo cd-auto $d "Remove auto-old, scale to 2" >/dev/null
+task: |
+  The Application `cd-auto` uses manual sync. A new commit in Git removed the ConfigMap `auto-old`
+  and changed the Deployment `auto-web` to 2 replicas, but the cluster still has the old state.
+
+  Change the sync policy of `cd-auto` so that Argo CD:
+
+  1. syncs automatically when Git changes (**automated** sync),
+  2. deletes live resources that are no longer in Git (**prune**),
+  3. undoes manual changes made in the cluster (**self-heal**).
+
+  When you are done, the ConfigMap `auto-old` must be gone and `auto-web` must have 2 ready replicas.
+checks:
+  - name: Automated sync with prune and self-heal is enabled on `cd-auto`
+    run: |
+      [ "$(kubectl -n argocd get app cd-auto -o jsonpath='{.spec.syncPolicy.automated.prune}/{.spec.syncPolicy.automated.selfHeal}')" = true/true ]
+  - name: ConfigMap `auto-old` was pruned from namespace `cd-auto`
+    run: '! kubectl -n cd-auto get configmap auto-old >/dev/null 2>&1'
+  - name: Deployment `auto-web` has 2 ready replicas and the Application is Synced
+    run: |
+      [ "$(kubectl -n cd-auto get deploy auto-web -o jsonpath='{.status.readyReplicas}')" = 2 ] &&
+      [ "$(kubectl -n argocd get app cd-auto -o jsonpath='{.status.sync.status}')" = Synced ]
+solution: |
+  argocd app set cd-auto --sync-policy automated --auto-prune --self-heal
+  argocd app get cd-auto          # wait a few seconds: Synced, auto-old deleted
+  # or: kubectl -n argocd patch app cd-auto --type merge \
+  #   -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/

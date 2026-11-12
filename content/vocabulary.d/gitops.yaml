@@ -1,0 +1,110 @@
+# Everyday exam English used in the CAPA (Certified Argo Project Associate) questions and labs.
+words:
+  - id: attempt
+    word: "attempt"
+    match: ["attempt", "attempts", "attempted"]
+    definition: "To try to do something; also the try itself."
+    example: "Argo CD attempts one automated sync for each new commit."
+    es: "intentar; intento"
+  - id: overlap
+    word: "overlap"
+    match: ["overlap", "overlaps", "overlapping"]
+    definition: "When two things happen at the same time or cover part of the same space."
+    example: "With concurrencyPolicy Allow, two runs of the same CronWorkflow can overlap."
+    es: "solaparse, superponerse"
+  - id: pin
+    word: "pin (a version)"
+    match: ["pin", "pins", "pinned"]
+    definition: "To fix something to one exact value so it does not change."
+    example: "A tag or a commit SHA pins the version that Argo CD deploys."
+    es: "fijar (una versión)"
+  - id: whatever
+    word: "whatever"
+    match: ["whatever"]
+    definition: "It does not matter what; any thing or result."
+    example: "The exit handler runs whatever the result of the workflow is."
+    es: "sea lo que sea, independientemente de"
+  - id: tie-breaker
+    word: "tie-breaker"
+    match: ["tie-breaker", "tie-breakers"]
+    definition: "A rule used to decide between two things that are equal by the other rules."
+    example: "When phase, wave and kind are the same, the name is the tie-breaker."
+    es: "criterio de desempate"
+  - id: fight
+    word: "fight"
+    match: ["fight", "fights"]
+    definition: "To work against something; here, two tools that keep undoing each other's changes."
+    example: "Self-heal would fight the HPA and undo every scaling decision."
+    es: "pelear, ir en contra de"
+  - id: scan
+    word: "scan"
+    match: ["scan", "scans", "scanned"]
+    definition: "To look through something quickly to find what you need."
+    example: "The Git generator scans the repository for folders."
+    es: "recorrer, examinar"
+  - id: record
+    word: "record"
+    match: ["record", "records"]
+    definition: "Information that is saved so you can look at it later."
+    example: "The workflow archive keeps records of finished workflows."
+    es: "registro"
+  - id: skip
+    word: "skip"
+    match: ["skip", "skips", "skipped"]
+    definition: "To not do something that would normally happen; to jump over it."
+    example: "If the condition is false, the step is skipped."
+    es: "saltar, omitir"
+  - id: queue
+    word: "queue"
+    match: ["queue", "queueing", "queued"]
+    definition: "To make things wait in a line until they can be handled."
+    example: "parallelism makes Argo queue the extra Pods instead of failing them."
+    es: "poner en cola"
+  - id: typo
+    word: "typo"
+    match: ["typo", "typos"]
+    definition: "A small mistake made when typing, such as a wrong or extra letter."
+    example: "The image tag has a typo: `alpinee` instead of `alpine`."
+    es: "errata, error de tipeo"
+  - id: kept
+    word: "keep / kept"
+    match: ["kept"]
+    definition: "Past form of keep: not changed or not removed."
+    example: "Fields in ignoreDifferences are kept during the sync."
+    es: "mantenido, conservado"
+  - id: carry
+    word: "carry"
+    match: ["carry", "carries"]
+    definition: "To move something from one place to another."
+    example: "The EventBus carries events from EventSources to Sensors."
+    es: "transportar, llevar"
+  - id: unclear
+    word: "unclear"
+    match: ["unclear"]
+    definition: "Not easy to understand or decide."
+    example: "An inconclusive measurement is an unclear result."
+    es: "poco claro, dudoso"
+  - id: safety
+    word: "safety"
+    match: ["safety"]
+    definition: "Being protected from danger or damage."
+    example: "For safety, automated sync does not prune by default."
+    es: "seguridad (protección contra daños)"
+  - id: forever
+    word: "forever"
+    match: ["forever"]
+    definition: "For all time; without an end."
+    example: "A pause without a duration waits forever until it is promoted."
+    es: "para siempre, indefinidamente"
+  - id: approximate
+    word: "approximate"
+    match: ["approximate", "approximates", "approximately"]
+    definition: "To get close to a value without being exact."
+    example: "Without traffic routing, Argo Rollouts approximates the weight with Pod counts."
+    es: "aproximar"
+  - id: combination
+    word: "combination"
+    match: ["combination", "combinations"]
+    definition: "Two or more things joined together."
+    example: "Automated sync runs once for each combination of commit and parameters."
+    es: "combinación"

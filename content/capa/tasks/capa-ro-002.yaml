@@ -1,0 +1,59 @@
+id: capa-ro-002
+title: Create a blue-green Rollout
+domain: argo-rollouts
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  set -e
+  kubectl create namespace ro-bg >/dev/null
+  for s in active preview; do
+    kubectl -n ro-bg create service clusterip ro-bg-$s --tcp=80:80 >/dev/null
+    kubectl -n ro-bg set selector service ro-bg-$s app=ro-bg >/dev/null
+  done
+task: |
+  In the namespace `ro-bg` there are two Services: `ro-bg-active` and `ro-bg-preview`.
+
+  Create an Argo Rollout called `ro-bg` in `ro-bg`:
+
+  - 2 replicas, Pod label `app: ro-bg`, one container `web` with image `nginx:1.27-alpine`
+  - **blue-green** strategy: active Service `ro-bg-active`, preview Service `ro-bg-preview`
+  - new versions must **not** be promoted automatically
+
+  The Rollout must become `Healthy`.
+checks:
+  - name: Rollout `ro-bg` uses blue-green with the right Services and no auto-promotion
+    run: |
+      [ "$(kubectl -n ro-bg get rollout ro-bg -o jsonpath='{.spec.strategy.blueGreen.activeService}/{.spec.strategy.blueGreen.previewService}/{.spec.strategy.blueGreen.autoPromotionEnabled}')" = ro-bg-active/ro-bg-preview/false ]
+  - name: Rollout `ro-bg` is Healthy with 2 available Pods running `nginx:1.27-alpine`
+    run: |
+      [ "$(kubectl -n ro-bg get rollout ro-bg -o jsonpath='{.status.phase}/{.status.availableReplicas}/{.spec.template.spec.containers[0].image}')" = Healthy/2/nginx:1.27-alpine ]
+  - name: The controller manages Service `ro-bg-active` (it selects the stable ReplicaSet)
+    run: |
+      [ -n "$(kubectl -n ro-bg get service ro-bg-active -o jsonpath='{.spec.selector.rollouts-pod-template-hash}')" ]
+solution: |
+  kubectl apply -n ro-bg -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: Rollout
+  metadata:
+    name: ro-bg
+  spec:
+    replicas: 2
+    selector:
+      matchLabels: { app: ro-bg }
+    template:
+      metadata:
+        labels: { app: ro-bg }
+      spec:
+        containers:
+        - name: web
+          image: nginx:1.27-alpine
+    strategy:
+      blueGreen:
+        activeService: ro-bg-active
+        previewService: ro-bg-preview
+        autoPromotionEnabled: false
+  YAML
+  kubectl argo rollouts get rollout ro-bg -n ro-bg
+docs:
+  - https://argoproj.github.io/argo-rollouts/features/bluegreen/

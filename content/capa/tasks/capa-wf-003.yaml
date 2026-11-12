@@ -1,0 +1,67 @@
+id: capa-wf-003
+title: Pass an output parameter between steps
+domain: argo-workflows
+difficulty: 3
+minutes: 10
+environment: argocd
+setup: |
+  kubectl create namespace wf-params >/dev/null
+task: |
+  Create a Workflow called exactly `pass-data` in the namespace `wf-params` that uses **steps**:
+
+  1. Step `generate` runs a container (`busybox:1.36`) that writes `42` to the file `/tmp/number.txt`.
+     The template exports this file as an **output parameter** called `number`.
+  2. Step `consume` runs after `generate`. Its template has an **input parameter** `number` that
+     gets the output of `generate`, and it prints the value.
+
+  The Workflow must finish with phase `Succeeded`.
+checks:
+  - name: Workflow `pass-data` Succeeded
+    run: '[ "$(kubectl -n wf-params get workflow pass-data -o jsonpath="{.status.phase}")" = Succeeded ]'
+  - name: Step `generate` produced the output parameter `number` = 42
+    run: |
+      out=$(kubectl -n wf-params get workflow pass-data -o json | jq -r '[.status.nodes[] | select(.displayName == "generate") | .outputs.parameters[]? | select(.name == "number") | .value | tostring | gsub("\\s"; "")] | first')
+      [ "$out" = 42 ]
+  - name: Step `consume` received the input parameter `number` = 42
+    run: |
+      out=$(kubectl -n wf-params get workflow pass-data -o json | jq -r '[.status.nodes[] | select(.displayName == "consume") | .inputs.parameters[]? | select(.name == "number") | .value | tostring | gsub("\\s"; "")] | first')
+      [ "$out" = 42 ]
+solution: |
+  kubectl create -n wf-params -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: Workflow
+  metadata:
+    name: pass-data
+  spec:
+    entrypoint: main
+    templates:
+    - name: main
+      steps:
+      - - name: generate
+          template: generate
+      - - name: consume
+          template: consume
+          arguments:
+            parameters:
+            - name: number
+              value: "{{steps.generate.outputs.parameters.number}}"
+    - name: generate
+      container:
+        image: busybox:1.36
+        command: [sh, -c, "echo 42 > /tmp/number.txt"]
+      outputs:
+        parameters:
+        - name: number
+          valueFrom: { path: /tmp/number.txt }
+    - name: consume
+      inputs:
+        parameters:
+        - name: number
+      container:
+        image: busybox:1.36
+        command: [echo, "The number is {{inputs.parameters.number}}"]
+  YAML
+  argo get -n wf-params pass-data
+docs:
+  - https://argo-workflows.readthedocs.io/en/latest/walk-through/output-parameters/
+  - https://argo-workflows.readthedocs.io/en/latest/walk-through/steps/

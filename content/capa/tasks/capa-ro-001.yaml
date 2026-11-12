@@ -1,0 +1,60 @@
+id: capa-ro-001
+title: Promote a paused canary Rollout
+domain: argo-rollouts
+difficulty: 2
+minutes: 7
+environment: argocd
+setup: |
+  set -e
+  kubectl create namespace ro-canary >/dev/null
+  kubectl apply -n ro-canary -f - >/dev/null <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: Rollout
+  metadata: { name: ro-canary }
+  spec:
+    replicas: 4
+    selector: { matchLabels: { app: ro-canary } }
+    template:
+      metadata: { labels: { app: ro-canary } }
+      spec:
+        containers: [{ name: web, image: "nginx:1.27-alpine" }]
+    strategy:
+      canary:
+        steps:
+        - setWeight: 25
+        - pause: {}
+        - setWeight: 75
+        - pause: { duration: 5s }
+  YAML
+  for i in $(seq 60); do
+    [ "$(kubectl -n ro-canary get rollout ro-canary -o jsonpath='{.status.phase}')" = Healthy ] && break; sleep 2
+  done
+  kubectl argo rollouts set image ro-canary web=nginx:1.28-alpine -n ro-canary >/dev/null
+task: |
+  The Rollout `ro-canary` (namespace `ro-canary`) uses a canary strategy. A new version
+  (`nginx:1.28-alpine`) started and the Rollout is now **paused** at a step.
+
+  1. Look at the Rollout status and its steps.
+  2. Promote it so that the new version is released to **all 4 Pods** and becomes the stable version.
+checks:
+  - name: Rollout `ro-canary` is Healthy and the new version is stable
+    run: |
+      out=$(kubectl -n ro-canary get rollout ro-canary -o jsonpath='{.status.phase} {.status.stableRS} {.status.currentPodHash}')
+      set -- $out; [ "$1" = Healthy ] && [ -n "$2" ] && [ "$2" = "$3" ]
+  - name: 4 available Pods run the new version
+    run: |
+      [ "$(kubectl -n ro-canary get rollout ro-canary -o jsonpath='{.status.updatedReplicas}/{.status.availableReplicas}')" = 4/4 ]
+  - name: The Rollout spec still uses `nginx:1.28-alpine`
+    guard: true
+    run: |
+      [ "$(kubectl -n ro-canary get rollout ro-canary -o jsonpath='{.spec.template.spec.containers[0].image}')" = nginx:1.28-alpine ]
+solution: |
+  kubectl argo rollouts get rollout ro-canary -n ro-canary      # Status: Paused, Step 1/4
+  kubectl argo rollouts promote ro-canary -n ro-canary          # go to the next step (75%, then 5s pause)
+  kubectl argo rollouts get rollout ro-canary -n ro-canary --watch
+  # or skip all remaining steps at once: kubectl argo rollouts promote ro-canary -n ro-canary --full
+docs:
+  - https://argoproj.github.io/argo-rollouts/features/canary/
+  - https://argoproj.github.io/argo-rollouts/generated/kubectl-argo-rollouts/kubectl-argo-rollouts_promote/
+auto_solution: |
+  kubectl argo rollouts promote ro-canary -n ro-canary --full

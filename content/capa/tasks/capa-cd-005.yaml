@@ -1,0 +1,70 @@
+id: capa-cd-005
+title: Deploy a Helm chart with parameters
+domain: argo-cd
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d); mkdir -p $d/chart/templates
+  cat > $d/chart/Chart.yaml <<'YAML'
+  apiVersion: v2
+  name: greeter
+  version: 0.1.0
+  YAML
+  cat > $d/chart/values.yaml <<'YAML'
+  replicaCount: 1
+  message: "hello from the default values"
+  image: "nginx:1.27-alpine"
+  YAML
+  cat > $d/chart/templates/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: "{{ .Release.Name }}-web" }
+  spec:
+    replicas: {{ .Values.replicaCount }}
+    selector: { matchLabels: { app: "{{ .Release.Name }}-web" } }
+    template:
+      metadata: { labels: { app: "{{ .Release.Name }}-web" } }
+      spec:
+        containers: [{ name: nginx, image: "{{ .Values.image }}" }]
+  YAML
+  cat > $d/chart/templates/configmap.yaml <<'YAML'
+  apiVersion: v1
+  kind: ConfigMap
+  metadata: { name: "{{ .Release.Name }}-config" }
+  data:
+    message: {{ .Values.message | quote }}
+  YAML
+  lab-repo cd-helm $d >/dev/null
+task: |
+  The repository `http://git.lab/cd-helm.git` has a Helm chart in the folder `chart`.
+  Its values are `replicaCount`, `message` and `image`.
+
+  Create an Argo CD Application called `cd-helm` from this chart (destination: this cluster,
+  namespace `cd-helm`) and sync it. **Without changing Git**, set these Helm values in the
+  Application:
+
+  - `replicaCount` = `3`
+  - `message` = `hello-helm`
+
+  The chart names its objects `<release name>-web` and `<release name>-config`; keep the default
+  release name (the Application name).
+checks:
+  - name: Application `cd-helm` is a Helm application, Synced and Healthy
+    run: |
+      [ "$(kubectl -n argocd get app cd-helm -o jsonpath='{.status.sourceType}/{.status.sync.status}/{.status.health.status}')" = Helm/Synced/Healthy ]
+  - name: Deployment `cd-helm-web` has 3 ready replicas
+    run: '[ "$(kubectl -n cd-helm get deploy cd-helm-web -o jsonpath="{.status.readyReplicas}")" = 3 ]'
+  - name: ConfigMap `cd-helm-config` has message `hello-helm`
+    run: '[ "$(kubectl -n cd-helm get configmap cd-helm-config -o jsonpath="{.data.message}")" = hello-helm ]'
+solution: |
+  argocd app create cd-helm \
+    --repo http://git.lab/cd-helm.git --path chart \
+    --dest-server https://kubernetes.default.svc --dest-namespace cd-helm \
+    --sync-option CreateNamespace=true \
+    --helm-set replicaCount=3 --helm-set message=hello-helm
+  argocd app sync cd-helm
+  # In YAML: spec.source.helm.parameters (name/value) or spec.source.helm.valuesObject
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/helm/

@@ -1,0 +1,907 @@
+domain: argo-workflows
+questions:
+  - id: capa-wf-001
+    difficulty: 1
+    type: single
+    question: "What is Argo Workflows?"
+    options:
+      - id: a
+        text: "A container-native workflow engine that runs each step of a job in its own Pod"
+      - id: b
+        text: "A GitOps controller that keeps the cluster in sync with manifests stored in Git"
+        why: "That describes Argo CD. Argo Workflows runs jobs made of steps; it does not watch Git for desired state."
+      - id: c
+        text: "A controller that replaces Deployments to give canary and blue-green releases"
+        why: "That is Argo Rollouts. Argo Workflows is about running multi-step jobs, not releasing new app versions."
+      - id: d
+        text: "An event bus that connects external event sources to Kubernetes triggers"
+        why: "That is Argo Events. Argo Events can start workflows, but Argo Workflows itself is the engine that runs them."
+    answer: [a]
+    explanation: |
+      Argo Workflows is an open source, container-native workflow engine for Kubernetes. It is
+      implemented as a Kubernetes CRD (`Workflow`), and every step of a workflow runs as a container
+      in a Pod. It is used for CI/CD pipelines, data processing and machine learning jobs.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-concepts/
+    glossary: [argo-workflows, crd]
+
+  - id: capa-wf-002
+    difficulty: 1
+    type: single
+    question: "In a `Workflow` spec, which field names the template that runs first?"
+    options:
+      - id: a
+        text: "`spec.onExit`"
+        why: "`onExit` names an exit handler that runs at the end of the workflow, not the first template."
+      - id: b
+        text: "`spec.entrypoint`"
+      - id: c
+        text: "`spec.workflowTemplateRef`"
+        why: "`workflowTemplateRef` points the Workflow at a WorkflowTemplate. It does not choose a template inside the spec."
+      - id: d
+        text: "`spec.templates[0]`"
+        why: "The order of the `templates` list does not matter. The controller starts the template named in `entrypoint`."
+    answer: [b]
+    explanation: |
+      `spec.entrypoint` is the name of the template that the controller runs first, like the
+      `main` function of a program. `spec.templates` holds all templates; the entrypoint template
+      can call the others through steps or a DAG.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/the-structure-of-workflow-specs/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-003
+    difficulty: 2
+    type: multiple
+    question: "Which of these are template types that Argo Workflows supports? (Choose three.)"
+    options:
+      - id: a
+        text: "`container`"
+      - id: b
+        text: "`script`"
+      - id: c
+        text: "`helmRelease`"
+        why: "There is no `helmRelease` template. To work with Kubernetes objects, Argo Workflows has the `resource` template."
+      - id: d
+        text: "`dag`"
+      - id: e
+        text: "`terraformPlan`"
+        why: "There is no Terraform template type. You would run Terraform inside a `container` or `script` template."
+    answer: [a, b, d]
+    explanation: |
+      Template definitions run work: `container`, `script`, `resource`, `suspend`, `http`,
+      `containerSet` and `plugin`. Template invocators call other templates: `steps` and `dag`.
+      Tools like Helm or Terraform run inside a container or script template.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-concepts/
+    glossary: [argo-workflows, argo-dag]
+
+  - id: capa-wf-004
+    difficulty: 2
+    type: single
+    question: "A `steps` template has `[[A], [B, C], [D]]`. In which order do the steps run?"
+    options:
+      - id: a
+        text: "A, then B, then C, then D, one at a time"
+        why: "Steps in the same inner list run in parallel, so B and C do not wait for each other."
+      - id: b
+        text: "A, B, C and D all at the same time"
+        why: "The outer list is sequential: each group waits for the group before it."
+      - id: c
+        text: "A, then B and C in parallel, then D"
+      - id: d
+        text: "B and C first, then A and D in parallel"
+        why: "Groups run in the order of the outer list, so A runs first and D runs last."
+    answer: [c]
+    explanation: |
+      In a `steps` template the outer list runs in sequence and every inner list runs in
+      parallel. A runs first, then B and C start together, and D starts when both have finished.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/steps/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-005
+    difficulty: 1
+    type: single
+    question: "In a `dag` template, how do you say that task `B` must wait for task `A`?"
+    options:
+      - id: a
+        text: "Put `B` in a new inner list after `A`"
+        why: "Inner lists are the syntax of `steps` templates. A DAG uses task dependencies instead."
+      - id: b
+        text: "Add `dependencies: [A]` to task `B`"
+      - id: c
+        text: "Give `B` a higher `priority` than `A`"
+        why: "Priority affects scheduling of whole workflows or Pods, not the order of tasks in a DAG."
+      - id: d
+        text: "Add `when: A` to task `B`"
+        why: "`when` is a condition that decides if a task runs at all. It does not create an order between tasks."
+    answer: [b]
+    explanation: |
+      A DAG (directed acyclic graph) template lists tasks and their dependencies. A task starts as
+      soon as all tasks in its `dependencies` list (or its `depends` expression) are done. Tasks
+      with no dependencies start at once.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/dag/
+    glossary: [argo-dag]
+
+  - id: capa-wf-006
+    difficulty: 3
+    type: single
+    question: "A DAG task has `depends: \"A.Succeeded || B.Failed\"`. When does it run?"
+    options:
+      - id: a
+        text: "Only when both A succeeded and B failed"
+        why: "`||` means OR. With `&&` both conditions would be needed."
+      - id: b
+        text: "When A succeeded, or when B failed"
+      - id: c
+        text: "Always, because `depends` only sets the order of tasks"
+        why: "`depends` is a boolean expression. If it is false when the tasks it names are complete, the task is skipped."
+      - id: d
+        text: "Never, because a task cannot depend on a failed task"
+        why: "The enhanced `depends` logic was added exactly for this: you can react to `.Failed`, `.Errored`, `.Skipped` and more."
+    answer: [b]
+    explanation: |
+      The `depends` field uses enhanced depends logic: a boolean expression over task results such
+      as `.Succeeded`, `.Failed`, `.Errored`, `.Skipped` and `.Daemoned`, joined with `&&`, `||`
+      and `!`. A plain name like `A` means `A.Succeeded || A.Skipped || A.Daemoned`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/enhanced-depends-logic/
+    glossary: [argo-dag]
+
+  - id: capa-wf-007
+    difficulty: 3
+    type: single
+    question: "In a DAG, task `A` fails. Other tasks that do not depend on `A` have not started yet. What happens by default?"
+    options:
+      - id: a
+        text: "The DAG starts no new tasks, waits for running ones, and the workflow fails"
+      - id: b
+        text: "The DAG keeps starting every task that does not depend on `A`"
+        why: "This is the behaviour only when you set `failFast: false` on the DAG template."
+      - id: c
+        text: "The controller retries `A` three times before it stops"
+        why: "There are no automatic retries. Retries happen only with a `retryStrategy`."
+      - id: d
+        text: "All running Pods are killed at once and the workflow is deleted"
+        why: "Running tasks are allowed to finish, and the Workflow object stays so you can inspect it."
+    answer: [a]
+    explanation: |
+      DAG templates have `failFast` enabled by default: after one task fails, no new tasks are
+      scheduled. The DAG waits for running tasks and then fails. Set `failFast: false` to let all
+      independent branches run to the end.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/dag/
+    glossary: [argo-dag]
+
+  - id: capa-wf-008
+    difficulty: 1
+    type: single
+    question: "What is the difference between a `WorkflowTemplate` and a `ClusterWorkflowTemplate`?"
+    options:
+      - id: a
+        text: "A WorkflowTemplate is namespaced; a ClusterWorkflowTemplate is cluster-scoped"
+      - id: b
+        text: "A WorkflowTemplate runs once; a ClusterWorkflowTemplate runs on a schedule"
+        why: "Scheduled runs are done with a CronWorkflow. Both template kinds are only definitions."
+      - id: c
+        text: "A ClusterWorkflowTemplate runs its steps on many clusters at once"
+        why: "Cluster here means the scope of the object (all namespaces), not running in many clusters."
+      - id: d
+        text: "A WorkflowTemplate can hold only one template, the cluster one can hold many"
+        why: "Both kinds can hold many templates and have the same spec as a Workflow."
+    answer: [a]
+    explanation: |
+      Both are reusable workflow definitions stored in the cluster. A `WorkflowTemplate` lives in
+      one namespace and is used by workflows in that namespace. A `ClusterWorkflowTemplate` is
+      cluster-scoped and can be used from any namespace (with `clusterScope: true` in `templateRef`).
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-templates/
+      - https://argo-workflows.readthedocs.io/en/latest/cluster-workflow-templates/
+    glossary: [argo-workflow-template, namespace]
+
+  - id: capa-wf-009
+    difficulty: 2
+    type: single
+    question: "A step must run the template `build` that is defined in the WorkflowTemplate `ci-lib`. What do you write in the step?"
+    options:
+      - id: a
+        text: "`template: ci-lib.build`"
+        why: "`template` only refers to templates in the same Workflow. There is no dotted syntax."
+      - id: b
+        text: "`templateRef: { name: ci-lib, template: build }`"
+      - id: c
+        text: "`workflowTemplateRef: { name: ci-lib }`"
+        why: "`workflowTemplateRef` is set on the Workflow spec and runs the whole template from its entrypoint, not one template."
+      - id: d
+        text: "`import: ci-lib` at the top, then `template: build`"
+        why: "Workflows have no import statement. References between objects use `templateRef`."
+    answer: [b]
+    explanation: |
+      `templateRef` lets a step or DAG task call one template of a WorkflowTemplate: `name` is the
+      WorkflowTemplate and `template` is the template inside it. Add `clusterScope: true` to refer
+      to a ClusterWorkflowTemplate.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-templates/
+    glossary: [argo-workflow-template]
+
+  - id: capa-wf-010
+    difficulty: 2
+    type: single
+    question: "Which command submits a new Workflow from the WorkflowTemplate `nightly` and sets the parameter `env` to `prod`?"
+    options:
+      - id: a
+        text: "`argo submit --from workflowtemplate/nightly -p env=prod`"
+      - id: b
+        text: "`argo template run nightly --set env=prod`"
+        why: "`argo template` manages WorkflowTemplates (create, get, list, delete). It has no `run` subcommand."
+      - id: c
+        text: "`kubectl apply -f nightly -p env=prod`"
+        why: "kubectl does not know workflow parameters. `-p` is not a kubectl apply flag."
+      - id: d
+        text: "`argo resubmit nightly --parameter env=prod`"
+        why: "`argo resubmit` starts a copy of an existing Workflow, not a template."
+    answer: [a]
+    explanation: |
+      `argo submit --from workflowtemplate/<name>` creates a Workflow that references the template
+      with `workflowTemplateRef`. `-p name=value` sets a workflow parameter. The same works for
+      `clusterworkflowtemplate/<name>` and `cronwf/<name>`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-templates/
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/argo-cli/
+    glossary: [argo-workflow-template]
+
+  - id: capa-wf-011
+    difficulty: 1
+    type: single
+    question: "You need a workflow to run every night at 02:00. Which resource do you create?"
+    options:
+      - id: a
+        text: "A Kubernetes CronJob that runs `argo submit`"
+        why: "This can work, but Argo Workflows has a native resource for it with history and concurrency options."
+      - id: b
+        text: "A `CronWorkflow` with `schedules: [\"0 2 * * *\"]`"
+      - id: c
+        text: "A `WorkflowTemplate` with `schedule: nightly`"
+        why: "WorkflowTemplates have no schedule. They are only reusable definitions."
+      - id: d
+        text: "A `Workflow` with `activeDeadlineSeconds: 7200`"
+        why: "`activeDeadlineSeconds` limits how long a workflow may run. It does not start it at a time."
+    answer: [b]
+    explanation: |
+      A `CronWorkflow` runs a workflow on a cron schedule. It is like a Kubernetes CronJob, but the
+      spec is a `workflowSpec`. Options include `timezone`, `concurrencyPolicy`,
+      `startingDeadlineSeconds` and history limits.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/cron-workflows/
+    glossary: [argo-cron-workflow, cronjob]
+
+  - id: capa-wf-012
+    difficulty: 2
+    type: single
+    question: "A CronWorkflow should never start a new run while the previous run is still running. Which setting do you use?"
+    options:
+      - id: a
+        text: "`concurrencyPolicy: Replace`"
+        why: "`Replace` stops the running workflow and starts the new one. The old run does not finish."
+      - id: b
+        text: "`concurrencyPolicy: Forbid`"
+      - id: c
+        text: "`parallelism: 0`"
+        why: "`parallelism` limits Pods inside one workflow. 0 is not a way to block new runs."
+      - id: d
+        text: "`suspend: true`"
+        why: "`suspend: true` stops all future runs of the CronWorkflow, not only overlapping ones."
+    answer: [b]
+    explanation: |
+      `concurrencyPolicy` works like in a CronJob: `Allow` (default) lets runs overlap, `Forbid`
+      skips the new run if one is still active, and `Replace` deletes the active run and starts
+      the new one.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/cron-workflows/
+    glossary: [argo-cron-workflow]
+
+  - id: capa-wf-013
+    difficulty: 1
+    type: single
+    question: "A template declares an input parameter called `name`. How do you use its value in the container command?"
+    options:
+      - id: a
+        text: "`$name`"
+        why: "`$name` is a shell variable. Argo Workflows replaces `{{...}}` expressions before the Pod starts."
+      - id: b
+        text: "`{{inputs.parameters.name}}`"
+      - id: c
+        text: "`{{workflow.outputs.name}}`"
+        why: "There is no such variable. Workflow-level parameters are `{{workflow.parameters.<name>}}`."
+      - id: d
+        text: "`${params.name}`"
+        why: "This is not Argo syntax. Template variables use double curly braces."
+    answer: [b]
+    explanation: |
+      Inside a template, `{{inputs.parameters.<name>}}` is replaced by the parameter value.
+      Parameters passed to the whole workflow (`spec.arguments.parameters`) are available as
+      `{{workflow.parameters.<name>}}`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/parameters/
+      - https://argo-workflows.readthedocs.io/en/latest/variables/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-014
+    difficulty: 2
+    type: single
+    question: "A container writes a value to `/tmp/result.txt`. How can the next step use this value as a parameter?"
+    options:
+      - id: a
+        text: "Declare an output parameter with `valueFrom.path: /tmp/result.txt`"
+      - id: b
+        text: "Mount the same `emptyDir` volume in both steps"
+        why: "Two Pods of a workflow cannot share an `emptyDir`. Each Pod gets its own."
+      - id: c
+        text: "Read it with `{{steps.previous.stdout}}`"
+        why: "There is no `stdout` variable. Script output is `outputs.result`; files need an output parameter."
+      - id: d
+        text: "Write it to an environment variable called `ARGO_OUTPUT`"
+        why: "Environment variables do not leave the container. Argo has no special `ARGO_OUTPUT` variable."
+    answer: [a]
+    explanation: |
+      An output parameter can take its value from a file: `outputs.parameters` with
+      `valueFrom.path`. The next step reads it with
+      `{{steps.<step>.outputs.parameters.<name>}}` (or `{{tasks.<task>...}}` in a DAG).
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/output-parameters/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-015
+    difficulty: 2
+    type: single
+    question: "What must exist before a workflow can save output artifacts?"
+    options:
+      - id: a
+        text: "A PersistentVolumeClaim called `artifacts` in every namespace"
+        why: "Artifacts are not stored in a fixed PVC. They go to an artifact repository such as S3."
+      - id: b
+        text: "An artifact repository (for example S3, GCS or MinIO) configured for the workflow"
+      - id: c
+        text: "The Argo Server, because it stores the files in its database"
+        why: "The Argo Server is the UI and API. The workflow archive database stores workflow records, not files."
+      - id: d
+        text: "A container registry, because artifacts are pushed as images"
+        why: "Artifacts are files and folders (often tar.gz). They are not container images."
+    answer: [b]
+    explanation: |
+      Output artifacts are uploaded to an artifact repository: S3-compatible storage (AWS S3,
+      MinIO), GCS, Azure Blob, Artifactory, OSS, HDFS and others. You configure a default
+      repository in the `workflow-controller-configmap` or reference one with
+      `artifactRepositoryRef`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/configure-artifact-repository/
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/artifacts/
+    glossary: [argo-artifact-repository]
+
+  - id: capa-wf-016
+    difficulty: 2
+    type: multiple
+    question: "Which of these can be the source of an input artifact? (Choose two.)"
+    options:
+      - id: a
+        text: "A Git repository"
+      - id: b
+        text: "A file served over HTTP"
+      - id: c
+        text: "A Kubernetes Secret key"
+        why: "Secrets are used as volumes or environment variables. They are not an artifact source."
+      - id: d
+        text: "A Prometheus query result"
+        why: "Prometheus is a metric provider in Argo Rollouts analysis, not an artifact source in Argo Workflows."
+    answer: [a, b]
+    explanation: |
+      Input artifacts can come from many places: `git`, `http`, `s3`, `gcs`, `artifactory`,
+      `hdfs`, `oss`, `azure`, or raw inline text (`raw`). Argo Workflows downloads them into the
+      container before the main command starts.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/hardwired-artifacts/
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/artifacts/
+    glossary: [argo-artifact-repository]
+
+  - id: capa-wf-017
+    difficulty: 3
+    type: single
+    question: "By default, how does Argo Workflows store an output artifact that is a directory?"
+    options:
+      - id: a
+        text: "As a tar file compressed with gzip"
+      - id: b
+        text: "As separate files, one object for each file"
+        why: "You get this only if you turn off archiving with `archive: { none: {} }` (and the repository supports it)."
+      - id: c
+        text: "As a ZIP file"
+        why: "Argo does not use ZIP. The default archive format is tar with gzip."
+      - id: d
+        text: "As a container image layer"
+        why: "Artifacts are stored in an object store, not in an image registry."
+    answer: [a]
+    explanation: |
+      Output artifacts are archived as `.tgz` by default. You can change this with the `archive`
+      field: `none: {}` to store the file as it is, or `tar` with a compression level.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/artifacts/
+    glossary: [argo-artifact-repository]
+
+  - id: capa-wf-018
+    difficulty: 1
+    type: single
+    question: "Which template type lets you write a short Python or Bash program inline with a `source` field?"
+    options:
+      - id: a
+        text: "`container`"
+        why: "A container template runs an image with `command` and `args`. It has no `source` field."
+      - id: b
+        text: "`script`"
+      - id: c
+        text: "`resource`"
+        why: "A resource template creates or changes Kubernetes objects from a manifest. It does not run code."
+      - id: d
+        text: "`http`"
+        why: "An http template sends an HTTP request. It does not run inline code."
+    answer: [b]
+    explanation: |
+      A `script` template is a container template with a `source` field. Argo Workflows saves the
+      code to a file and runs it with the image's interpreter. Its standard output becomes
+      `outputs.result`, which other steps can use.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/scripts-and-results/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-019
+    difficulty: 2
+    type: single
+    question: "A step uses a `script` template called `gen` that prints a number. How does the next step read the number?"
+    options:
+      - id: a
+        text: "`{{steps.gen.outputs.result}}`"
+      - id: b
+        text: "`{{steps.gen.logs}}`"
+        why: "There is no `logs` variable. The standard output of a script is saved as `outputs.result`."
+      - id: c
+        text: "`{{gen.stdout}}`"
+        why: "Variables need the `steps.` (or `tasks.`) prefix and the result is called `outputs.result`."
+      - id: d
+        text: "`{{inputs.parameters.gen}}`"
+        why: "This reads an input parameter of the current template, not the output of another step."
+    answer: [a]
+    explanation: |
+      For `script` templates (and container templates), Argo Workflows captures standard output
+      in `outputs.result`. Other steps read it with `{{steps.<name>.outputs.result}}`, or
+      `{{tasks.<name>.outputs.result}}` in a DAG. It is meant for small values.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/scripts-and-results/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-020
+    difficulty: 2
+    type: single
+    question: "A workflow step must create a Kubernetes Job from a manifest and wait until it succeeds. Which template fits best?"
+    options:
+      - id: a
+        text: "A `resource` template with `action: create` and a `successCondition`"
+      - id: b
+        text: "A `suspend` template that waits for the Job"
+        why: "A suspend template only pauses the workflow until someone resumes it. It does not create objects."
+      - id: c
+        text: "A `dag` template with a task called `Job`"
+        why: "A DAG only orders other templates. It cannot apply a manifest by itself."
+      - id: d
+        text: "An `http` template that calls the Kubernetes API"
+        why: "Possible in theory, but the resource template exists for this and handles conditions for you."
+    answer: [a]
+    explanation: |
+      A `resource` template runs actions such as `create`, `apply`, `patch` or `delete` on a
+      Kubernetes manifest. `successCondition` and `failureCondition` (label-selector style
+      expressions on the object) tell Argo when the step is done.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/kubernetes-resources/
+    glossary: [argo-workflows, job]
+
+  - id: capa-wf-021
+    difficulty: 1
+    type: single
+    question: "A workflow must stop and wait for a person to approve before deployment. Which template do you use?"
+    options:
+      - id: a
+        text: "`suspend`"
+      - id: b
+        text: "`pause`"
+        why: "`pause` is a canary step in Argo Rollouts. In Argo Workflows the template type is `suspend`."
+      - id: c
+        text: "`sleep`"
+        why: "There is no sleep template. You could run `sleep` in a container, but nobody could approve it."
+      - id: d
+        text: "`approval`"
+        why: "There is no approval template type. Approval is done by resuming a suspend template."
+    answer: [a]
+    explanation: |
+      A `suspend` template pauses the workflow. It continues when someone runs `argo resume`
+      (or clicks Resume in the UI), or after an optional `duration`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/suspending/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-022
+    difficulty: 2
+    type: single
+    question: "A step sometimes fails because a remote API is slow. You want up to 3 more attempts. What do you add to the template?"
+    options:
+      - id: a
+        text: "`retryStrategy: { limit: \"3\" }`"
+      - id: b
+        text: "`restartPolicy: Always`"
+        why: "Workflow Pods do not restart in place. Retries create new Pods through `retryStrategy`."
+      - id: c
+        text: "`backoffLimit: 3`"
+        why: "`backoffLimit` is a field of Kubernetes Jobs, not of Argo templates."
+      - id: d
+        text: "`failFast: false`"
+        why: "`failFast` decides if other DAG branches keep running after a failure. It does not retry."
+    answer: [a]
+    explanation: |
+      `retryStrategy` sets how many times a failed step is retried (`limit`), which failures are
+      retried (`retryPolicy`: `Always`, `OnFailure`, `OnError`, `OnTransientError`), an optional
+      `backoff`, and an `expression` for advanced cases.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/retries/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-023
+    difficulty: 2
+    type: single
+    question: "You want to send a notification at the end of every workflow, whether it succeeded or failed. What do you use?"
+    options:
+      - id: a
+        text: "An exit handler set with `spec.onExit`"
+      - id: b
+        text: "A last step with `when: \"{{workflow.status}} == Succeeded\"`"
+        why: "This step runs only on success, and if an earlier step fails the steps after it do not run."
+      - id: c
+        text: "A `PostSync` hook"
+        why: "PostSync is an Argo CD resource hook. It is not part of Argo Workflows."
+      - id: d
+        text: "A sidecar container in every step"
+        why: "Sidecars run next to one step. They do not run once when the whole workflow ends."
+    answer: [a]
+    explanation: |
+      `spec.onExit` names a template that always runs at the end of the workflow, after success,
+      failure or error. Inside it, `{{workflow.status}}` tells you how the workflow ended, so you
+      can send notifications or clean up.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/exit-handlers/
+    glossary: [argo-exit-handler]
+
+  - id: capa-wf-024
+    difficulty: 2
+    type: multiple
+    question: "Which fields create a loop (fan-out) over many values in a step or DAG task? (Choose three.)"
+    options:
+      - id: a
+        text: "`withItems`"
+      - id: b
+        text: "`withParam`"
+      - id: c
+        text: "`withSequence`"
+      - id: d
+        text: "`forEach`"
+        why: "`forEach` is not an Argo field. Loops use the `with...` fields."
+      - id: e
+        text: "`replicas`"
+        why: "`replicas` belongs to Deployments and Rollouts. Workflow steps do not have it."
+    answer: [a, b, c]
+    explanation: |
+      `withItems` loops over a fixed list, `withParam` loops over a JSON list (often the output
+      of an earlier step), and `withSequence` loops over a range of numbers. Each item becomes its
+      own Pod, and they run in parallel.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/loops/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-025
+    difficulty: 2
+    type: single
+    question: "A step called `deploy` should run only if the output of the step `test` is `pass`. What do you add to `deploy`?"
+    options:
+      - id: a
+        text: "`when: \"{{steps.test.outputs.result}} == pass\"`"
+      - id: b
+        text: "`dependencies: [test]` on the step"
+        why: "In steps the order is already given by the lists. This field does not check a value."
+      - id: c
+        text: "`onExit: test` on the step `deploy`"
+        why: "`onExit` adds an exit handler. It has nothing to do with conditions."
+      - id: d
+        text: "`if: test.pass` on the step `deploy`"
+        why: "There is no `if` field. Conditional execution uses `when`."
+    answer: [a]
+    explanation: |
+      The `when` field holds a condition. If it is false, the step or task is marked as Skipped.
+      Conditions often compare outputs of earlier steps, workflow parameters, or
+      `{{workflow.status}}`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/conditionals/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-026
+    difficulty: 3
+    type: multiple
+    question: "With the default emissary executor, which containers can you find in a Pod of a container template? (Choose two.)"
+    options:
+      - id: a
+        text: "`main`, which runs your image and command"
+      - id: b
+        text: "`wait`, which saves outputs and artifacts when `main` ends"
+      - id: c
+        text: "`argocd-agent`, which reports status to Argo CD"
+        why: "Argo Workflows does not add Argo CD containers. The helper containers come from the `argoexec` image."
+      - id: d
+        text: "`docker`, which runs Docker in Docker to start the step"
+        why: "The old Docker executor was removed. The emissary executor does not need a Docker daemon."
+    answer: [a, b]
+    explanation: |
+      A workflow Pod has an `init` container (it copies the `argoexec` binary and loads input
+      artifacts), the `main` container with your image, and the `wait` sidecar that collects
+      outputs and artifacts and reports the result. Emissary is the only executor in current
+      versions.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-executors/
+      - https://argo-workflows.readthedocs.io/en/latest/architecture/
+    glossary: [argo-executor, sidecar]
+
+  - id: capa-wf-027
+    difficulty: 1
+    type: single
+    question: "Which Argo Workflows component watches `Workflow` resources and creates the Pods for each step?"
+    options:
+      - id: a
+        text: "The Argo Server"
+        why: "The Argo Server gives the UI and an API. It does not run workflows itself."
+      - id: b
+        text: "The workflow controller"
+      - id: c
+        text: "The kube-scheduler"
+        why: "The scheduler only places Pods on nodes. Someone else must create the Pods first."
+      - id: d
+        text: "The repo server"
+        why: "The repo server is an Argo CD component that renders manifests from Git."
+    answer: [b]
+    explanation: |
+      The workflow controller reconciles `Workflow` objects: it decides which steps can run,
+      creates their Pods and updates the workflow status. The Argo Server is optional and gives
+      the web UI and an HTTP/gRPC API.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/architecture/
+    glossary: [argo-workflow-controller, reconciliation]
+
+  - id: capa-wf-028
+    difficulty: 3
+    type: single
+    question: "Workflow Pods end with an error about `workflowtaskresults` being forbidden. What is the most likely cause?"
+    options:
+      - id: a
+        text: "Its service account lacks RBAC rights on them"
+      - id: b
+        text: "The artifact repository is not configured"
+        why: "A missing artifact repository gives an artifact error, and only when the step has artifacts."
+      - id: c
+        text: "The Argo Server is not running in the cluster"
+        why: "Workflows do not need the Argo Server. The executor talks to the Kubernetes API."
+      - id: d
+        text: "The image of the main container does not exist"
+        why: "A wrong image gives `ErrImagePull`, not an RBAC error about a resource."
+    answer: [a]
+    explanation: |
+      The executor (in the `wait` container) writes the result of each step as a
+      `WorkflowTaskResult` object. The service account used by the workflow needs RBAC rights to
+      `create` and `patch` `workflowtaskresults`. Set `serviceAccountName` to an account with a
+      suitable Role.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-rbac/
+    glossary: [argo-executor, rbac, service-account]
+
+  - id: capa-wf-029
+    difficulty: 2
+    type: single
+    question: "A data job fans out to 500 items, but the cluster can only run 20 of these Pods at a time. What do you set?"
+    options:
+      - id: a
+        text: "`parallelism: 20` on the workflow (or on the template)"
+      - id: b
+        text: "`replicas: 20` on the loop step"
+        why: "Steps have no `replicas` field. The number of items decides how many Pods are created."
+      - id: c
+        text: "`retryStrategy.limit: 20`"
+        why: "This is the number of retries for a failed step, not how many Pods run at the same time."
+      - id: d
+        text: "A ResourceQuota with `pods: 20` only"
+        why: "A quota rejects extra Pods with errors instead of queueing them; `parallelism` makes Argo wait."
+    answer: [a]
+    explanation: |
+      `spec.parallelism` limits how many Pods of one workflow run at the same time. It can also be
+      set on a single template. The controller can also limit the number of running workflows
+      across the cluster or a namespace.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/parallelism/
+      - https://argo-workflows.readthedocs.io/en/latest/use-cases/data-processing/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-030
+    difficulty: 2
+    type: single
+    question: "Which field stops a workflow if it runs longer than one hour?"
+    options:
+      - id: a
+        text: "`activeDeadlineSeconds: 3600`"
+      - id: b
+        text: "`ttlStrategy.secondsAfterCompletion: 3600`"
+        why: "TTL deletes the Workflow object some time after it has finished. It does not stop a running workflow."
+      - id: c
+        text: "`timeout: 1h` on the CronWorkflow"
+        why: "CronWorkflows have no such field. The time limit is set in the workflow spec."
+      - id: d
+        text: "`podGC.strategy: OnWorkflowCompletion`"
+        why: "podGC deletes Pods after they finish. It has nothing to do with a time limit."
+    answer: [a]
+    explanation: |
+      `activeDeadlineSeconds` can be set on the workflow or on a template. When the time is over,
+      the running steps are stopped and the workflow fails. Templates can also have a `timeout`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/timeouts/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-031
+    difficulty: 2
+    type: multiple
+    question: "Completed workflows leave many Pods and Workflow objects in the cluster. Which settings reduce this? (Choose two.)"
+    options:
+      - id: a
+        text: "`podGC` with a strategy like `OnPodCompletion`"
+      - id: b
+        text: "`ttlStrategy` with `secondsAfterCompletion`"
+      - id: c
+        text: "`failFast: true`"
+        why: "`failFast` stops scheduling new DAG tasks after a failure. It does not delete anything."
+      - id: d
+        text: "`suspend: {}` at the end of the workflow"
+        why: "A suspend template pauses the workflow; it would keep the objects even longer."
+    answer: [a, b]
+    explanation: |
+      `podGC` deletes Pods when they or the workflow finish. `ttlStrategy` deletes the Workflow
+      object a number of seconds after it completes (or succeeds or fails). Both help keep etcd
+      small. A workflow archive can keep a history in a database.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/cost-optimisation/
+    glossary: [argo-workflows, etcd]
+
+  - id: capa-wf-032
+    difficulty: 1
+    type: multiple
+    question: "Which `argo` CLI commands exist? (Choose three.)"
+    options:
+      - id: a
+        text: "`argo submit` to create and start a workflow"
+      - id: b
+        text: "`argo logs` to read the logs of a workflow"
+      - id: c
+        text: "`argo retry` to run a failed workflow again from the failed step"
+      - id: d
+        text: "`argo promote` to move a workflow to the next stage"
+        why: "`promote` is a command of the Argo Rollouts kubectl plugin, not of the argo CLI."
+      - id: e
+        text: "`argo app sync` to sync a workflow with Git"
+        why: "`app sync` is an argocd CLI command. The argo CLI works with workflows, not Applications."
+    answer: [a, b, c]
+    explanation: |
+      Common commands: `argo submit`, `argo list`, `argo get`, `argo logs`, `argo watch`,
+      `argo retry` (continue a failed workflow), `argo resubmit` (start a copy), `argo suspend`,
+      `argo resume`, `argo stop` and `argo terminate`.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/walk-through/argo-cli/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-033
+    difficulty: 3
+    type: single
+    question: "Only one workflow at a time may write to a shared database table. Which feature limits this across workflows?"
+    options:
+      - id: a
+        text: "Synchronization with a mutex"
+      - id: b
+        text: "`parallelism: 1` in each workflow"
+        why: "`parallelism` limits Pods inside one workflow. Two different workflows could still run at the same time."
+      - id: c
+        text: "Memoization with a cache key"
+        why: "Memoization reuses old results of a step. It does not lock a resource for other workflows."
+      - id: d
+        text: "A PodDisruptionBudget"
+        why: "A PDB limits voluntary evictions of Pods. It does not stop new workflows from starting."
+    answer: [a]
+    explanation: |
+      Argo Workflows supports synchronization: a `mutex` allows one holder at a time, and a
+      `semaphore` (with a limit stored in a ConfigMap or the database) allows N holders. You can
+      set them on the workflow or on a template.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/synchronization/
+    glossary: [argo-workflows, configmap]
+
+  - id: capa-wf-034
+    difficulty: 3
+    type: single
+    question: "A slow step gets the same inputs many times. You want to reuse its earlier output instead of running it again. Which feature helps?"
+    options:
+      - id: a
+        text: "Memoization with `memoize`"
+      - id: b
+        text: "The workflow archive"
+        why: "The archive keeps records of finished workflows in a database. Steps cannot reuse outputs from it."
+      - id: c
+        text: "`retryStrategy` with `limit: 0`"
+        why: "This only says how many retries happen after a failure. It does not cache results."
+      - id: d
+        text: "Key-only artifacts"
+        why: "Key-only artifacts let you refer to a file in the repository without a full path. They are not a result cache."
+    answer: [a]
+    explanation: |
+      With `memoize`, a template saves its outputs in a ConfigMap under a `key` (often built from
+      input parameters). When the same key is used again and the entry has not expired
+      (`maxAge`), the step is skipped and the saved outputs are used.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/memoization/
+    glossary: [argo-workflows, configmap]
+
+  - id: capa-wf-035
+    difficulty: 2
+    type: single
+    question: "Why is Argo Workflows a good fit for batch data processing on Kubernetes?"
+    options:
+      - id: a
+        text: "Steps run as Pods in parallel, pass data with artifacts, and scale with the cluster"
+      - id: b
+        text: "It keeps a long-running Pod per pipeline that never restarts"
+        why: "Each step is a short-lived Pod. Nothing stays running after the workflow ends."
+      - id: c
+        text: "It stores all data inside etcd so it is always consistent"
+        why: "etcd only keeps the Workflow objects. Data goes to an artifact repository or volumes."
+      - id: d
+        text: "It replaces Spark and Hadoop with its own processing engine"
+        why: "Argo orchestrates containers. You can run Spark or any other tool inside the steps."
+    answer: [a]
+    explanation: |
+      Data pipelines are a main use case: loops and DAGs run many Pods in parallel, artifacts pass
+      files between steps, `parallelism` protects the cluster, and retries handle temporary
+      failures. Every step can use any container image.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/use-cases/data-processing/
+    glossary: [argo-workflows]
+
+  - id: capa-wf-036
+    difficulty: 2
+    type: single
+    question: "What does the Argo Workflows workflow archive do?"
+    options:
+      - id: a
+        text: "It stores finished workflows in a database (PostgreSQL or MySQL)"
+      - id: b
+        text: "It compresses output artifacts before upload"
+        why: "Artifact compression is controlled by the `archive` field of each artifact, not by the workflow archive."
+      - id: c
+        text: "It saves all logs of running Pods in etcd"
+        why: "Logs are not stored in etcd. The archive saves workflow records after they finish."
+      - id: d
+        text: "It makes a backup of WorkflowTemplates in Git"
+        why: "Argo Workflows does not write to Git. Keeping templates in Git is a GitOps practice, for example with Argo CD."
+    answer: [a]
+    explanation: |
+      With the workflow archive enabled, the controller saves completed workflows to PostgreSQL or
+      MySQL. You can then delete them from the cluster (for example with `ttlStrategy`) and still
+      see their history in the UI and API.
+    docs:
+      - https://argo-workflows.readthedocs.io/en/latest/workflow-archive/
+    glossary: [argo-workflows]

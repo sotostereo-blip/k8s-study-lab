@@ -1,0 +1,92 @@
+id: capa-cd-009
+title: Generate applications with an ApplicationSet list generator
+domain: argo-cd
+difficulty: 3
+minutes: 10
+environment: argocd
+setup: |
+  set -e
+  d=$(mktemp -d)
+  for env in dev staging; do
+    n=1; [ $env = staging ] && n=2
+    mkdir -p $d/envs/$env
+    cat > $d/envs/$env/deployment.yaml <<YAML
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata: { name: appset-web }
+  spec:
+    replicas: $n
+    selector: { matchLabels: { app: appset-web } }
+    template:
+      metadata: { labels: { app: appset-web, env: $env } }
+      spec:
+        containers: [{ name: nginx, image: "nginx:1.27-alpine" }]
+  YAML
+  done
+  lab-repo cd-appset $d >/dev/null
+task: |
+  The repository `http://git.lab/cd-appset.git` has one folder per environment:
+  `envs/dev` and `envs/staging`.
+
+  Create an ApplicationSet called `appset-envs` (namespace `argocd`) with a **list generator**
+  with two elements, `env: dev` and `env: staging`. For each element it must generate an
+  Application:
+
+  - name `appset-<env>` (so `appset-dev` and `appset-staging`), project `default`
+  - source: the repository above, path `envs/<env>`
+  - destination: this cluster, namespace `appset-<env>` (create it with a sync option)
+  - automated sync
+
+  Both Applications must become `Synced` and `Healthy`.
+checks:
+  - name: ApplicationSet `appset-envs` uses a list generator with 2 elements
+    run: |
+      [ "$(kubectl -n argocd get applicationset appset-envs -o json | jq '[.spec.generators[].list.elements // [] | length] | add')" = 2 ]
+  - name: Applications `appset-dev` and `appset-staging` are owned by `appset-envs`
+    run: |
+      for e in dev staging; do
+        [ "$(kubectl -n argocd get app appset-$e -o jsonpath='{.metadata.ownerReferences[0].kind}/{.metadata.ownerReferences[0].name}')" = ApplicationSet/appset-envs ] || exit 1
+      done
+  - name: Both Applications are Synced and Healthy
+    run: |
+      for e in dev staging; do
+        [ "$(kubectl -n argocd get app appset-$e -o jsonpath='{.status.sync.status}/{.status.health.status}')" = Synced/Healthy ] || exit 1
+      done
+  - name: Deployment `appset-web` has 1 ready replica in `appset-dev` and 2 in `appset-staging`
+    run: |
+      [ "$(kubectl -n appset-dev get deploy appset-web -o jsonpath='{.status.readyReplicas}')" = 1 ] &&
+      [ "$(kubectl -n appset-staging get deploy appset-web -o jsonpath='{.status.readyReplicas}')" = 2 ]
+solution: |
+  kubectl apply -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    name: appset-envs
+    namespace: argocd
+  spec:
+    goTemplate: true
+    generators:
+    - list:
+        elements:
+        - env: dev
+        - env: staging
+    template:
+      metadata:
+        name: 'appset-{{.env}}'
+      spec:
+        project: default
+        source:
+          repoURL: http://git.lab/cd-appset.git
+          targetRevision: main
+          path: 'envs/{{.env}}'
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: 'appset-{{.env}}'
+        syncPolicy:
+          automated: {}
+          syncOptions: [CreateNamespace=true]
+  YAML
+  argocd app list        # appset-dev and appset-staging
+docs:
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-List/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/GoTemplate/
