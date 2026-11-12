@@ -6,6 +6,7 @@ A local study environment for Kubernetes certifications, built to practise
 Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
 
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
+  When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
 - **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
 - **Built-in English support**: technical terms are clickable and show a simple English
   definition. The Spanish translation is available on demand, and the dashboard tracks how
@@ -13,8 +14,9 @@ Phase 1 covers **KCNA** (Kubernetes and Cloud Native Associate):
 
 **Hands-on labs (CKA)**: choose a task and a real Kubernetes cluster (k3s) starts in
 Docker, with a terminal **inside the browser**. Solve it with `kubectl`, press
-*Check my work* and the app inspects the real cluster state. 17 tasks across the five
-CKA domains (troubleshooting, cluster architecture, networking, workloads, storage),
+*Check my work* and the app inspects the real cluster state. 38 tasks across the five
+CKA domains (troubleshooting, cluster architecture, networking, workloads, storage —
+including Helm, Kustomize, RBAC, certificates, NetworkPolicies and StatefulSets),
 on 1-node or 2-node clusters, with an exam-style timer and solutions. See [labs/README.md](labs/README.md).
 
 Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).

@@ -1,6 +1,7 @@
 # Same shortcuts many people set up at the start of the CKA exam.
 source /usr/share/bash-completion/bash_completion 2>/dev/null
 source <(kubectl completion bash)
+source <(helm completion bash)
 alias k=kubectl
 complete -o default -F __start_kubectl k
 export do="--dry-run=client -o yaml"

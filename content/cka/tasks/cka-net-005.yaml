@@ -1,0 +1,59 @@
+id: cka-net-005
+title: Default deny and allow the same namespace
+domain: services-networking
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  kubectl create namespace restricted
+  kubectl -n restricted create deployment web --image=nginx:1.27-alpine
+  kubectl -n restricted expose deployment web --port=80
+  kubectl -n restricted run client --image=busybox:1.36 -- sleep 3600
+  kubectl run outsider --image=busybox:1.36 -- sleep 3600
+  kubectl -n restricted rollout status deployment web --timeout=180s
+  kubectl -n restricted wait --for=condition=Ready pod/client --timeout=180s
+  kubectl wait --for=condition=Ready pod/outsider --timeout=180s
+task: |
+  The namespace `restricted` has a Deployment `web` (Service `web`, port 80) and a Pod `client`.
+  The Pod `outsider` runs in `default`.
+
+  1. Create a NetworkPolicy called `default-deny-ingress` in `restricted` that blocks
+     **all** incoming traffic to **all** Pods in the namespace.
+  2. Create a NetworkPolicy called `allow-same-namespace` in `restricted` that allows
+     incoming traffic from Pods **in the same namespace** only.
+
+  Result: `client` can reach `web`, `outsider` cannot.
+checks:
+  - name: default-deny-ingress selects all Pods and allows no ingress
+    run: kubectl -n restricted get netpol default-deny-ingress -o json | jq -e '(.spec.podSelector | length == 0) and (.spec.policyTypes | index("Ingress")) and ((.spec.ingress // []) | length == 0)'
+  - name: NetworkPolicy allow-same-namespace exists
+    run: kubectl -n restricted get netpol allow-same-namespace
+  - name: client (same namespace) can reach web
+    run: kubectl -n restricted exec client -- wget -qO- -T 4 http://web | grep -qi nginx
+  - name: outsider (default namespace) cannot reach web
+    run: '! kubectl exec outsider -- wget -qO- -T 4 http://web.restricted'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: default-deny-ingress
+    namespace: restricted
+  spec:
+    podSelector: {}
+    policyTypes: [Ingress]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-same-namespace
+    namespace: restricted
+  spec:
+    podSelector: {}
+    policyTypes: [Ingress]
+    ingress:
+    - from:
+      - podSelector: {}      # a podSelector alone means "Pods in this namespace"
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-traffic

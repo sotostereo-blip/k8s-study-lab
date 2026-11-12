@@ -1,0 +1,31 @@
+id: cka-wl-011
+title: HorizontalPodAutoscaler
+domain: workloads-scheduling
+difficulty: 2
+minutes: 7
+environment: single-node
+setup: |
+  kubectl create deployment shop-api --image=nginx:1.27-alpine
+  kubectl rollout status deployment shop-api --timeout=180s
+task: |
+  The Deployment `shop-api` has no CPU request, so it cannot autoscale on CPU.
+
+  1. Set a CPU request of `100m` on its container.
+  2. Create a HorizontalPodAutoscaler called `shop-api` for the Deployment:
+     - minimum `2` replicas, maximum `6`
+     - target average CPU utilization: `60%`
+checks:
+  - name: The container requests 100m CPU
+    run: '[ "$(kubectl get deploy shop-api -o jsonpath="{.spec.template.spec.containers[0].resources.requests.cpu}")" = 100m ]'
+  - name: HPA `shop-api` scales between 2 and 6 replicas
+    run: '[ "$(kubectl get hpa shop-api -o jsonpath="{.spec.minReplicas}/{.spec.maxReplicas}/{.spec.scaleTargetRef.name}")" = 2/6/shop-api ]'
+  - name: HPA targets 60% CPU
+    run: '[ "$(kubectl get hpa shop-api -o jsonpath="{.spec.metrics[0].resource.name}/{.spec.metrics[0].resource.target.averageUtilization}")" = cpu/60 ]'
+  - name: The Deployment has been scaled to at least 2 replicas
+    run: '[ "$(kubectl get deploy shop-api -o jsonpath="{.status.readyReplicas}")" -ge 2 ]'
+solution: |
+  kubectl set resources deployment shop-api --requests=cpu=100m
+  kubectl autoscale deployment shop-api --min=2 --max=6 --cpu-percent=60
+  kubectl get hpa shop-api        # TARGETS shows cpu: <unknown>/60% for a minute, then a value
+docs:
+  - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/

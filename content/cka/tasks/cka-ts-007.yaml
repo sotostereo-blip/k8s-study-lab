@@ -1,0 +1,25 @@
+id: cka-ts-007
+title: Service sends traffic to the wrong port
+domain: troubleshooting
+difficulty: 2
+minutes: 6
+environment: single-node
+setup: |
+  kubectl create deployment orders --image=nginx:1.27-alpine --replicas=2
+  kubectl create service clusterip orders --tcp=80:8080
+  kubectl rollout status deployment orders --timeout=180s
+task: |
+  The Service `orders` has endpoints, but `http://orders` from another Pod gives
+  "connection refused". The nginx containers listen on port `80`.
+
+  Fix the **Service**. Clients must keep using port `80`.
+checks:
+  - name: Service `orders` still listens on port 80
+    run: '[ "$(kubectl get svc orders -o jsonpath="{.spec.ports[0].port}")" = 80 ]'
+  - name: A Pod can open http://orders
+    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- wget -qO- -T 5 http://orders | grep -qi nginx
+solution: |
+  kubectl describe svc orders           # TargetPort: 8080/TCP, Endpoints: <ip>:8080
+  kubectl patch svc orders --type=json -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":80}]'
+docs:
+  - https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/

@@ -5,10 +5,17 @@ questions:
     type: single
     question: In a GitOps workflow, what is treated as the single source of truth for the desired state of the system?
     options:
-      - { id: a, text: "The live state of the cluster" }
-      - { id: b, text: "A Git repository" }
-      - { id: c, text: "The CI server's build logs" }
-      - { id: d, text: "The container registry" }
+      - id: a
+        text: "The live state of the cluster"
+        why: "The live state is what GitOps compares against Git. If it were the source of truth, manual changes and drift could never be detected or fixed."
+      - id: b
+        text: "A Git repository"
+      - id: c
+        text: "The CI server's build logs"
+        why: "Build logs only record what a CI pipeline did. They do not declare how the cluster should look, so an agent cannot reconcile from them."
+      - id: d
+        text: "The container registry"
+        why: "A registry stores container images, not the desired configuration. Git holds the manifests that say which image and settings to run."
     answer: [b]
     explanation: |
       In GitOps, the desired state is declared in a Git repository. An agent
@@ -24,10 +31,17 @@ questions:
     type: single
     question: What is the main purpose of Helm in the Kubernetes ecosystem?
     options:
-      - { id: a, text: "To build container images from a Dockerfile" }
-      - { id: b, text: "To package and install Kubernetes apps as charts" }
-      - { id: c, text: "To provide a service mesh between microservices" }
-      - { id: d, text: "To store metrics from the cluster" }
+      - id: a
+        text: "To build container images from a Dockerfile"
+        why: "Building images from a Dockerfile is the job of tools like Docker or Buildah. Helm works with Kubernetes manifests, not with image builds."
+      - id: b
+        text: "To package and install Kubernetes apps as charts"
+      - id: c
+        text: "To provide a service mesh between microservices"
+        why: "A service mesh, such as Istio or Linkerd, manages traffic between services. Helm only packages and installs apps; it does not handle runtime traffic."
+      - id: d
+        text: "To store metrics from the cluster"
+        why: "Storing metrics is the job of a monitoring system like Prometheus. Helm installs and upgrades apps; it does not collect or store metrics."
     answer: [b]
     explanation: |
       Helm is a package manager for Kubernetes. A chart is a versioned package
@@ -43,10 +57,17 @@ questions:
     question: >-
       What is the main goal of Continuous Integration (CI)?
     options:
-      - { id: a, text: "To deploy every commit to production without any human approval" }
-      - { id: b, text: "To merge small changes often and build and test each one automatically" }
-      - { id: c, text: "To monitor production systems and alert the team when errors increase" }
-      - { id: d, text: "To keep a separate long-lived branch for every developer" }
+      - id: a
+        text: "To deploy every commit to production without any human approval"
+        why: "Deploying every change to production automatically is Continuous Deployment, a later step. CI is about integrating, building and testing changes."
+      - id: b
+        text: "To merge small changes often and build and test each one automatically"
+      - id: c
+        text: "To monitor production systems and alert the team when errors increase"
+        why: "Monitoring and alerting is observability work, done with tools like Prometheus. CI happens before release, when code is built and tested."
+      - id: d
+        text: "To keep a separate long-lived branch for every developer"
+        why: "Long-lived branches per developer delay integration and create big merge conflicts. CI does the opposite: it merges small changes often."
     answer: [b]
     explanation: |
       In CI, developers integrate small changes frequently, and a pipeline builds
@@ -62,10 +83,17 @@ questions:
     question: >-
       What is the difference between Continuous Delivery and Continuous Deployment?
     options:
-      - { id: a, text: "Continuous Delivery runs tests; Continuous Deployment skips them to go faster" }
-      - { id: b, text: "Continuous Delivery is for containers; Continuous Deployment is for virtual machines" }
-      - { id: c, text: "In Delivery a person approves the production release; in Deployment it is automatic" }
-      - { id: d, text: "Continuous Deployment builds images; Continuous Delivery only runs tests" }
+      - id: a
+        text: "Continuous Delivery runs tests; Continuous Deployment skips them to go faster"
+        why: "Both practices run automated tests. Continuous Deployment needs good tests even more, because no person checks the release before production."
+      - id: b
+        text: "Continuous Delivery is for containers; Continuous Deployment is for virtual machines"
+        why: "Neither term is about the type of platform. Both can deliver containers, virtual machines or any other software."
+      - id: c
+        text: "In Delivery a person approves the production release; in Deployment it is automatic"
+      - id: d
+        text: "Continuous Deployment builds images; Continuous Delivery only runs tests"
+        why: "Both practices build and test the software. The real difference is only the final step: a manual approval or an automatic release to production."
     answer: [c]
     explanation: |
       Both keep the software always releasable. The difference is the last step:
@@ -80,10 +108,17 @@ questions:
     question: >-
       Which are the four OpenGitOps principles?
     options:
-      - { id: a, text: "Declarative, Versioned and Immutable, Pulled, Reconciled" }
-      - { id: b, text: "Automated, Observable, Secure and Scalable" }
-      - { id: c, text: "Build, Test, Release and Monitor in a pipeline" }
-      - { id: d, text: "Imperative, Versioned, Pushed and Approved" }
+      - id: a
+        text: "Declarative, Versioned and Immutable, Pulled, Reconciled"
+      - id: b
+        text: "Automated, Observable, Secure and Scalable"
+        why: "These are good qualities of a system, but they are not the OpenGitOps principles. The real list is Declarative, Versioned and Immutable, Pulled, Reconciled."
+      - id: c
+        text: "Build, Test, Release and Monitor in a pipeline"
+        why: "These are typical CI/CD pipeline stages, not GitOps principles. GitOps is about declared state, versioning, pulling and continuous reconciliation."
+      - id: d
+        text: "Imperative, Versioned, Pushed and Approved"
+        why: "GitOps is declarative, not imperative, and agents pull changes instead of having them pushed. Approval is a good practice but not one of the principles."
     answer: [a]
     explanation: |
       The desired state is declared, stored in a versioned and immutable way (for
@@ -99,10 +134,17 @@ questions:
     question: >-
       In a pull-based GitOps setup, who applies changes to the cluster?
     options:
-      - { id: a, text: "The CI pipeline, which runs kubectl apply with cluster admin credentials" }
-      - { id: b, text: "A developer who runs kubectl apply after the pull request is merged" }
-      - { id: c, text: "The container registry, which pushes new images to every node" }
-      - { id: d, text: "An agent inside the cluster that pulls the desired state from Git" }
+      - id: a
+        text: "The CI pipeline, which runs kubectl apply with cluster admin credentials"
+        why: "That is a push-based model. In pull-based GitOps the CI system does not need cluster credentials; an agent in the cluster applies the changes."
+      - id: b
+        text: "A developer who runs kubectl apply after the pull request is merged"
+        why: "A manual kubectl apply is not GitOps. After the merge, an agent in the cluster detects the change in Git and applies it automatically."
+      - id: c
+        text: "The container registry, which pushes new images to every node"
+        why: "A registry only stores images; it never pushes them to nodes. The kubelet pulls images when a Pod needs them."
+      - id: d
+        text: "An agent inside the cluster that pulls the desired state from Git"
     answer: [d]
     explanation: |
       Agents like Argo CD or Flux run in the cluster and pull changes. The CI
@@ -118,10 +160,17 @@ questions:
     question: >-
       Which two projects are well-known GitOps tools in the CNCF?
     options:
-      - { id: a, text: "Prometheus and Thanos" }
-      - { id: b, text: "Argo CD and Flux" }
-      - { id: c, text: "Envoy and Linkerd" }
-      - { id: d, text: "containerd and CRI-O" }
+      - id: a
+        text: "Prometheus and Thanos"
+        why: "Prometheus and Thanos are monitoring projects. They collect, store and query metrics; they do not deploy apps from Git."
+      - id: b
+        text: "Argo CD and Flux"
+      - id: c
+        text: "Envoy and Linkerd"
+        why: "Envoy is a proxy and Linkerd is a service mesh. They manage network traffic between services, not GitOps delivery."
+      - id: d
+        text: "containerd and CRI-O"
+        why: "containerd and CRI-O are container runtimes. The kubelet uses them to run containers on a node; they do not sync state from Git."
     answer: [b]
     explanation: |
       Argo (including Argo CD) and Flux are both graduated CNCF projects focused
@@ -137,10 +186,17 @@ questions:
     question: >-
       Someone changes a Deployment directly with kubectl, so the cluster no longer matches Git. What is this called, and what does a GitOps agent do?
     options:
-      - { id: a, text: "Drift; the agent detects it and can restore the state in Git" }
-      - { id: b, text: "A rollback; the agent restores the last image from the registry" }
-      - { id: c, text: "A canary; the agent sends a small share of traffic to the change" }
-      - { id: d, text: "A merge conflict; the agent stops syncing until Git is fixed" }
+      - id: a
+        text: "Drift; the agent detects it and can restore the state in Git"
+      - id: b
+        text: "A rollback; the agent restores the last image from the registry"
+        why: "A rollback is a deliberate return to an earlier version. Here nobody rolled back; someone made a manual change that differs from Git."
+      - id: c
+        text: "A canary; the agent sends a small share of traffic to the change"
+        why: "A canary is a release strategy that sends a small share of traffic to a new version. It has nothing to do with manual changes outside Git."
+      - id: d
+        text: "A merge conflict; the agent stops syncing until Git is fixed"
+        why: "A merge conflict happens inside Git when two branches change the same lines. A kubectl change in the cluster does not touch Git at all."
     answer: [a]
     explanation: |
       Drift is any difference between the desired state in Git and the live
@@ -156,10 +212,17 @@ questions:
     question: >-
       How do you usually customize a Helm chart for a specific environment?
     options:
-      - { id: a, text: "By copying the chart and editing its templates for each environment" }
-      - { id: b, text: "By building a separate container image for each environment" }
-      - { id: c, text: "By passing a values file or --set flags that override default values" }
-      - { id: d, text: "By creating a new Namespace with the chart name for each environment" }
+      - id: a
+        text: "By copying the chart and editing its templates for each environment"
+        why: "Copying the chart for every environment duplicates code and is hard to maintain. Charts are designed to be reused with different values."
+      - id: b
+        text: "By building a separate container image for each environment"
+        why: "The image holds the application, not the environment settings. Use the same image everywhere and change configuration with values."
+      - id: c
+        text: "By passing a values file or --set flags that override default values"
+      - id: d
+        text: "By creating a new Namespace with the chart name for each environment"
+        why: "A Namespace only groups resources inside a cluster. It does not change chart settings; values files or --set flags do that."
     answer: [c]
     explanation: |
       Charts expose settings in values.yaml. You override them with -f
@@ -174,10 +237,17 @@ questions:
     question: >-
       A Helm upgrade broke your application. Which command returns the release to an earlier revision?
     options:
-      - { id: a, text: "helm undo <release> --last" }
-      - { id: b, text: "helm revert <release> --previous" }
-      - { id: c, text: "helm upgrade <release> --restore" }
-      - { id: d, text: "helm rollback <release> <revision>" }
+      - id: a
+        text: "helm undo <release> --last"
+        why: "Helm has no undo command. To go back to an earlier revision of a release you use helm rollback."
+      - id: b
+        text: "helm revert <release> --previous"
+        why: "Helm has no revert command. The command that returns a release to an earlier revision is helm rollback."
+      - id: c
+        text: "helm upgrade <release> --restore"
+        why: "helm upgrade has no --restore flag. An upgrade creates a new revision; to go back you use helm rollback with a revision number."
+      - id: d
+        text: "helm rollback <release> <revision>"
     answer: [d]
     explanation: |
       Helm keeps a history of each release. helm history shows the revisions and
@@ -192,10 +262,17 @@ questions:
     question: >-
       How does Kustomize customize Kubernetes manifests?
     options:
-      - { id: a, text: "With a base of plain YAML and overlays that patch it, without templates" }
-      - { id: b, text: "With Go templates that are rendered using a values.yaml file" }
-      - { id: c, text: "With a server-side controller that rewrites objects in etcd" }
-      - { id: d, text: "With a scripting language that generates JSON at deploy time" }
+      - id: a
+        text: "With a base of plain YAML and overlays that patch it, without templates"
+      - id: b
+        text: "With Go templates that are rendered using a values.yaml file"
+        why: "Go templates rendered with values.yaml is how Helm works. Kustomize avoids templates and patches plain YAML instead."
+      - id: c
+        text: "With a server-side controller that rewrites objects in etcd"
+        why: "Kustomize runs on the client side, for example with kubectl apply -k. It builds manifests before they are sent; it does not rewrite objects in etcd."
+      - id: d
+        text: "With a scripting language that generates JSON at deploy time"
+        why: "Kustomize uses declarative kustomization.yaml files, not a scripting language. It outputs plain YAML built from a base and overlays."
     answer: [a]
     explanation: |
       Kustomize applies patches and transformations to plain manifests. It is
@@ -211,10 +288,17 @@ questions:
     question: >-
       In a canary deployment, how is a new version released?
     options:
-      - { id: a, text: "All users are switched to the new version at the same moment" }
-      - { id: b, text: "A small share of traffic goes to the new version first, then it grows" }
-      - { id: c, text: "The old Pods are deleted first, then the new Pods are created" }
-      - { id: d, text: "The new version runs in a test cluster until a manager approves it" }
+      - id: a
+        text: "All users are switched to the new version at the same moment"
+        why: "Switching all users at the same moment is a big-bang or blue-green cutover. A canary starts with only a small share of traffic."
+      - id: b
+        text: "A small share of traffic goes to the new version first, then it grows"
+      - id: c
+        text: "The old Pods are deleted first, then the new Pods are created"
+        why: "Deleting all old Pods before creating new ones is the Recreate strategy. It causes downtime and gives no gradual exposure."
+      - id: d
+        text: "The new version runs in a test cluster until a manager approves it"
+        why: "Testing in a separate cluster with manual approval is a staging process. A canary runs the new version in production for a small share of real traffic."
     answer: [b]
     explanation: |
       A canary limits the impact of a bad release. If errors increase, traffic
@@ -230,10 +314,17 @@ questions:
     question: >-
       What describes a blue-green deployment?
     options:
-      - { id: a, text: "Pods are replaced one by one, using maxSurge and maxUnavailable" }
-      - { id: b, text: "A small percentage of users gets the new version, then the share grows" }
-      - { id: c, text: "Two full environments run; traffic switches from old to new all at once" }
-      - { id: d, text: "Each new feature is turned on per user with a feature flag" }
+      - id: a
+        text: "Pods are replaced one by one, using maxSurge and maxUnavailable"
+        why: "Replacing Pods one by one with maxSurge and maxUnavailable is a rolling update, the default Deployment strategy. Blue-green switches all traffic at once."
+      - id: b
+        text: "A small percentage of users gets the new version, then the share grows"
+        why: "Sending a small share of users to the new version first is a canary deployment. Blue-green moves all traffic in one step."
+      - id: c
+        text: "Two full environments run; traffic switches from old to new all at once"
+      - id: d
+        text: "Each new feature is turned on per user with a feature flag"
+        why: "Feature flags turn features on or off inside the same running code. Blue-green is about two full environments and a traffic switch."
     answer: [c]
     explanation: |
       Blue-green gives instant cutover and rollback, at the cost of running two
@@ -249,10 +340,17 @@ questions:
     question: >-
       What is Infrastructure as Code (IaC)?
     options:
-      - { id: a, text: "Writing application code that runs directly on the servers" }
-      - { id: b, text: "Documenting every server's configuration in a shared wiki page" }
-      - { id: c, text: "Running all workloads on bare-metal servers instead of the cloud" }
-      - { id: d, text: "Managing infrastructure with versioned files instead of manual changes" }
+      - id: a
+        text: "Writing application code that runs directly on the servers"
+        why: "Application code is the software itself. IaC is about describing servers, networks and other infrastructure in files."
+      - id: b
+        text: "Documenting every server's configuration in a shared wiki page"
+        why: "A wiki page only documents the setup; tools cannot apply it. IaC files are run by tools to create and change infrastructure."
+      - id: c
+        text: "Running all workloads on bare-metal servers instead of the cloud"
+        why: "IaC is not about where workloads run. You can use it for cloud, bare-metal or hybrid infrastructure."
+      - id: d
+        text: "Managing infrastructure with versioned files instead of manual changes"
     answer: [d]
     explanation: |
       IaC tools (for example Terraform, OpenTofu or Crossplane) let you review,
@@ -268,10 +366,17 @@ questions:
     question: >-
       Why should a new release use a new image tag instead of overwriting an existing tag?
     options:
-      - { id: a, text: "A tag then maps to one exact build, so rollbacks are reliable" }
-      - { id: b, text: "Kubernetes refuses to pull an image tag it has pulled before" }
-      - { id: c, text: "A new tag makes the registry compress the image and pull it faster" }
-      - { id: d, text: "Overwriting a tag automatically restarts all Pods that use it" }
+      - id: a
+        text: "A tag then maps to one exact build, so rollbacks are reliable"
+      - id: b
+        text: "Kubernetes refuses to pull an image tag it has pulled before"
+        why: "This is false. Kubernetes can pull the same tag many times; the imagePullPolicy decides when it pulls again."
+      - id: c
+        text: "A new tag makes the registry compress the image and pull it faster"
+        why: "The tag name has no effect on compression or pull speed. A tag is only a human-readable pointer to an image."
+      - id: d
+        text: "Overwriting a tag automatically restarts all Pods that use it"
+        why: "Overwriting a tag does not restart anything. Running Pods keep the old image, so different Pods may silently run different code."
     answer: [a]
     explanation: |
       If a tag always means the same content, you know exactly what runs where,
@@ -287,10 +392,17 @@ questions:
     question: >-
       You use GitOps but must not store Secrets in plain text in Git. Which approach helps?
     options:
-      - { id: a, text: "Encode the Secret with base64 before committing, so it is not readable" }
-      - { id: b, text: "Commit an encrypted Secret (Sealed Secrets, SOPS) or sync it from a vault" }
-      - { id: c, text: "Store the values in a ConfigMap, which is hidden from kubectl get" }
-      - { id: d, text: "Add the values to the container image at build time and keep Git clean" }
+      - id: a
+        text: "Encode the Secret with base64 before committing, so it is not readable"
+        why: "Base64 is only an encoding, not encryption. Anyone who can read the repository can decode it in seconds."
+      - id: b
+        text: "Commit an encrypted Secret (Sealed Secrets, SOPS) or sync it from a vault"
+      - id: c
+        text: "Store the values in a ConfigMap, which is hidden from kubectl get"
+        why: "ConfigMaps are for non-secret data and are not hidden: kubectl get or describe shows their values in plain text."
+      - id: d
+        text: "Add the values to the container image at build time and keep Git clean"
+        why: "Secrets inside an image can be read by anyone who can pull the image. It also mixes configuration with the build and makes rotation hard."
     answer: [b]
     explanation: |
       Base64 is not encryption. Sealed Secrets and SOPS keep encrypted data in
@@ -307,10 +419,17 @@ questions:
     question: >-
       What is the purpose of a feature flag?
     options:
-      - { id: a, text: "To mark a container as privileged when it needs host access" }
-      - { id: b, text: "To label Pods so a Service can select a specific version" }
-      - { id: c, text: "To turn functionality on or off at runtime without a new deployment" }
-      - { id: d, text: "To enable alpha Kubernetes APIs on the API server" }
+      - id: a
+        text: "To mark a container as privileged when it needs host access"
+        why: "Privileged mode is set with securityContext.privileged in the Pod spec. It is a security setting, not a feature flag."
+      - id: b
+        text: "To label Pods so a Service can select a specific version"
+        why: "Selecting Pods by version is done with labels and selectors. A feature flag controls behavior inside the application code."
+      - id: c
+        text: "To turn functionality on or off at runtime without a new deployment"
+      - id: d
+        text: "To enable alpha Kubernetes APIs on the API server"
+        why: "Alpha Kubernetes features are enabled with feature gates on cluster components. These are cluster settings, not application feature flags."
     answer: [c]
     explanation: |
       Feature flags separate deploying code from releasing features. You can
@@ -326,10 +445,17 @@ questions:
     question: >-
       What is a Helm chart repository?
     options:
-      - { id: a, text: "A Git repository that must contain exactly one chart and its source code" }
-      - { id: b, text: "A place to store and share packaged charts, over HTTP or an OCI registry" }
-      - { id: c, text: "A Kubernetes Namespace where Helm installs all releases" }
-      - { id: d, text: "The Secret where Helm keeps the history of each release" }
+      - id: a
+        text: "A Git repository that must contain exactly one chart and its source code"
+        why: "A chart repository is not limited to one chart, and it stores packaged charts, not source code. It can host many charts and versions."
+      - id: b
+        text: "A place to store and share packaged charts, over HTTP or an OCI registry"
+      - id: c
+        text: "A Kubernetes Namespace where Helm installs all releases"
+        why: "Helm can install releases into any Namespace you choose. A chart repository lives outside the cluster and stores chart packages."
+      - id: d
+        text: "The Secret where Helm keeps the history of each release"
+        why: "Helm 3 does keep release history in Secrets by default, but that is release storage. A chart repository is where packaged charts are shared."
     answer: [b]
     explanation: |
       You add repositories with helm repo add and search them with helm search.
@@ -345,10 +471,17 @@ questions:
     question: >-
       What is "progressive delivery"?
     options:
-      - { id: a, text: "Exposing a release to more users step by step, with automatic rollback" }
-      - { id: b, text: "Deploying all services in a fixed order, one per day, to reduce risk" }
-      - { id: c, text: "Building container images in several stages so each stage is tested" }
-      - { id: d, text: "Adding nodes to the cluster gradually as more users start to arrive" }
+      - id: a
+        text: "Exposing a release to more users step by step, with automatic rollback"
+      - id: b
+        text: "Deploying all services in a fixed order, one per day, to reduce risk"
+        why: "Deploying one service per day on a fixed schedule is not progressive delivery. Progressive delivery shifts user traffic step by step and uses metrics to decide."
+      - id: c
+        text: "Building container images in several stages so each stage is tested"
+        why: "That describes multi-stage builds or pipeline stages. Progressive delivery is about how a release is exposed to users, not how images are built."
+      - id: d
+        text: "Adding nodes to the cluster gradually as more users start to arrive"
+        why: "Adding nodes as load grows is cluster autoscaling. It changes capacity, not how a new version is exposed to users."
     answer: [a]
     explanation: |
       Progressive delivery extends continuous delivery with controlled exposure.
@@ -364,10 +497,17 @@ questions:
     question: >-
       What usually happens at the end of a CI pipeline for a containerized application?
     options:
-      - { id: a, text: "The pipeline runs kubectl delete on the old Deployment and recreates it" }
-      - { id: b, text: "The source code is copied to every node so the kubelet can build it" }
-      - { id: c, text: "The pipeline takes a backup of etcd before the new version starts" }
-      - { id: d, text: "A tested image is pushed to a registry and the manifests get the new tag" }
+      - id: a
+        text: "The pipeline runs kubectl delete on the old Deployment and recreates it"
+        why: "Deleting and recreating a Deployment causes downtime and needs cluster credentials in CI. Deployments update Pods with rolling updates instead."
+      - id: b
+        text: "The source code is copied to every node so the kubelet can build it"
+        why: "The kubelet does not build code. It only runs containers from images that it pulls from a registry."
+      - id: c
+        text: "The pipeline takes a backup of etcd before the new version starts"
+        why: "etcd backups are a cluster operations task, usually scheduled separately. They are not a normal step of an application CI pipeline."
+      - id: d
+        text: "A tested image is pushed to a registry and the manifests get the new tag"
     answer: [d]
     explanation: |
       The pipeline builds, tests, scans and pushes an image. In GitOps, it then
@@ -383,10 +523,17 @@ questions:
     question: >-
       Why is declarative configuration preferred over imperative commands for delivering applications?
     options:
-      - { id: a, text: "Declarative files are compiled, so they run faster than kubectl commands" }
-      - { id: b, text: "The desired state lives in files you can review, version and re-apply" }
-      - { id: c, text: "kubectl no longer supports imperative commands such as create or scale" }
-      - { id: d, text: "Declarative configuration does not need the API server or etcd" }
+      - id: a
+        text: "Declarative files are compiled, so they run faster than kubectl commands"
+        why: "YAML manifests are not compiled and do not run faster. Both styles send requests to the same API server."
+      - id: b
+        text: "The desired state lives in files you can review, version and re-apply"
+      - id: c
+        text: "kubectl no longer supports imperative commands such as create or scale"
+        why: "kubectl still supports imperative commands like kubectl create and kubectl scale. They are fine for quick tasks but are hard to review and repeat."
+      - id: d
+        text: "Declarative configuration does not need the API server or etcd"
+        why: "Every change, declarative or imperative, goes through the API server and is stored in etcd. Neither style can skip them."
     answer: [b]
     explanation: |
       With declarative configuration you describe what you want, not how to get
@@ -402,10 +549,17 @@ questions:
     question: >-
       In Argo CD, what is an Application?
     options:
-      - { id: a, text: "A container image that Argo CD builds from a Git repository" }
-      - { id: b, text: "A Helm repository that Argo CD watches for new chart versions" }
-      - { id: c, text: "A custom resource that maps a Git source to a cluster and Namespace" }
-      - { id: d, text: "A Kubernetes Service that exposes the Argo CD web user interface" }
+      - id: a
+        text: "A container image that Argo CD builds from a Git repository"
+        why: "Argo CD does not build images; CI tools do that. Argo CD only deploys manifests from a source such as Git."
+      - id: b
+        text: "A Helm repository that Argo CD watches for new chart versions"
+        why: "A Helm repository can be the source of an Application, but the Application itself is a custom resource that maps a source to a destination."
+      - id: c
+        text: "A custom resource that maps a Git source to a cluster and Namespace"
+      - id: d
+        text: "A Kubernetes Service that exposes the Argo CD web user interface"
+        why: "The web UI is exposed by the argocd-server Service. An Application is a custom resource that describes what to deploy and where."
     answer: [c]
     explanation: |
       Argo CD uses its own CRDs. An Application describes what to deploy and
@@ -421,10 +575,17 @@ questions:
     question: >-
       Which tool is often called "the package manager for Kubernetes"?
     options:
-      - { id: a, text: "Helm" }
-      - { id: b, text: "kubeadm" }
-      - { id: c, text: "Flux" }
-      - { id: d, text: "Kustomize" }
+      - id: a
+        text: "Helm"
+      - id: b
+        text: "kubeadm"
+        why: "kubeadm is a tool to create and set up Kubernetes clusters. It installs the control plane, not applications."
+      - id: c
+        text: "Flux"
+        why: "Flux is a GitOps tool that syncs the cluster from Git. It can install Helm charts, but it is not itself a package manager."
+      - id: d
+        text: "Kustomize"
+        why: "Kustomize customizes plain YAML with overlays. It has no chart packages, versions or repositories like a package manager."
     answer: [a]
     explanation: |
       Helm packages applications as charts with versions and dependencies, much
@@ -439,10 +600,16 @@ questions:
     question: >-
       Which TWO are benefits of storing deployment configuration in Git for GitOps?
     options:
-      - { id: a, text: "A full audit history of who changed what and when" }
-      - { id: b, text: "Easy rollback by reverting a commit" }
-      - { id: c, text: "No need for tests" }
-      - { id: d, text: "Containers run faster" }
+      - id: a
+        text: "A full audit history of who changed what and when"
+      - id: b
+        text: "Easy rollback by reverting a commit"
+      - id: c
+        text: "No need for tests"
+        why: "Git does not replace testing. You still need CI tests; GitOps only changes how the tested configuration is deployed."
+      - id: d
+        text: "Containers run faster"
+        why: "Where the configuration is stored does not change runtime speed. Containers run the same whether manifests come from Git or not."
     answer: [a, b]
     explanation: |
       Git gives history, review through pull requests and simple rollback. It

@@ -1,0 +1,42 @@
+id: cka-arch-004
+title: Certificate for a new user (CSR)
+domain: cluster-architecture
+difficulty: 3
+minutes: 12
+environment: single-node
+task: |
+  Create a client certificate for a new user called `bob`. Work in the folder `/root/bob`.
+
+  1. Create a private key `/root/bob/bob.key` and a certificate signing request
+     `/root/bob/bob.csr` with the common name `CN=bob` (use `openssl`).
+  2. Create a Kubernetes CertificateSigningRequest called `bob` with signer
+     `kubernetes.io/kube-apiserver-client` and usage `client auth`.
+  3. Approve it.
+  4. Save the signed certificate to `/root/bob/bob.crt`.
+checks:
+  - name: CSR `bob` is approved and issued
+    run: '[ -n "$(kubectl get csr bob -o jsonpath="{.status.certificate}")" ]'
+  - name: CSR `bob` uses the kube-apiserver-client signer
+    run: '[ "$(kubectl get csr bob -o jsonpath="{.spec.signerName}")" = kubernetes.io/kube-apiserver-client ]'
+  - name: /root/bob/bob.crt is a certificate for CN=bob
+    run: openssl x509 -in /root/bob/bob.crt -noout -subject | grep -Eq "CN ?= ?bob"
+  - name: bob.crt matches bob.key
+    run: 'test -s /root/bob/bob.key && [ "$(openssl x509 -in /root/bob/bob.crt -noout -pubkey)" = "$(openssl pkey -in /root/bob/bob.key -pubout)" ]'
+solution: |
+  mkdir -p /root/bob && cd /root/bob
+  openssl genrsa -out bob.key 2048
+  openssl req -new -key bob.key -subj "/CN=bob" -out bob.csr
+  cat <<YAML | kubectl apply -f -
+  apiVersion: certificates.k8s.io/v1
+  kind: CertificateSigningRequest
+  metadata:
+    name: bob
+  spec:
+    request: $(base64 < bob.csr | tr -d '\n')
+    signerName: kubernetes.io/kube-apiserver-client
+    usages: [client auth]
+  YAML
+  kubectl certificate approve bob
+  kubectl get csr bob -o jsonpath='{.status.certificate}' | base64 -d > bob.crt
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#normal-user

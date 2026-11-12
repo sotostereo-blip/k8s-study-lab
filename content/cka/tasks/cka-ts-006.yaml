@@ -1,0 +1,58 @@
+id: cka-ts-006
+title: PVC stuck in Pending
+domain: troubleshooting
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: reports-pvc
+  spec:
+    accessModes: [ReadWriteOnce]
+    storageClassName: fast-ssd
+    resources:
+      requests:
+        storage: 100Mi
+  ---
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: reports
+  spec:
+    containers:
+    - name: reports
+      image: busybox:1.36
+      command: ["sleep", "3600"]
+      volumeMounts:
+      - { name: data, mountPath: /data }
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: reports-pvc
+  YAML
+task: |
+  The Pod `reports` stays in `Pending` and the PVC `reports-pvc` is also `Pending`.
+
+  Find the cause and fix it so the Pod runs. Use the StorageClass that exists in this
+  cluster. Keep the names `reports` and `reports-pvc` and the size `100Mi`.
+checks:
+  - name: PVC `reports-pvc` is Bound
+    run: '[ "$(kubectl get pvc reports-pvc -o jsonpath="{.status.phase}")" = Bound ]'
+  - name: PVC asks for 100Mi
+    run: '[ "$(kubectl get pvc reports-pvc -o jsonpath="{.spec.resources.requests.storage}")" = 100Mi ]'
+  - name: Pod `reports` is running and uses reports-pvc
+    run: '[ "$(kubectl get pod reports -o jsonpath="{.status.phase}/{.spec.volumes[0].persistentVolumeClaim.claimName}")" = Running/reports-pvc ]'
+solution: |
+  kubectl describe pvc reports-pvc      # storageclass.storage.k8s.io "fast-ssd" not found
+  kubectl get storageclass              # local-path (default)
+  # storageClassName cannot be changed: save both objects, then recreate them
+  kubectl get pod reports -o yaml > pod.yaml
+  kubectl get pvc reports-pvc -o yaml | sed 's/fast-ssd/local-path/' > pvc.yaml
+  kubectl delete pod reports            # the PVC cannot be deleted while a Pod uses it
+  kubectl replace --force -f pvc.yaml
+  kubectl replace --force -f pod.yaml
+docs:
+  - https://kubernetes.io/docs/concepts/storage/persistent-volumes/#class-1

@@ -53,6 +53,7 @@ def review(q: Question, selected: list[str]) -> dict:
         "answer": q.answer,
         "explanation": q.explanation,
         "docs": q.docs,
+        "why": {o.id: o.why for o in q.options if o.why},
     }
 
 

@@ -1,0 +1,28 @@
+id: cka-ts-009
+title: Pods Pending because of a nodeSelector
+domain: troubleshooting
+difficulty: 2
+minutes: 6
+environment: two-node
+setup: |
+  kubectl create deployment analytics --image=nginx:1.27-alpine --replicas=2 --dry-run=client -o yaml > /tmp/a.yaml
+  kubectl patch --local -f /tmp/a.yaml -p '{"spec":{"template":{"spec":{"nodeSelector":{"disktype":"fast"}}}}}' -o yaml | kubectl apply -f -
+  rm /tmp/a.yaml
+task: |
+  The Pods of the Deployment `analytics` stay in `Pending`.
+
+  The team wants these Pods to run **only on node01**. Fix the problem by changing
+  the **node**, not the Deployment.
+checks:
+  - name: The Deployment still selects disktype=fast
+    run: '[ "$(kubectl get deploy analytics -o jsonpath="{.spec.template.spec.nodeSelector.disktype}")" = fast ]'
+  - name: node01 has the label disktype=fast (controlplane does not)
+    run: '[ "$(kubectl get node node01 -o jsonpath="{.metadata.labels.disktype}")" = fast ] && [ -z "$(kubectl get node controlplane -o jsonpath="{.metadata.labels.disktype}")" ]'
+  - name: 2 replicas are ready on node01
+    run: '[ "$(kubectl get pods -l app=analytics --field-selector spec.nodeName=node01,status.phase=Running -o name | wc -l)" -eq 2 ]'
+solution: |
+  kubectl describe pod -l app=analytics | grep -A3 Events   # didn't match Pod's node affinity/selector
+  kubectl get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'
+  kubectl label node node01 disktype=fast
+docs:
+  - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector

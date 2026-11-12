@@ -1,0 +1,48 @@
+id: cka-ts-005
+title: Pods running but not ready
+domain: troubleshooting
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: catalog
+  spec:
+    replicas: 2
+    selector:
+      matchLabels: { app: catalog }
+    template:
+      metadata:
+        labels: { app: catalog }
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 3
+  YAML
+  kubectl expose deployment catalog --port=80
+task: |
+  The Pods of the Deployment `catalog` are `Running` but show `0/1` in READY, and the
+  Service `catalog` has no endpoints.
+
+  Find the cause and fix the Deployment. nginx answers on path `/`.
+  Keep a readiness probe on the container.
+checks:
+  - name: The container still has a readiness probe
+    run: '[ -n "$(kubectl get deploy catalog -o jsonpath="{.spec.template.spec.containers[0].readinessProbe}")" ]'
+  - name: Deployment `catalog` has 2 ready replicas
+    run: '[ "$(kubectl get deploy catalog -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: Service `catalog` has 2 endpoints
+    run: '[ "$(kubectl get endpoints catalog -o jsonpath="{.subsets[*].addresses[*].ip}" | wc -w)" -eq 2 ]'
+solution: |
+  kubectl describe pod -l app=catalog | grep -i readiness   # probe failed: HTTP 404 on /healthz
+  kubectl patch deployment catalog --type=json \
+    -p '[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/"}]'
+  # or: kubectl edit deployment catalog  and change /healthz to /
+docs:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/

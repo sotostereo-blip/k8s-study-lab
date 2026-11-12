@@ -1,0 +1,50 @@
+id: cka-wl-007
+title: Sidecar container with a shared volume
+domain: workloads-scheduling
+difficulty: 2
+minutes: 8
+environment: single-node
+task: |
+  Create a Pod called `logger` with **two containers** that share an `emptyDir` volume
+  called `logs`, mounted at `/var/log/app` in both containers:
+
+  - container `app`, image `busybox:1.36`, command:
+    `sh -c 'while true; do date >> /var/log/app/app.log; sleep 2; done'`
+  - container `log-reader`, image `busybox:1.36`, command:
+    `sh -c 'tail -F /var/log/app/app.log'`
+
+  `kubectl logs logger -c log-reader` must show the dates written by `app`.
+checks:
+  - name: Pod `logger` is running
+    run: '[ "$(kubectl get pod logger -o jsonpath="{.status.phase}")" = Running ]'
+  - name: The Pod has an emptyDir volume called `logs`
+    run: kubectl get pod logger -o json | jq -e '.spec.volumes[] | select(.name=="logs" and .emptyDir != null)'
+  - name: The `log-reader` container prints the log lines
+    run: '[ -n "$(kubectl logs logger -c log-reader --tail=1)" ]'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: logger
+  spec:
+    volumes:
+    - name: logs
+      emptyDir: {}
+    containers:
+    - name: app
+      image: busybox:1.36
+      command: ["sh", "-c", "while true; do date >> /var/log/app/app.log; sleep 2; done"]
+      volumeMounts:
+      - { name: logs, mountPath: /var/log/app }
+    - name: log-reader
+      image: busybox:1.36
+      command: ["sh", "-c", "tail -F /var/log/app/app.log"]
+      volumeMounts:
+      - { name: logs, mountPath: /var/log/app }
+  YAML
+  kubectl wait --for=condition=Ready pod/logger
+  kubectl logs logger -c log-reader
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+  - https://kubernetes.io/docs/concepts/storage/volumes/#emptydir

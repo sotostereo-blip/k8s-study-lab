@@ -102,7 +102,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .review.ko { border-left-color: var(--ko); }
 .review summary { cursor: pointer; }
 .review li.right { color: var(--ok); font-weight: 600; }
-.review li.wrong { color: var(--ko); text-decoration: line-through; }
+.review li.wrong { color: var(--ko); }
 
 .glossary div { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
 .glossary dt { font-weight: 600; }
@@ -161,3 +161,11 @@ code { font-family: var(--mono); font-size: .88em; background: var(--accent-soft
   .lab-terminal { position: static; }
   .lab-terminal iframe { height: 70vh; }
 }
+
+/* ---------- why an option is wrong ---------- */
+.opt-body { display: flex; flex-direction: column; gap: 4px; }
+.why { display: block; font-size: 14px; color: var(--muted); font-weight: 400; text-decoration: none; }
+.review li { margin-bottom: 6px; }
+.wrong-reasons { margin: 8px 0 4px; padding: 10px 12px; background: var(--surface); border-radius: 6px; }
+.wrong-reasons p { margin: 0 0 6px; }
+.wrong-reasons p:last-child { margin-bottom: 0; }

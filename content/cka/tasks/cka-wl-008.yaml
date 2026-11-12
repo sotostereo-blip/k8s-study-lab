@@ -1,0 +1,45 @@
+id: cka-wl-008
+title: Init container prepares the web page
+domain: workloads-scheduling
+difficulty: 2
+minutes: 8
+environment: single-node
+task: |
+  Create a Pod called `web-init` with image `nginx:1.27-alpine`.
+
+  Add an **init container** called `prepare` (image `busybox:1.36`) that writes the
+  text `Hello from init` to `/work/index.html`.
+
+  Both containers share an `emptyDir` volume called `html`: the init container mounts it
+  at `/work`, nginx mounts it at `/usr/share/nginx/html`.
+checks:
+  - name: The Pod has an init container called `prepare`
+    run: '[ "$(kubectl get pod web-init -o jsonpath="{.spec.initContainers[0].name}")" = prepare ]'
+  - name: Pod `web-init` is running
+    run: '[ "$(kubectl get pod web-init -o jsonpath="{.status.phase}")" = Running ]'
+  - name: nginx serves "Hello from init"
+    run: kubectl exec web-init -- wget -qO- http://localhost | grep -q "Hello from init"
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: web-init
+  spec:
+    volumes:
+    - name: html
+      emptyDir: {}
+    initContainers:
+    - name: prepare
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'Hello from init' > /work/index.html"]
+      volumeMounts:
+      - { name: html, mountPath: /work }
+    containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      volumeMounts:
+      - { name: html, mountPath: /usr/share/nginx/html }
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/pods/init-containers/

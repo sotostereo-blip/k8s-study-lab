@@ -1,0 +1,35 @@
+id: cka-net-004
+title: Ingress with two paths
+domain: services-networking
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  kubectl create deployment web --image=nginx:1.27-alpine
+  kubectl create deployment api --image=nginx:1.27-alpine
+  kubectl expose deployment web --port=80
+  kubectl expose deployment api --port=80
+task: |
+  Two Services exist in `default`: `web` and `api` (both on port 80).
+
+  Create an Ingress called `shop-ingress` for the host `shop.example.com`:
+  - path `/` (type `Prefix`) goes to Service `web`, port `80`
+  - path `/api` (type `Prefix`) goes to Service `api`, port `80`
+
+  Note: this small cluster has no Ingress controller, so the checker reads the rules
+  of your Ingress object.
+checks:
+  - name: Ingress `shop-ingress` is for host shop.example.com
+    run: '[ "$(kubectl get ingress shop-ingress -o jsonpath="{.spec.rules[0].host}")" = shop.example.com ]'
+  - name: Path / (Prefix) goes to web:80
+    run: kubectl get ingress shop-ingress -o json | jq -e '.spec.rules[0].http.paths[] | select(.path=="/" and .pathType=="Prefix" and .backend.service.name=="web" and .backend.service.port.number==80)'
+  - name: Path /api (Prefix) goes to api:80
+    run: kubectl get ingress shop-ingress -o json | jq -e '.spec.rules[0].http.paths[] | select(.path=="/api" and .pathType=="Prefix" and .backend.service.name=="api" and .backend.service.port.number==80)'
+solution: |
+  kubectl create ingress shop-ingress \
+    --rule="shop.example.com/*=web:80" \
+    --rule="shop.example.com/api*=api:80"
+  kubectl describe ingress shop-ingress
+  # "path/*" in kubectl create ingress means pathType Prefix
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/

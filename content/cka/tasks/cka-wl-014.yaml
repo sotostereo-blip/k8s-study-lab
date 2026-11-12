@@ -1,0 +1,66 @@
+id: cka-wl-014
+title: StatefulSet with a headless Service
+domain: workloads-scheduling
+difficulty: 3
+minutes: 12
+environment: single-node
+task: |
+  1. Create a **headless** Service called `db` (no cluster IP) on port `80`
+     that selects Pods with `app=db`.
+  2. Create a StatefulSet called `db` that uses this Service:
+     - `2` replicas, image `nginx:1.27-alpine`, Pod label `app=db`
+     - a volume claim template called `data`: `100Mi`, `ReadWriteOnce`,
+       StorageClass `local-path`, mounted at `/usr/share/nginx/html`
+
+  Each Pod gets a stable DNS name like `db-0.db.default.svc.cluster.local`.
+checks:
+  - name: Service `db` is headless
+    run: '[ "$(kubectl get svc db -o jsonpath="{.spec.clusterIP}")" = None ]'
+  - name: StatefulSet `db` has 2 ready replicas
+    run: '[ "$(kubectl get sts db -o jsonpath="{.status.readyReplicas}/{.spec.serviceName}")" = 2/db ]'
+  - name: PVCs data-db-0 and data-db-1 are Bound
+    run: '[ "$(kubectl get pvc data-db-0 data-db-1 -o jsonpath="{.items[*].status.phase}")" = "Bound Bound" ]'
+  - name: db-0.db resolves inside the cluster
+    run: kubectl run check-$RANDOM --rm -i --restart=Never --image=busybox:1.36 --quiet -- nslookup db-0.db.default.svc.cluster.local | grep -q "Address.*[0-9]"
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: db
+  spec:
+    clusterIP: None
+    selector: { app: db }
+    ports:
+    - port: 80
+  ---
+  apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: db
+  spec:
+    serviceName: db
+    replicas: 2
+    selector:
+      matchLabels: { app: db }
+    template:
+      metadata:
+        labels: { app: db }
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          volumeMounts:
+          - { name: data, mountPath: /usr/share/nginx/html }
+    volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 100Mi
+  YAML
+docs:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/

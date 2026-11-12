@@ -1,0 +1,64 @@
+id: cka-wl-013
+title: Kustomize overlay for production
+domain: workloads-scheduling
+difficulty: 2
+minutes: 10
+environment: single-node
+setup: |
+  mkdir -p /root/kustomize/base
+  cat > /root/kustomize/base/deployment.yaml <<'YAML'
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: hello
+  spec:
+    replicas: 1
+    selector:
+      matchLabels: { app: hello }
+    template:
+      metadata:
+        labels: { app: hello }
+      spec:
+        containers:
+        - name: hello
+          image: nginx:1.26-alpine
+  YAML
+  printf 'resources:\n- deployment.yaml\n' > /root/kustomize/base/kustomization.yaml
+task: |
+  A Kustomize base is in `/root/kustomize/base` (Deployment `hello`, 1 replica, `nginx:1.26-alpine`).
+
+  Create an overlay in `/root/kustomize/overlays/prod` that uses the base and:
+  - deploys into the namespace `prod`
+  - adds the name prefix `prod-`
+  - sets `3` replicas
+  - changes the image to `nginx:1.27-alpine`
+
+  Apply it with `kubectl apply -k`. Do not edit the base.
+checks:
+  - name: /root/kustomize/overlays/prod/kustomization.yaml exists
+    run: test -f /root/kustomize/overlays/prod/kustomization.yaml
+  - name: The base was not changed
+    run: grep -q "nginx:1.26-alpine" /root/kustomize/base/deployment.yaml && grep -q "replicas. 1" /root/kustomize/base/deployment.yaml
+  - name: Deployment `prod-hello` in `prod` has 3 ready replicas
+    run: '[ "$(kubectl -n prod get deploy prod-hello -o jsonpath="{.status.readyReplicas}")" = 3 ]'
+  - name: It uses nginx:1.27-alpine
+    run: '[ "$(kubectl -n prod get deploy prod-hello -o jsonpath="{.spec.template.spec.containers[0].image}")" = nginx:1.27-alpine ]'
+solution: |
+  mkdir -p /root/kustomize/overlays/prod
+  cat > /root/kustomize/overlays/prod/kustomization.yaml <<'YAML'
+  resources:
+  - ../../base
+  namespace: prod
+  namePrefix: prod-
+  replicas:
+  - name: hello
+    count: 3
+  images:
+  - name: nginx
+    newTag: 1.27-alpine
+  YAML
+  kubectl create namespace prod
+  kubectl kustomize /root/kustomize/overlays/prod     # preview
+  kubectl apply -k /root/kustomize/overlays/prod
+docs:
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/

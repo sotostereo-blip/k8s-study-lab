@@ -1,0 +1,29 @@
+id: cka-arch-003
+title: ClusterRole for read-only node access
+domain: cluster-architecture
+difficulty: 2
+minutes: 6
+environment: single-node
+task: |
+  The user `alice` must be able to **read nodes** in the whole cluster, and nothing more.
+
+  1. Create a ClusterRole called `node-viewer` with the verbs `get`, `list` and `watch`
+     on `nodes`.
+  2. Bind it to the user `alice` with a ClusterRoleBinding called `node-viewer-binding`.
+
+  Test with: `kubectl auth can-i list nodes --as alice`
+checks:
+  - name: alice can list nodes
+    run: '[ "$(kubectl auth can-i list nodes --as alice)" = yes ]'
+  - name: alice can watch nodes
+    run: '[ "$(kubectl auth can-i watch nodes --as alice)" = yes ]'
+  - name: alice cannot delete nodes
+    run: '[ "$(kubectl auth can-i delete nodes --as alice)" = no ]'
+  - name: alice cannot list Pods
+    run: '[ "$(kubectl auth can-i list pods -A --as alice)" = no ]'
+solution: |
+  kubectl create clusterrole node-viewer --verb=get,list,watch --resource=nodes
+  kubectl create clusterrolebinding node-viewer-binding --clusterrole=node-viewer --user=alice
+  kubectl auth can-i list nodes --as alice
+docs:
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/#clusterrole-example

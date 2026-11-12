@@ -138,7 +138,10 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
             <li key={o.id}>
               <button className={cls} onClick={() => toggle(o.id)} disabled={!!result}>
                 <span className="key">{o.id.toUpperCase()}</span>
-                <GlossaryText text={o.text} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} />
+                <span className="opt-body">
+                  <GlossaryText text={o.text} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} />
+                  {result && !isAns && !isSel && result.why?.[o.id] && <span className="why">{result.why[o.id]}</span>}
+                </span>
               </button>
             </li>
           )
@@ -147,9 +150,29 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
       {result && (
         <div className={`feedback ${result.correct ? 'ok' : 'ko'}`}>
           <strong>{result.correct ? 'Correct.' : 'Not quite.'}</strong>
-          <p>{result.explanation}</p>
+          {!result.correct && <WrongReasons q={q} result={result} />}
+          <p>{!result.correct && <b>Right answer: </b>}{result.explanation}</p>
           <p className="docs">Read more: {result.docs.map((d) => <a key={d} href={d} target="_blank" rel="noreferrer">{d.replace(/^https?:\/\//, '')}</a>)}</p>
         </div>
+      )}
+    </div>
+  )
+}
+
+function WrongReasons({ q, result }) {
+  const text = Object.fromEntries(q.options.map((o) => [o.id, o.text]))
+  const chosenWrong = result.selected.filter((id) => !result.answer.includes(id))
+  const missed = result.answer.filter((id) => !result.selected.includes(id))
+  return (
+    <div className="wrong-reasons">
+      {chosenWrong.map((id) => (
+        <p key={id}>
+          <b>You chose {id.toUpperCase()} — “{text[id]}”.</b>{' '}
+          {result.why?.[id] || 'This option does not answer the question.'}
+        </p>
+      ))}
+      {missed.length > 0 && q.type === 'multiple' && (
+        <p><b>You missed:</b> {missed.map((id) => `${id.toUpperCase()} — “${text[id]}”`).join('; ')}</p>
       )}
     </div>
   )
@@ -334,7 +357,10 @@ function ExamResult({ result, exam, onAgain }) {
         <details key={r.question_id} className={`review ${r.correct ? 'ok' : 'ko'}`}>
           <summary>{k + 1}. {r.correct ? '✓' : '✗'} {r.question}</summary>
           <ul>{r.options.map((o) => (
-            <li key={o.id} className={r.answer.includes(o.id) ? 'right' : r.selected.includes(o.id) ? 'wrong' : ''}>{o.id.toUpperCase()}. {o.text}</li>
+            <li key={o.id} className={r.answer.includes(o.id) ? 'right' : r.selected.includes(o.id) ? 'wrong' : ''}>
+              {o.id.toUpperCase()}. {o.text}
+              {!r.answer.includes(o.id) && o.why && <span className="why">{o.why}</span>}
+            </li>
           ))}</ul>
           <p>{r.explanation}</p>
         </details>

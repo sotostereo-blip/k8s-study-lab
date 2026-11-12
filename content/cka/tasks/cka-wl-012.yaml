@@ -1,0 +1,31 @@
+id: cka-wl-012
+title: Install an application with Helm
+domain: workloads-scheduling
+difficulty: 2
+minutes: 8
+environment: single-node
+setup: |
+  mkdir -p /root/charts && cd /root/charts && helm create webapp >/dev/null
+  sed -i 's/^  tag: ""/  tag: "1.27-alpine"/' webapp/values.yaml
+task: |
+  A Helm chart is ready in the folder `/root/charts/webapp`.
+
+  Install it as a release called `shop` in a new namespace `web`, with these values:
+  - `replicaCount=2`
+  - `service.type=NodePort`
+
+  Tip: `helm show values /root/charts/webapp` lists all the values.
+checks:
+  - name: Release `shop` is deployed in namespace `web`
+    run: 'helm -n web status shop | grep -q "STATUS: deployed"'
+  - name: Deployment `shop-webapp` has 2 ready replicas
+    run: '[ "$(kubectl -n web get deploy shop-webapp -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: Service `shop-webapp` is a NodePort
+    run: '[ "$(kubectl -n web get svc shop-webapp -o jsonpath="{.spec.type}")" = NodePort ]'
+solution: |
+  helm install shop /root/charts/webapp -n web --create-namespace \
+    --set replicaCount=2 --set service.type=NodePort
+  helm -n web list
+  # change values later with: helm upgrade shop /root/charts/webapp -n web --reuse-values --set replicaCount=3
+docs:
+  - https://helm.sh/docs/intro/using_helm/

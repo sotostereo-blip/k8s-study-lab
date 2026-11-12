@@ -140,3 +140,13 @@ def test_lab_start_check_and_stop(tmp_path):
 
     assert client.post("/api/labs/stop").json()["status"] == "idle"
     assert "kubectl" in client.get("/api/labs/cka-wl-002/solution").json()["solution"]
+
+
+def test_wrong_answer_explains_why(client):
+    # questions sent before answering must not leak the 'why' of each option
+    for q in client.get("/api/practice/next?n=20").json()["questions"]:
+        assert all(set(o) == {"id", "text"} for o in q["options"])
+    r = client.post("/api/practice/answer", json={"question_id": "kcna-fund-001", "selected": ["a"]}).json()
+    assert not r["correct"]
+    assert "a" in r["why"] and r["why"]["a"]          # why the chosen option is wrong
+    assert "b" not in r["why"]                         # the right answer uses 'explanation'

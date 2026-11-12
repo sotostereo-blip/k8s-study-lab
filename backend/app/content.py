@@ -12,6 +12,7 @@ class Option(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-f]$")
     text: str
+    why: str | None = None  # why this option is wrong (or right); shown after answering
 
 
 class Question(BaseModel):
@@ -39,12 +40,16 @@ class Question(BaseModel):
             raise ValueError(f"{self.id}: single-choice needs exactly one answer")
         if self.type == "multiple" and len(self.answer) < 2:
             raise ValueError(f"{self.id}: multiple-choice needs 2+ answers")
+        missing_why = [o.id for o in self.options if o.id not in self.answer and not (o.why or "").strip()]
+        if missing_why:
+            raise ValueError(f"{self.id}: wrong options {missing_why} need a 'why' (why the option is wrong)")
         return self
 
     def public(self) -> dict:
         """Question without answer/explanation, safe to send before answering."""
-        return self.model_dump(include={"id", "domain", "difficulty", "type", "question", "options", "glossary"}) | {
-            "select": len(self.answer)
+        return self.model_dump(include={"id", "domain", "difficulty", "type", "question", "glossary"}) | {
+            "options": [{"id": o.id, "text": o.text} for o in self.options],  # 'why' would leak the answer
+            "select": len(self.answer),
         }
 
 

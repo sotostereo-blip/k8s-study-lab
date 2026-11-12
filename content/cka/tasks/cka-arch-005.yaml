@@ -1,0 +1,27 @@
+id: cka-arch-005
+title: PriorityClass for critical workloads
+domain: cluster-architecture
+difficulty: 1
+minutes: 5
+environment: single-node
+task: |
+  1. Create a PriorityClass called `high-priority` with value `100000`.
+     It must **not** be the global default.
+  2. Create a Pod called `critical-app` with image `nginx:1.27-alpine` that uses
+     this PriorityClass.
+checks:
+  - name: PriorityClass `high-priority` has value 100000
+    run: '[ "$(kubectl get priorityclass high-priority -o jsonpath="{.value}")" = 100000 ]'
+  - name: It is not the global default
+    run: '[ "$(kubectl get priorityclass high-priority -o jsonpath="{.globalDefault}")" != true ]'
+  - name: Pod `critical-app` has priority 100000
+    run: '[ "$(kubectl get pod critical-app -o jsonpath="{.spec.priorityClassName}/{.spec.priority}")" = high-priority/100000 ]'
+  - name: Pod `critical-app` is running
+    run: '[ "$(kubectl get pod critical-app -o jsonpath="{.status.phase}")" = Running ]'
+solution: |
+  kubectl create priorityclass high-priority --value=100000 --description="critical apps"
+  kubectl run critical-app --image=nginx:1.27-alpine $do > pod.yaml
+  # add under spec:  priorityClassName: high-priority
+  kubectl apply -f pod.yaml
+docs:
+  - https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/

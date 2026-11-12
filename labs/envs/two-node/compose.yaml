@@ -24,7 +24,7 @@ services:
     depends_on: [server]
   toolbox:
     build: ../../toolbox
-    image: k8s-study-lab/toolbox:1
+    image: k8s-study-lab/toolbox:2
     depends_on: [server]
     ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
     volumes: [kubeconfig:/output:ro]

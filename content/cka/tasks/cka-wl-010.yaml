@@ -1,0 +1,33 @@
+id: cka-wl-010
+title: ResourceQuota, requests and limits
+domain: workloads-scheduling
+difficulty: 2
+minutes: 10
+environment: single-node
+task: |
+  1. Create a namespace called `team-a`.
+  2. Create a ResourceQuota called `team-a-quota` in `team-a` with these hard limits:
+     - `pods: 5`
+     - `requests.cpu: 1`, `requests.memory: 1Gi`
+     - `limits.cpu: 2`, `limits.memory: 2Gi`
+  3. Create a Deployment called `api` in `team-a` with image `nginx:1.27-alpine` and
+     `2` replicas. Each container requests `100m` CPU and `128Mi` memory, with limits of
+     `200m` CPU and `256Mi` memory.
+checks:
+  - name: ResourceQuota `team-a-quota` has the right hard limits
+    run: '[ "$(kubectl -n team-a get quota team-a-quota -o jsonpath="{.spec.hard.pods}/{.spec.hard.requests\.cpu}/{.spec.hard.requests\.memory}/{.spec.hard.limits\.cpu}/{.spec.hard.limits\.memory}")" = 5/1/1Gi/2/2Gi ]'
+  - name: Deployment `api` has 2 ready replicas
+    run: '[ "$(kubectl -n team-a get deploy api -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: Containers request 100m CPU / 128Mi and limit 200m / 256Mi
+    run: '[ "$(kubectl -n team-a get deploy api -o jsonpath="{.spec.template.spec.containers[0].resources.requests.cpu}/{.spec.template.spec.containers[0].resources.requests.memory}/{.spec.template.spec.containers[0].resources.limits.cpu}/{.spec.template.spec.containers[0].resources.limits.memory}")" = 100m/128Mi/200m/256Mi ]'
+  - name: The quota counts 200m of requested CPU
+    run: '[ "$(kubectl -n team-a get quota team-a-quota -o jsonpath="{.status.used.requests\.cpu}")" = 200m ]'
+solution: |
+  kubectl create namespace team-a
+  kubectl -n team-a create quota team-a-quota --hard=pods=5,requests.cpu=1,requests.memory=1Gi,limits.cpu=2,limits.memory=2Gi
+  kubectl -n team-a create deployment api --image=nginx:1.27-alpine --replicas=2
+  kubectl -n team-a set resources deployment api --requests=cpu=100m,memory=128Mi --limits=cpu=200m,memory=256Mi
+  kubectl -n team-a describe quota team-a-quota
+docs:
+  - https://kubernetes.io/docs/concepts/policy/resource-quotas/
+  - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
