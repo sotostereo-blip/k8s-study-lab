@@ -42,6 +42,15 @@ Prices change: check the official page before you pay.
 
 Choose the certification in the selector at the top of the page.
 
+- **Plan**: set your exam date and the time you have each day. The app gives you the work for today
+  (reviews due, new questions focused on your weakest and heaviest domains, labs to solve, and mock exams
+  that get more frequent as the exam gets close) and a road map: *Learn* → *Practice* (last 3 weeks) →
+  *Final week* → *Rest*. It also tells you if you are ahead of or behind plan.
+- **Am I ready?** An estimated exam score: your last 3 mock exams (60%) mixed with your practice (40%),
+  following the official domain weights. It compares the estimate with the passing score and says
+  *Not ready yet*, *Almost ready* or *Ready* (two mock exams in a row 5 points above the passing score).
+  For a hands-on exam (CKA, CKAD, CKS, LFCS) the labs count most.
+
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
   When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
 - **Mock exams** that follow the official domain weights, with a timer and a per-domain report.

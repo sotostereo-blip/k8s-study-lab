@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 import Labs from './Labs.jsx'
+import Plan from './Plan.jsx'
 import { InterviewPractice, MockInterview, Phrases } from './Interview.jsx'
 import { EnglishBar, EnglishContext, EnglishPage, EnglishText, ListenButton } from './english.jsx'
 
 function tabsFor(cert) {
   return [
+    ...(cert ? [{ id: 'plan', label: 'Plan' }] : []),
     ...(cert?.exam ? [
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'practice', label: 'Practice' },
@@ -48,7 +50,7 @@ export default function App() {
   const chooseCert = (id) => {
     setCertId(id); saveCert(id)
     const c = certs.find((x) => x.id === id)
-    setTab(c?.exam ? 'dashboard' : c?.track ? 'labs' : 'interview')
+    setTab(c ? 'plan' : null)
   }
   const areas = [...new Set(certs.map((c) => c.area))]
 
@@ -77,6 +79,7 @@ export default function App() {
       </header>
       <main className={current === 'labs' ? 'wide' : ''}>
         {error && <p className="error">Cannot reach the API: {error}. Is the backend running on port 8000?</p>}
+        {cert && current === 'plan' && <Plan key={cert.id} cert={cert} onGo={setTab} />}
         {exam && current === 'dashboard' && <Dashboard key={exam.id} exam={exam} cert={cert} onGo={setTab} />}
         {exam && current === 'practice' && <Practice key={exam.id} exam={exam} glossary={glossary} />}
         {exam && current === 'exam' && <ExamMode key={exam.id} exam={exam} glossary={glossary} />}

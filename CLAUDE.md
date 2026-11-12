@@ -29,5 +29,7 @@ Spanish but all study content must be in **simple, clear English**.
 - Interview questions: `content/interviews/<category>.yaml` (key points + spoken model answer).
 - Glossary terms for common words in one area ("workflow", "bucket") set `certs:` so they are
   only highlighted in that certification.
+- Study plan and readiness score: pure functions in `backend/app/plan.py` (progress is read in
+  `main.py` `parts_for`); keep the formulas explained in the README.
 - AI features must stay optional: the app must work with no API key.
 - Run the validator and tests before finishing any change.

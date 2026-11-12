@@ -77,6 +77,12 @@ CREATE TABLE IF NOT EXISTS interview_cards (
     box INTEGER NOT NULL DEFAULT 1,   -- Leitner box 1..5
     due_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS study_goals (
+    cert_id TEXT PRIMARY KEY,
+    exam_date TEXT NOT NULL,          -- YYYY-MM-DD
+    minutes_per_day INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (date('now', 'localtime'))
+);
 CREATE TABLE IF NOT EXISTS interview_sessions (
     id TEXT PRIMARY KEY,
     question_ids TEXT NOT NULL,       -- JSON list

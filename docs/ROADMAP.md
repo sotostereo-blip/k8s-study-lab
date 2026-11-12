@@ -44,6 +44,10 @@
 - [ ] LFCS storage labs with LVM and swap (need a VM; loop devices are shared in Docker Desktop)
 - [ ] Argo Events labs (EventBus), Grafana dashboard labs
 - [ ] Later: Ansible (RHCE), HashiCorp Vault Associate
+- [x] Real exam facts per certification (questions, time, cost, prerequisites, validity)
+- [x] Study plan by exam date (work for today, phases, pace) and readiness score (`backend/app/plan.py`)
+- [ ] Certification path map (KCNA → CKA → CKS, Kubestronaut) with expiry reminders
+- [ ] Exam-like mock details: DOMC questions for DCA, AWS ESL +30 minutes, docs-only browser in labs
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`

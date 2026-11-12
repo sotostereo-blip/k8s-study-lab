@@ -6,14 +6,14 @@ import os
 import random
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from . import srs
+from . import plan, srs
 from .content import Library, Question, load_library
 from .db import Database
 from .labs import LabManager, Runner, subprocess_runner
@@ -61,6 +61,11 @@ class InterviewMockIn(BaseModel):
     minutes: int | None = None
     categories: list[str] = []      # empty = all
     level: str | None = None
+
+
+class GoalIn(BaseModel):
+    exam_date: date
+    minutes_per_day: int = Field(default=60, ge=15, le=600)
 
 
 class VocabAnswerIn(BaseModel):
@@ -738,6 +743,133 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
         return {"questions": len(lib.interview_questions), "answers": total,
                 "words_per_minute": round(60 * a["w"] / a["s"]) if a["n"] else None,
                 "mocks": [dict(r) for r in mocks]}
+
+    # ---------- study plan and readiness ----------
+
+    def get_cert(cert_id: str):
+        for c in lib.certifications:
+            if c.id == cert_id:
+                return c
+        raise HTTPException(404, f"Unknown certification '{cert_id}'")
+
+    def parts_for(cert) -> tuple[list[plan.Part], str]:
+        """Read the progress of one certification from the database."""
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        today = "date('now', 'localtime')"
+        parts: list[plan.Part] = []
+
+        def day(ts: str) -> date:
+            return datetime.strptime(ts[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).astimezone().date()
+
+        with db.connect() as conn:
+            if cert.exam:
+                exam = lib.exams[cert.exam]
+                boxes = {r["question_id"]: r for r in conn.execute("SELECT question_id, box, due_at FROM cards")}
+                domains = []
+                for d in exam.domains:
+                    qs = lib.questions_for(exam.id, d.id)
+                    domains.append(plan.DomainProgress(d.id, d.name, d.weight, [
+                        plan.Item(q.id, q.id, plan.EXAM_RECALL[boxes[q.id]["box"] if q.id in boxes else 0],
+                                  q.id in boxes, 1.5) for q in qs]))
+                ids = {q.id for q in lib.questions_for(exam.id)}
+                mocks = conn.execute("SELECT started_at, score FROM exam_sessions WHERE exam_id=? AND score IS NOT NULL "
+                                     "ORDER BY started_at DESC LIMIT 10", (exam.id,)).fetchall()
+                done = conn.execute(f"SELECT question_id FROM attempts WHERE mode='practice' AND "
+                                    f"date(created_at, 'localtime') = {today}").fetchall()
+                parts.append(plan.Part(
+                    "exam", "Question bank", exam.passing_score, exam.exam_minutes, domains,
+                    [plan.Mock(r["score"], day(r["started_at"])) for r in mocks],
+                    due=sum(1 for q, r in boxes.items() if q in ids and r["due_at"] <= now),
+                    done_today=sum(1 for r in done if r["question_id"] in ids),
+                    mock_today=any(day(r["started_at"]) == date.today() for r in mocks)))
+            if cert.track:
+                track = lib.tracks[cert.track]
+                best = {r["task_id"]: r for r in conn.execute(
+                    "SELECT task_id, MAX(passed) AS solved, MIN(CASE WHEN passed THEN seconds END) AS best "
+                    "FROM lab_attempts GROUP BY task_id")}
+                domains = []
+                for d in track.domains:
+                    items = []
+                    for t in sorted(lib.tasks_for(track.id), key=lambda t: t.id):
+                        if t.domain != d.id:
+                            continue
+                        r = best.get(t.id)
+                        solved = bool(r and r["solved"])
+                        fast = solved and r["best"] is not None and r["best"] <= t.minutes * 60
+                        items.append(plan.Item(t.id, t.title, plan.LAB_FAST if fast else plan.LAB_SLOW if solved else 0.0,
+                                               solved, t.minutes * 1.5, t.difficulty))
+                    domains.append(plan.DomainProgress(d.id, d.name, d.weight, items))
+                mocks = conn.execute("SELECT created_at, score FROM mock_sessions WHERE track_id=? AND score IS NOT NULL "
+                                     "ORDER BY created_at DESC LIMIT 10", (track.id,)).fetchall()
+                solved_today = conn.execute(f"SELECT DISTINCT task_id FROM lab_attempts WHERE passed=1 AND "
+                                            f"date(created_at, 'localtime') = {today}").fetchall()
+                parts.append(plan.Part(
+                    "labs", "Labs", track.passing_score, track.exam_minutes if track.mock else 0, domains,
+                    [plan.Mock(r["score"], day(r["created_at"])) for r in mocks],
+                    done_today=sum(1 for r in solved_today if r["task_id"].startswith(track.id + "-")),
+                    mock_today=any(day(r["created_at"]) == date.today() for r in mocks)))
+            if cert.interview:
+                boxes = {r["question_id"]: r for r in conn.execute("SELECT question_id, box, due_at FROM interview_cards")}
+                domains = []
+                cats = list(lib.interview_categories.values())
+                for c in cats:
+                    qs = [q for q in lib.interview_questions.values() if q.category == c.id]
+                    domains.append(plan.DomainProgress(c.id, c.name, round(100 / len(cats), 1), [
+                        plan.Item(q.id, q.question, plan.INTERVIEW_RECALL[boxes[q.id]["box"] if q.id in boxes else 0],
+                                  q.id in boxes, q.minutes + 2) for q in qs]))
+                mocks = conn.execute("SELECT created_at, score FROM interview_sessions WHERE score IS NOT NULL "
+                                     "ORDER BY created_at DESC LIMIT 10").fetchall()
+                done = conn.execute(f"SELECT COUNT(*) AS n FROM interview_attempts WHERE mode='practice' AND "
+                                    f"date(created_at, 'localtime') = {today}").fetchone()["n"]
+                parts.append(plan.Part(
+                    "interview", "Interview", 70, 20, domains,
+                    [plan.Mock(r["score"], day(r["created_at"])) for r in mocks],
+                    due=sum(1 for r in boxes.values() if r["due_at"] <= now), done_today=done,
+                    mock_today=any(day(r["created_at"]) == date.today() for r in mocks)))
+        performance = cert.official and cert.official.format.lower().startswith("performance")
+        main = "labs" if cert.track and (performance or not cert.exam) else "exam" if cert.exam else "interview"
+        return parts, main
+
+    def get_goal(cert_id: str):
+        with db.connect() as conn:
+            return conn.execute("SELECT * FROM study_goals WHERE cert_id=?", (cert_id,)).fetchone()
+
+    @app.get("/api/readiness")
+    def readiness(cert_id: str):
+        parts, main = parts_for(get_cert(cert_id))
+        return plan.readiness(parts, main)
+
+    @app.get("/api/plan")
+    def study_plan(cert_id: str, today: date | None = None):
+        cert = get_cert(cert_id)
+        parts, main = parts_for(cert)
+        goal = get_goal(cert_id)
+        out = {"cert_id": cert_id, "goal": dict(goal) if goal else None, "readiness": plan.readiness(parts, main)}
+        if goal:
+            today = today or date.today()
+            start = min(date.fromisoformat(goal["created_at"]), today)
+            out["today"] = plan.daily_plan(parts, main, date.fromisoformat(goal["exam_date"]), start, today,
+                                           goal["minutes_per_day"])
+        return out
+
+    @app.put("/api/plan")
+    def set_goal(cert_id: str, body: GoalIn):
+        get_cert(cert_id)
+        if body.exam_date < date.today():
+            raise HTTPException(400, "The exam date is in the past")
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO study_goals (cert_id, exam_date, minutes_per_day) VALUES (?,?,?) "
+                "ON CONFLICT(cert_id) DO UPDATE SET exam_date=excluded.exam_date, minutes_per_day=excluded.minutes_per_day",
+                (cert_id, body.exam_date.isoformat(), body.minutes_per_day))
+        return study_plan(cert_id)
+
+    @app.delete("/api/plan")
+    def delete_goal(cert_id: str):
+        get_cert(cert_id)
+        with db.connect() as conn:
+            conn.execute("DELETE FROM study_goals WHERE cert_id=?", (cert_id,))
+        return {"ok": True}
 
     @app.get("/api/interview/phrases")
     def interview_phrases():

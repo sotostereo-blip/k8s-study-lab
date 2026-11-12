@@ -247,3 +247,61 @@ textarea.answer { width: 100%; font: inherit; color: inherit; background: var(--
 .real-exam h2 { font-size: 16px; margin: 20px 0 6px; }
 .real-exam ul { margin: 0 0 12px; padding-left: 20px; line-height: 1.6; }
 @media (max-width: 600px) { .real-exam table th { white-space: normal; } }
+
+/* study plan */
+.plan .muted { color: var(--muted); }
+.plan .small { font-size: 14px; }
+.plan .card { margin-bottom: 12px; }
+.goal-form .goal-fields { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+.goal-form label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.goal-form input, .goal-form select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+.goal-line { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 14px 20px; }
+.goal-buttons { display: flex; gap: 16px; }
+.phase { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); vertical-align: middle; margin-left: 8px; }
+.phase-final { background: var(--ko-soft); color: var(--ko); }
+.phase-rest, .phase-done { background: var(--ok-soft); color: var(--ok); }
+.pace { font-size: 14px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); }
+.pace-ahead { background: var(--ok-soft); }
+.pace-behind { background: var(--ko-soft); }
+ul.today { list-style: none; padding: 0; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+ul.today li { display: grid; grid-template-columns: 24px 1fr auto auto; gap: 12px; align-items: center; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+ul.today li.done { opacity: .65; }
+ul.today .check { font-size: 18px; color: var(--accent); text-align: center; }
+ul.today li.done .check { color: var(--ok); }
+.today-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.today-text .bar { max-width: 220px; height: 6px; }
+ul.today .mins { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+ul.today button { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+@media (max-width: 600px) {
+  ul.today li { grid-template-columns: 24px 1fr auto; }
+  ul.today .mins { display: none; }
+}
+.readiness { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+.readiness .score { text-align: center; min-width: 110px; }
+.readiness .score b { display: block; font-size: 40px; font-family: var(--mono); line-height: 1.1; }
+.readiness .score span { color: var(--muted); font-size: 13px; }
+.score-detail { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.score-detail p { margin: 4px 0 0; }
+.verdict { align-self: flex-start; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+.verdict.ok { background: var(--ok-soft); color: var(--ok); }
+.verdict.warn { background: #fff4d6; color: #8a5a00; }
+.verdict.ko { background: var(--ko-soft); color: var(--ko); }
+.verdict.muted { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+@media (prefers-color-scheme: dark) { .verdict.warn { background: #2f2610; color: #f0c060; } }
+.gauge { position: relative; height: 12px; background: var(--border); border-radius: 6px; }
+.gauge i { display: block; height: 100%; border-radius: 6px; background: var(--accent); }
+.gauge i.ok { background: var(--ok); }
+.gauge i.ko { background: var(--ko); }
+.gauge em { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.next-steps { padding-left: 20px; line-height: 1.8; }
+.next-steps .link { font-size: 15px; }
+details.part { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+details.part summary { cursor: pointer; font-size: 15px; }
+details.part table { margin-top: 10px; }
+details.part td .bar { display: inline-block; width: 90px; vertical-align: middle; margin-right: 6px; }
+ol.roadmap { list-style: none; padding: 0; border-left: 2px solid var(--border); margin-left: 6px; }
+ol.roadmap li { position: relative; padding: 0 0 8px 18px; }
+ol.roadmap li::before { content: ''; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
+ol.roadmap li.current::before { background: var(--accent); }
+ol.roadmap li p { margin: 2px 0 8px; }

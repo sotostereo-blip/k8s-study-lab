@@ -417,3 +417,47 @@ def test_mock_interview_flow(client):
 def test_interview_phrases(client):
     groups = client.get("/api/interview/phrases").json()
     assert groups and all(g["phrases"] for g in groups)
+
+
+# ---------- study plan and readiness ----------
+
+def test_readiness_starts_unknown_and_grows_with_practice(client):
+    r = client.get("/api/readiness?cert_id=kcna").json()
+    assert r["verdict"] == "unknown" and r["main"] == "exam" and r["confidence"] == "low"
+    before = r["estimate"]
+    assert 20 <= before <= 30          # never-seen questions count as a guess
+    q = client.get("/api/practice/next?exam_id=kcna&n=5").json()["questions"]
+    for x in q:
+        rev = client.post("/api/practice/answer", json={"question_id": x["id"], "selected": ["a"]}).json()
+        client.post("/api/practice/answer", json={"question_id": x["id"], "selected": rev["answer"]})
+    assert client.get("/api/readiness?cert_id=kcna").json()["parts"][0]["coverage"] > 0
+    # a performance-based exam is judged by its labs
+    assert client.get("/api/readiness?cert_id=cka").json()["main"] == "labs"
+    assert client.get("/api/readiness?cert_id=lfcs").json()["main"] == "labs"
+    assert client.get("/api/readiness?cert_id=saa").json()["main"] == "exam"
+    assert client.get("/api/readiness?cert_id=nope").status_code == 404
+
+
+def test_study_plan_for_an_exam_date(client):
+    from datetime import date, timedelta
+    assert client.get("/api/plan?cert_id=kcna").json()["goal"] is None
+    past = (date.today() - timedelta(days=1)).isoformat()
+    assert client.put("/api/plan?cert_id=kcna", json={"exam_date": past}).status_code == 400
+    day = (date.today() + timedelta(days=40)).isoformat()
+    p = client.put("/api/plan?cert_id=kcna", json={"exam_date": day, "minutes_per_day": 45}).json()
+    t = p["today"]
+    assert t["days_left"] == 40 and t["phase"] == "learn"
+    assert [x["phase"] for x in t["roadmap"]] == ["learn", "practice", "final", "rest"]
+    kinds = {x["kind"] for x in t["items"]}
+    assert "new" in kinds and t["minutes"] <= 60
+    # the final week brings mock exams; the day before, a short review only
+    soon = client.get(f"/api/plan?cert_id=kcna&today={(date.today() + timedelta(days=35)).isoformat()}").json()["today"]
+    assert soon["phase"] == "final" and any(x["kind"] == "mock" for x in soon["items"])
+    eve = client.get(f"/api/plan?cert_id=kcna&today={(date.today() + timedelta(days=39)).isoformat()}").json()["today"]
+    assert eve["phase"] == "rest" and not any(x["kind"] in ("new", "mock") for x in eve["items"])
+    # labs plan names the tasks to solve
+    client.put("/api/plan?cert_id=cka", json={"exam_date": day})
+    labs = [x for x in client.get("/api/plan?cert_id=cka").json()["today"]["items"] if x["kind"] == "labs"]
+    assert labs and labs[0]["tasks"][0].startswith("cka-")
+    assert client.delete("/api/plan?cert_id=kcna").json()["ok"]
+    assert client.get("/api/plan?cert_id=kcna").json()["goal"] is None

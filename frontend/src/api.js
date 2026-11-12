@@ -45,4 +45,7 @@ export const api = {
   interviewStats: () => request('/interview/stats'),
   interviewPhrases: () => request('/interview/phrases'),
   mockAbandon: (id) => request(`/mock/${id}/abandon`, { method: 'POST' }),
+  plan: (cert) => request(`/plan?cert_id=${cert}`),
+  planSet: (cert, body) => request(`/plan?cert_id=${cert}`, { method: 'PUT', body }),
+  planDelete: (cert) => request(`/plan?cert_id=${cert}`, { method: 'DELETE' }),
 }
