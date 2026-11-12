@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 import Labs from './Labs.jsx'
+import { InterviewPractice, MockInterview, Phrases } from './Interview.jsx'
 import { EnglishBar, EnglishContext, EnglishPage, EnglishText, ListenButton } from './english.jsx'
 
 function tabsFor(cert) {
@@ -11,6 +12,11 @@ function tabsFor(cert) {
       { id: 'exam', label: 'Exam mode' },
     ] : []),
     ...(cert?.track ? [{ id: 'labs', label: 'Labs' }] : []),
+    ...(cert?.interview ? [
+      { id: 'interview', label: 'Practice' },
+      { id: 'mock-interview', label: 'Mock interview' },
+      { id: 'phrases', label: 'Phrases' },
+    ] : []),
     { id: 'english', label: 'English' },
     { id: 'glossary', label: 'Glossary' },
   ]
@@ -41,11 +47,11 @@ export default function App() {
   const chooseCert = (id) => {
     setCertId(id); saveCert(id)
     const c = certs.find((x) => x.id === id)
-    setTab(c?.exam ? 'dashboard' : 'labs')
+    setTab(c?.exam ? 'dashboard' : c?.track ? 'labs' : 'interview')
   }
   const areas = [...new Set(certs.map((c) => c.area))]
 
-  const english = useMemo(() => ({ glossary, vocabulary }), [glossary, vocabulary])
+  const english = useMemo(() => ({ glossary, vocabulary, cert: cert?.id }), [glossary, vocabulary, cert?.id])
   return (
     <EnglishContext.Provider value={english}>
     <div className="app">
@@ -76,6 +82,9 @@ export default function App() {
         {current === 'glossary' && <GlossaryPage glossary={glossary} vocabulary={vocabulary} />}
         {cert?.track && current === 'labs' && <Labs key={cert.track} trackId={cert.track} />}
         {current === 'english' && <EnglishPage />}
+        {cert?.interview && current === 'interview' && <InterviewPractice />}
+        {cert?.interview && current === 'mock-interview' && <MockInterview />}
+        {cert?.interview && current === 'phrases' && <Phrases />}
       </main>
     </div>
     </EnglishContext.Provider>

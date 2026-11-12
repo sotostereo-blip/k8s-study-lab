@@ -1,0 +1,310 @@
+category: cloud
+questions:
+  - id: iv-cloud-001
+    level: junior
+    type: technical
+    question: What is the difference between a region and an availability zone?
+    minutes: 1
+    tips: "Define both, then explain how you use them for high availability."
+    key_points:
+      - A region is a separate geographic area, like eu-west-1
+      - A region has several availability zones
+      - An AZ is one or more data centers with its own power and network
+      - Spread resources across at least two AZs for high availability
+      - Choose the region for latency, data laws, price and services
+    model_answer: |
+      A region is a geographic area where AWS has data centers, like Ireland or Frankfurt. Regions are
+      completely separate from each other. Inside each region there are several availability zones,
+      usually three or more. An AZ is one or more data centers with their own power, cooling and
+      network, a few kilometers away from the others, but connected with very fast links. The idea is
+      that a fire or a power cut affects only one AZ. So for high availability, I always spread
+      things across at least two AZs, for example app servers in an Auto Scaling group over three
+      AZs and a Multi-AZ database. To choose a region, I think about latency to users, data
+      protection laws like GDPR, price, and which services are available there.
+    follow_ups:
+      - When would you deploy to more than one region?
+    docs: [https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html]
+  - id: iv-cloud-002
+    level: junior
+    type: technical
+    question: Explain AWS IAM. What are users, groups, roles and policies?
+    minutes: 2
+    tips: "Define each piece in one sentence, then explain why roles are preferred, and mention least privilege."
+    key_points:
+      - Users are identities with long-term credentials
+      - Groups attach permissions to many users at once
+      - Roles are assumed and give temporary credentials
+      - Policies are JSON documents that allow or deny actions on resources
+      - Prefer roles and SSO over users with access keys
+      - Follow least privilege
+    model_answer: |
+      IAM controls who can do what in AWS. A user is an identity for a person or an application, with
+      long-term credentials like a password or access keys. A group is a collection of users, so I
+      can give the same permissions to the whole team at once. A role is different. Nobody owns it
+      permanently, it's assumed when needed, and it gives temporary credentials. EC2 instances,
+      Lambda functions, Pods and even people from SSO use roles. Policies are the JSON documents with
+      the permissions: which actions, on which resources, and under which conditions. Today the best
+      practice is to avoid IAM users with access keys as much as possible and use roles and SSO,
+      because temporary credentials are much safer. And always least privilege: start small and add
+      permissions when they're really needed.
+    follow_ups:
+      - What is the difference between an identity-based and a resource-based policy?
+      - How would you find out why a request was denied?
+    docs: [https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html]
+    glossary: [least-privilege, authorization]
+  - id: iv-cloud-003
+    level: mid
+    type: design
+    question: How would you design a VPC for a typical web application?
+    minutes: 2.5
+    tips: "Start with the CIDR, then the subnets per AZ, then routing, then security. A quick sketch in words helps."
+    key_points:
+      - A non-overlapping CIDR block, for example a /16
+      - Public and private subnets in at least two AZs
+      - The load balancer in public subnets, apps and databases in private ones
+      - An internet gateway for public subnets, NAT gateways for private outbound traffic
+      - Security groups that only allow traffic between the layers
+      - VPC endpoints for services like S3
+    model_answer: |
+      I'd start with a CIDR like 10.20.0.0/16, checking it doesn't overlap with our other VPCs or the
+      office network. Then I'd create subnets in three availability zones. In each AZ, a public
+      subnet for the load balancer and the NAT gateway, a private subnet for the application
+      servers or the Kubernetes nodes, and another private subnet for the databases. The public
+      subnets have a route to an internet gateway. The private ones go out through a NAT gateway,
+      ideally one per AZ so one zone failing doesn't break the others. For security, I use security
+      groups between the layers: the load balancer accepts 443 from the internet, the app accepts
+      traffic only from the load balancer, and the database only from the app. I'd also add VPC
+      endpoints for S3 and other AWS services, to keep that traffic private and reduce NAT costs.
+    follow_ups:
+      - How would you connect this VPC to another VPC or to the office?
+      - Why one NAT gateway per AZ?
+    docs: [https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html]
+  - id: iv-cloud-004
+    level: junior
+    type: technical
+    question: What is S3, and how do you keep a bucket secure and cheap?
+    minutes: 1.5
+    tips: "Define S3 briefly, then give security points and cost points separately."
+    key_points:
+      - S3 is object storage with very high durability
+      - Keep Block Public Access on and use bucket policies
+      - Encrypt data at rest, which is on by default
+      - Use versioning to protect against deletes
+      - Use storage classes and lifecycle rules to cut costs
+    model_answer: |
+      S3 is AWS object storage. You store files as objects in buckets, and it's extremely durable,
+      eleven nines. It's used for backups, static websites, logs, data lakes and Terraform state. For
+      security, the first thing is Block Public Access, which should stay on unless the bucket really
+      needs to be public, and even then I'd put CloudFront in front. Access is controlled with IAM and
+      bucket policies, with least privilege. Data is encrypted at rest by default, and I can use KMS
+      keys for more control. I turn on versioning for important data, so a delete or overwrite can be
+      undone. For cost, I use storage classes. Frequently used data stays in Standard, and lifecycle
+      rules move old data to Infrequent Access or Glacier, and delete it after a while.
+    follow_ups:
+      - What is the difference between S3 Standard and Glacier?
+      - How would you share a private file with a user for one hour?
+    docs: [https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html]
+    glossary: [kms, encryption-at-rest]
+  - id: iv-cloud-005
+    level: junior
+    type: technical
+    question: What is the difference between vertical and horizontal scaling? How does an Auto Scaling group work?
+    minutes: 1.5
+    tips: "Compare the two types with pros and cons, then explain the Auto Scaling group with a scaling policy."
+    key_points:
+      - Vertical scaling means a bigger machine
+      - Horizontal scaling means more machines
+      - Horizontal scaling also gives high availability
+      - Apps must be stateless to scale horizontally
+      - An Auto Scaling group keeps a number of instances between min and max
+      - Scaling policies add or remove instances based on metrics
+    model_answer: |
+      Vertical scaling, or scaling up, means making one machine bigger, more CPU or more memory. It's
+      simple, but there's a limit, it often needs a restart, and you still have one single point of
+      failure. Horizontal scaling, or scaling out, means adding more machines behind a load balancer.
+      It has almost no limit and it gives you high availability, but the app has to be stateless, so
+      sessions go in something like Redis, not in the server's memory. An Auto Scaling group does
+      horizontal scaling on AWS. You give it a launch template, a minimum, a maximum and a desired
+      number of instances. It replaces unhealthy instances automatically, and with a target tracking
+      policy, for example average CPU at fifty percent, it adds or removes instances as traffic
+      changes.
+    follow_ups:
+      - How do you scale a database horizontally?
+      - Why can scaling be too slow for a sudden spike?
+    docs: [https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html]
+  - id: iv-cloud-006
+    level: junior
+    type: technical
+    question: What is the shared responsibility model?
+    minutes: 1
+    tips: "Explain the split in one sentence, then show how it changes with the type of service."
+    key_points:
+      - The provider is responsible for security of the cloud
+      - The customer is responsible for security in the cloud
+      - The split depends on the service type (EC2, RDS, Lambda)
+      - Customers always own their data, IAM and configuration
+    model_answer: |
+      It's the idea that security is split between the cloud provider and the customer. AWS says it's
+      responsible for security of the cloud: the data centers, the hardware, the network and the
+      software that runs the services. The customer is responsible for security in the cloud: our
+      data, our IAM permissions, our network configuration, and so on. The split changes with the
+      service. With EC2, I'm responsible for the operating system, patching and the firewall. With a
+      managed service like RDS, AWS patches the database engine. With Lambda, I only care about my
+      code and its permissions. But in every case, my data, who has access, and things like an S3
+      bucket left public are always my responsibility.
+    follow_ups:
+      - Who patches the nodes in a managed Kubernetes cluster like EKS?
+    docs: [https://aws.amazon.com/compliance/shared-responsibility-model/]
+    glossary: [shared-responsibility]
+  - id: iv-cloud-007
+    level: mid
+    type: scenario
+    question: Our AWS bill grew 40% in three months. How would you reduce cloud costs?
+    minutes: 2
+    tips: "Start with visibility, then quick wins, then bigger changes like commitments and architecture."
+    key_points:
+      - Find where the money goes first (Cost Explorer, tags)
+      - Remove unused resources like idle instances, old snapshots and volumes
+      - Right-size instances based on real usage
+      - Use Savings Plans or Reserved Instances for steady workloads
+      - Use Spot instances for flexible workloads like CI
+      - Turn off non-production environments at night and set budget alerts
+    model_answer: |
+      First I'd find out where the money is going, with Cost Explorer grouped by service and by tags.
+      If resources aren't tagged, that's the first thing to fix, so each team can see its own costs.
+      Then the quick wins: delete unused things like unattached EBS volumes, old snapshots, idle load
+      balancers and forgotten test instances. Next, right-sizing. Many instances use ten percent of
+      their CPU, so we can move to smaller types. Data transfer and NAT gateways are often a surprise
+      too. For steady workloads, Savings Plans can save a lot, and for flexible things like CI runners
+      or batch jobs, Spot instances are much cheaper. I'd also stop dev environments at night and on
+      weekends. Finally, budget alerts, so the next increase is caught in days, not months.
+    follow_ups:
+      - What are the risks of Spot instances?
+      - How do you make teams care about cost?
+    docs: [https://docs.aws.amazon.com/cost-management/latest/userguide/what-is-costmanagement.html]
+    glossary: [finops]
+  - id: iv-cloud-008
+    level: mid
+    type: technical
+    question: How do you choose between virtual machines, containers and serverless for a new service?
+    minutes: 2
+    tips: "Compare the three on control, operations and cost, then give the questions you ask to decide."
+    key_points:
+      - VMs give the most control but the most operations work
+      - Containers are portable and good for long-running services
+      - Serverless has no servers to manage and scales to zero
+      - Serverless has limits like timeouts and cold starts
+      - Decide on traffic pattern, team skills, and existing platform
+    model_answer: |
+      It depends on the workload and the team. VMs, like EC2, give the most control. You can install
+      anything, but you also patch and manage everything. I'd use them for legacy apps or special
+      software. Containers, on ECS or Kubernetes, are a good default for long-running services like
+      APIs. They're portable, deploy fast, and use resources well, but you need a platform to run
+      them. Serverless, like Lambda, means no servers at all. It scales automatically, even to zero,
+      so it's cheap for spiky or low traffic, and great for event-driven jobs like processing an
+      upload. But there are limits, like the fifteen-minute timeout and cold starts. So I'd ask: what's
+      the traffic pattern, how long do requests run, what does the team already know, and what
+      platform do we already have?
+    follow_ups:
+      - When does serverless become more expensive than containers?
+    docs: [https://docs.aws.amazon.com/lambda/latest/dg/welcome.html]
+    glossary: [serverless, container]
+  - id: iv-cloud-009
+    level: mid
+    type: technical
+    question: What is the difference between RDS Multi-AZ and read replicas?
+    minutes: 1.5
+    tips: "Say what problem each one solves, then how they work."
+    key_points:
+      - Multi-AZ is for high availability
+      - Multi-AZ keeps a synchronous standby in another AZ with automatic failover
+      - Read replicas are for scaling reads
+      - Replicas use asynchronous replication, so they can lag
+      - You can use both together
+    model_answer: |
+      They solve different problems. Multi-AZ is about availability. RDS keeps a standby copy of the
+      database in another availability zone, with synchronous replication, so no data is lost. If
+      the main instance or its AZ fails, RDS fails over automatically, usually in a minute or two,
+      and the DNS name stays the same. In the classic setup, you can't read from the standby. Read
+      replicas are about performance. They're copies that use asynchronous replication, and the
+      application can send read queries to them, like reports or search, to take load off the main
+      database. Because it's asynchronous, a replica can be a bit behind. In production I often use
+      both: Multi-AZ for safety, and one or two replicas if reads are the bottleneck.
+    follow_ups:
+      - What should the application do during a failover?
+    docs: [https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html]
+  - id: iv-cloud-010
+    level: senior
+    type: design
+    question: Explain RTO and RPO, and the main disaster recovery strategies in the cloud.
+    minutes: 2
+    tips: "Define the two terms with an example, then go through the strategies from cheapest to most expensive."
+    key_points:
+      - RTO is how long you can be down
+      - RPO is how much data you can lose, measured in time
+      - Backup and restore is cheapest but slowest
+      - Pilot light and warm standby keep part of the system running in another region
+      - Multi-site active-active is fastest and most expensive
+      - The business decides the targets, and DR must be tested
+    model_answer: |
+      RTO, recovery time objective, is how long the service can be down after a disaster. RPO,
+      recovery point objective, is how much data we can lose, measured in time. For example, an RPO of
+      one hour means we can lose at most the last hour of data. The strategies go from cheap and slow
+      to expensive and fast. Backup and restore: we copy backups to another region and rebuild
+      everything with Terraform when needed. RTO is hours. Pilot light: the data is replicated and the
+      core is ready, but servers are off. Warm standby: a smaller copy of production runs all the
+      time and we scale it up. And multi-site active-active, where both regions take traffic. The
+      business decides the targets, because each step costs more. And a DR plan you've never tested
+      is just a hope, so we practice it.
+    follow_ups:
+      - How would you test a DR plan without hurting production?
+    docs: [https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html]
+  - id: iv-cloud-011
+    level: mid
+    type: scenario
+    question: An EC2 instance in a private subnet cannot reach the internet to download updates. What do you check?
+    minutes: 1.5
+    tips: "Follow the path of the packet from the instance to the internet and check each hop."
+    key_points:
+      - The private subnet route table needs a route to a NAT gateway
+      - The NAT gateway must be in a public subnet with a route to an internet gateway
+      - Security group outbound rules must allow the traffic
+      - Network ACLs must allow outbound and return traffic
+      - DNS resolution must work in the VPC
+    model_answer: |
+      I'd follow the path the traffic takes. First, the route table of the private subnet: it needs a
+      default route, 0.0.0.0/0, pointing to a NAT gateway. Then the NAT gateway itself: it has to be
+      in a public subnet, and that public subnet's route table needs a route to the internet gateway.
+      A very common mistake is putting the NAT gateway in a private subnet. Next, the security group
+      of the instance must allow outbound traffic, usually on 443 and 80. Then the network ACLs, which
+      are stateless, so they must allow both the outbound traffic and the return traffic on the high
+      ports. Finally I'd check DNS, by trying to resolve a name from the instance. The Reachability
+      Analyzer tool in AWS can also check the whole path for you.
+    follow_ups:
+      - How could the instance get updates without any internet access?
+    docs: [https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-scenarios.html]
+  - id: iv-cloud-012
+    level: mid
+    type: technical
+    question: How do you give an application running on AWS access to S3 without storing access keys?
+    minutes: 1.5
+    tips: "Explain the problem with static keys, then the role-based solution for EC2 and for Kubernetes."
+    key_points:
+      - Static access keys can leak and are hard to rotate
+      - On EC2, attach an IAM role through an instance profile
+      - The SDK gets temporary credentials automatically
+      - On EKS, use IRSA or EKS Pod Identity to give a role to a ServiceAccount
+      - The role policy follows least privilege, for example one bucket only
+    model_answer: |
+      Access keys in a config file or an environment variable are risky. They can leak in Git or in
+      logs, and nobody rotates them. So the right way is an IAM role. On EC2, I attach the role to the
+      instance with an instance profile. The AWS SDK finds temporary credentials automatically from
+      the instance metadata service, and they rotate on their own, so the code needs nothing special.
+      On EKS, I'd use IAM Roles for Service Accounts or the newer EKS Pod Identity. The Kubernetes
+      ServiceAccount is linked to an IAM role, so each Pod gets only its own permissions, not the
+      permissions of the whole node. And the policy of the role is small: only the actions it needs,
+      on that one bucket, maybe only one prefix.
+    follow_ups:
+      - Why is IMDSv2 safer than IMDSv1?
+    docs: [https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html]
+    glossary: [least-privilege, service-account, instance-metadata]

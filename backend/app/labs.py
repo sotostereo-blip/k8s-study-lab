@@ -88,7 +88,8 @@ class LabManager:
 
     # ---------- lifecycle ----------
 
-    def start(self, lab_id: str, env: str, nodes: int, setup: str = "", setup_timeout: float = 300) -> dict:
+    def start(self, lab_id: str, env: str, nodes: int, setup: str = "", setup_timeout: float = 300,
+              ready: str | None = None, ready_timeout: float = 300) -> dict:
         """Start a clean cluster for `lab_id` (a task id, or "mock-<session>" for a mock exam)."""
         if not self.compose_file(env).exists():
             raise ValueError(f"No compose file for environment '{env}'")
@@ -96,15 +97,20 @@ class LabManager:
             self.generation += 1
             gen = self.generation
             self.state = LabState(status="starting", task_id=lab_id, environment=env)
-        threading.Thread(target=self._start, args=(gen, env, nodes, setup, setup_timeout), daemon=True).start()
+        if ready is None and nodes == 0:
+            ready = "lab-ready"
+        threading.Thread(target=self._start, args=(gen, env, nodes, setup, setup_timeout, ready, ready_timeout),
+                         daemon=True).start()
         return self.status()
 
-    def _start(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float) -> None:
+    def _start(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float,
+               ready: str | None, ready_timeout: float) -> None:
         with self.docker_lock:
             if gen == self.generation:
-                self._start_locked(gen, env, nodes, setup, setup_timeout)
+                self._start_locked(gen, env, nodes, setup, setup_timeout, ready, ready_timeout)
 
-    def _start_locked(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float) -> None:
+    def _start_locked(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float,
+                      ready: str | None, ready_timeout: float) -> None:
         def alive() -> bool:
             return gen == self.generation
 
@@ -117,50 +123,41 @@ class LabManager:
         self.run(self.compose(None, "down", "-v", "--remove-orphans"), None, 120)
         if not alive():
             return
-        self._log(f"Starting cluster: {env} (first time: downloads images, ~1-2 min)…")
+        self._log(f"Starting the lab environment: {env} (first time: downloads images, a few minutes)…")
         rc, out = self.run(self.compose(env, "up", "-d", "--build", "--quiet-pull"), None, 600)
         if rc != 0:
             return fail(out[-800:] or "docker compose up failed")
 
-        if nodes == 0:   # no Kubernetes: the toolbox image ships a lab-ready script
-            self._log("Waiting for the lab services…")
-            deadline = time.time() + 300
+        if nodes > 0:
+            self._log(f"Waiting for {nodes} node(s) to be Ready…")
+            deadline = time.time() + 240
             while alive():
-                rc, out = self.bash("lab-ready", 60)
+                rc, out = self.bash("kubectl get nodes --no-headers 2>/dev/null | grep -cw Ready", 30)
+                if rc == 0 and out.strip().isdigit() and int(out.strip()) >= nodes:
+                    break
+                if time.time() > deadline:
+                    return fail("Nodes did not become Ready in 4 minutes. Is Docker running with enough memory?")
+                time.sleep(self.poll)
+            if not alive():
+                return
+
+            self._log("Waiting for cluster DNS and the default ServiceAccount…")
+            rc, out = self.bash(
+                "for i in $(seq 1 60); do kubectl get serviceaccount default >/dev/null 2>&1 && break; sleep 2; done\n"
+                "kubectl -n kube-system rollout status deployment coredns --timeout=180s", 240)
+            if rc != 0:
+                return fail("Cluster add-ons did not start: " + out[-400:])
+
+        if ready and alive():   # e.g. LocalStack answers, Argo CD is running
+            self._log("Waiting for the lab services…")
+            deadline = time.time() + ready_timeout
+            while alive():
+                rc, out = self.bash(ready, 60)
                 if rc == 0:
                     break
                 if time.time() > deadline:
-                    return fail("Lab services did not start in 5 minutes: " + out[-300:])
+                    return fail(f"Lab services did not start in {ready_timeout / 60:.0f} minutes: " + out[-300:])
                 time.sleep(self.poll)
-            if setup.strip() and alive():
-                self._log("Preparing the task scenario…")
-                rc, out = self.bash(setup, setup_timeout)
-                if rc != 0:
-                    return fail("Task setup failed: " + out[-600:])
-            if alive():
-                self._log("Lab ready. Good luck!")
-                self.state.status = "ready"
-                self.state.started_at = time.time()
-            return
-
-        self._log(f"Waiting for {nodes} node(s) to be Ready…")
-        deadline = time.time() + 240
-        while alive():
-            rc, out = self.bash("kubectl get nodes --no-headers 2>/dev/null | grep -cw Ready", 30)
-            if rc == 0 and out.strip().isdigit() and int(out.strip()) >= nodes:
-                break
-            if time.time() > deadline:
-                return fail("Nodes did not become Ready in 4 minutes. Is Docker running with enough memory?")
-            time.sleep(self.poll)
-        if not alive():
-            return
-
-        self._log("Waiting for cluster DNS and the default ServiceAccount…")
-        rc, out = self.bash(
-            "for i in $(seq 1 60); do kubectl get serviceaccount default >/dev/null 2>&1 && break; sleep 2; done\n"
-            "kubectl -n kube-system rollout status deployment coredns --timeout=180s", 240)
-        if rc != 0:
-            return fail("Cluster add-ons did not start: " + out[-400:])
 
         if setup.strip() and alive():
             self._log("Preparing the task scenario…")

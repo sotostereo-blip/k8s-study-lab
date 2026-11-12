@@ -48,6 +48,21 @@ class EnglishEventIn(BaseModel):
     ref: str | None = None  # glossary id, or word:<vocabulary id>
 
 
+class InterviewGradeIn(BaseModel):
+    question_id: str
+    covered: list[int]              # indexes of the key points the answer covered
+    seconds: int | None = None
+    words: int | None = None
+    session_id: str | None = None   # set during a mock interview
+
+
+class InterviewMockIn(BaseModel):
+    questions: int = 8
+    minutes: int | None = None
+    categories: list[str] = []      # empty = all
+    level: str | None = None
+
+
 class VocabAnswerIn(BaseModel):
     item_id: str
     selected: str
@@ -409,9 +424,6 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             raise HTTPException(404, f"Unknown lab track '{track_id}'")
         return lib.tracks[track_id]
 
-    def nodes_of(task) -> int:
-        return lib.tracks[task.id.split("-")[0]].environments[task.environment].nodes
-
     @app.get("/api/labs")
     def labs_list(track_id: str = "cka"):
         get_track(track_id)
@@ -438,7 +450,9 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     @app.post("/api/labs/{task_id}/start")
     def labs_start(task_id: str):
         task = get_task(task_id)
-        return labs.start(task.id, task.environment, nodes_of(task), task.setup)
+        env = lib.tracks[task.id.split("-")[0]].environments[task.environment]
+        return labs.start(task.id, task.environment, env.nodes, task.setup,
+                          ready=env.ready_command, ready_timeout=env.ready_timeout)
 
     @app.post("/api/labs/stop")
     def labs_stop():
@@ -510,9 +524,9 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
                 "INSERT INTO mock_sessions (id, track_id, task_ids, minutes) VALUES (?,?,?,?)",
                 (sid, track.id, json.dumps([t.id for t in chosen]), minutes),
             )
-        env = track.mock_environment
-        labs.start(f"mock-{sid}", env, track.environments[env].nodes, mock_setup_script(chosen),
-                   setup_timeout=120 + 120 * len(chosen))
+        env = track.environments[track.mock_environment]
+        labs.start(f"mock-{sid}", track.mock_environment, env.nodes, mock_setup_script(chosen),
+                   setup_timeout=120 + 120 * len(chosen), ready=env.ready_command, ready_timeout=env.ready_timeout)
         return mock_public(get_mock(sid))
 
     @app.get("/api/mock/current")
@@ -582,6 +596,152 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
         if labs.status()["task_id"] == f"mock-{session_id}":
             labs.stop()
         return {"ok": True}
+
+    # ---------- job interviews in English: answer aloud, check the key points ----------
+
+    def get_iv(qid: str):
+        if qid not in lib.interview_questions:
+            raise HTTPException(404, f"Unknown interview question '{qid}'")
+        return lib.interview_questions[qid]
+
+    def iv_pool(categories: list[str] | None, level: str | None):
+        return [q for q in lib.interview_questions.values()
+                if (not categories or q.category in categories) and level in (None, "", q.level)]
+
+    @app.get("/api/interview/categories")
+    def interview_categories():
+        with db.connect() as conn:
+            att = conn.execute("SELECT question_id, covered, total FROM interview_attempts").fetchall()
+            cards = {r["question_id"]: r["box"] for r in conn.execute("SELECT * FROM interview_cards").fetchall()}
+        out = []
+        for c in lib.interview_categories.values():
+            ids = {q.id for q in lib.interview_questions.values() if q.category == c.id}
+            a = [r for r in att if r["question_id"] in ids]
+            out.append(c.model_dump() | {
+                "questions": len(ids),
+                "practised": len({r["question_id"] for r in a}),
+                "mastered": sum(1 for i in ids if cards.get(i, 0) >= 4),
+                "coverage": round(100 * sum(r["covered"] for r in a) / sum(r["total"] for r in a), 1) if a else None,
+            })
+        return out
+
+    @app.get("/api/interview/next")
+    def interview_next(category: str | None = None, level: str | None = None, n: int = 10):
+        pool = {q.id: q for q in iv_pool([category] if category else None, level)}
+        with db.connect() as conn:
+            rows = conn.execute("SELECT question_id, due_at FROM interview_cards").fetchall()
+        seen = {r["question_id"]: r["due_at"] for r in rows if r["question_id"] in pool}
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        due = sorted((d, qid) for qid, d in seen.items() if d <= now)
+        unseen = [qid for qid in pool if qid not in seen]
+        random.shuffle(unseen)
+        ids = ([qid for _, qid in due] + unseen)[:n]
+        return {"due": len(due), "unseen": len(unseen), "questions": [pool[i].public() for i in ids]}
+
+    @app.get("/api/interview/{qid}/review")
+    def interview_review(qid: str):
+        q = get_iv(qid)
+        return {"id": q.id, "key_points": q.key_points, "model_answer": q.model_answer,
+                "follow_ups": q.follow_ups, "docs": q.docs}
+
+    @app.post("/api/interview/grade")
+    def interview_grade(body: InterviewGradeIn):
+        q = get_iv(body.question_id)
+        covered = sorted({i for i in body.covered if 0 <= i < len(q.key_points)})
+        ratio = len(covered) / len(q.key_points)
+        ok = ratio >= 0.7   # a good answer covers most key points
+        with db.connect() as conn:
+            if body.session_id:
+                s = conn.execute("SELECT * FROM interview_sessions WHERE id=?", (body.session_id,)).fetchone()
+                if not s or q.id not in json.loads(s["question_ids"]):
+                    raise HTTPException(400, "This question is not part of that mock interview")
+                if s["finished_at"]:
+                    raise HTTPException(409, "This mock interview is already finished")
+                conn.execute("DELETE FROM interview_attempts WHERE session_id=? AND question_id=?", (s["id"], q.id))
+            conn.execute(
+                "INSERT INTO interview_attempts (question_id, covered, total, seconds, words, mode, session_id) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (q.id, len(covered), len(q.key_points), body.seconds, body.words,
+                 "mock" if body.session_id else "practice", body.session_id),
+            )
+            row = conn.execute("SELECT box FROM interview_cards WHERE question_id=?", (q.id,)).fetchone()
+            box = srs.next_box(row["box"] if row else 1, ok)
+            conn.execute(
+                "INSERT INTO interview_cards (question_id, box, due_at) VALUES (?,?,?) "
+                "ON CONFLICT(question_id) DO UPDATE SET box=excluded.box, due_at=excluded.due_at",
+                (q.id, box, srs.due_at(box)),
+            )
+        return {"covered": len(covered), "total": len(q.key_points), "good": ok, "box": box}
+
+    @app.post("/api/interview/mock/start")
+    def interview_mock_start(body: InterviewMockIn):
+        pool = iv_pool(body.categories, body.level)
+        n = max(1, min(body.questions, len(pool)))
+        if not pool:
+            raise HTTPException(400, "No interview questions match these filters")
+        # like a real interview: one behavioral question first, then a mix of topics
+        behavioral = [q for q in pool if q.type == "behavioral"]
+        first = random.sample(behavioral, 1) if behavioral else []
+        rest = [q for q in pool if q not in first]
+        by_cat: dict[str, list] = {}
+        for q in random.sample(rest, len(rest)):
+            by_cat.setdefault(q.category, []).append(q)
+        mixed = []
+        while len(mixed) < n - len(first) and any(by_cat.values()):
+            for cat in list(by_cat):   # round robin over categories
+                if by_cat[cat] and len(mixed) < n - len(first):
+                    mixed.append(by_cat[cat].pop())
+        chosen = first + mixed
+        minutes = body.minutes or max(5, round(sum(q.minutes for q in chosen) * 1.5))
+        sid = uuid.uuid4().hex
+        with db.connect() as conn:
+            conn.execute("INSERT INTO interview_sessions (id, question_ids, minutes) VALUES (?,?,?)",
+                         (sid, json.dumps([q.id for q in chosen]), minutes))
+        return {"session_id": sid, "minutes": minutes,
+                "questions": [q.public() | {"follow_ups": q.follow_ups[:1]} for q in chosen]}
+
+    @app.post("/api/interview/mock/{session_id}/finish")
+    def interview_mock_finish(session_id: str):
+        with db.connect() as conn:
+            s = conn.execute("SELECT * FROM interview_sessions WHERE id=?", (session_id,)).fetchone()
+            if not s:
+                raise HTTPException(404, "Unknown mock interview")
+            if s["finished_at"]:
+                raise HTTPException(409, "This mock interview is already finished")
+            ids = json.loads(s["question_ids"])
+            att = {r["question_id"]: dict(r) for r in conn.execute(
+                "SELECT * FROM interview_attempts WHERE session_id=?", (session_id,)).fetchall()}
+            results = []
+            for qid in ids:
+                q = lib.interview_questions[qid]
+                a = att.get(qid)
+                results.append({"question_id": qid, "question": q.question, "category": q.category,
+                                "type": q.type, "answered": a is not None,
+                                "covered": a["covered"] if a else 0, "total": len(q.key_points),
+                                "seconds": a["seconds"] if a else None, "words": a["words"] if a else None})
+            score = round(100 * sum(r["covered"] for r in results) / sum(r["total"] for r in results), 1)
+            conn.execute("UPDATE interview_sessions SET finished_at=datetime('now'), score=? WHERE id=?",
+                         (score, session_id))
+        spoken = [r for r in results if r["seconds"] and r["words"]]
+        wpm = round(60 * sum(r["words"] for r in spoken) / sum(r["seconds"] for r in spoken)) if spoken else None
+        return {"score": score, "minutes": s["minutes"], "words_per_minute": wpm, "questions": results}
+
+    @app.get("/api/interview/stats")
+    def interview_stats():
+        with db.connect() as conn:
+            mocks = conn.execute(
+                "SELECT id, created_at, score, json_array_length(question_ids) AS questions FROM interview_sessions "
+                "WHERE finished_at IS NOT NULL AND score IS NOT NULL ORDER BY created_at DESC LIMIT 5").fetchall()
+            a = conn.execute("SELECT COUNT(*) AS n, SUM(words) AS w, SUM(seconds) AS s FROM interview_attempts "
+                             "WHERE words > 0 AND seconds > 0").fetchone()
+            total = conn.execute("SELECT COUNT(*) AS n FROM interview_attempts").fetchone()["n"]
+        return {"questions": len(lib.interview_questions), "answers": total,
+                "words_per_minute": round(60 * a["w"] / a["s"]) if a["n"] else None,
+                "mocks": [dict(r) for r in mocks]}
+
+    @app.get("/api/interview/phrases")
+    def interview_phrases():
+        return [g.model_dump() for g in lib.phrase_groups]
 
     @app.get("/api/labs/{task_id}/solution")
     def labs_solution(task_id: str):

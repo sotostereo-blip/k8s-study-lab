@@ -1,0 +1,129 @@
+# Spoken English that helps in a technical interview.
+groups:
+  - id: time
+    name: "Buy time to think"
+    when: "When you need a few seconds before you answer."
+    phrases:
+      - { text: "That's a good question. Let me think about it for a second.", es: "Buena pregunta. Déjame pensarlo un segundo." }
+      - { text: "Let me make sure I understand the question.", es: "Déjame asegurarme de que entiendo la pregunta." }
+      - { text: "Hmm, let me organise my thoughts first.", es: "Mmm, déjame ordenar mis ideas primero." }
+      - { text: "Can I take a moment to think about the best example?", es: "¿Puedo tomarme un momento para pensar en el mejor ejemplo?", note: "Good for behavioral questions." }
+      - { text: "Let me think out loud, if that's OK.", es: "Déjame pensar en voz alta, si te parece bien.", note: "Very useful in design and scenario questions: the interviewer hears how you think." }
+      - { text: "There are a few ways to look at this.", es: "Hay varias formas de verlo.", note: "Gives you time and shows you see more than one answer." }
+  - id: clarify
+    name: "Ask to repeat or clarify"
+    when: "When you did not hear or did not fully understand the question."
+    phrases:
+      - { text: "Sorry, could you repeat the question, please?", es: "Perdona, ¿podrías repetir la pregunta, por favor?" }
+      - { text: "Sorry, the connection cut out for a second. Could you say that again?", es: "Perdona, se cortó la conexión un segundo. ¿Puedes repetirlo?", note: "For video interviews." }
+      - { text: "Just to check: do you mean in production or in a test environment?", es: "Solo para confirmar: ¿te refieres a producción o a un entorno de pruebas?" }
+      - { text: "When you say 'slow', do you mean high latency or low throughput?", es: "Cuando dices 'lento', ¿te refieres a latencia alta o a poco rendimiento?" }
+      - { text: "Could you give me a bit more context about the system?", es: "¿Podrías darme un poco más de contexto sobre el sistema?" }
+      - { text: "Do you want me to focus on the technical side or on the process?", es: "¿Quieres que me centre en la parte técnica o en el proceso?" }
+      - { text: "So, if I understand correctly, you're asking how I would...", es: "Entonces, si lo entiendo bien, me preguntas cómo haría...", note: "Repeat the question in your own words before you answer." }
+  - id: structure
+    name: "Structure your answer"
+    when: "To make a long answer easy to follow: say the plan, then follow it."
+    phrases:
+      - { text: "I'd answer that in three parts.", es: "Lo respondería en tres partes.", note: "Then really give three parts." }
+      - { text: "First of all, ...", es: "En primer lugar, ..." }
+      - { text: "Then, once that's done, ...", es: "Después, una vez hecho eso, ..." }
+      - { text: "After that, I'd move on to ...", es: "Después de eso, pasaría a ..." }
+      - { text: "Finally, ...", es: "Por último, ..." }
+      - { text: "To sum up, ...", es: "En resumen, ..." }
+      - { text: "Let me start with the big picture and then go into the details.", es: "Déjame empezar por la visión general y luego entrar en detalles." }
+  - id: steps
+    name: "Describe a technical process step by step"
+    when: "For troubleshooting and 'what happens when...' questions."
+    phrases:
+      - { text: "The first thing I'd check is ...", es: "Lo primero que comprobaría es ..." }
+      - { text: "If that looks fine, I'd move on to ...", es: "Si eso está bien, pasaría a ..." }
+      - { text: "At this point, ...", es: "En este punto, ..." }
+      - { text: "This is where it usually goes wrong.", es: "Aquí es donde normalmente falla." }
+      - { text: "That rules out the network, so the next step is ...", es: "Eso descarta la red, así que el siguiente paso es ...", note: "'Rule out' = descartar. Shows you think in a logical order." }
+      - { text: "Under the hood, what happens is ...", es: "Por debajo, lo que pasa es ...", note: "Informal, very common in tech." }
+      - { text: "Once the request reaches the load balancer, ...", es: "Una vez que la petición llega al balanceador, ..." }
+  - id: tradeoff
+    name: "Explain a trade-off"
+    when: "When there is no single right answer and you compare options."
+    phrases:
+      - { text: "It depends on the use case, but in general ...", es: "Depende del caso de uso, pero en general ...", note: "Do not stop at 'it depends': always say on what." }
+      - { text: "The main advantage is ..., but the downside is ...", es: "La principal ventaja es ..., pero la desventaja es ..." }
+      - { text: "The trade-off here is speed versus safety.", es: "El compromiso aquí es velocidad frente a seguridad." }
+      - { text: "On the one hand ..., on the other hand ...", es: "Por un lado ..., por otro lado ..." }
+      - { text: "If cost is the priority, I'd go with ...", es: "Si la prioridad es el coste, elegiría ..." }
+      - { text: "For a small team, I'd choose the simpler option.", es: "Para un equipo pequeño, elegiría la opción más sencilla." }
+      - { text: "That works well until you reach a certain scale.", es: "Eso funciona bien hasta que llegas a cierta escala." }
+  - id: unknown
+    name: "Say you don't know, and how you would find out"
+    when: "When you don't know the answer. Be honest, then show your method."
+    phrases:
+      - { text: "I haven't used that in production, but here's what I know.", es: "No lo he usado en producción, pero esto es lo que sé." }
+      - { text: "I'm not sure, to be honest. My guess would be ...", es: "No estoy seguro, sinceramente. Mi suposición sería ..." }
+      - { text: "I'd need to check the docs to be sure.", es: "Tendría que mirar la documentación para estar seguro." }
+      - { text: "I don't know the exact command, but I'd figure it out like this: ...", es: "No sé el comando exacto, pero lo averiguaría así: ...", note: "'Figure out' = averiguar, resolver." }
+      - { text: "I haven't worked with it yet, but I've used something similar.", es: "Todavía no he trabajado con eso, pero he usado algo parecido." }
+      - { text: "That's something I'd like to learn more about.", es: "Es algo sobre lo que me gustaría aprender más." }
+  - id: mistake
+    name: "Talk about a mistake or a failure"
+    when: "For questions like 'Tell me about a mistake'. Own it, fix it, learn from it."
+    phrases:
+      - { text: "It was my mistake. I ...", es: "Fue error mío. Yo ...", note: "Say it clearly. Interviewers like ownership." }
+      - { text: "As soon as I noticed, I told the team.", es: "En cuanto me di cuenta, avisé al equipo." }
+      - { text: "My first priority was to restore the service.", es: "Mi primera prioridad fue restaurar el servicio." }
+      - { text: "Looking back, I should have ...", es: "Viéndolo ahora, debería haber ..." }
+      - { text: "The main lesson I took from it was ...", es: "La principal lección que saqué fue ..." }
+      - { text: "Since then, I always ...", es: "Desde entonces, siempre ..." }
+      - { text: "We changed the process so it can't happen again.", es: "Cambiamos el proceso para que no pueda volver a pasar." }
+  - id: impact
+    name: "Describe impact with numbers"
+    when: "At the end of a STAR story: the Result. Numbers make it believable."
+    phrases:
+      - { text: "As a result, deployment time went down from two hours to fifteen minutes.", es: "Como resultado, el tiempo de despliegue bajó de dos horas a quince minutos." }
+      - { text: "We cut our cloud costs by about thirty percent.", es: "Redujimos nuestros costes de nube en un treinta por ciento aproximadamente." }
+      - { text: "It saved the team around four hours a week.", es: "Le ahorró al equipo unas cuatro horas a la semana." }
+      - { text: "The number of pages dropped from forty a week to five.", es: "El número de avisos bajó de cuarenta por semana a cinco." }
+      - { text: "We haven't had a single incident like that since.", es: "Desde entonces no hemos tenido ni un incidente así." }
+      - { text: "Availability went up to 99.95 percent.", es: "La disponibilidad subió al 99,95 por ciento.", note: "Say: ninety-nine point nine five percent." }
+  - id: teamwork
+    name: "Talk about teamwork"
+    when: "For behavioral questions about colleagues, help and collaboration."
+    phrases:
+      - { text: "I worked closely with the development team on this.", es: "Trabajé muy de cerca con el equipo de desarrollo en esto." }
+      - { text: "We split the work between the three of us.", es: "Repartimos el trabajo entre los tres." }
+      - { text: "I paired with a colleague to ...", es: "Trabajé en pareja con un compañero para ...", note: "'Pair' as a verb is very common in tech teams." }
+      - { text: "My part was to ...", es: "Mi parte era ...", note: "In STAR, make your own role clear: use 'I', not only 'we'." }
+      - { text: "I kept everyone in the loop with short daily updates.", es: "Mantuve a todos informados con breves actualizaciones diarias." }
+      - { text: "I asked for help early instead of getting stuck.", es: "Pedí ayuda pronto en lugar de quedarme atascado." }
+  - id: disagree
+    name: "Disagree politely"
+    when: "When you talk about a conflict, or when you disagree with the interviewer."
+    phrases:
+      - { text: "I see your point, but I'd look at it slightly differently.", es: "Entiendo tu punto, pero yo lo vería de forma un poco distinta." }
+      - { text: "That's a fair point. My concern is ...", es: "Es un punto razonable. Lo que me preocupa es ..." }
+      - { text: "I'm not sure I agree completely, because ...", es: "No estoy seguro de estar totalmente de acuerdo, porque ..." }
+      - { text: "Could we test both options and compare the results?", es: "¿Podríamos probar ambas opciones y comparar los resultados?", note: "Moves a discussion from opinions to data." }
+      - { text: "I raised my concerns, but once we decided, I fully committed.", es: "Expuse mis dudas, pero una vez decidido, me comprometí del todo." }
+      - { text: "What if we tried ... instead?", es: "¿Y si probáramos ... en su lugar?" }
+  - id: ask
+    name: "Ask the interviewer questions at the end"
+    when: "When they ask 'Do you have any questions for us?' Always have two or three."
+    phrases:
+      - { text: "What does a typical day look like for someone in this role?", es: "¿Cómo es un día típico para alguien en este puesto?" }
+      - { text: "What's the biggest challenge the team is facing right now?", es: "¿Cuál es el mayor reto al que se enfrenta el equipo ahora mismo?" }
+      - { text: "What would success look like after the first six months?", es: "¿Cómo sería el éxito después de los primeros seis meses?" }
+      - { text: "How does the on-call rotation work here?", es: "¿Cómo funcionan aquí las guardias?" }
+      - { text: "How do the platform team and the developers work together?", es: "¿Cómo trabajan juntos el equipo de plataforma y los desarrolladores?" }
+      - { text: "Is there time and budget for training and certifications?", es: "¿Hay tiempo y presupuesto para formación y certificaciones?" }
+      - { text: "What are the next steps in the process?", es: "¿Cuáles son los siguientes pasos del proceso?", note: "Good last question." }
+  - id: openclose
+    name: "Open and close the interview"
+    when: "The first and last minute of the call. Small talk matters."
+    phrases:
+      - { text: "Hi, nice to meet you. Thanks for taking the time to talk to me.", es: "Hola, encantado de conocerte. Gracias por dedicar tiempo a hablar conmigo." }
+      - { text: "Can you hear me OK?", es: "¿Me oyes bien?", note: "Natural first check in a video call." }
+      - { text: "I'm doing well, thanks. How about you?", es: "Estoy bien, gracias. ¿Y tú?" }
+      - { text: "I'm really excited about this role.", es: "Estoy muy ilusionado con este puesto." }
+      - { text: "Thank you, I really enjoyed our conversation.", es: "Gracias, he disfrutado mucho de nuestra conversación." }
+      - { text: "I'm looking forward to hearing from you.", es: "Quedo a la espera de vuestras noticias.", note: "'Look forward to' + -ing form." }
+      - { text: "Have a great rest of your day.", es: "Que tengas un buen resto del día." }

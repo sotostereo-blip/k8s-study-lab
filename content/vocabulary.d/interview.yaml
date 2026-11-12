@@ -1,0 +1,134 @@
+# Everyday English used in the job interview questions (content/interviews/).
+words:
+  - id: outage
+    word: "outage"
+    match: ["outage", "outages"]
+    definition: "A period of time when a service is not working or not available."
+    example: "Tell me about an outage you helped to resolve."
+    es: "caída, interrupción del servicio"
+  - id: ownership
+    word: "ownership"
+    match: ["ownership"]
+    definition: "Taking responsibility for a task or a result, including your own mistakes."
+    example: "Interviewers like candidates who show ownership of their mistakes."
+    es: "responsabilidad, sentido de propiedad"
+  - id: stakeholder
+    word: "stakeholder"
+    match: ["stakeholder", "stakeholders"]
+    definition: "A person or group who is affected by a project or cares about its result, like managers or customers."
+    example: "A communications lead sends updates to stakeholders during the incident."
+    es: "parte interesada, implicado"
+  - id: trade-off
+    word: "trade-off"
+    match: ["trade-off", "trade-offs"]
+    definition: "A balance between two good things: to get more of one, you accept less of the other."
+    example: "The trade-off is isolation: a VM is safer, a container is lighter."
+    es: "compromiso, equilibrio entre ventajas y desventajas"
+  - id: bottleneck
+    word: "bottleneck"
+    match: ["bottleneck", "bottlenecks"]
+    definition: "The one part of a system that limits the speed or capacity of the whole system."
+    example: "The bottleneck is usually the database, not the web servers."
+    es: "cuello de botella"
+  - id: workaround
+    word: "workaround"
+    match: ["workaround", "workarounds"]
+    definition: "A temporary way to avoid a problem without really fixing its cause."
+    example: "Automatic retries can be a short-term workaround for flaky tests."
+    es: "solución provisional, apaño"
+  - id: deadline
+    word: "deadline"
+    match: ["deadline", "deadlines"]
+    definition: "The date or time by which something must be finished."
+    example: "Tell me about a time you worked with a tight deadline."
+    es: "fecha límite, plazo"
+  - id: mentor
+    word: "mentor"
+    match: ["mentor", "mentored", "mentoring"]
+    definition: "An experienced person who helps and advises someone with less experience; also the verb for doing this."
+    example: "I became his mentor for his first three months."
+    es: "mentor; guiar, tutelar"
+  - id: backlog
+    word: "backlog"
+    match: ["backlog"]
+    definition: "A list of work that is waiting to be done, usually in priority order."
+    example: "We started putting these requests in the team backlog."
+    es: "lista de tareas pendientes"
+  - id: burnout
+    word: "burnout"
+    match: ["burnout"]
+    definition: "Being physically and mentally exhausted because of too much work or stress for a long time."
+    example: "How do you avoid burnout in busy periods?"
+    es: "agotamiento, desgaste profesional"
+  - id: hands-on
+    word: "hands-on"
+    match: ["hands-on"]
+    definition: "Learning or working by doing things yourself, not only by reading or watching."
+    example: "I usually start with a small hands-on lab when I learn something new."
+    es: "práctico, con las manos en la masa"
+  - id: figure-out
+    word: "figure out"
+    match: ["figure out", "figured out", "figure it out"]
+    definition: "To find the answer to a problem or understand something after thinking about it."
+    example: "I figured out it was a timeout mismatch between the load balancer and the app."
+    es: "averiguar, descubrir, resolver"
+  - id: rule-out
+    word: "rule out"
+    match: ["rule out", "ruled out", "rules out"]
+    definition: "To decide that something is not the cause or not possible, so you stop considering it."
+    example: "I ruled out a deploy, because there hadn't been one since Friday."
+    es: "descartar"
+  - id: prioritize
+    word: "prioritize"
+    match: ["prioritize", "prioritized", "prioritizing"]
+    definition: "To decide which tasks are most important and do them first."
+    example: "My manager can see the requests and help me prioritize."
+    es: "priorizar"
+  - id: spike
+    word: "spike"
+    match: ["spike", "spikes"]
+    definition: "A sudden, short increase in a number, like traffic or errors."
+    example: "Autoscaling can be too slow for a sudden spike at midnight."
+    es: "pico, subida repentina"
+  - id: struggle
+    word: "struggle"
+    match: ["struggle", "struggles", "struggling"]
+    definition: "To have great difficulty doing something."
+    example: "If I'm stuck, I escalate. That's much better than struggling alone."
+    es: "tener dificultades, costar"
+  - id: graceful
+    word: "graceful"
+    match: ["graceful", "gracefully"]
+    definition: "Done in a smooth and controlled way, without sudden failure (for example a graceful shutdown)."
+    example: "Old instances must shut down gracefully and finish the requests in progress."
+    es: "ordenado, controlado (sin cortes bruscos)"
+  - id: straight-away
+    word: "straight away"
+    match: ["straight away"]
+    definition: "Immediately, without waiting."
+    example: "When colleagues ask me for help, I usually say yes straight away."
+    es: "enseguida, inmediatamente"
+  - id: pile-up
+    word: "pile up"
+    match: ["pile up", "piles up"]
+    definition: "To increase in number until there are too many of something."
+    example: "The downside is that feature flags pile up."
+    es: "acumularse, amontonarse"
+  - id: mitigate
+    word: "mitigate"
+    match: ["mitigate", "mitigated", "mitigating"]
+    definition: "To make the effect of a problem less serious, even before it is fully fixed."
+    example: "My goal is to mitigate first, for example roll back, and find the root cause later."
+    es: "mitigar, reducir el impacto"
+  - id: in-the-loop
+    word: "in the loop"
+    match: ["in the loop"]
+    definition: "Informed about what is happening."
+    example: "I kept everyone in the loop with short daily updates."
+    es: "al tanto, informado"
+  - id: look-forward-to
+    word: "look forward to"
+    match: ["looking forward to", "look forward to"]
+    definition: "To feel happy about something that is going to happen. It is followed by a noun or an -ing verb."
+    example: "I'm looking forward to hearing from you."
+    es: "tener ganas de, esperar con ilusión"

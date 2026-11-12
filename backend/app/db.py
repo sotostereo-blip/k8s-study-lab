@@ -61,6 +61,30 @@ CREATE TABLE IF NOT EXISTS mock_sessions (
     score REAL,                       -- NULL when abandoned
     results TEXT                      -- JSON, per task
 );
+CREATE TABLE IF NOT EXISTS interview_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id TEXT NOT NULL,
+    covered INTEGER NOT NULL,         -- key points covered (self check)
+    total INTEGER NOT NULL,           -- key points of the question
+    seconds INTEGER,                  -- speaking time
+    words INTEGER,                    -- words in the answer (transcript or typed)
+    mode TEXT NOT NULL,               -- practice | mock
+    session_id TEXT,                  -- interview_sessions.id for a mock interview
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS interview_cards (
+    question_id TEXT PRIMARY KEY,
+    box INTEGER NOT NULL DEFAULT 1,   -- Leitner box 1..5
+    due_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS interview_sessions (
+    id TEXT PRIMARY KEY,
+    question_ids TEXT NOT NULL,       -- JSON list
+    minutes INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT,
+    score REAL
+);
 """
 
 

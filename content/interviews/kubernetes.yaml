@@ -1,0 +1,398 @@
+category: kubernetes
+questions:
+  - id: iv-kube-001
+    level: junior
+    type: technical
+    question: Can you explain the Kubernetes architecture?
+    minutes: 2
+    tips: "Split it into control plane and worker nodes, name each component with one sentence about its job, and finish with how they work together."
+    key_points:
+      - The control plane manages the cluster and the worker nodes run the Pods
+      - The API server is the front door and the only component that talks to etcd
+      - etcd stores the whole cluster state
+      - The scheduler picks a node for new Pods
+      - The controller manager runs loops that fix the actual state
+      - On each node, kubelet runs the Pods and kube-proxy handles Service traffic
+    model_answer: |
+      A cluster has two parts: the control plane and the worker nodes. In the control plane, the API
+      server is the front door. Everything, including kubectl and the other components, talks to it.
+      It stores the state of the cluster in etcd, which is a distributed key-value store. The
+      scheduler watches for new Pods with no node and chooses the best node for each one, based on
+      resources and rules. The controller manager runs control loops, for example the one that makes
+      sure a Deployment has the right number of replicas. On each worker node, the kubelet talks to
+      the API server and starts the containers through the container runtime, like containerd. And
+      kube-proxy sets up the rules so Service traffic reaches the right Pods. So it's all based on
+      desired state: you declare what you want, and controllers keep working to make it real.
+    follow_ups:
+      - What happens if etcd goes down?
+      - What happens if the control plane is down but the nodes are fine?
+    docs: [https://kubernetes.io/docs/concepts/architecture/]
+    glossary: [control-plane, kube-apiserver, etcd, kube-scheduler, kube-controller-manager, kubelet, kube-proxy]
+  - id: iv-kube-002
+    level: junior
+    type: technical
+    question: What is a Pod, and why does Kubernetes use Pods instead of single containers?
+    minutes: 1.5
+    tips: "Define a Pod, explain what its containers share, and give a sidecar example."
+    key_points:
+      - A Pod is the smallest unit you can deploy
+      - It has one or more containers that share network and storage
+      - Containers in a Pod talk over localhost
+      - Pods are temporary and are replaced, not repaired
+      - Sidecars and init containers are common multi-container patterns
+    model_answer: |
+      A Pod is the smallest thing you can deploy in Kubernetes. It wraps one or more containers that
+      always run together on the same node. The containers in a Pod share the same network
+      namespace, so the same IP address, and they can talk to each other on localhost. They can
+      also share volumes. Most Pods have just one container, but this design is useful for helpers.
+      For example, a sidecar that ships logs or a proxy for a service mesh, or an init container
+      that runs a database migration before the app starts. Pods are temporary. If a Pod dies, it's
+      not fixed, it's replaced by a new one with a new IP. That's why we don't create Pods directly
+      and use Deployments and Services instead.
+    follow_ups:
+      - When would you put two containers in the same Pod?
+      - Why does a Pod get a new IP when it is recreated?
+    docs: [https://kubernetes.io/docs/concepts/workloads/pods/]
+    glossary: [pod, sidecar, init-container]
+  - id: iv-kube-003
+    level: mid
+    type: technical
+    question: What is the difference between a Deployment and a StatefulSet?
+    minutes: 2
+    tips: "Compare them on identity, storage and order, then give a typical example for each."
+    key_points:
+      - Deployments are for stateless apps where Pods are interchangeable
+      - StatefulSet Pods have stable names like db-0 and db-1
+      - Each StatefulSet Pod keeps its own PersistentVolumeClaim
+      - StatefulSets create, update and delete Pods in order
+      - StatefulSets usually need a headless Service for stable DNS names
+    model_answer: |
+      A Deployment is for stateless applications, like a web API. All the Pods are the same, they get
+      random names, and if one dies, any new Pod can replace it. If they use storage, they usually
+      share it or don't need it. A StatefulSet is for applications where each replica has its own
+      identity and data, like databases, Kafka or Elasticsearch. The Pods get stable names: db-0,
+      db-1, db-2. Each one gets its own PersistentVolumeClaim from a template, and if db-1 is
+      recreated, it gets the same name and the same volume back. They're also started and updated in
+      order. With a headless Service, each Pod gets a stable DNS name too. Having said that, for a
+      production database I'd often choose a managed service like RDS instead.
+    follow_ups:
+      - What is a headless Service?
+      - What happens to the volumes when you scale a StatefulSet down?
+    docs: [https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/]
+    glossary: [deployment, statefulset, pvc, headless-service]
+  - id: iv-kube-004
+    level: junior
+    type: technical
+    question: Explain the Service types in Kubernetes. When do you use an Ingress?
+    minutes: 2
+    tips: "Explain why Services exist, go through the types from inside to outside, then add Ingress."
+    key_points:
+      - A Service gives a stable IP and DNS name to a group of Pods
+      - It uses a label selector to find the Pods
+      - ClusterIP is internal only and is the default
+      - NodePort opens a port on every node
+      - LoadBalancer creates a cloud load balancer
+      - Ingress routes HTTP traffic by host and path to many Services
+    model_answer: |
+      Pods come and go and their IPs change, so a Service gives a group of Pods a stable IP and a
+      DNS name. It finds the Pods with a label selector. The default type is ClusterIP, which is only
+      reachable inside the cluster. It's what services use to talk to each other. NodePort opens the
+      same port, from a high range, on every node, so traffic to any node reaches the Pods. It's
+      simple but not very nice for production. LoadBalancer asks the cloud provider for a real load
+      balancer with a public IP. The problem is that you get one load balancer per Service, which
+      costs money. That's where Ingress helps: one load balancer and an Ingress controller that routes
+      HTTP requests by hostname or path to many ClusterIP Services, and also handles TLS. The newer
+      Gateway API does the same job in a more flexible way.
+    follow_ups:
+      - How does a Service know which Pods are ready?
+      - What is an ExternalName Service?
+    docs: [https://kubernetes.io/docs/concepts/services-networking/service/]
+    glossary: [service, ingress, selector, gateway-api]
+  - id: iv-kube-005
+    level: mid
+    type: scenario
+    question: A Pod is in CrashLoopBackOff. How do you troubleshoot it?
+    minutes: 2
+    tips: "Explain what the status means, then give your commands in order and the most common causes."
+    key_points:
+      - The container starts, crashes, and Kubernetes waits longer before each restart
+      - kubectl describe pod shows events, exit code and last state
+      - kubectl logs --previous shows the logs of the crashed container
+      - Exit code 137 with OOMKilled means the memory limit is too low
+      - Common causes are bad config, missing secrets, a wrong command or a failing liveness probe
+    model_answer: |
+      CrashLoopBackOff means the container starts, crashes, and Kubernetes keeps restarting it, with
+      a longer wait each time. So the problem is inside the container, not the scheduling. First I
+      run kubectl describe pod. I look at the events, the last state, and the exit code. If it says
+      OOMKilled with exit code 137, the memory limit is too low or the app has a leak. Then I run
+      kubectl logs with --previous, because the current container may have just restarted and have
+      no logs yet. Most of the time the logs show the cause: a missing environment variable, a
+      ConfigMap or Secret with a wrong value, or the app can't reach its database. I'd also check the
+      liveness probe, because a probe that's too strict can kill a healthy app that just starts slowly.
+    follow_ups:
+      - What would you do if the logs are empty?
+      - How can a liveness probe cause an outage?
+    docs: [https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/]
+    glossary: [pod, probe, kubectl, limit]
+  - id: iv-kube-006
+    level: mid
+    type: scenario
+    question: A Pod is stuck in Pending. What could be wrong?
+    minutes: 1.5
+    tips: "Say what Pending means, point to the events, then list the main causes."
+    key_points:
+      - Pending means the Pod has not been scheduled or started yet
+      - The events in kubectl describe pod explain why
+      - Not enough CPU or memory on any node for the requests
+      - Taints, node selectors or affinity rules that no node matches
+      - A PersistentVolumeClaim that is not bound
+      - A resource quota or a full cluster with no autoscaler
+    model_answer: |
+      Pending means the scheduler hasn't been able to place the Pod on a node yet, or it's placed but
+      still preparing. The quickest way to find out is kubectl describe pod and look at the events
+      at the bottom. The scheduler usually says something like "0 of 3 nodes are available" and gives
+      the reasons. The most common one is resources: the Pod's CPU or memory requests are bigger than
+      what's free on any node. Then there are rules that no node matches, like a nodeSelector, an
+      affinity rule, or a taint without a matching toleration. Another cause is storage: if the
+      PersistentVolumeClaim isn't bound, the Pod waits. Depending on the reason, I lower the
+      requests, fix the rules, or add nodes, ideally with the cluster autoscaler.
+    follow_ups:
+      - What is the difference between requests and limits?
+      - What is the difference between Pending and ContainerCreating?
+    docs: [https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/]
+    glossary: [kube-scheduler, request, taint, toleration, affinity, pvc, cluster-autoscaler]
+  - id: iv-kube-007
+    level: mid
+    type: technical
+    question: What is the difference between liveness, readiness and startup probes?
+    minutes: 1.5
+    tips: "For each probe say what happens when it fails, then give a common mistake."
+    key_points:
+      - A failing liveness probe restarts the container
+      - A failing readiness probe removes the Pod from Service endpoints
+      - A startup probe protects slow-starting apps until they are up
+      - Readiness can check dependencies, liveness should not
+      - Probes that are too strict can cause restarts or outages
+    model_answer: |
+      All three are health checks that the kubelet runs, but they do different things when they fail.
+      If the liveness probe fails, the kubelet restarts the container. It's for apps that get stuck,
+      for example a deadlock. If the readiness probe fails, the Pod isn't restarted, it's just removed
+      from the Service, so it gets no traffic until it's ready again. That's useful during start-up
+      or when the app is overloaded. The startup probe is for slow apps. Until it succeeds, the other
+      probes are disabled, so a Java app that needs two minutes to start isn't killed. A common
+      mistake is a liveness probe that checks the database. If the database is slow, every Pod
+      restarts at the same time and you make the outage worse.
+    follow_ups:
+      - What would you use as a readiness check for a web API?
+    docs: [https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/]
+    glossary: [probe, kubelet]
+  - id: iv-kube-008
+    level: mid
+    type: technical
+    question: What are resource requests and limits? What happens when a container goes over them?
+    minutes: 1.5
+    tips: "Explain requests for scheduling and limits for enforcement, then describe CPU vs memory behaviour."
+    key_points:
+      - Requests are what the scheduler reserves on a node
+      - Limits are the maximum a container may use
+      - Over the CPU limit the container is throttled
+      - Over the memory limit the container is OOMKilled
+      - Requests and limits decide the QoS class used for eviction
+    model_answer: |
+      Requests are what the container asks for. The scheduler uses them to choose a node, and that
+      amount is reserved. Limits are the maximum the container can use. CPU and memory behave
+      differently when you hit the limit. With CPU, the container is throttled, so it gets slower but
+      keeps running. With memory, there's no way to slow it down, so the kernel kills the container
+      and you see OOMKilled with exit code 137. Requests and limits also decide the QoS class. If
+      requests equal limits, the Pod is Guaranteed and it's the last to be evicted when a node is
+      under pressure. In practice I always set requests based on real usage from monitoring, and I'm
+      careful with very tight CPU limits because throttling can hurt latency.
+    follow_ups:
+      - What is a LimitRange?
+      - How do you choose good values for requests?
+    docs: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/]
+    glossary: [request, limit, qos, eviction]
+  - id: iv-kube-009
+    level: junior
+    type: technical
+    question: How does a rolling update work in a Deployment, and how do you roll back?
+    minutes: 1.5
+    tips: "Describe the process step by step, name the two settings, then the rollback commands."
+    key_points:
+      - Changing the Pod template creates a new ReplicaSet
+      - New Pods are added and old ones removed a few at a time
+      - maxSurge and maxUnavailable control the speed
+      - Readiness probes stop a bad version from taking all the traffic
+      - kubectl rollout undo goes back to the previous ReplicaSet
+    model_answer: |
+      When I change the Pod template of a Deployment, for example a new image tag, the Deployment
+      creates a new ReplicaSet. Then it slowly scales the new one up and the old one down. Two settings
+      control this: maxSurge, how many extra Pods can exist during the update, and maxUnavailable, how
+      many Pods can be missing. Old Pods are only removed when new ones are ready, so readiness probes
+      are really important. Without them, a broken version can take all the traffic. I follow the
+      progress with kubectl rollout status. If something goes wrong, kubectl rollout undo goes back to
+      the previous ReplicaSet, which is still there with zero replicas. In a GitOps setup, though, I'd
+      revert the commit in Git instead, so the cluster and Git stay the same.
+    follow_ups:
+      - How do you get zero downtime during an update?
+      - What is the Recreate strategy for?
+    docs: [https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment]
+    glossary: [rolling-update, rollback, replicaset, deployment]
+  - id: iv-kube-010
+    level: junior
+    type: technical
+    question: What is the difference between a ConfigMap and a Secret? Are Secrets really secret?
+    minutes: 1.5
+    tips: "Compare their use, then be honest about Secret security and how to improve it."
+    key_points:
+      - Both store configuration as key-value data for Pods
+      - ConfigMaps are for non-sensitive data
+      - Secrets are only base64-encoded by default, not encrypted
+      - Protect Secrets with RBAC and encryption at rest in etcd
+      - An external secret manager is often used as the source
+    model_answer: |
+      Both store configuration that Pods can use as environment variables or mounted files. A
+      ConfigMap is for normal settings, like a log level or a config file. A Secret is for sensitive
+      data, like passwords, tokens and certificates. But to be honest, a Secret isn't very secret by
+      default. It's just base64-encoded, which anyone can decode. The real protection comes from other
+      things: RBAC so only the right people and ServiceAccounts can read Secrets, encryption at rest so
+      they're encrypted in etcd, and not committing them to Git. In many companies the real source is
+      an external secret manager like Vault or AWS Secrets Manager, and a tool syncs the values into
+      Kubernetes Secrets.
+    follow_ups:
+      - How do you update a Pod when a ConfigMap changes?
+      - How would you store Secrets in a GitOps repository?
+    docs: [https://kubernetes.io/docs/concepts/configuration/secret/]
+    glossary: [configmap, secret, rbac, encryption-at-rest, external-secret-store]
+  - id: iv-kube-011
+    level: mid
+    type: technical
+    question: How does the Horizontal Pod Autoscaler work?
+    minutes: 1.5
+    tips: "Explain the loop, what it needs, and its limits, with a quick number example."
+    key_points:
+      - It changes the number of replicas based on metrics
+      - The default metric is CPU usage compared to the requests
+      - It needs metrics-server or a custom metrics adapter
+      - It needs requests to be set on the containers
+      - It works with the cluster autoscaler when nodes are full
+    model_answer: |
+      The HPA is a controller that checks metrics every few seconds and changes the number of replicas
+      of a Deployment or a StatefulSet. The usual metric is CPU, as a percentage of the CPU request.
+      For example, if the target is 70 percent and the Pods are at 140 percent, it roughly doubles the
+      replicas, between the minimum and maximum that I set. It needs metrics-server installed, and
+      the containers must have requests, otherwise there's nothing to compare with. You can also use
+      custom metrics, like requests per second or queue length, with an adapter or with KEDA. The HPA
+      only adds Pods, so if the nodes are full, the new Pods stay Pending, and that's when the cluster
+      autoscaler adds nodes.
+    follow_ups:
+      - Why should you not use HPA and VPA on CPU at the same time?
+      - How do you stop the HPA from scaling up and down too often?
+    docs: [https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/]
+    glossary: [hpa, metrics, request, keda, cluster-autoscaler]
+  - id: iv-kube-012
+    level: junior
+    type: technical
+    question: What is a DaemonSet, and when would you use one?
+    minutes: 1
+    tips: "Define it in one sentence, then give two or three typical examples."
+    key_points:
+      - A DaemonSet runs one Pod on every node (or on selected nodes)
+      - New nodes get the Pod automatically
+      - Used for node agents like log collectors and monitoring exporters
+      - CNI plugins and kube-proxy often run as DaemonSets
+      - Tolerations may be needed to run on tainted nodes
+    model_answer: |
+      A DaemonSet makes sure one copy of a Pod runs on every node in the cluster, or on a group of
+      nodes if you use a node selector. When a new node joins, it gets the Pod automatically, and when
+      a node is removed, the Pod goes away too. It's for things that are needed on each machine. The
+      classic examples are log collectors like Fluent Bit, monitoring agents like the Prometheus node
+      exporter, and network plugins. Even kube-proxy often runs as a DaemonSet. If I need it on the
+      control plane nodes too, I have to add tolerations, because those nodes are usually tainted.
+    follow_ups:
+      - How do you update a DaemonSet safely?
+    docs: [https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/]
+    glossary: [daemonset, node, toleration, cni]
+  - id: iv-kube-013
+    level: senior
+    type: scenario
+    question: How do you upgrade a Kubernetes cluster, or replace its nodes, without downtime?
+    minutes: 2.5
+    tips: "Cover the preparation, the order of the upgrade, how you move workloads, and what makes apps safe to move."
+    key_points:
+      - Read the release notes and check for removed APIs first
+      - Upgrade the control plane before the worker nodes, one minor version at a time
+      - Cordon and drain nodes one by one, or add new node groups
+      - PodDisruptionBudgets keep enough replicas running
+      - Apps need several replicas, readiness probes and graceful shutdown
+      - Test the upgrade in a staging cluster first
+    model_answer: |
+      First, preparation. I read the release notes and check for deprecated or removed APIs in our
+      manifests and Helm charts, because that's the most common thing that breaks. I always upgrade a
+      staging cluster first. Then the order: the control plane first, one minor version at a time,
+      and then the worker nodes. For the nodes, I either upgrade in place or, which I prefer in the
+      cloud, create a new node group with the new version. Then I cordon the old nodes and drain them
+      one by one, so the Pods move to the new nodes. What makes this safe is the apps themselves: at
+      least two replicas, readiness probes, graceful shutdown, and PodDisruptionBudgets, so a drain
+      never takes down too many Pods at once. I watch the dashboards and error rates during the
+      whole process.
+    follow_ups:
+      - What can block a node drain?
+      - How do you find deprecated APIs before an upgrade?
+    docs: [https://kubernetes.io/docs/tasks/administer-cluster/cluster-upgrade/]
+    glossary: [cordon, drain, pdb, probe, control-plane]
+  - id: iv-kube-014
+    level: senior
+    type: technical
+    question: What happens inside the cluster when you run kubectl apply for a Deployment?
+    minutes: 2.5
+    tips: "Follow the request from kubectl to the running container, naming each component as it acts."
+    key_points:
+      - kubectl sends the manifest to the API server
+      - The API server authenticates, authorizes, runs admission and stores it in etcd
+      - The Deployment controller creates a ReplicaSet, which creates Pods
+      - The scheduler assigns each Pod to a node
+      - The kubelet starts containers through the container runtime
+      - Endpoints are updated so the Service sends traffic to ready Pods
+    model_answer: |
+      kubectl reads my YAML and sends it to the API server over HTTPS, using my kubeconfig. The API
+      server first authenticates me, then checks with RBAC that I'm allowed to do this, then runs the
+      admission controllers, which can change or reject the object. If everything's fine, it saves
+      the Deployment in etcd. Then the controllers react. The Deployment controller sees a new
+      Deployment and creates a ReplicaSet, and the ReplicaSet controller creates the Pods. At this
+      point the Pods have no node. The scheduler sees them, picks a node for each one, and writes
+      that to the API server. The kubelet on that node notices, pulls the image through the
+      container runtime, sets up the network with the CNI plugin, and starts the containers. When the
+      readiness probe passes, the Pod is added to the Service endpoints and starts getting traffic.
+    follow_ups:
+      - What is the difference between kubectl apply and kubectl create?
+      - Where could this process fail, and how would you see it?
+    docs: [https://kubernetes.io/docs/concepts/overview/working-with-objects/]
+    glossary: [kubectl, kube-apiserver, etcd, admission-controller, controller, kube-scheduler, kubelet, endpointslice]
+  - id: iv-kube-015
+    level: senior
+    type: technical
+    question: How would you secure a Kubernetes cluster?
+    minutes: 2.5
+    tips: "Organise your answer in layers (access, workloads, network, supply chain, data) and give one or two actions for each."
+    key_points:
+      - RBAC with least privilege for people and ServiceAccounts
+      - Pod Security Standards, non-root containers and no privileged Pods
+      - NetworkPolicies with a default deny
+      - Scan and sign images, only allow trusted registries
+      - Encrypt Secrets at rest and protect etcd
+      - Keep the cluster updated and enable audit logs
+    model_answer: |
+      I think of it in layers. First, access: RBAC with least privilege, short-lived credentials
+      through SSO, and a private API endpoint if possible. ServiceAccounts get only the permissions
+      they need, and I turn off token mounting when a Pod doesn't need the API. Second, workloads: I
+      enforce the restricted Pod Security Standard, so containers run as non-root, with no privileged
+      mode and with capabilities dropped. Third, network: NetworkPolicies with a default deny, and
+      then I allow only the traffic each app needs. Fourth, the supply chain: image scanning in CI,
+      only images from our own registry, and ideally signed images checked by an admission policy.
+      And finally the basics: encryption at rest for Secrets, audit logs, and regular upgrades.
+    follow_ups:
+      - How would you enforce that every image comes from your registry?
+      - What is the risk of the default ServiceAccount token?
+    docs: [https://kubernetes.io/docs/concepts/security/security-checklist/]
+    glossary: [rbac, least-privilege, pod-security, network-policy, default-deny, image-scanning, image-signing, audit-log, defense-in-depth]

@@ -10,6 +10,11 @@ domains:
   - { id: modules, name: "Terraform modules", weight: 15 }
   - { id: state, name: "Terraform state management", weight: 20 }
   - { id: maintain, name: "Maintain infrastructure with Terraform", weight: 10 }
+intro: "Terraform with LocalStack (a free local AWS emulator) in Docker"
 environments:
-  terraform: { name: "Terraform 1.12 + LocalStack (AWS emulator)", nodes: 0 }
+  terraform:
+    name: "Terraform 1.12 + LocalStack (AWS emulator)"
+    nodes: 0
+    label: "Terraform"
+    tools: "terraform and aws CLI are ready (alias `tf`)"
 mock: false   # the real exam is multiple choice; use Exam mode for timed practice

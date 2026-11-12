@@ -39,12 +39,11 @@ export default function Labs({ trackId }) {
     <section>
       <h1>Hands-on labs</h1>
       <p className="sub">
-        Practice for the {track.name} exam. Choosing a lab starts {isK8s(track)
-          ? 'a real Kubernetes cluster in Docker' : 'Terraform with LocalStack (a free local AWS emulator) in Docker'} with
+        Practice for the {track.name} exam. Choosing a lab starts {introOf(track)} with
         a terminal in your browser. Solve the task, then press <b>Check my work</b>.
         · {solved}/{data.tasks.length} solved
       </p>
-      {track.mock && <MockPanel trackId={trackId} history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
+      {track.mock && <MockPanel trackId={trackId} passing={track.passing_score} history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
         busy={data.lab.status === 'starting' || data.lab.status === 'ready'} />}
       {running && (
         <div className="banner">
@@ -185,8 +184,7 @@ function LabView({ task, track, domainName, onBack }) {
         {status === 'ready' && lab.terminal_url ? (
           <>
             <div className="term-bar">
-              <span>Terminal · {track.environments[task.environment].nodes
-                ? <>kubectl is ready (alias <code>k</code>)</> : <>terraform and aws CLI are ready (alias <code>tf</code>)</>}</span>
+              <span>Terminal · <Inline text={toolsOf(track.environments[task.environment])} /></span>
               <span>
                 <button className="link" onClick={() => setFrameKey(frameKey + 1)}>Reconnect</button>
                 {' · '}
@@ -254,7 +252,7 @@ function fmt(s) {
 
 /* ---------- Mock exam: several tasks in one cluster, one timer, scored at the end ---------- */
 
-function MockPanel({ trackId, history, pending, onOpen, onAbandoned, busy }) {
+function MockPanel({ trackId, passing, history, pending, onOpen, onAbandoned, busy }) {
   const [count, setCount] = useState(10)
   const [starting, setStarting] = useState(false)
   const start = async () => {
@@ -266,12 +264,12 @@ function MockPanel({ trackId, history, pending, onOpen, onAbandoned, busy }) {
       <div>
         <h2>Mock exam</h2>
         <p className="sub">
-          Several tasks in one cluster with one timer, like the real exam. You only see your
-          score at the end (partial credit per task). Pass mark: 66%.
+          Several tasks in one lab environment with one timer, like the real exam. You only see your
+          score at the end (partial credit per task). Pass mark: {passing}%.
         </p>
         {history.length > 0 && (
           <p className="history">Last scores: {history.map((h) => (
-            <span key={h.id} className={h.score >= 66 ? 'ok' : 'ko'}>{h.score}%</span>
+            <span key={h.id} className={h.score >= passing ? 'ok' : 'ko'}>{h.score}%</span>
           ))}</p>
         )}
       </div>
@@ -287,9 +285,9 @@ function MockPanel({ trackId, history, pending, onOpen, onAbandoned, busy }) {
           <>
             <label>Tasks
               <select value={count} onChange={(e) => setCount(+e.target.value)}>
-                <option value={5}>5 (~35 min)</option>
-                <option value={10}>10 (~70 min)</option>
-                <option value={15}>15 (~2 hours, like the real exam)</option>
+                <option value={5}>5 tasks</option>
+                <option value={10}>10 tasks</option>
+                <option value={15}>15 tasks (about as long as the real exam)</option>
               </select>
             </label>
             <button className="primary" disabled={starting} onClick={start}>{starting ? 'Starting…' : 'Start mock exam'}</button>
@@ -481,5 +479,7 @@ function MockResult({ result, domains, onExit }) {
   )
 }
 
-const isK8s = (track) => Object.values(track.environments).some((e) => e.nodes > 0)
-const envLabel = (env) => (env.nodes === 0 ? 'Terraform' : env.nodes === 1 ? '1 node' : `${env.nodes} nodes`)
+const introOf = (track) => track.intro
+  || (Object.values(track.environments).some((e) => e.nodes > 0) ? 'a real Kubernetes cluster in Docker' : 'a lab environment in Docker')
+const envLabel = (env) => env.label || (env.nodes === 0 ? 'Docker' : env.nodes === 1 ? '1 node' : `${env.nodes} nodes`)
+const toolsOf = (env) => env.tools || (env.nodes ? 'kubectl is ready (alias `k`)' : 'the lab tools are ready')

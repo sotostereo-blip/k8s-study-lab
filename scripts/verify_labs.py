@@ -13,11 +13,15 @@ Examples
 
 The solution used is the task's `auto_solution` if set, otherwise its `solution`.
 Use a different --project/--port to run several verifications at the same time.
+At most VERIFY_SLOTS (default 2) verifications run at once on this machine; the others wait,
+so parallel runs do not exhaust Docker's memory.
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
+import tempfile
 import subprocess
 import sys
 import time
@@ -49,26 +53,49 @@ class Env:
         except subprocess.TimeoutExpired:
             return 124, "timeout"
 
-    def up(self, name: str, nodes: int):
+    def up(self, name: str, spec):
+        """spec: the track's LabEnvironment (nodes, ready command)."""
         self.down()
         self.name = name
         rc, out = self.dc("up", "-d", "--build", "--quiet-pull")
         if rc:
             sys.exit(f"docker compose up failed:\n{out[-1500:]}")
-        ready = ("lab-ready" if nodes == 0 else
-                 f"[ \"$(kubectl get nodes --no-headers 2>/dev/null | grep -cw Ready)\" -ge {nodes} ] && "
-                 "kubectl get sa default >/dev/null 2>&1 && "
-                 "kubectl -n kube-system rollout status deploy coredns --timeout=5s >/dev/null 2>&1")
-        for _ in range(120):
-            if self.sh(ready, 60)[0] == 0:
-                return
-            time.sleep(3)
-        sys.exit(f"environment {name} did not become ready")
+        steps = []
+        if spec.nodes:
+            steps.append(f"[ \"$(kubectl get nodes --no-headers 2>/dev/null | grep -cw Ready)\" -ge {spec.nodes} ] && "
+                         "kubectl get sa default >/dev/null 2>&1 && "
+                         "kubectl -n kube-system rollout status deploy coredns --timeout=5s >/dev/null 2>&1")
+        if spec.ready_command:
+            steps.append(spec.ready_command)
+        for step in steps:
+            deadline = time.time() + max(360, spec.ready_timeout)
+            while self.sh(step, 60)[0] != 0:
+                if time.time() > deadline:
+                    sys.exit(f"environment {name} did not become ready: {step[:80]}")
+                time.sleep(3)
 
     def down(self):
         name, self.name = self.name, None
         self.dc("down", "-v", "--remove-orphans", timeout=300)
         self.name = name
+
+
+def take_slot():
+    """Block until one of VERIFY_SLOTS machine-wide slots is free; keep the file open to hold it."""
+    slots = int(os.getenv("VERIFY_SLOTS", "2"))
+    waited = False
+    while True:
+        for i in range(slots):
+            f = open(Path(tempfile.gettempdir()) / f"k8s-study-lab-verify-{i}.lock", "w")
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return f
+            except OSError:
+                f.close()
+        if not waited:
+            print(f"waiting for a free verification slot ({slots} in use)…", flush=True)
+            waited = True
+        time.sleep(10)
 
 
 def checks(env: Env, task) -> list[bool]:
@@ -94,9 +121,9 @@ def mode_tasks(lib, env: Env, ids: list[str], fresh: bool) -> bool:
     tasks = [lib.tasks[i] for i in ids]
     ok_all, current = True, None
     for t in sorted(tasks, key=lambda t: t.environment):
-        nodes = lib.tracks[t.id.split("-")[0]].environments[t.environment].nodes
+        spec = lib.tracks[t.id.split("-")[0]].environments[t.environment]
         if fresh or current != t.environment:
-            env.up(t.environment, nodes)
+            env.up(t.environment, spec)
             current = t.environment
         if t.setup.strip():
             rc, out = env.sh(t.setup, 600)
@@ -122,7 +149,7 @@ def mode_mock(lib, env: Env, track_id: str, exclude: set[str]) -> bool:
     clash = [(t.id, c) for t in tasks for c in t.conflicts_with if c in ids]
     if clash:
         sys.exit(f"these tasks conflict, exclude one of each pair: {clash}")
-    env.up(track.mock_environment, track.environments[track.mock_environment].nodes)
+    env.up(track.mock_environment, track.environments[track.mock_environment])
     rc, out = env.sh(mock_setup_script(tasks), 120 + 120 * len(tasks))
     if rc:
         sys.exit(f"combined setup failed:\n{out[-800:]}")
@@ -157,6 +184,7 @@ def main() -> int:
     a = ap.parse_args()
     lib = load_library(ROOT / "content", strict=False)   # other content may be mid-edit
     env = Env(a.project, a.port)
+    slot = take_slot()  # noqa: F841  (held until the process exits)
     try:
         if a.mode == "tasks":
             ids = a.ids or [t.id for t in lib.tasks_for(a.track)] if a.track else a.ids

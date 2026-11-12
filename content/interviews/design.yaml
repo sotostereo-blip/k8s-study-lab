@@ -1,0 +1,222 @@
+category: design
+questions:
+  - id: iv-des-001
+    level: mid
+    type: design
+    question: Design a CI/CD pipeline for a containerized microservice.
+    minutes: 3
+    tips: "Ask one or two clarifying questions, then go from commit to production stage by stage, and finish with how you roll back."
+    key_points:
+      - Clarify the context (team size, platform, release frequency)
+      - Pull requests run lint, unit tests and security scans
+      - The image is built once, tagged with the commit SHA and pushed to a registry
+      - Deploy to staging automatically and run smoke or integration tests
+      - Promote the same image to production with approval or a canary
+      - Monitoring after the deploy and a fast rollback path
+    model_answer: |
+      I'd first ask a couple of questions: where does it run, and how often does the team want to
+      release? Let's say Kubernetes and several times a day. Then I'd design it like this. When a
+      developer opens a pull request, the pipeline runs linting, unit tests, a dependency scan and a
+      static code scan, and a reviewer approves. When it's merged to main, the pipeline builds the
+      container image once, scans it with Trivy, tags it with the commit SHA and pushes it to the
+      registry. Then it updates the image tag in a GitOps repository, and Argo CD deploys it to
+      staging, where smoke tests run. To go to production, we promote the same image, maybe with a
+      canary using Argo Rollouts: five percent of traffic, check error rate and latency, then a
+      hundred percent. If metrics get worse, it rolls back automatically.
+    follow_ups:
+      - How would you change this for twenty microservices in one monorepo?
+      - Where would you put database migrations in this pipeline?
+    docs: [https://argo-cd.readthedocs.io/en/stable/]
+    glossary: [ci-cd, gitops, canary, image-scanning, registry]
+  - id: iv-des-002
+    level: mid
+    type: design
+    question: How would you deploy a highly available web application on AWS?
+    minutes: 3
+    tips: "Go layer by layer from the user to the data: DNS and CDN, load balancer, compute, data, then security and monitoring."
+    key_points:
+      - DNS with Route 53 and a CDN like CloudFront in front
+      - An Application Load Balancer across at least two AZs
+      - Stateless app servers or containers in an Auto Scaling group across AZs
+      - A Multi-AZ database and a shared cache for sessions
+      - Static files in S3, everything in private subnets except the load balancer
+      - Monitoring, backups and everything defined in Terraform
+    model_answer: |
+      I'd go from the user to the data. At the front, Route 53 for DNS and CloudFront as a CDN, with
+      a WAF for basic protection. Static files like images and JavaScript live in S3 behind
+      CloudFront. Dynamic requests go to an Application Load Balancer in public subnets in at least
+      two, ideally three, availability zones. Behind it, the app runs in private subnets, either on
+      EC2 in an Auto Scaling group or on ECS or EKS, again spread across AZs. The app must be
+      stateless, so sessions go to ElastiCache. For data, RDS with Multi-AZ, so it fails over
+      automatically, plus automated backups. Security groups only allow traffic between layers. I'd
+      define everything with Terraform, and add CloudWatch alarms on errors, latency and health
+      checks. With this design, losing a whole AZ doesn't take the site down.
+    follow_ups:
+      - How would you make it survive the loss of a whole region?
+      - Where are the single points of failure left?
+    docs: [https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html]
+    glossary: [iac]
+  - id: iv-des-003
+    level: senior
+    type: design
+    question: Design a monitoring and logging platform for about 50 microservices on Kubernetes.
+    minutes: 3
+    tips: "Cover the three signals, how data is collected, where it is stored, how people use it, and how you control cost."
+    key_points:
+      - Standard instrumentation with OpenTelemetry and Prometheus client libraries
+      - Prometheus or a managed equivalent for metrics with long-term storage
+      - A DaemonSet log agent sending structured logs to a central store
+      - Tracing with a collector and a backend like Tempo or Jaeger
+      - Grafana with standard dashboards, and SLO-based alerts through Alertmanager
+      - Retention, sampling and cardinality limits to control cost
+    model_answer: |
+      I'd make it standard, so every service gets observability without extra work. For metrics,
+      Prometheus, installed with the kube-prometheus stack, scraping each service, plus a long-term
+      store like Thanos or Mimir, or a managed service. For logs, services write JSON to stdout, and
+      Fluent Bit as a DaemonSet sends them to Loki. For traces, services use the OpenTelemetry SDK,
+      send spans to an OpenTelemetry Collector, and the collector sends them to Tempo, with sampling,
+      maybe ten percent plus all errors. Grafana sits on top of everything, so you can jump from a
+      metric to the trace to the logs. Each service gets a standard RED dashboard and SLO alerts
+      routed by Alertmanager to the team that owns it. For cost, I'd set retention per signal, limit
+      label cardinality, and review usage per team.
+    follow_ups:
+      - How would you make teams own their alerts?
+      - How would you monitor the monitoring system itself?
+    docs: [https://opentelemetry.io/docs/collector/]
+    glossary: [prometheus, opentelemetry, alertmanager, daemonset, trace, slo]
+  - id: iv-des-004
+    level: senior
+    type: design
+    question: How would you migrate a monolith running on virtual machines to Kubernetes?
+    minutes: 3
+    tips: "Present it as a step-by-step plan with low risk at every stage, and say what you would not do."
+    key_points:
+      - Understand the app first (state, config, dependencies, traffic)
+      - Containerize the monolith as it is before splitting anything
+      - Move state out (sessions, files) and config to environment variables
+      - Run both platforms in parallel and shift traffic gradually
+      - Split services later with the strangler pattern, only where it helps
+      - Have a rollback plan at every step
+    model_answer: |
+      I wouldn't start by splitting it into microservices. That's two big changes at once. First, I'd
+      study the app: what state it keeps, like sessions or uploaded files on local disk, how it's
+      configured, and what it depends on. Then I'd containerize the monolith as it is, and fix the
+      things that block it from running in containers: move sessions to Redis, files to S3, and config
+      into environment variables. Next I'd deploy it to Kubernetes next to the old VMs and send a
+      small part of the traffic to it with the load balancer, then increase step by step, keeping the
+      VMs ready as a rollback. Only once it's stable would I start taking pieces out, using the
+      strangler pattern: one well-defined part at a time, where splitting really gives value.
+    follow_ups:
+      - How would you handle the database during the migration?
+      - How do you decide which part to split first?
+    docs: [https://kubernetes.io/docs/concepts/overview/]
+    glossary: [microservices, container]
+  - id: iv-des-005
+    level: senior
+    type: design
+    question: How would you design zero-downtime deployments for a web application with a database?
+    minutes: 2.5
+    tips: "Cover the app side (traffic, health checks, shutdown) and the database side (compatible migrations) separately."
+    key_points:
+      - Several replicas behind a load balancer
+      - Readiness checks so new instances get traffic only when ready
+      - Graceful shutdown with connection draining for old instances
+      - A rolling, blue/green or canary strategy
+      - Backward compatible database migrations (expand and contract)
+      - Automatic rollback based on health metrics
+    model_answer: |
+      There are two parts: the application and the database. For the application, I need at least
+      two or three replicas behind a load balancer, so some are always serving. New instances only get
+      traffic when their readiness check passes. Old instances must shut down gracefully: when they
+      get SIGTERM, they stop accepting new requests, finish the ones in progress, and then exit. The
+      load balancer drains their connections. On top of that, I'd use a rolling update, or a canary
+      for important services, with automatic rollback if the error rate goes up. The database is the
+      harder part. Old and new code run at the same time, so every migration must be backward
+      compatible. I'd use expand and contract: add new columns first, switch the code, and remove old
+      columns in a later release.
+    follow_ups:
+      - How do you handle long-running connections like WebSockets?
+    docs: [https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination]
+    glossary: [probe, rolling-update, blue-green, canary, rollback]
+  - id: iv-des-006
+    level: senior
+    type: design
+    question: Design the infrastructure-as-code setup for several teams and environments in one company.
+    minutes: 3
+    tips: "Talk about repository structure, state, permissions, workflow and guardrails."
+    key_points:
+      - Shared, versioned modules maintained by a platform team
+      - Separate state per team and environment to limit the blast radius
+      - Separate cloud accounts per environment, with central identity
+      - All changes go through pull requests with an automated plan
+      - Policy as code checks, like tagging and no public buckets
+      - Only the pipeline has write credentials for production
+    model_answer: |
+      I'd split it into a platform layer and a team layer. The platform team maintains shared
+      Terraform modules, like VPC, EKS cluster, database, and a "service" module, versioned with
+      tags. Each team has its own configurations that use those modules, with separate state for
+      each team and environment, so a mistake in one can't break everything. Each environment has
+      its own AWS account, managed from AWS Organizations with SSO. The workflow is the same for
+      everyone: pull request, automated plan posted as a comment, review, and apply from the pipeline
+      after merge. People don't have write access to production, only the pipeline role has it. And
+      I'd add guardrails with policy as code, like OPA or Sentinel, to block things like untagged
+      resources or public S3 buckets, before they're ever applied.
+    follow_ups:
+      - How do you upgrade a shared module used by twenty teams?
+      - Monorepo or one repository per team?
+    docs: [https://developer.hashicorp.com/terraform/language/modules/develop]
+    glossary: [iac, tf-module, tf-state, policy-as-code, tf-opa, tf-sentinel]
+  - id: iv-des-007
+    level: mid
+    type: design
+    question: Design a backup and recovery strategy for a production database.
+    minutes: 2
+    tips: "Start from RPO and RTO, then describe the backup types, where they are stored, and how you test restores."
+    key_points:
+      - Agree on RPO and RTO with the business first
+      - Automated daily snapshots plus continuous logs for point-in-time recovery
+      - Copies in another region or account
+      - Retention rules and encryption for backups
+      - Regular restore tests with measured time
+      - Alerts when a backup fails
+    model_answer: |
+      I'd start by agreeing on the RPO and RTO with the business, because that drives everything.
+      Let's say we can lose at most five minutes of data and need to be back in one hour. Then I'd
+      use automated daily snapshots plus continuous transaction logs, so we can do point-in-time
+      recovery to any second. On AWS, RDS does this for us. I'd copy backups to another region and to
+      a separate account, so a deleted account or ransomware can't destroy both the database and its
+      backups. Backups are encrypted, with retention rules, for example thirty daily and twelve
+      monthly copies. And the most important part: restore tests. A backup you've never restored
+      isn't really a backup. I'd automate a monthly restore to a test instance and measure how long
+      it takes, and alert if any backup job fails.
+    follow_ups:
+      - How do you protect backups from someone with admin access?
+    docs: [https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html]
+  - id: iv-des-008
+    level: mid
+    type: design
+    question: Your e-commerce site expects ten times the normal traffic on Black Friday. How do you prepare?
+    minutes: 2.5
+    tips: "Structure it as before, during and after the event, and talk about the bottleneck, not only adding servers."
+    key_points:
+      - Load test early to find the real bottleneck
+      - Scale the database and dependencies, not only the web tier
+      - Pre-scale and raise cloud quotas instead of trusting autoscaling alone
+      - Use caching and a CDN to reduce load
+      - Freeze changes and prepare runbooks and on-call cover for the event
+      - Have graceful degradation ready, like turning off non-critical features
+    model_answer: |
+      I'd plan it in three stages. Weeks before, I'd run load tests at ten or even fifteen times
+      normal traffic, because the bottleneck is usually not the web servers. It's the database, a
+      connection pool, or an external payment API with a rate limit. Then I fix those: add read
+      replicas, more caching, a CDN for static content, and check cloud quotas so we can really add
+      instances. A few days before, I'd pre-scale, because autoscaling can be too slow for a sudden
+      spike at midnight, and I'd freeze non-critical deploys. During the event, extra people on call,
+      dashboards open, and runbooks ready. We'd also prepare graceful degradation, like feature flags
+      to turn off recommendations if the database struggles. After the event, we scale down and
+      review what we learned.
+    follow_ups:
+      - How would you load test without affecting real customers?
+      - What is a circuit breaker?
+    docs: [https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html]
+    glossary: [hpa, cluster-autoscaler]

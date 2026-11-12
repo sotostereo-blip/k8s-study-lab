@@ -270,7 +270,8 @@ def test_vocabulary_words_are_valid_and_found_in_content():
                 yield from strings(v)
 
     text = " ".join(
-        t for f in CONTENT.rglob("*.yaml") if f.name not in ("vocabulary.yaml", "glossary.yaml")
+        t for f in CONTENT.rglob("*.yaml")
+        if f.name not in ("vocabulary.yaml", "glossary.yaml") and f.parent.name not in ("vocabulary.d", "glossary.d")
         for t in strings(yaml.safe_load(f.read_text()))
     ).lower()
     missing = [w.id for w in lib.vocabulary.values()
@@ -313,7 +314,9 @@ def test_certifications_resolve(client):
     assert {"kcna", "cka"} <= set(certs)
     exams = {e["id"] for e in client.get("/api/exams").json()}
     for c in certs.values():
-        assert c["exam"] or c["track"]
+        assert c["exam"] or c["track"] or c["interview"]
+        if c["interview"]:
+            assert client.get("/api/interview/next?n=2").json()["questions"]
         if c["exam"]:
             assert c["exam"] in exams
             assert client.get(f"/api/practice/next?exam_id={c['exam']}&n=3").json()["questions"]
@@ -352,3 +355,53 @@ def test_mock_exam_uses_the_track_environment(tmp_path):
         assert wait_ready(client)["environment"] == env
         assert client.get(f"/api/mock/current?track_id={track}").json()["session_id"] == s["session_id"]
         assert client.get("/api/mock/current?track_id=kcna-none").json() is None
+
+
+# ---------- job interviews in English ----------
+
+def test_interview_practice_hides_answers_and_grades(client):
+    lib = load_library(CONTENT)
+    batch = client.get("/api/interview/next?n=50").json()
+    assert batch["questions"] and batch["unseen"] == len(lib.interview_questions)
+    for q in batch["questions"]:
+        assert "key_points" not in q and "model_answer" not in q
+    q = lib.interview_questions[batch["questions"][0]["id"]]
+    rev = client.get(f"/api/interview/{q.id}/review").json()
+    assert rev["key_points"] == q.key_points and rev["model_answer"]
+    weak = client.post("/api/interview/grade", json={"question_id": q.id, "covered": [0], "seconds": 60, "words": 120}).json()
+    assert weak["good"] is False and weak["covered"] == 1
+    # weak answer -> due again now, so it comes first
+    assert client.get("/api/interview/next?n=1").json()["questions"][0]["id"] == q.id
+    good = client.post("/api/interview/grade", json={"question_id": q.id,
+                       "covered": list(range(len(q.key_points))) + [99]}).json()
+    assert good["good"] and good["covered"] == len(q.key_points)   # out-of-range indexes are ignored
+    cats = {c["id"]: c for c in client.get("/api/interview/categories").json()}
+    assert cats[q.category]["practised"] == 1
+    assert client.get("/api/interview/stats").json()["words_per_minute"] == 120
+
+
+def test_mock_interview_flow(client):
+    lib = load_library(CONTENT)
+    s = client.post("/api/interview/mock/start", json={"questions": 3}).json()
+    qs = s["questions"]
+    assert 1 <= len(qs) <= 3 and s["minutes"] >= 5
+    if any(q.type == "behavioral" for q in lib.interview_questions.values()):
+        assert qs[0]["type"] == "behavioral"            # interviews usually open with a behavioral question
+    first = lib.interview_questions[qs[0]["id"]]
+    client.post("/api/interview/grade", json={"question_id": first.id, "covered": [0, 1], "session_id": s["session_id"],
+                                               "seconds": 30, "words": 60})
+    other = next((q for q in lib.interview_questions if q not in [x["id"] for x in qs]), None)
+    if other:
+        bad = client.post("/api/interview/grade", json={"question_id": other, "covered": [], "session_id": s["session_id"]})
+        assert bad.status_code == 400
+    r = client.post(f"/api/interview/mock/{s['session_id']}/finish").json()
+    total = sum(len(lib.interview_questions[q["id"]].key_points) for q in qs)
+    assert r["score"] == round(100 * 2 / total, 1) and r["words_per_minute"] == 120
+    assert r["questions"][0]["answered"] and not any(x["answered"] for x in r["questions"][1:])
+    assert client.post(f"/api/interview/mock/{s['session_id']}/finish").status_code == 409
+    assert client.get("/api/interview/stats").json()["mocks"][0]["score"] == r["score"]
+
+
+def test_interview_phrases(client):
+    groups = client.get("/api/interview/phrases").json()
+    assert groups and all(g["phrases"] for g in groups)

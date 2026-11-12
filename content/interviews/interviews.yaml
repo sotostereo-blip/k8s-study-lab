@@ -1,0 +1,14 @@
+# DevOps / Cloud Engineer job interviews in English.
+# One file per category (content/interviews/<category>.yaml); format in docs/CONTENT_FORMAT.md.
+categories:
+  - { id: behavioral, name: "Behavioral (STAR)", description: "Teamwork, conflict, mistakes, pressure. Answer with Situation, Task, Action, Result." }
+  - { id: linux, name: "Linux and scripting", description: "Processes, files, permissions, systemd, shell scripts, troubleshooting a server." }
+  - { id: networking, name: "Networking", description: "DNS, TCP/IP, HTTP, TLS, load balancers, firewalls." }
+  - { id: docker, name: "Docker and containers", description: "Images, layers, Dockerfiles, networks, volumes, security." }
+  - { id: kubernetes, name: "Kubernetes", description: "Architecture, workloads, Services, scheduling, debugging." }
+  - { id: terraform, name: "Terraform and IaC", description: "State, modules, plan and apply, drift, team workflows." }
+  - { id: cicd, name: "CI/CD and GitOps", description: "Pipelines, testing, deployment strategies, Git workflows, Argo CD." }
+  - { id: cloud, name: "Cloud (AWS)", description: "Compute, storage, networking, IAM, high availability, cost." }
+  - { id: observability, name: "Observability", description: "Metrics, logs, traces, alerts, SLOs, Prometheus." }
+  - { id: incidents, name: "Incidents and SRE", description: "On-call, outages, postmortems, reliability." }
+  - { id: design, name: "System design", description: "Design and explain a platform or a deployment end to end." }

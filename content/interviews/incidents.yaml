@@ -1,0 +1,254 @@
+category: incidents
+questions:
+  - id: iv-inc-001
+    level: mid
+    type: behavioral
+    question: Tell me about an outage you helped to resolve.
+    minutes: 2.5
+    tips: "Use STAR. Describe the impact, your exact role, how you found the cause, and what changed after the postmortem."
+    key_points:
+      - The impact on users, with numbers if possible
+      - Your role in the incident
+      - How you investigated and ruled out causes
+      - How service was restored
+      - The follow-up actions from the postmortem
+    model_answer: |
+      A year ago our checkout API started failing for about thirty percent of requests on a Monday
+      morning. I was on call, so I got the page. First I checked the dashboards and saw the errors
+      came from one of three database replicas. I ruled out a deploy, because there hadn't been one
+      since Friday. Then I found that the replica's disk was full because of a long-running backup
+      job that wrote temporary files. I removed that replica from the pool, so traffic went to the
+      healthy ones, and errors dropped to zero in about five minutes. Then we cleaned up the disk and
+      added it back. The total impact was twenty-five minutes. In the postmortem we added disk alerts
+      at eighty percent, and moved the backup files to a separate volume.
+    follow_ups:
+      - What would you do differently next time?
+      - How did you communicate with the business during the outage?
+    glossary: [replica]
+  - id: iv-inc-002
+    level: mid
+    type: scenario
+    question: You are on call and you get paged at 3 am. What are your first steps?
+    minutes: 2
+    tips: "Show a calm, ordered process: acknowledge, assess impact, communicate, mitigate, escalate if needed."
+    key_points:
+      - Acknowledge the page quickly so others know someone is on it
+      - Check the impact on users with dashboards
+      - Open an incident channel and post short updates
+      - Use the runbook and look for recent changes
+      - Mitigate first, for example roll back or fail over
+      - Escalate early if you are stuck or the impact is big
+    model_answer: |
+      First I acknowledge the page, so the system doesn't escalate it and people know someone's
+      looking. Then I check how bad it is: I open the dashboard linked in the alert and look at
+      the error rate, latency and traffic, so I know if users are really affected. If it's a real
+      incident, I open an incident channel and post a short message: what I see and that I'm working
+      on it. Then I open the runbook for that alert and check recent changes, like deploys or config
+      changes, because that's the most common cause. My goal is to mitigate first, for example roll
+      back, scale up, or fail over, and find the root cause later. And if I'm stuck after fifteen
+      minutes, or the impact is big, I escalate and wake up the right person. That's much better
+      than struggling alone.
+    follow_ups:
+      - What if the alert turns out to be a false positive?
+      - When would you declare a major incident?
+    docs: [https://sre.google/sre-book/being-on-call/]
+  - id: iv-inc-003
+    level: junior
+    type: technical
+    question: What is a blameless postmortem?
+    minutes: 1.5
+    tips: "Define it, explain why blameless matters, then list what a good postmortem contains."
+    key_points:
+      - A written review after an incident
+      - It focuses on systems and processes, not on who made the mistake
+      - People share the truth when they are not afraid of punishment
+      - It includes a timeline, impact, root cause and contributing factors
+      - It ends with action items that have owners and due dates
+    model_answer: |
+      A postmortem is a written review of an incident, usually done a few days after it. Blameless
+      means we don't look for a person to blame. We assume people did their best with the information
+      they had, and we ask why the system allowed the mistake. For example, not "Ana deleted the
+      table", but "why could a production table be deleted with one command and no review?" This
+      matters because if people are afraid, they hide information, and then you never fix the real
+      problems. A good postmortem has a summary, the impact, a timeline, the root cause and the
+      contributing factors, what went well, and most importantly action items with an owner and a due
+      date. Then they're shared, so other teams can learn too.
+    follow_ups:
+      - How do you make sure action items really get done?
+      - Which incidents need a postmortem?
+    docs: [https://sre.google/sre-book/postmortem-culture/]
+  - id: iv-inc-004
+    level: junior
+    type: technical
+    question: What is SRE, and how is it different from DevOps?
+    minutes: 1.5
+    tips: "Define both briefly, then explain how they relate rather than saying one is better."
+    key_points:
+      - DevOps is a culture and a set of practices to bring development and operations together
+      - SRE is a specific way to do operations using software engineering
+      - SRE uses SLOs and error budgets to balance reliability and speed
+      - SRE limits toil and automates operations work
+      - A common phrase is that SRE implements DevOps
+    model_answer: |
+      DevOps is a culture and a set of practices. The goal is to break the wall between developers and
+      operations, so teams share responsibility and deliver small changes often, with a lot of
+      automation. It doesn't tell you exactly how to do it. SRE, site reliability engineering, started
+      at Google and is more concrete. It's about treating operations as a software problem. SREs use
+      SLOs and error budgets to decide how reliable a service needs to be, and when to slow down
+      releases. They also try to limit toil, the repetitive manual work, and automate it away. So
+      they're not competitors. People often say SRE is one way of implementing DevOps. In many
+      companies the titles are mixed anyway, and the daily work is very similar.
+    follow_ups:
+      - What would an SRE team do in its first month at a new company?
+    docs: [https://sre.google/sre-book/introduction/]
+    glossary: [slo]
+  - id: iv-inc-005
+    level: mid
+    type: technical
+    question: What is toil, and how do you reduce it?
+    minutes: 1.5
+    tips: "Define toil with its characteristics, give an example from your work, then your method to reduce it."
+    key_points:
+      - Toil is manual, repetitive work that can be automated
+      - It grows with the size of the service and has no lasting value
+      - Measure how much time the team spends on it
+      - Automate the most frequent tasks first
+      - Fix the root cause so the task is not needed at all
+    model_answer: |
+      Toil is operational work that's manual, repetitive, and could be automated, and it doesn't make
+      the system better in a lasting way. If the service grows twice as big, the toil grows twice as
+      big too. Examples are restarting a service by hand every week, creating accounts manually, or
+      resizing disks when an alert fires. To reduce it, first I measure it. In my last team we tagged
+      our tickets for a month and saw that disk alerts took about six hours a week. Then I attack the
+      most frequent tasks first. Sometimes I automate the task, but the best option is to remove the
+      need for it. For the disk problem, we fixed log rotation and turned on automatic volume
+      expansion, and that work almost disappeared.
+    follow_ups:
+      - How much toil is acceptable for a team?
+    docs: [https://sre.google/sre-book/eliminating-toil/]
+  - id: iv-inc-006
+    level: senior
+    type: technical
+    question: How should a large incident be organised? What roles are there?
+    minutes: 2
+    tips: "Explain why roles help, then describe each role in one sentence, and finish with communication."
+    key_points:
+      - The incident commander coordinates and makes decisions but does not debug
+      - Operations or tech leads work on the fix
+      - A communications lead updates stakeholders and customers
+      - A scribe keeps a timeline
+      - One incident channel and regular updates at a fixed rhythm
+      - Severity levels decide who joins and how fast
+    model_answer: |
+      In a big incident, the worst thing is twenty people debugging in a call with nobody in charge.
+      So we use clear roles. The incident commander coordinates. They don't debug, they decide
+      priorities, assign tasks and make the big calls, like "we fail over now". The operations lead,
+      or a small group of engineers, does the technical work. A communications lead sends updates to
+      stakeholders, support and, if needed, a status page for customers. And someone acts as scribe
+      and writes down the timeline and decisions, which helps a lot for the postmortem. Everything
+      happens in one incident channel, with updates every thirty minutes, even if the update is "no
+      news yet". Severity levels, like SEV1 to SEV3, decide who gets paged and how fast.
+    follow_ups:
+      - What makes someone a good incident commander?
+      - How do you hand over an incident that lasts many hours?
+    docs: [https://sre.google/sre-book/managing-incidents/]
+  - id: iv-inc-007
+    level: mid
+    type: scenario
+    question: Right after a deploy, the website starts returning 500 errors for some users. Walk me through what you do.
+    minutes: 2
+    tips: "Make clear you link the problem to the deploy quickly and roll back before you debug."
+    key_points:
+      - Check the timing of the errors against the deploy
+      - Check if only some instances, regions or endpoints fail
+      - Roll back quickly if the deploy is the likely cause
+      - Look at the logs of the new version for the error
+      - Confirm recovery with metrics and then find the root cause
+    model_answer: |
+      The timing is the big clue, so first I'd check the error graph against the deploy time. If they
+      match, I'd look at which requests fail. If it's only some users, maybe only the Pods with the
+      new version fail, because the rollout isn't finished, or only one endpoint. If it's clearly the
+      deploy, I don't spend time debugging in production. I stop the rollout and roll back, and I tell
+      the team in the incident channel. Then I check the error rate goes back to normal. After that,
+      I look at the logs of the new version. Often it's something like a missing environment variable,
+      a config that exists in staging but not in production, or a migration that didn't run. Then we
+      fix it, add a check to the pipeline, and deploy again.
+    follow_ups:
+      - How could a canary deploy have reduced the impact here?
+    docs: [https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/]
+    glossary: [rollback, canary, rolling-update]
+  - id: iv-inc-008
+    level: mid
+    type: technical
+    question: How do you measure reliability and incident response? What are MTTD and MTTR?
+    minutes: 1.5
+    tips: "Define the metrics, say how you would improve each one, and mention their limits."
+    key_points:
+      - MTTD is the mean time to detect an incident
+      - MTTR is the mean time to recover or restore service
+      - Better alerting lowers MTTD
+      - Runbooks, quick rollbacks and practice lower MTTR
+      - SLOs and user impact matter more than counting incidents
+    model_answer: |
+      Two common metrics are MTTD and MTTR. MTTD, mean time to detect, is how long it takes from the
+      start of a problem until we know about it. Good alerting, especially on user symptoms, makes it
+      shorter. MTTR, mean time to recover, is how long until the service is back to normal. To reduce
+      it, you need runbooks, fast rollbacks, good dashboards, and people who have practiced. Some
+      teams also track change failure rate, which is one of the DORA metrics. But I'm careful with
+      these averages. One huge incident and many small ones give strange numbers, and they can
+      encourage people to close incidents too early. So I combine them with SLOs, which show the real
+      impact on users over time.
+    follow_ups:
+      - What are the four DORA metrics?
+    docs: [https://dora.dev/guides/dora-metrics-four-keys/]
+    glossary: [slo]
+  - id: iv-inc-009
+    level: mid
+    type: behavioral
+    question: How do you communicate with managers and other stakeholders during an incident?
+    minutes: 1.5
+    tips: "Give your communication rules, then a short real example."
+    key_points:
+      - Communicate early, even before you know the cause
+      - Use simple language focused on impact, not technical details
+      - Say what you know, what you are doing, and when the next update is
+      - Keep a regular rhythm of updates
+      - One person owns the communication so engineers can focus
+    model_answer: |
+      My main rule is to communicate early and regularly, even when I don't know the cause yet.
+      Silence makes people nervous, and then they start calling the engineers who are trying to fix
+      things. I use a simple format: what's the impact, what we're doing, and when the next update
+      will be. For example, during an outage of our login service, I wrote: "Since 10:05 about
+      twenty percent of users can't log in. We've found the cause in a recent change and we're
+      rolling it back. Next update at 10:45." No jargon, no long explanations. If the incident is big,
+      I ask someone else to own communication, so I can focus on the fix. Afterwards, the business
+      got a short summary in plain English, with the impact and what we changed.
+    follow_ups:
+      - What do you do when a manager asks for constant updates?
+  - id: iv-inc-010
+    level: senior
+    type: technical
+    question: What is chaos engineering? How would you start doing it?
+    minutes: 2
+    tips: "Define it, explain the scientific method behind it, and give a safe plan to start small."
+    key_points:
+      - Injecting failures on purpose to find weaknesses before they cause outages
+      - Start with a hypothesis about how the system should behave
+      - Begin in staging with a small blast radius
+      - Have monitoring and a way to stop the experiment
+      - Game days help practice incident response too
+      - Fix the problems you find, then repeat
+    model_answer: |
+      Chaos engineering means breaking things on purpose, in a controlled way, to find weaknesses
+      before they cause a real outage. It's like a vaccine. It follows a scientific method. You start
+      with a hypothesis, like "if one Pod of the payment service dies, users won't notice." Then you
+      run the experiment, for example kill the Pod, and watch the metrics. If the hypothesis is wrong,
+      you found a problem to fix. I'd start small and safe: in staging first, with a small blast
+      radius, good monitoring, and a clear way to stop the test. Simple experiments are enough at the
+      start, like killing a node or adding latency to a dependency. I also like game days, where the
+      team practices a failure together, because it tests the people and the runbooks too, not just
+      the system.
+    follow_ups:
+      - Which tools would you use for chaos experiments in Kubernetes?
+      - How do you convince managers to break production on purpose?
+    docs: [https://principlesofchaos.org/]

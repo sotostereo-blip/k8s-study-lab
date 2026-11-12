@@ -1,0 +1,307 @@
+category: networking
+questions:
+  - id: iv-net-001
+    level: mid
+    type: technical
+    question: What happens when you type a URL into your browser and press Enter?
+    minutes: 3
+    tips: "Tell it as a story in order: DNS, TCP, TLS, HTTP request, server side, response, rendering. Go deeper where the interviewer shows interest."
+    key_points:
+      - The browser checks its cache, then asks DNS for the IP address
+      - It opens a TCP connection to port 443 (three-way handshake)
+      - It does a TLS handshake and checks the certificate
+      - It sends an HTTP request, often through a load balancer
+      - The server answers with a status code, headers and body
+      - The browser renders the page and fetches extra resources
+    model_answer: |
+      First, the browser parses the URL and checks its own cache. If it doesn't know the IP
+      address, it asks the operating system, which asks a DNS resolver. The resolver goes from the
+      root servers to the top-level domain and then to the authoritative server, and gets back an
+      IP. Then the browser opens a TCP connection to that IP on port 443, with the three-way
+      handshake. Because it's HTTPS, there's a TLS handshake next: the server sends its certificate,
+      the browser checks it, and they agree on keys. Then the browser sends an HTTP GET request. In
+      a real company that request usually hits a CDN or a load balancer first, which sends it to
+      one of the web servers. The server returns a status code, headers and the HTML. Finally the
+      browser renders the page and makes more requests for CSS, JavaScript and images.
+    follow_ups:
+      - Where can this process be slow, and how would you find out?
+      - What is the difference between HTTP/1.1 and HTTP/2?
+    docs: [https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview]
+    glossary: [coredns, tls]
+  - id: iv-net-002
+    level: junior
+    type: technical
+    question: What is the difference between TCP and UDP?
+    minutes: 1
+    tips: "Compare them on reliability and speed, then give typical uses for each."
+    key_points:
+      - TCP is connection-oriented and starts with a handshake
+      - TCP guarantees order and delivery with retransmission
+      - UDP sends datagrams with no connection and no guarantee
+      - UDP has less overhead and lower latency
+      - Examples are HTTP for TCP and DNS or video calls for UDP
+    model_answer: |
+      TCP is connection-oriented. Before sending data, the two sides do a handshake, and then TCP
+      makes sure every packet arrives, in the right order, and resends anything that's lost. It
+      also controls the speed so it doesn't overload the network. UDP is much simpler. It just
+      sends packets, called datagrams, with no connection and no guarantee that they arrive. That
+      sounds worse, but it's faster and has less overhead. So TCP is used when you need every byte,
+      like web traffic, SSH or databases. UDP is used when speed matters more than a lost packet,
+      like DNS queries, video calls or online games. HTTP/3 is interesting, because it runs on
+      QUIC, which is built on top of UDP.
+    follow_ups:
+      - Why does DNS use UDP but sometimes switch to TCP?
+    docs: [https://www.rfc-editor.org/rfc/rfc9293]
+  - id: iv-net-003
+    level: junior
+    type: technical
+    question: How does DNS work? What are the most common record types?
+    minutes: 2
+    tips: "Explain the lookup chain in order, then list the record types with one short use each."
+    key_points:
+      - DNS translates names into IP addresses
+      - A recursive resolver asks root, TLD and authoritative servers
+      - Answers are cached for the TTL
+      - A and AAAA records point to IPv4 and IPv6 addresses
+      - CNAME is an alias, MX is for mail, TXT for verification
+    model_answer: |
+      DNS is like the phone book of the internet. It turns a name like example.com into an IP
+      address. When I ask for a name, my machine asks a recursive resolver, for example the one from
+      my ISP or 8.8.8.8. If the resolver doesn't have it cached, it asks a root server, which sends
+      it to the server for .com, which sends it to the authoritative server for example.com, and
+      that one gives the final answer. The answer is cached for the TTL. The common records are: A
+      for an IPv4 address, AAAA for IPv6, CNAME for an alias to another name, MX for mail servers,
+      TXT for things like domain verification, and NS for the name servers of the zone. In
+      Kubernetes, CoreDNS does the same job for Services inside the cluster.
+    follow_ups:
+      - Why would you lower the TTL before a migration?
+      - How do you test DNS from the command line?
+    docs: [https://www.rfc-editor.org/rfc/rfc1034]
+    glossary: [coredns]
+  - id: iv-net-004
+    level: mid
+    type: technical
+    question: How does HTTPS work? What happens during the TLS handshake?
+    minutes: 2
+    tips: "Explain the goals (encryption, identity), then the handshake steps in a simple way."
+    key_points:
+      - HTTPS is HTTP inside a TLS connection
+      - The server sends a certificate signed by a trusted CA
+      - The client checks the certificate name, date and chain
+      - Asymmetric crypto is used to agree on a shared session key
+      - The data is then encrypted with fast symmetric encryption
+    model_answer: |
+      HTTPS is just HTTP sent inside a TLS connection. TLS gives us two things: encryption, so
+      nobody in the middle can read the traffic, and identity, so I know I'm really talking to my
+      bank. In the handshake, the client says hello and lists the versions and ciphers it supports.
+      The server answers with its choice and its certificate. The client checks that the certificate
+      is signed by a certificate authority it trusts, that the name matches the domain and that it
+      hasn't expired. Then both sides use a key exchange, usually Diffie-Hellman, to agree on a
+      shared secret key. From that moment the data is encrypted with symmetric encryption, which is
+      much faster. With TLS 1.3 all of this takes just one round trip.
+    follow_ups:
+      - What is mutual TLS?
+      - What would you check if a certificate error appears?
+    docs: [https://www.rfc-editor.org/rfc/rfc8446]
+    glossary: [tls, certificate-authority, mtls]
+  - id: iv-net-005
+    level: mid
+    type: technical
+    question: What is the difference between a layer 4 and a layer 7 load balancer?
+    minutes: 1.5
+    tips: "Link the layers to the OSI model in one sentence, then compare what each balancer can see and do."
+    key_points:
+      - Layer 4 works with IP addresses and TCP or UDP ports
+      - Layer 7 understands HTTP (paths, headers, cookies)
+      - Layer 7 can route by path or host and terminate TLS
+      - Layer 4 is faster and works with any TCP protocol
+      - AWS examples are NLB for layer 4 and ALB for layer 7
+    model_answer: |
+      The numbers come from the OSI model. Layer 4 is the transport layer, so a layer 4 load
+      balancer only sees IP addresses and ports. It forwards TCP or UDP connections without looking
+      inside them. That makes it very fast, and it works for any protocol, like databases or MQTT.
+      A layer 7 load balancer works at the application layer, so it understands HTTP. It can route
+      requests by path or hostname, for example slash api to one service and slash images to
+      another. It can also terminate TLS, add headers or use cookies for sticky sessions. On AWS
+      the Network Load Balancer is layer 4 and the Application Load Balancer is layer 7. In
+      Kubernetes, an Ingress controller is a layer 7 load balancer.
+    follow_ups:
+      - What are sticky sessions and why can they be a problem?
+      - How does a load balancer know a backend is healthy?
+    docs: [https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html]
+    glossary: [ingress]
+  - id: iv-net-006
+    level: junior
+    type: technical
+    question: Explain HTTP status codes. What is the difference between 502 and 504?
+    minutes: 1.5
+    tips: "Give the five families first, then the codes that matter most for operations."
+    key_points:
+      - 2xx success, 3xx redirect, 4xx client error, 5xx server error
+      - 401 means not authenticated and 403 means not allowed
+      - 502 Bad Gateway means the proxy got a bad or no answer from the backend
+      - 504 Gateway Timeout means the backend was too slow to answer
+      - 4xx usually points at the request, 5xx at our side
+    model_answer: |
+      Status codes are grouped by the first digit. 2xx means success, like 200 OK or 201 Created.
+      3xx are redirects, like 301 or 302. 4xx means the client did something wrong: 400 is a bad
+      request, 401 means you're not authenticated, 403 means you're authenticated but not allowed,
+      and 404 is not found. 5xx means the server side failed. 502 and 504 both come from a proxy or
+      a load balancer. 502 Bad Gateway means the proxy tried to reach the backend and got an
+      invalid answer or the connection was refused, for example because the app crashed. 504
+      Gateway Timeout means the backend didn't answer in time, so the app is probably slow or
+      stuck. That difference helps me decide where to look first.
+    follow_ups:
+      - What would you check first for a spike of 503 errors?
+    docs: [https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status]
+  - id: iv-net-007
+    level: junior
+    type: technical
+    question: What is CIDR notation? How many addresses are in a /24, and what are the private IP ranges?
+    minutes: 1.5
+    tips: "Explain the prefix, do one quick calculation, then list the private ranges."
+    key_points:
+      - The number after the slash is how many bits are the network part
+      - A /24 has 256 addresses (2 to the power of 8)
+      - A smaller prefix number means a bigger network
+      - Private ranges are 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16
+      - Cloud providers reserve some addresses in every subnet
+    model_answer: |
+      CIDR is a way to write a network and its size. In 10.0.1.0/24, the 24 means the first 24 bits
+      are the network part, and the last 8 bits are for hosts. Two to the power of 8 is 256, so a
+      /24 has 256 addresses. Normally you lose the first and the last, and on AWS five addresses
+      are reserved in every subnet, so you get 251 usable. A smaller number after the slash means a
+      bigger network: a /16 has about 65,000 addresses. The private ranges from RFC 1918 are
+      10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. When I design a VPC, I pick ranges that don't
+      overlap with other VPCs or the office network, because overlapping ranges make peering and
+      VPNs impossible later.
+    follow_ups:
+      - How would you split a /16 VPC into subnets?
+    docs: [https://www.rfc-editor.org/rfc/rfc1918]
+  - id: iv-net-008
+    level: mid
+    type: scenario
+    question: An application cannot connect to its database. How do you troubleshoot it?
+    minutes: 2.5
+    tips: "Read the exact error first, then test each layer from the app host: DNS, network, port, authentication."
+    key_points:
+      - Read the exact error message (timeout, refused, auth failed)
+      - Check DNS resolution of the database host
+      - Test the port from the app host with nc or telnet
+      - Check security groups, firewalls and network policies
+      - Check that the database is up and accepts more connections
+      - Check credentials and recent config changes
+    model_answer: |
+      The first thing I do is read the exact error, because it tells me which layer to look at. If
+      it's a DNS error, I check the hostname with dig from the app server. If it's a timeout, it's
+      usually the network, so I test the port with nc -zv from the same host or pod, and then check
+      security groups, firewall rules or Kubernetes network policies between the two. If it's
+      "connection refused", the database host is reachable but nothing is listening on that port,
+      so maybe the database is down or uses another port. If the error is about authentication, I
+      check the credentials and whether a secret was rotated recently. I'd also check the database
+      side: is it running, and has it hit its maximum number of connections? And I always ask what
+      changed recently.
+    follow_ups:
+      - What if it works from your laptop but not from the pod?
+      - What does "too many connections" tell you about the app?
+    docs: [https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html]
+    glossary: [network-policy]
+  - id: iv-net-009
+    level: junior
+    type: technical
+    question: What is the difference between a forward proxy and a reverse proxy?
+    minutes: 1
+    tips: "Say whose side each proxy is on, then give one example for each."
+    key_points:
+      - A forward proxy acts for clients going out to the internet
+      - A reverse proxy sits in front of servers and receives incoming requests
+      - Forward proxies are used for filtering, caching or controlled egress
+      - Reverse proxies do load balancing, TLS termination and caching
+      - Nginx, HAProxy and Ingress controllers are reverse proxies
+    model_answer: |
+      The difference is whose side the proxy is on. A forward proxy works for the clients. For
+      example, in a company, all employees' traffic to the internet goes through a proxy that can
+      filter websites, cache content or log access. The website only sees the proxy. A reverse proxy
+      works for the servers. It sits in front of them and receives the requests from the internet,
+      so the client doesn't know which backend server answered. Reverse proxies are very common in
+      DevOps: Nginx or HAProxy in front of an app, doing load balancing, TLS termination,
+      compression or caching. An Ingress controller in Kubernetes is basically a reverse proxy too.
+    follow_ups:
+      - What is TLS termination and where would you do it?
+    docs: [https://nginx.org/en/docs/http/ngx_http_proxy_module.html]
+    glossary: [ingress]
+  - id: iv-net-010
+    level: mid
+    type: technical
+    question: What is NAT, and why do private servers in the cloud need a NAT gateway?
+    minutes: 1.5
+    tips: "Define NAT simply, then explain the cloud use case and one trade-off."
+    key_points:
+      - NAT rewrites private source addresses to a public address
+      - It lets many private machines share one public IP
+      - Private subnets have no direct route to the internet
+      - A NAT gateway allows outbound connections only, not inbound
+      - NAT gateways cost money for each GB, so watch the traffic
+    model_answer: |
+      NAT means Network Address Translation. A router or gateway changes the source IP of outgoing
+      packets from a private address to its own public address, and remembers the mapping so the
+      answers come back to the right machine. That's how your whole home network uses one public IP.
+      In the cloud, we put servers like app servers and databases in private subnets, so they have
+      no public IP and nobody can connect to them from the internet. But they still need to go out,
+      for example to download updates or call an external API. A NAT gateway allows that: outbound
+      connections work, but nobody can start a connection from outside. One trade-off on AWS is cost,
+      because NAT gateways charge per GB, so for S3 traffic I'd use a VPC endpoint instead.
+    follow_ups:
+      - How would you make the NAT gateway highly available?
+    docs: [https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html]
+  - id: iv-net-011
+    level: mid
+    type: technical
+    question: What is the difference between a stateful and a stateless firewall?
+    minutes: 1.5
+    tips: "Define both, then give the AWS example that interviewers expect (security groups vs network ACLs)."
+    key_points:
+      - A stateful firewall tracks connections and allows the replies automatically
+      - A stateless firewall checks every packet alone against the rules
+      - Stateless rules must allow return traffic explicitly, often on ephemeral ports
+      - AWS security groups are stateful and network ACLs are stateless
+      - Security groups only have allow rules, NACLs have allow and deny
+    model_answer: |
+      A stateful firewall remembers connections. If I allow incoming traffic on port 443, the replies
+      for that connection are allowed automatically, I don't need a rule for them. Linux iptables
+      with connection tracking works like that. A stateless firewall looks at every packet on its
+      own, with no memory. So if I allow traffic in, I also need a rule to allow the replies out,
+      usually on the high ephemeral ports. On AWS, security groups are stateful and are attached to
+      instances or network interfaces, and they only have allow rules. Network ACLs are stateless,
+      work at the subnet level, and have allow and deny rules in a numbered order. In practice I do
+      most of the work with security groups and use NACLs for things like blocking a bad IP range.
+    follow_ups:
+      - What are ephemeral ports?
+      - How would you block one IP address that is attacking your site?
+    docs: [https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html]
+    glossary: [iptables]
+  - id: iv-net-012
+    level: senior
+    type: technical
+    question: Explain the TCP three-way handshake. What is TIME_WAIT and when does it become a problem?
+    minutes: 2
+    tips: "Describe the three packets, then the connection close, then a real case where TIME_WAIT hurts."
+    key_points:
+      - SYN, SYN-ACK and ACK open the connection
+      - The side that closes first goes into TIME_WAIT
+      - TIME_WAIT protects against late packets from the old connection
+      - Many short connections can use up local ports
+      - Fix it with connection reuse (keep-alive, connection pools)
+    model_answer: |
+      To open a connection, the client sends a SYN with its sequence number, the server answers
+      with SYN-ACK, and the client sends an ACK. After that, data can flow. To close it, each side
+      sends a FIN and gets an ACK. The side that closes first goes into TIME_WAIT for a while,
+      usually around sixty seconds on Linux. That's to make sure late packets from the old connection
+      don't get mixed with a new one on the same ports. It becomes a problem when a service opens
+      and closes thousands of short connections, for example an app that creates a new connection to
+      another service for every request. You can run out of local ports and see connection errors.
+      The real fix is to reuse connections, with HTTP keep-alive or a connection pool.
+    follow_ups:
+      - How would you see how many connections are in TIME_WAIT?
+      - What is a SYN flood?
+    docs: [https://www.rfc-editor.org/rfc/rfc9293]

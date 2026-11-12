@@ -6,7 +6,7 @@ import { api } from './api.js'
    - click one: simple English definition, example, 🔊 pronunciation, Spanish only on demand
    - every lookup / translation / listen is recorded, so the dashboard can show progress */
 
-export const EnglishContext = createContext({ glossary: [], vocabulary: [] })
+export const EnglishContext = createContext({ glossary: [], vocabulary: [], cert: null })
 export const useEnglish = () => useContext(EnglishContext)
 
 const log = (kind, ref) => api.englishEvent(kind, ref).catch(() => {})
@@ -38,8 +38,10 @@ export function ListenButton({ text, refId, label = 'Listen', slow = false }) {
 
 /* ---------- find terms and words in a text ---------- */
 
-function buildForms(glossary, vocabulary, termIds) {
-  const terms = termIds ? glossary.filter((t) => termIds.includes(t.id)) : glossary
+function buildForms(glossary, vocabulary, termIds, cert) {
+  // explicit ids (questions) win; otherwise skip terms meant for other certifications ("workflow", "bucket")
+  const terms = termIds ? glossary.filter((t) => termIds.includes(t.id))
+    : glossary.filter((t) => !t.certs?.length || !cert || t.certs.includes(cert))
   const forms = [
     ...terms.flatMap((t) => (t.match?.length ? t.match : [t.term]).map((m) => ({ m, item: { kind: 'term', ...t } }))),
     ...vocabulary.flatMap((w) => w.match.map((m) => ({ m, item: { kind: 'word', ...w } }))),
@@ -52,9 +54,9 @@ function buildForms(glossary, vocabulary, termIds) {
 }
 
 function useForms(termIds) {
-  const { glossary, vocabulary } = useEnglish()
+  const { glossary, vocabulary, cert } = useEnglish()
   const key = termIds ? termIds.join(',') : '*'
-  return useMemo(() => buildForms(glossary, vocabulary, termIds), [glossary, vocabulary, key])
+  return useMemo(() => buildForms(glossary, vocabulary, termIds, cert), [glossary, vocabulary, key, cert])
 }
 
 /** Items (terms first, then words) that appear in a text, without duplicates. */

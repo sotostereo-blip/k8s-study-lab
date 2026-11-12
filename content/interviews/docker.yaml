@@ -1,0 +1,309 @@
+category: docker
+questions:
+  - id: iv-dkr-001
+    level: junior
+    type: technical
+    question: What is the difference between a container and a virtual machine?
+    minutes: 1.5
+    tips: "Start with the key difference (shared kernel), then compare size, speed and isolation, and say when you would use each."
+    key_points:
+      - A VM runs a full guest operating system on a hypervisor
+      - Containers share the host kernel
+      - Containers are smaller and start in seconds
+      - VMs give stronger isolation
+      - They are often used together, containers running on VMs
+    model_answer: |
+      The main difference is the kernel. A virtual machine runs on a hypervisor, and each VM has its
+      own full operating system with its own kernel. A container is just an isolated process on the
+      host, and all containers share the host's kernel. Because of that, containers are much
+      lighter. An image can be a few megabytes and a container starts in a second, while a VM can
+      take minutes and gigabytes. The trade-off is isolation. A VM is more isolated, so if you need
+      a different kernel or strong security boundaries between customers, VMs are better. In
+      practice we use both together. In the cloud, our Kubernetes nodes are VMs, and the
+      applications run as containers on top of them.
+    follow_ups:
+      - Can you run a Windows container on a Linux host?
+      - What Linux features make containers possible?
+    docs: [https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/]
+    glossary: [container]
+  - id: iv-dkr-002
+    level: junior
+    type: technical
+    question: What is the difference between a Docker image and a container? What are layers?
+    minutes: 1.5
+    tips: "Define both with an analogy, then explain layers and why they make builds and pulls faster."
+    key_points:
+      - An image is a read-only template made of layers
+      - A container is a running instance of an image
+      - Each container adds its own thin writable layer
+      - Each Dockerfile instruction can create a layer
+      - Layers are cached and shared between images
+    model_answer: |
+      An image is a read-only template. It has the file system and the settings that an app needs
+      to run. A container is a running instance of that image. A simple analogy is a class and an
+      object: you can start many containers from the same image. Images are made of layers. Most
+      instructions in a Dockerfile, like RUN or COPY, add a new layer with the changes. When you
+      start a container, Docker adds a thin writable layer on top, and the container's changes go
+      there. That's why changes are lost when you delete the container. Layers are great for speed,
+      because they're cached and shared. If ten images use the same base image, it's stored and
+      downloaded only once.
+    follow_ups:
+      - How do you see the layers of an image?
+      - Why should you not store data inside a container?
+    docs: [https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-an-image/]
+    glossary: [image, container]
+  - id: iv-dkr-003
+    level: mid
+    type: technical
+    question: How do you make a Docker image smaller?
+    minutes: 2
+    tips: "List the techniques from the biggest impact to the smallest, with a short reason for each."
+    key_points:
+      - Use multi-stage builds so build tools are not in the final image
+      - Choose a small base image (slim, alpine or distroless)
+      - Use .dockerignore to keep unneeded files out
+      - Combine RUN commands and clean package caches in the same layer
+      - Install only production dependencies
+    model_answer: |
+      The biggest win is usually a multi-stage build. In the first stage I use a full image with the
+      compiler or the build tools, and in the final stage I copy only the binary or the built files
+      into a small image. For a Go app, that can go from about 900 megabytes to 20. Second, I choose
+      a small base image, like a slim or a distroless image. Third, I add a .dockerignore file, so
+      things like the .git folder and node_modules aren't sent to the build. And when I install
+      packages, I do the install and the cache clean-up in the same RUN instruction, because if you
+      delete files in a later layer, they're still inside the image. Smaller images pull faster and
+      have fewer vulnerabilities.
+    follow_ups:
+      - What are the downsides of Alpine images?
+      - How do you debug a distroless container with no shell?
+    docs: [https://docs.docker.com/build/building/multi-stage/]
+    glossary: [distroless, image]
+  - id: iv-dkr-004
+    level: junior
+    type: technical
+    question: What is the difference between CMD and ENTRYPOINT in a Dockerfile?
+    minutes: 1
+    tips: "Explain each one, then how they work together, then mention the exec form."
+    key_points:
+      - ENTRYPOINT sets the main executable of the container
+      - CMD sets default arguments or a default command
+      - Arguments to docker run replace CMD but not ENTRYPOINT
+      - Use them together for a fixed program with default arguments
+      - Prefer the exec form (JSON array) so signals reach the app
+    model_answer: |
+      Both define what runs when the container starts, but in a different way. ENTRYPOINT is the
+      main program, and it's not replaced when you pass arguments to docker run. CMD is the default
+      command or the default arguments, and anything you pass to docker run replaces it. They work
+      well together. For example, ENTRYPOINT is python app.py and CMD is --port 8080. If I run the
+      container with no arguments, it uses port 8080, but I can pass another port easily. I always
+      use the exec form, the JSON array, instead of the shell form. With the shell form the app runs
+      under sh, so it doesn't receive SIGTERM and it can't shut down cleanly.
+    follow_ups:
+      - How can you override the ENTRYPOINT?
+    docs: [https://docs.docker.com/reference/dockerfile/#entrypoint]
+  - id: iv-dkr-005
+    level: mid
+    type: technical
+    question: How does the Docker build cache work, and how do you order Dockerfile instructions to use it well?
+    minutes: 1.5
+    tips: "Explain when the cache is invalidated, then give the classic example with dependencies."
+    key_points:
+      - Each instruction is cached as a layer
+      - When one layer changes, all the layers after it are rebuilt
+      - Put instructions that change rarely at the top
+      - Copy dependency files and install them before copying the source code
+      - In CI, use a remote or registry cache because runners are new
+    model_answer: |
+      Docker caches the result of each instruction as a layer. On the next build, if the instruction
+      and its input files are the same, it reuses the layer. But once one layer changes, every layer
+      after it has to be rebuilt. So the order matters a lot. I put things that rarely change at the
+      top, like the base image and system packages, and the things that change all the time, like
+      the source code, at the bottom. The classic example is a Node app: first copy only
+      package.json and the lock file, run npm ci, and only then copy the rest of the code. So when I
+      change one line of code, the dependencies come from the cache. In CI I also use a registry
+      cache, because the runners usually start empty.
+    follow_ups:
+      - What is the difference between COPY and ADD?
+      - How would you force a build without cache?
+    docs: [https://docs.docker.com/build/cache/]
+  - id: iv-dkr-006
+    level: junior
+    type: technical
+    question: How do you keep data when a container is deleted? Volumes vs bind mounts.
+    minutes: 1.5
+    tips: "Explain why the container layer is not enough, then compare the two options and say when to use each."
+    key_points:
+      - Data in the writable layer is lost when the container is removed
+      - Volumes are managed by Docker and are the preferred option
+      - Bind mounts map a host folder into the container
+      - Bind mounts are good for development and config files
+      - Use volumes for databases and other persistent data
+    model_answer: |
+      Anything a container writes goes to its writable layer, and that's deleted with the container.
+      So for data that must survive, we use volumes or bind mounts. A volume is managed by Docker.
+      You create it with a name, Docker stores it in its own folder, and you can attach it to any
+      container. It's the best option for things like a database, and it works the same on any host.
+      A bind mount maps a specific folder from the host into the container. It's very useful in
+      development, for example to mount my source code so changes appear without rebuilding, or to
+      mount a config file. But it depends on the host's folder structure and permissions, so for
+      real persistent data I prefer named volumes.
+    follow_ups:
+      - How do you back up a Docker volume?
+      - How does Kubernetes solve the same problem?
+    docs: [https://docs.docker.com/engine/storage/volumes/]
+    glossary: [volume, persistent-volume]
+  - id: iv-dkr-007
+    level: mid
+    type: technical
+    question: How does Docker networking work? How do two containers talk to each other?
+    minutes: 1.5
+    tips: "Name the main network drivers, then explain user-defined networks and DNS by container name."
+    key_points:
+      - The default driver is bridge, a private network on the host
+      - On a user-defined bridge, containers find each other by name
+      - Port publishing (-p) exposes a container port on the host
+      - The host driver shares the host network stack
+      - Compose creates a network for each project automatically
+    model_answer: |
+      By default Docker uses a bridge network. It's a virtual network on the host, and each container
+      gets a private IP on it. To reach a container from outside the host, I publish a port with -p,
+      for example 8080 on the host to 80 in the container. For containers to talk to each other, the
+      best way is to create a user-defined bridge network and connect both containers to it. Docker
+      runs an internal DNS there, so the app can reach the database just by its container name, like
+      db on port 5432. On the default bridge that name resolution doesn't work. There's also the host
+      driver, where the container uses the host's network directly, and none for no network at all.
+      Docker Compose creates a network per project automatically, which is why services find each
+      other by service name.
+    follow_ups:
+      - Why should you not rely on container IP addresses?
+      - When would you use the host network?
+    docs: [https://docs.docker.com/engine/network/]
+  - id: iv-dkr-008
+    level: mid
+    type: scenario
+    question: A container exits right after it starts, or keeps restarting. How do you find the problem?
+    minutes: 2
+    tips: "Give your steps in order: status and exit code, logs, inspect, then run it by hand."
+    key_points:
+      - Check the status and exit code with docker ps -a
+      - Read the logs with docker logs
+      - Use docker inspect for the exit code and OOMKilled
+      - Exit code 137 often means it was killed for memory
+      - Run the image with a shell to test the command by hand
+      - Remember a container stops when its main process ends
+    model_answer: |
+      First, docker ps -a to see the status and the exit code. Then docker logs on that container,
+      because most of the time the app prints the error, like a missing environment variable or a
+      config file it can't find. If the logs are empty, I use docker inspect to see the exit code and
+      whether OOMKilled is true. Exit code 137 usually means it was killed, often for memory, and 1
+      is a normal app error. I also remember that a container only lives as long as its main
+      process. If the command is something that runs in the background and returns, the container
+      just exits. Finally, I can run the same image with an interactive shell instead of the normal
+      command, and start the app by hand to see what happens.
+    follow_ups:
+      - What does exit code 127 mean?
+      - How is this different in Kubernetes?
+    docs: [https://docs.docker.com/reference/cli/docker/container/logs/]
+    glossary: [logs]
+  - id: iv-dkr-009
+    level: senior
+    type: technical
+    question: How do you make Docker containers more secure?
+    minutes: 2
+    tips: "Group your answer into image, build and runtime, and give two or three concrete actions for each."
+    key_points:
+      - Use small, trusted base images and scan them for CVEs
+      - Run as a non-root user
+      - Drop Linux capabilities and never use privileged mode without need
+      - Use a read-only root file system where possible
+      - Keep secrets out of images and environment files in Git
+      - Set resource limits and keep the Docker host patched
+    model_answer: |
+      I think about it in three parts. For the image, I use small official or distroless base images,
+      pin them by version, and scan them with a tool like Trivy in the pipeline, so we fail the build
+      on critical CVEs. I never put secrets in the image, because anyone who can pull it can read
+      them. For the build, I add a USER instruction so the app doesn't run as root. At runtime, I drop
+      all Linux capabilities and add back only the ones the app needs, I avoid privileged mode, and I
+      use a read-only root file system when the app allows it. I also set memory and CPU limits so
+      one container can't take down the host. And of course I keep the host and Docker itself
+      updated, and I'm careful about who can access the Docker socket, because that's basically root.
+    follow_ups:
+      - Why is mounting the Docker socket into a container dangerous?
+      - How would you sign images?
+    docs: [https://docs.docker.com/engine/security/]
+    glossary: [image-scanning, linux-capabilities, privileged-container, distroless, cve]
+  - id: iv-dkr-010
+    level: senior
+    type: technical
+    question: Which Linux kernel features make containers work?
+    minutes: 1.5
+    tips: "Name the two main features, say what each one does, and give an example of each."
+    key_points:
+      - Namespaces isolate what a process can see
+      - Examples are PID, network, mount, user and UTS namespaces
+      - Cgroups limit and measure what a process can use (CPU, memory)
+      - Capabilities and seccomp limit what it is allowed to do
+      - Union file systems like overlayfs provide the image layers
+    model_answer: |
+      Containers are really normal Linux processes with some kernel features around them. The first
+      one is namespaces. They control what a process can see. With a PID namespace, the container
+      sees its own process tree, and its main process is PID 1. A network namespace gives it its own
+      interfaces and IP, a mount namespace its own file system, and so on. The second one is cgroups,
+      control groups. They control what a process can use, like how much CPU and memory. That's how
+      Docker and Kubernetes enforce memory limits. On top of that, capabilities and seccomp reduce
+      what the process is allowed to do, even as root. And the image layers are put together with a
+      union file system, usually overlayfs.
+    follow_ups:
+      - What happens when a container goes over its memory cgroup limit?
+    docs: [https://man7.org/linux/man-pages/man7/namespaces.7.html]
+    glossary: [cgroups, linux-capabilities]
+  - id: iv-dkr-011
+    level: junior
+    type: technical
+    question: What is Docker Compose, and when would you use it?
+    minutes: 1
+    tips: "Define it in one sentence, give a typical example, and say where it is not the right tool."
+    key_points:
+      - Compose defines several containers in one YAML file
+      - One command starts the whole stack
+      - It creates networks and volumes for the project
+      - Great for local development and tests
+      - For production clusters, an orchestrator like Kubernetes is usually better
+    model_answer: |
+      Docker Compose lets you describe a multi-container application in one YAML file: the services,
+      their images or build context, ports, environment variables, volumes and networks. Then docker
+      compose up starts everything, and down removes it. I use it mostly for local development. For
+      example, an API, a Postgres database and a Redis cache. A new developer can clone the repo and
+      have everything running in one command. We also use it in CI to start a database for
+      integration tests. For production, on more than one machine, I'd use Kubernetes or a managed
+      service like ECS, because Compose doesn't really handle scheduling across nodes, self-healing
+      or rolling updates in the same way.
+    follow_ups:
+      - How do you make a service wait until the database is ready?
+    docs: [https://docs.docker.com/compose/]
+  - id: iv-dkr-012
+    level: mid
+    type: technical
+    question: How do you handle configuration and secrets for containers?
+    minutes: 1.5
+    tips: "Separate config from secrets, then explain the safe options for each environment."
+    key_points:
+      - Build one image and inject config at runtime
+      - Use environment variables or mounted files for config
+      - Never bake secrets into the image or commit them to Git
+      - Use a secret manager (Vault, AWS Secrets Manager, Kubernetes Secrets)
+      - Mounted files are often safer than environment variables
+    model_answer: |
+      The main rule is that the same image goes to every environment, and the configuration is
+      injected when the container starts. For normal config, like a log level or a feature URL, I use
+      environment variables or a mounted config file. Secrets are different. They should never be in
+      the image, in the Dockerfile, or in a Git repository, because image layers and Git history keep
+      them forever. In Kubernetes I use Secrets, ideally synced from a secret manager like AWS Secrets
+      Manager or Vault with something like External Secrets. I prefer mounting secrets as files rather
+      than environment variables, because environment variables can leak into logs or crash reports.
+      For builds that need a secret, like a private package token, I use BuildKit secret mounts.
+    follow_ups:
+      - How do you rotate a secret without downtime?
+      - Are Kubernetes Secrets encrypted?
+    docs: [https://docs.docker.com/build/building/secrets/]
+    glossary: [secret, configmap, tf-vault, external-secret-store]

@@ -1,0 +1,499 @@
+category: behavioral
+questions:
+  - id: iv-beh-001
+    level: junior
+    type: behavioral
+    question: Tell me about yourself.
+    minutes: 1.5
+    tips: "Present, past, future: what you do now, what you did before that matters for this job, why you want this role. 60 to 90 seconds."
+    key_points:
+      - Your current role or studies, in one or two sentences
+      - The skills and tools that matter for this job
+      - One concrete achievement with a result
+      - Why you want this role now
+    model_answer: |
+      I work as a systems engineer. Most of my day is spent on Linux servers and on automating
+      repetitive work with Bash and Python. Over the last year I moved our team's manual deployments
+      to a GitLab pipeline, and releases went from two hours to fifteen minutes. In my free time
+      I study Kubernetes and Terraform, and I am preparing for the CKA. I want this role because
+      I want to work full time on cloud infrastructure and automation, and your team runs exactly
+      the kind of platform I want to grow with.
+    follow_ups:
+      - What was the hardest part of moving to the new pipeline?
+      - Why are you leaving your current job?
+  - id: iv-beh-002
+    level: mid
+    type: behavioral
+    question: Tell me about a time you made a mistake in production. What did you do?
+    tips: "Use STAR. Own the mistake, say what you fixed, and finish with what you changed so it cannot happen again."
+    key_points:
+      - The situation and the impact, honestly and briefly
+      - You took ownership and told the team quickly
+      - What you did to restore the service
+      - What you changed afterwards (process, automation, checks)
+      - What you learned
+    model_answer: |
+      In my last job I changed a firewall rule on a Friday afternoon and I blocked the database
+      port for one of our applications. The site was down for about ten minutes. As soon as the
+      alerts fired I told the team in the incident channel that it was probably my change, and I
+      rolled it back. The service came back right away. Afterwards I wrote a short postmortem.
+      We moved firewall rules into Terraform, so every change now goes through a pull request and
+      a plan that someone else reviews. I learned to make small changes, to have a rollback ready,
+      and to never hide a mistake: telling people early made the fix much faster.
+    follow_ups:
+      - How did your manager react?
+      - How do you decide whether a change is safe to make on a Friday?
+  - id: iv-beh-003
+    level: junior
+    type: behavioral
+    question: Why do you want to work in DevOps?
+    minutes: 1.5
+    tips: "Start with a short personal story, then say what you like about the work, and finish with what you want to learn next."
+    key_points:
+      - A real moment that made you interested in DevOps
+      - You like automation and removing manual work
+      - You understand DevOps is about culture and collaboration, not only tools
+      - You connect it to the value for the business (faster, safer releases)
+    model_answer: |
+      It started in my first job, actually. I was a support engineer and every release was a long
+      night of manual steps, and something always broke. I wrote a small Bash script to automate
+      part of it, and I loved the feeling of fixing a problem once so nobody had to suffer it again.
+      What I like about DevOps is that it sits between developers and operations. It's not only
+      about tools like Docker or Terraform, it's about helping teams ship small changes often and
+      safely. I like that the results are easy to see: fewer failed deployments, faster feedback,
+      happier developers. Next, I want to go deeper into Kubernetes and cloud platforms, and that's
+      a big part of why this role interests me.
+    follow_ups:
+      - What does "DevOps culture" mean to you?
+      - Which DevOps tool did you learn most recently?
+    glossary: [ci-cd]
+  - id: iv-beh-004
+    level: junior
+    type: behavioral
+    question: Why do you want to work for our company?
+    minutes: 1
+    tips: "Show you did your research. Mention two specific things about the company and link each one to your skills or goals."
+    key_points:
+      - Something specific about the company (product, tech stack, blog, values)
+      - How your skills match what the team needs
+      - What you want to learn or grow into there
+      - Enthusiasm without exaggeration
+    model_answer: |
+      I've read a few posts on your engineering blog, especially the one about moving your services
+      to Kubernetes and how you reduced deployment time. That's exactly the kind of work I enjoy and
+      want to do more of. I also noticed in the job description that you use Terraform and GitHub
+      Actions, which are the tools I use every day, so I think I could be useful quickly. And I like
+      that your product is used by millions of people, because reliability really matters there,
+      and I want to work somewhere where the platform team has real impact. Finally, people I
+      talked to said there's a strong culture of learning here, with time for training and
+      certifications, and that's important to me.
+    follow_ups:
+      - What do you know about our product?
+      - What would you change in our stack if you joined?
+  - id: iv-beh-005
+    level: junior
+    type: behavioral
+    question: Why are you leaving your current job?
+    minutes: 1
+    tips: "Stay positive. Talk about what you are moving towards, not what you are running away from. Never criticise your current employer."
+    key_points:
+      - A positive reason focused on growth
+      - Something you are grateful for in your current job
+      - What the new role offers that the current one does not
+      - No complaints about your boss or colleagues
+    model_answer: |
+      I've learned a lot in my current job and I'm grateful for it. I started there as a junior
+      sysadmin and now I look after our CI pipelines and part of our AWS account. But the company
+      is quite small and most of our infrastructure is stable, so there aren't many new projects
+      coming. I want to work on a bigger platform, with Kubernetes in production and more
+      complex problems around scaling and reliability. This role gives me that, and it also gives
+      me the chance to work with more senior engineers and learn from them. So it's really about
+      the next step in my career, not about running away from anything.
+    follow_ups:
+      - What would make you stay in your current job?
+      - What did you like least about your current role?
+  - id: iv-beh-006
+    level: junior
+    type: behavioral
+    question: What are your main strengths?
+    minutes: 1.5
+    tips: "Pick two or three strengths that matter for this job, and prove each one with a short real example."
+    key_points:
+      - Two or three strengths, not a long list
+      - Each strength is relevant to a DevOps role
+      - A concrete example for each one
+      - A result or a number when possible
+    model_answer: |
+      I'd say my first strength is troubleshooting. I stay calm and I go step by step. For example,
+      last month we had random 502 errors, and I figured out it was a timeout mismatch between the
+      load balancer and the app. The second one is automation. I don't like doing the same manual
+      task twice, so I script it. I automated our server patching with Ansible and it saved the
+      team about four hours a week. And the third one is communication. I write clear documentation
+      and runbooks, and new people in my team told me the onboarding guide I wrote helped them
+      get productive in their first week.
+    follow_ups:
+      - Which of these strengths would your colleagues mention first?
+      - Tell me more about the 502 errors.
+  - id: iv-beh-007
+    level: junior
+    type: behavioral
+    question: What is your biggest weakness?
+    minutes: 1
+    tips: "Choose a real weakness that is not critical for the job, then explain what you are doing to improve it and show progress."
+    key_points:
+      - A real weakness, not a hidden strength like "I work too hard"
+      - It is not a core skill for the role
+      - Concrete actions you are taking to improve
+      - Evidence that it is getting better
+    model_answer: |
+      One thing I've had to work on is saying no. When colleagues ask me for help, I usually say
+      yes straight away, and in the past that meant my own tasks got delayed and I worked late
+      before a deadline. So I changed a few things. Now, when someone asks for help, I check my
+      priorities first and I'm honest about when I can do it. We also started putting these
+      requests in the team backlog, so my manager can see them and help me prioritize. It's
+      much better now. In the last quarter I delivered all my planned tasks on time and I still
+      helped people, just in a more organised way.
+    follow_ups:
+      - How does your manager help you with this?
+      - What other area would you like to improve?
+  - id: iv-beh-008
+    level: mid
+    type: behavioral
+    question: Tell me about a time you had a conflict with a colleague. How did you solve it?
+    minutes: 2
+    tips: "Use STAR. Show that you listened, focused on the problem and not the person, and found a solution together."
+    key_points:
+      - Situation and why there was a conflict
+      - You talked to the person directly and privately
+      - You listened to their point of view
+      - You found a compromise based on facts or data
+      - The result and the relationship afterwards
+    model_answer: |
+      In my last team, a developer kept asking for admin access to production so he could debug
+      issues faster, and I kept saying no for security reasons. It became tense, and he started
+      going around me to my manager. So I asked him for a coffee and we talked one to one. I
+      realised his real problem was that he couldn't see logs from production. He didn't actually
+      need admin access. So we agreed on a solution: I gave his team read-only access to the
+      logging platform and a dashboard for their service. It took me two days to set up. After
+      that, his requests for production access stopped, and debugging time for his team went
+      down a lot. We actually worked really well together after that.
+    follow_ups:
+      - What would you do if the colleague had refused to talk?
+      - When would you involve your manager in a conflict?
+    glossary: [least-privilege]
+  - id: iv-beh-009
+    level: mid
+    type: behavioral
+    question: Tell me about a time you disagreed with a decision made by your manager or your team.
+    minutes: 2
+    tips: "Use STAR. Show you disagreed with facts, respected the final decision, and committed to it."
+    key_points:
+      - What the decision was and why you disagreed
+      - You raised it respectfully, with data or arguments
+      - You listened to the other side
+      - You committed to the final decision, even if it was not yours
+      - What happened in the end
+    model_answer: |
+      My manager wanted to move all our services to Kubernetes in one quarter. I thought it was
+      too risky, because half of the team had never used it. So I prepared a short document with
+      the risks and a different plan: start with two small services, train the team, and then
+      move the rest. I presented it in our planning meeting. My manager agreed with part of it, so
+      we kept the deadline for the stateless services but moved the databases to the next quarter.
+      I didn't get everything I wanted, but I committed fully to the plan. In the end we migrated
+      twelve services without a major incident, and leaving the databases for later turned out
+      to be a good call.
+    follow_ups:
+      - What if your manager had not changed anything?
+      - How do you disagree with someone more senior than you?
+  - id: iv-beh-010
+    level: mid
+    type: behavioral
+    question: Tell me about a time you worked under a lot of pressure or with a tight deadline.
+    minutes: 2
+    tips: "Use STAR. Explain how you organised the work and cut scope, not just that you worked long hours."
+    key_points:
+      - The deadline and why it was tight
+      - How you broke the work down and prioritized
+      - What you cut, delayed or asked help for
+      - You communicated progress and risks early
+      - The result, ideally with a number
+    model_answer: |
+      Last year our SSL certificates were going to expire in five days, and we found out they were
+      on forty servers with no automation at all. My task was to renew them all without downtime.
+      First, I made a list of every server and grouped them by risk. Then I wrote an Ansible
+      playbook to install the new certificates and reload the web servers, and I tested it on two
+      staging servers. I asked a colleague to check the playbook while I prepared the rollback. I
+      sent a short update to my manager every evening, so there were no surprises. We finished all
+      forty servers in three days, with zero downtime. Afterwards we set up automatic renewal, so
+      this never happens again.
+    follow_ups:
+      - What would you have done if you couldn't finish in time?
+      - How do you avoid burnout in busy periods?
+    glossary: [tls]
+  - id: iv-beh-011
+    level: junior
+    type: behavioral
+    question: Tell me about a project you are proud of.
+    minutes: 2
+    tips: "Use STAR. Pick a project where your own contribution is clear, and finish with the impact."
+    key_points:
+      - The problem the project solved
+      - Your own role and decisions (say "I", not only "we")
+      - The main technical steps
+      - A measurable result
+      - What you learned
+    model_answer: |
+      I'm proud of the self-service environments project. Developers in my company had to open a
+      ticket and wait about three days to get a test environment. I proposed using Terraform
+      modules and a GitHub Actions workflow, so a developer could create an environment from a pull
+      request. I designed the modules, wrote the pipeline, and added an automatic clean-up after
+      48 hours so we didn't waste money. The hardest part was the database, because each
+      environment needed test data, so I added a step that restored a small anonymised snapshot.
+      Now environments are ready in about fifteen minutes, and we cut our test infrastructure
+      costs by around thirty percent thanks to the clean-up.
+    follow_ups:
+      - What would you do differently today?
+      - How did you convince people to use it?
+    glossary: [iac, tf-module]
+  - id: iv-beh-012
+    level: junior
+    type: behavioral
+    question: Tell me about a time you had to learn a new technology quickly.
+    minutes: 1.5
+    tips: "Use STAR. Explain your learning method (docs, small lab, asking experts) and how fast you became useful."
+    key_points:
+      - Why you needed to learn it fast
+      - Your learning method (official docs, hands-on lab, small project)
+      - You asked for help from people who knew it
+      - How soon you could deliver something real
+    model_answer: |
+      When I joined my current team, they used Helm for everything, and I had never used it. I had
+      two weeks before I had to own the deployment of one service. So I did three things. First, I
+      read the official Helm docs and did the quick start on a local kind cluster. Then I took one
+      of our existing charts and broke it on purpose to understand every template. And I booked a
+      one-hour session with a senior colleague to ask all my questions at once. After ten days I
+      opened my first pull request to change a chart, and after a month I was reviewing other
+      people's charts. Now I usually start with a small hands-on lab whenever I learn something new.
+    follow_ups:
+      - How do you keep up with new tools in general?
+      - What are you learning right now?
+    glossary: [helm]
+  - id: iv-beh-013
+    level: mid
+    type: behavioral
+    question: Tell me about a time you automated a manual process.
+    minutes: 2
+    tips: "Use STAR. Show how you measured the manual work before and after, and how you made sure people used the automation."
+    key_points:
+      - The manual process and how much time or risk it caused
+      - Why you chose that tool or approach
+      - How you rolled it out and documented it
+      - Time saved or errors avoided, with a number
+    model_answer: |
+      In my last job we created new user accounts on about fifteen servers by hand. It took around
+      thirty minutes per person, and people often forgot a server, so access was inconsistent. I
+      wrote an Ansible role that created users and SSH keys from a single YAML file in Git. Then I
+      added a pipeline, so adding a new person was just a pull request, and removing someone was
+      the same. I wrote a short README and showed it to the team in our weekly meeting. After that,
+      onboarding a person took two minutes instead of thirty, and in our next security audit
+      we had zero old accounts left on the servers, which was a first for us.
+    follow_ups:
+      - How do you decide what is worth automating?
+      - Was there any resistance to the change?
+  - id: iv-beh-014
+    level: mid
+    type: behavioral
+    question: Tell me about a time you had to explain a technical problem to a non-technical person.
+    minutes: 1.5
+    tips: "Use STAR. Show that you adapted your language, used an analogy, and focused on impact and decisions, not details."
+    key_points:
+      - Who the person was and what they needed to decide
+      - You avoided jargon and used an analogy
+      - You focused on impact, risk and options
+      - The person could make a decision
+    model_answer: |
+      Our sales director wanted to know why the website was going to be in maintenance for one hour
+      on a Sunday. He wasn't happy, because it was a busy day for customers. Instead of talking
+      about database versions, I said: our database is like the engine of a car, and the
+      manufacturer will stop fixing it next month, so we need to replace it before it breaks. Then I
+      gave him two options with their risks: one hour at night on Sunday, or a longer, riskier
+      migration later. He chose Sunday at 2 am, when traffic was lowest. The migration went well,
+      and afterwards he asked me to explain the next maintenance windows the same way.
+    follow_ups:
+      - How do you write a status update for managers?
+      - What if the person still didn't agree?
+  - id: iv-beh-015
+    level: mid
+    type: behavioral
+    question: How do you prioritize when several teams ask you for things at the same time?
+    minutes: 1.5
+    tips: "Give your method first (impact, urgency, effort), then a short real example."
+    key_points:
+      - Production issues and security come first
+      - You judge impact and urgency, not who shouts loudest
+      - Requests are visible in one backlog or board
+      - You involve your manager when priorities conflict
+      - You tell people when they can expect their request
+    model_answer: |
+      First, anything that affects production or security goes to the top. After that, I look at
+      impact and urgency: how many people are blocked, and is there a real deadline? I also try to
+      keep all requests in one place, usually our team board, so everybody can see what's in the
+      queue. For example, last month three teams needed something from me in the same week. One
+      team was blocked by a broken pipeline, so I fixed that first. The other two were new
+      features, so I asked my manager to help me decide the order, and I told both teams when they
+      could expect their work. Nobody was surprised, because they knew the plan.
+    follow_ups:
+      - What do you do when everything is urgent?
+      - How do you say no to a request?
+  - id: iv-beh-016
+    level: junior
+    type: behavioral
+    question: Tell me about a time you received critical feedback.
+    minutes: 1.5
+    tips: "Use STAR. Show that you listened without being defensive and changed something concrete."
+    key_points:
+      - What the feedback was and who gave it
+      - You listened and did not get defensive
+      - The concrete change you made
+      - How things improved afterwards
+    model_answer: |
+      In a code review, a senior engineer told me my pull requests were too big and hard to review.
+      One of them changed more than thirty files. At first I felt a bit frustrated, because I had
+      worked hard on it, but I asked him how he would split it. He showed me how to separate the
+      refactoring from the new feature, and to open small pull requests every day or two. I started
+      doing that. My pull requests got reviewed in hours instead of days, and I had fewer merge
+      conflicts. A few months later, in my performance review, my manager mentioned my code
+      reviews as something that had improved a lot.
+    follow_ups:
+      - How do you give feedback to others?
+      - What feedback have you received recently?
+  - id: iv-beh-017
+    level: senior
+    type: behavioral
+    question: Tell me about a time you mentored or helped a less experienced colleague.
+    minutes: 2
+    tips: "Use STAR. Explain how you adapted to the person, gave them ownership, and how they grew."
+    key_points:
+      - Who the person was and what they needed
+      - How you planned the support (pairing, small tasks, reviews)
+      - You let them do the work instead of doing it for them
+      - What they achieved afterwards
+    model_answer: |
+      Last year a junior engineer joined our platform team. He knew Linux well, but he had never
+      worked with Terraform or AWS. I became his mentor for his first three months. We agreed on a
+      plan: the first two weeks he paired with me on real tickets, then he took small tasks alone
+      and I reviewed his pull requests carefully, with comments that explained the why, not only
+      the what. Every Friday we had thirty minutes just for his questions. I tried hard not to take
+      the keyboard and fix things myself. After three months he was on the on-call rotation, and
+      after six months he led a small project to move our DNS records into Terraform.
+    follow_ups:
+      - What was difficult for you as a mentor?
+      - How do you know someone is ready for on-call?
+  - id: iv-beh-018
+    level: mid
+    type: behavioral
+    question: Tell me about a project that did not go well. What did you learn?
+    minutes: 2
+    tips: "Use STAR. Be honest about what went wrong, take your part of the responsibility, and focus on the lessons."
+    key_points:
+      - The project and what went wrong
+      - Your part of the responsibility
+      - What you did to limit the damage
+      - The lessons you apply today
+    model_answer: |
+      We tried to replace our old monitoring with a new tool in one go. I led the technical part.
+      We switched off the old system after two weeks, but we hadn't moved all the alerts, and we
+      missed a disk-full problem on a database for a few hours. Luckily there was no data loss.
+      My mistake was that I didn't make a checklist of every existing alert before the switch. We
+      turned the old system back on, listed all the alerts, and ran both systems in parallel for a
+      month until every alert had a replacement. The second try worked. Now, for any migration, I
+      always run the old and new systems side by side and compare them before switching off anything.
+    follow_ups:
+      - How did you tell the team about the mistake?
+      - How do you plan migrations now?
+  - id: iv-beh-019
+    level: junior
+    type: behavioral
+    question: Where do you see yourself in five years?
+    minutes: 1
+    tips: "Show ambition that fits the company. Talk about skills and responsibility, not a specific job title."
+    key_points:
+      - Skills you want to master
+      - More responsibility or impact
+      - It fits the path this company can offer
+      - Realistic, not too vague and not too precise
+    model_answer: |
+      In five years I'd like to be a senior platform engineer, someone the team trusts with the
+      hardest problems. Technically, I want to know Kubernetes and AWS really deeply, and I'd like
+      to have the CKA and an AWS professional certification. But it's not only technical. I'd also
+      like to help design the platform, not just run it, and to mentor newer engineers, like
+      people did for me. From what I've seen, your company is growing fast and the platform team
+      is growing too, so I think this is a place where that path is possible.
+    follow_ups:
+      - Would you like to manage people one day?
+      - What are you doing now to get there?
+  - id: iv-beh-020
+    level: junior
+    type: behavioral
+    question: What are your salary expectations?
+    minutes: 1
+    tips: "Give a researched range, link it to the role and the market, and stay open to discussing the whole package."
+    key_points:
+      - You researched the market for this role and location
+      - You give a range, not a single number
+      - You mention the whole package (benefits, training, remote work)
+      - You stay polite and open to discussion
+    model_answer: |
+      I've looked at salary data for DevOps engineers with my experience in this city, and also at
+      what similar companies offer. Based on that, I'm looking for something between 45 and 52
+      thousand euros a year. Of course, it depends on the whole package too. Things like training
+      budget, certifications, remote work and the on-call compensation matter to me. I'm flexible,
+      and I'd be happy to hear what range you have in mind for this position. What matters most to
+      me is the role itself and the chance to grow with the team.
+    follow_ups:
+      - What is your current salary?
+      - Is that range negotiable?
+  - id: iv-beh-021
+    level: junior
+    type: behavioral
+    question: Do you have any questions for us?
+    minutes: 1.5
+    tips: "Always say yes. Prepare three or four questions about the team, the work and success in the role. Do not ask about salary first."
+    key_points:
+      - You always have questions ready
+      - A question about the team and how it works
+      - A question about the technical challenges
+      - A question about what success looks like in the role
+      - A question about on-call or ways of working
+    model_answer: |
+      Yes, I have a few. First, could you tell me a bit about the team? How many people are on the
+      platform team, and how do you work with the developers? Second, what's the biggest technical
+      challenge the team is facing this year? Then I'd like to know what success looks like in this
+      role after the first six months. And finally, how does on-call work here, how often is
+      someone on call, and how many pages do you usually get in a week?
+    follow_ups:
+      - Is there anything about you that we haven't asked?
+  - id: iv-beh-022
+    level: senior
+    type: behavioral
+    question: Tell me about a time you convinced your team to adopt a new tool or practice.
+    minutes: 2
+    tips: "Use STAR. Show that you understood the team's concerns, tested the idea on a small scale, and used results to convince people."
+    key_points:
+      - The problem with the old way of working
+      - You listened to the doubts of the team
+      - You ran a small pilot or proof of concept
+      - You showed data from the pilot
+      - How adoption went and the final result
+    model_answer: |
+      Our team deployed to Kubernetes with scripts that ran kubectl apply from laptops, and nobody
+      knew exactly what was running in each cluster. I wanted to move to GitOps with Argo CD, but
+      some people were worried it would slow them down. So instead of a big presentation, I proposed
+      a pilot with one service for a month. I wrote a short guide and paired with the two people
+      who had the most doubts. After a month we compared: deployments were just as fast, rollbacks
+      took one click, and we found three manual changes in the cluster that nobody knew about. That
+      convinced the team. Within one quarter every service was managed with Argo CD.
+    follow_ups:
+      - What would you do if the pilot had failed?
+      - How do you handle someone who still refuses to change?
+    glossary: [gitops, kubectl]

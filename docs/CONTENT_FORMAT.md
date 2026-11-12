@@ -9,6 +9,11 @@ content/
 ├── glossary.yaml               # shared technical glossary
 ├── glossary.d/<area>.yaml      # more glossary terms, one file per area (terraform, security…)
 ├── vocabulary.yaml             # everyday exam English
+├── vocabulary.d/<area>.yaml    # more exam-English words, one file per area
+├── interviews/                 # job interviews in English
+│   ├── interviews.yaml         # categories
+│   ├── phrases.yaml            # useful spoken phrases, in groups
+│   └── <category>.yaml         # questions of one category
 ├── <exam>/                     # multiple-choice exam (kcna, kcsa, terraform)
 │   ├── exam.yaml               # metadata, domains with weights, optional facts_note
 │   └── <domain-id>.yaml        # one file per domain
@@ -18,6 +23,22 @@ content/
 ```
 
 A folder can have both (`content/terraform/` has the question bank and the labs).
+
+## Glossary terms
+
+```yaml
+terms:
+  - id: gha-workflow
+    term: Workflow (GitHub Actions)
+    match: [workflow, workflows]          # forms highlighted in the text (whole words)
+    certs: [gha, interview]               # optional: only highlight in these certifications
+    definition: "An automated process defined in a YAML file in .github/workflows."
+    es: "Flujo de trabajo automatizado"
+```
+
+A match form may belong to one term only. Use `certs` for everyday words that mean something
+special in one area, so they are not highlighted in other certifications' labs. Questions list
+their own `glossary` ids, and those are always highlighted.
 
 ## Exam English (`content/vocabulary.yaml`)
 
@@ -127,3 +148,58 @@ Rules for tasks:
 7. Mark with `guard: true` every check that already passes before the task is solved
    ("do not remove the taint", "the user cannot delete…"). Mock exams give partial credit
    only for the other checks, so doing nothing scores 0.
+
+## Lab environments (`labs.yaml` → `environments`)
+
+```yaml
+intro: "a Linux server in Docker"          # optional: "Choosing a lab starts <intro> with a terminal…"
+environments:
+  linux:                                   # = labs/envs/linux/compose.yaml
+    name: "Ubuntu 24.04 server with systemd"
+    nodes: 0                               # Kubernetes nodes; 0 = no cluster
+    label: "Linux"                         # short label on the lab cards
+    tools: "You are root on the server"    # terminal bar text (`code` allowed)
+    ready: "lab-ready"                     # optional; bash run until it exits 0 before the setup
+    ready_timeout: 300                     # seconds (default 300)
+```
+
+Every environment's compose file needs a service called `toolbox` with bash: setups and checks
+run there (`docker compose exec -T toolbox bash -s`) and it serves the web terminal (ttyd) on
+container port 7681, published as `127.0.0.1:${TERMINAL_PORT:-7681}:7681`. No other service
+may publish host ports (several labs and verifications run at the same time). With `nodes: 0`
+the default `ready` command is `lab-ready`, a script the toolbox image must ship.
+
+## Job interviews (`content/interviews/`)
+
+```yaml
+category: docker                     # a category id from interviews.yaml
+questions:
+  - id: iv-dkr-001                   # iv-<category short>-<NNN>
+    level: junior                    # junior | mid | senior
+    type: technical                  # technical | behavioral | scenario | design
+    question: What is the difference between an image and a container?
+    minutes: 1.5                     # target speaking time (default 2)
+    tips: "Define both, then give an analogy."   # how to structure the answer (optional)
+    key_points:                      # 2-8 points a good answer covers; the learner ticks them
+      - An image is a read-only template made of layers
+      - A container is a running instance of an image with a writable layer
+    model_answer: |                  # a strong spoken answer, 60-200 words, natural spoken English
+      ...
+    follow_ups: [How do layers make builds faster?]
+    glossary: [container-image]      # glossary ids (optional)
+    docs: [https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-an-image/]
+```
+
+A learner answers aloud (or types), then sees the key points and ticks the ones they covered.
+Covering 70% or more counts as a good answer for spaced repetition.
+
+`phrases.yaml` holds groups of useful spoken English:
+
+```yaml
+groups:
+  - id: time
+    name: "Buy time to think"
+    when: "When you need a few seconds before you answer."
+    phrases:
+      - { text: "Let me think about that for a second.", es: "Déjame pensarlo un segundo.", note: "" }
+```

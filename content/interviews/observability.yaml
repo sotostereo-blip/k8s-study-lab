@@ -1,0 +1,261 @@
+category: observability
+questions:
+  - id: iv-obs-001
+    level: junior
+    type: technical
+    question: What is the difference between metrics, logs and traces?
+    minutes: 1.5
+    tips: "Define each signal, say which question it answers, then explain how they work together."
+    key_points:
+      - Metrics are numbers over time, cheap to store and good for alerts
+      - Logs are detailed records of single events
+      - Traces follow one request across many services
+      - Metrics say something is wrong, logs and traces help find why
+      - They work best when linked, for example with a trace ID in the logs
+    model_answer: |
+      They're the three main types of telemetry. Metrics are numbers measured over time, like requests
+      per second, error rate or CPU usage. They're cheap to store and great for dashboards and alerts,
+      so they usually tell me that something is wrong. Logs are text records of individual events,
+      like an error with a stack trace. They give the details, but they're expensive at large scale.
+      Traces follow a single request as it goes through many services. Each step is a span with its
+      duration, so I can see exactly which service was slow. In practice they work together: an alert
+      on a metric tells me the checkout is slow, the trace shows the payment service is the problem,
+      and the logs of that service, with the same trace ID, show the actual error.
+    follow_ups:
+      - What is structured logging?
+      - What is OpenTelemetry?
+    docs: [https://opentelemetry.io/docs/concepts/signals/]
+    glossary: [metrics, logs, trace, span, opentelemetry]
+  - id: iv-obs-002
+    level: junior
+    type: technical
+    question: What is the difference between monitoring and observability?
+    minutes: 1
+    tips: "Give a short, clear contrast between known and unknown problems, and an example."
+    key_points:
+      - Monitoring watches known problems with predefined checks and dashboards
+      - Observability lets you ask new questions about unknown problems
+      - It depends on rich telemetry with context (high detail)
+      - Monitoring is part of observability
+    model_answer: |
+      Monitoring is about the problems you already know about. You decide in advance what to watch,
+      like CPU, disk or error rate, and you build dashboards and alerts for them. It answers "is the
+      system healthy?" Observability is a property of the system: how well you can understand what's
+      happening inside it from the outside, using its telemetry. It's about the problems you didn't
+      expect. For example, monitoring tells me latency went up. Observability lets me ask "is it only
+      users on the Android app, in Germany, using one payment method?" and get an answer without
+      deploying new code. So monitoring is part of observability, but observability needs richer data,
+      like traces and structured logs with lots of context.
+    follow_ups:
+      - What would you add to an app to make it more observable?
+    docs: [https://opentelemetry.io/docs/concepts/observability-primer/]
+    glossary: [observability]
+  - id: iv-obs-003
+    level: mid
+    type: technical
+    question: How does Prometheus work?
+    minutes: 2
+    tips: "Explain the pull model, the data model, PromQL and alerting, in that order."
+    key_points:
+      - Prometheus pulls (scrapes) metrics from HTTP endpoints
+      - Exporters expose metrics for systems like Linux or databases
+      - It stores time series identified by a metric name and labels
+      - PromQL is used to query data for dashboards and alerts
+      - Alertmanager groups, routes and silences alerts
+      - Service discovery finds targets, for example in Kubernetes
+    model_answer: |
+      Prometheus is a time series database for metrics, and it uses a pull model. Every few seconds
+      it scrapes an HTTP endpoint, usually slash metrics, on each target. Applications expose their
+      own metrics with a client library, and for things like Linux servers or databases you use
+      exporters, like the node exporter. Each time series is a metric name plus labels, for example
+      http_requests_total with method and status labels. Prometheus finds its targets with service
+      discovery, so in Kubernetes new Pods are scraped automatically. You query the data with PromQL,
+      for example the rate of 5xx errors over five minutes. Alert rules are PromQL expressions too.
+      When one fires, Prometheus sends it to Alertmanager, which groups alerts, removes duplicates and
+      routes them to Slack or PagerDuty. Grafana is usually used for the dashboards.
+    follow_ups:
+      - How do you monitor short-lived batch jobs with a pull model?
+      - How do you keep Prometheus data for a long time?
+    docs: [https://prometheus.io/docs/introduction/overview/]
+    glossary: [prometheus, alertmanager, metrics, label]
+  - id: iv-obs-004
+    level: mid
+    type: technical
+    question: What are SLIs, SLOs and SLAs? What is an error budget?
+    minutes: 2
+    tips: "Define the three in order from technical to business, then explain how the error budget guides decisions."
+    key_points:
+      - An SLI is a measurement of service quality, like the percentage of successful requests
+      - An SLO is the internal target for an SLI, like 99.9% over 30 days
+      - An SLA is a contract with customers with penalties
+      - The SLO should be stricter than the SLA
+      - The error budget is the allowed unreliability (100% minus the SLO)
+      - When the budget is used up, the team focuses on reliability over features
+    model_answer: |
+      An SLI, a service level indicator, is a number that measures what users care about. For
+      example, the percentage of requests that succeed, or that finish in under 300 milliseconds. An
+      SLO, a service level objective, is the target we set for that SLI, like 99.9 percent of
+      requests succeed over 30 days. An SLA is a contract with customers, with penalties like refunds
+      if we miss it. So the SLA is usually lower than the SLO, to give us a safety margin. The error
+      budget is what's left: with 99.9 percent, we can fail 0.1 percent of requests, which is about 43
+      minutes of downtime a month. It's a great tool for decisions. If we have budget left, we can ship
+      features fast. If we've used it up, we slow down releases and work on reliability.
+    follow_ups:
+      - How would you choose an SLO for a new service?
+      - Why is 100% a bad target?
+    docs: [https://sre.google/sre-book/service-level-objectives/]
+    glossary: [sli, slo, sla]
+  - id: iv-obs-005
+    level: mid
+    type: technical
+    question: What makes a good alert? How do you deal with alert fatigue?
+    minutes: 2
+    tips: "Give the principles of a good alert, then concrete actions to reduce noise."
+    key_points:
+      - Alert on symptoms users feel, not on every cause
+      - Every page must be urgent and actionable
+      - Each alert links to a runbook or dashboard
+      - Use SLO burn-rate alerts instead of fixed thresholds where possible
+      - Review alerts regularly and delete or fix noisy ones
+      - Non-urgent issues go to a ticket, not a page
+    model_answer: |
+      For me, a good alert has three qualities. It's about a symptom users feel, like high error rate
+      or slow responses, not only a cause like high CPU. It's urgent, so it can't wait until the
+      morning. And it's actionable: the person who gets it knows what to do, ideally with a link to a
+      runbook and a dashboard. Alert fatigue happens when people get so many alerts that they start
+      ignoring them, and that's dangerous. To fix it, I'd review every alert that fired in the last
+      month. If nobody acted on it, we delete it or change it to a ticket or an email. I also like
+      SLO-based burn-rate alerts, because they page only when we're really burning the error budget.
+      In my last team, we went from about forty pages a week to five this way.
+    follow_ups:
+      - What is a burn-rate alert?
+      - Should you alert on high CPU?
+    docs: [https://sre.google/workbook/alerting-on-slos/]
+    glossary: [slo, alertmanager]
+  - id: iv-obs-006
+    level: mid
+    type: technical
+    question: What are the four golden signals? Do you know the RED and USE methods?
+    minutes: 1.5
+    tips: "List the signals with one example each, then explain the two methods and where each one fits."
+    key_points:
+      - The golden signals are latency, traffic, errors and saturation
+      - RED (rate, errors, duration) is for request-driven services
+      - USE (utilization, saturation, errors) is for resources like CPU and disks
+      - They give a standard starting dashboard for every service
+    model_answer: |
+      The four golden signals come from the Google SRE book. Latency is how long requests take, and
+      it's important to measure failed requests separately. Traffic is how much demand there is, like
+      requests per second. Errors is the rate of failed requests. And saturation is how full the
+      service is, for example memory or a queue that's filling up. The RED method is a simpler version
+      for services: rate, errors and duration. I use RED for every API or microservice. The USE method
+      is for resources: utilization, saturation and errors, for things like CPU, disks or network
+      interfaces. Together they give a standard dashboard, so when something breaks at night, every
+      service looks the same and you know where to look.
+    follow_ups:
+      - How would you measure saturation for a web service?
+    docs: [https://sre.google/sre-book/monitoring-distributed-systems/]
+    glossary: [metrics]
+  - id: iv-obs-007
+    level: mid
+    type: scenario
+    question: Users say the app is slow, but there are no errors in the logs. How do you investigate?
+    minutes: 2
+    tips: "Confirm and scope the problem with metrics, use traces to find where the time goes, then check resources and dependencies."
+    key_points:
+      - Confirm it with latency metrics, especially p95 and p99
+      - Find the scope (which endpoints, users, regions, since when)
+      - Check recent deploys and config changes
+      - Use traces to see which service or call is slow
+      - Check saturation and dependencies like the database, cache or external APIs
+    model_answer: |
+      No errors doesn't mean no problem, so I'd start with the latency metrics. I'd look at the p95
+      and p99, not the average, because the average can hide a slow group of users. Then I'd find the
+      scope: is it all endpoints or only one, all users or one region, and when did it start? I'd
+      check if that time matches a deploy or a config change. Next, I'd open some slow traces, which
+      usually show where the time goes. For example, the API waits two seconds for one database query.
+      Then I'd look at that component: is the database CPU high, is there a lock, a missing index, a
+      full connection pool? Or is the cache hit rate down? I'd also check saturation of the app
+      itself, like CPU throttling in Kubernetes, which makes things slow with no errors at all.
+    follow_ups:
+      - Why are percentiles better than averages for latency?
+    docs: [https://opentelemetry.io/docs/concepts/signals/traces/]
+    glossary: [trace, metrics]
+  - id: iv-obs-008
+    level: mid
+    type: design
+    question: How would you set up centralized logging for applications running in Kubernetes?
+    minutes: 2
+    tips: "Describe the path of a log line from the app to the user, then mention cost and retention."
+    key_points:
+      - Applications write structured logs to stdout and stderr
+      - A DaemonSet agent collects logs from every node
+      - Logs are enriched with Pod, namespace and label metadata
+      - A backend like Loki, Elasticsearch or a cloud service stores them
+      - Set retention and log levels to control cost
+      - Keep secrets and personal data out of logs
+    model_answer: |
+      First, the applications. They should write logs to standard output, in a structured format like
+      JSON, with fields like level, message and trace ID. Then on each node, a log agent like Fluent
+      Bit or the OpenTelemetry Collector runs as a DaemonSet. It reads the container log files, adds
+      Kubernetes metadata like the namespace, the Pod name and labels, and sends everything to a
+      central backend. That could be Loki, Elasticsearch or a cloud service like CloudWatch. Then
+      Grafana or Kibana for searching. Cost is the big issue with logs, so I'd set retention, maybe
+      seven days for debug logs and longer for audit logs, and avoid debug level in production. I'd
+      also make sure we don't log secrets or personal data, because logs are read by many people.
+    follow_ups:
+      - Why is structured logging better than plain text?
+      - How would you handle a service that suddenly logs ten times more?
+    docs: [https://kubernetes.io/docs/concepts/cluster-administration/logging/]
+    glossary: [logs, daemonset, label]
+  - id: iv-obs-009
+    level: senior
+    type: technical
+    question: What is high cardinality in metrics, and why is it a problem?
+    minutes: 1.5
+    tips: "Define cardinality with a calculation example, then the impact and how to avoid it."
+    key_points:
+      - Each unique combination of label values is a separate time series
+      - Labels with many values, like user ID, create millions of series
+      - It uses a lot of memory and makes queries slow or fail
+      - Keep labels to bounded values like method, status and route
+      - Put per-user or per-request detail in logs or traces instead
+    model_answer: |
+      In Prometheus, every unique combination of a metric name and label values is a separate time
+      series. Cardinality is the number of those series. If I have a metric with a method label with
+      four values and a status label with five values, that's twenty series, which is fine. But if a
+      developer adds a user ID label, or the full URL with IDs inside, it can become millions of
+      series. That uses a huge amount of memory, makes queries slow, and can crash Prometheus. So I
+      keep labels to things with a small, bounded set of values, like method, status code, and the
+      route template instead of the real URL. Detail about single users or requests belongs in logs
+      or traces, which are designed for it. I also watch the number of series per job, so we catch it
+      early.
+    follow_ups:
+      - How do you find which metric is causing the cardinality problem?
+    docs: [https://prometheus.io/docs/practices/naming/#labels]
+    glossary: [prometheus, label, metrics]
+  - id: iv-obs-010
+    level: senior
+    type: technical
+    question: Explain the Prometheus metric types. Why do we use percentiles instead of averages for latency?
+    minutes: 2
+    tips: "Name each type with a real example, then explain the percentile point with a concrete case."
+    key_points:
+      - A counter only goes up, like total requests, and is used with rate()
+      - A gauge goes up and down, like memory in use
+      - A histogram counts values in buckets, used for latency
+      - Percentiles like p99 come from histograms with histogram_quantile
+      - Averages hide the slow requests that some users feel
+    model_answer: |
+      There are four main types. A counter only goes up, like the total number of requests. You
+      almost never look at the raw number, you use rate to get requests per second. A gauge can go up
+      and down, like memory in use or the number of items in a queue. A histogram counts observations
+      in buckets, for example how many requests took under 100 milliseconds, under 250, and so on.
+      That's what we use for latency. A summary is similar but calculates quantiles in the app, and it
+      can't be aggregated across instances, so I prefer histograms. For latency, averages lie. If 98
+      requests take 50 milliseconds and two take ten seconds, the average looks fine, but those two
+      users had a terrible experience. The p99, from histogram_quantile, shows that.
+    follow_ups:
+      - What happens to a counter when the app restarts?
+    docs: [https://prometheus.io/docs/concepts/metric_types/]
+    glossary: [prometheus, metrics]

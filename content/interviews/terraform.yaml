@@ -1,0 +1,265 @@
+category: terraform
+questions:
+  - id: iv-tf-001
+    level: junior
+    type: technical
+    question: What is Terraform, and why use Infrastructure as Code?
+    minutes: 1.5
+    tips: "Define Terraform in one sentence, then give three clear benefits of IaC with an example."
+    key_points:
+      - Terraform describes infrastructure in declarative HCL files
+      - Providers let it manage many clouds and services
+      - Code is versioned in Git and reviewed in pull requests
+      - Environments can be created again in the same way
+      - The plan shows changes before they happen
+    model_answer: |
+      Terraform is an Infrastructure as Code tool from HashiCorp. I describe the infrastructure I
+      want, like a VPC, some servers and a database, in HCL files, and Terraform works out how to
+      create or change it. It's declarative, so I say what I want, not the steps. It works with
+      almost any platform through providers: AWS, Azure, Kubernetes, even GitHub or Datadog. The
+      benefits of IaC are big. Everything is in Git, so changes are reviewed in pull requests and we
+      have a history of who changed what. Environments are repeatable, so staging really looks like
+      production. And before applying, terraform plan shows exactly what will change. In my last job,
+      rebuilding a test environment went from a few days of clicking to about twenty minutes.
+    follow_ups:
+      - What is the difference between declarative and imperative tools?
+      - How does Terraform compare to Ansible?
+    docs: [https://developer.hashicorp.com/terraform/intro]
+    glossary: [iac, tf-declarative, tf-provider, tf-hcl]
+  - id: iv-tf-002
+    level: junior
+    type: technical
+    question: What is the Terraform state file, and why is it important?
+    minutes: 1.5
+    tips: "Explain what is inside, what Terraform uses it for, and the risks of handling it badly."
+    key_points:
+      - State maps the resources in the code to real objects in the cloud
+      - Terraform compares code, state and reality to build the plan
+      - It can contain secrets in plain text
+      - It should be stored in a remote backend, not in Git
+      - Never edit it by hand, use terraform state commands
+    model_answer: |
+      The state file is how Terraform remembers what it manages. It maps each resource in my code to
+      the real object in the cloud, for example aws_instance.web to instance i-0abc. It also stores
+      attributes and dependencies. When I run plan, Terraform compares my code with the state and
+      with the real infrastructure to decide what to create, change or destroy. Without the state,
+      it wouldn't know that a server already exists. It's important to protect it. It can contain
+      sensitive values in plain text, like database passwords, so it should never go into Git. We
+      keep it in a remote backend, like an S3 bucket with encryption and versioning. And I never edit
+      it by hand. If I need to move or remove something, I use terraform state commands or moved
+      blocks.
+    follow_ups:
+      - What would happen if you lost the state file?
+      - How do you remove a resource from state without destroying it?
+    docs: [https://developer.hashicorp.com/terraform/language/state]
+    glossary: [tf-state, tf-backend, tf-sensitive]
+  - id: iv-tf-003
+    level: mid
+    type: technical
+    question: How do you use Terraform in a team? What is state locking?
+    minutes: 2
+    tips: "Explain the problem with local state first, then remote state, locking, and the team workflow."
+    key_points:
+      - Local state does not work when several people run Terraform
+      - A remote backend stores one shared state file
+      - State locking stops two runs from changing the state at the same time
+      - On AWS the S3 backend supports locking
+      - Changes go through pull requests with the plan, and CI runs apply
+    model_answer: |
+      With local state, each person has their own copy, and things break quickly. So in a team the
+      state goes to a remote backend, like S3 or HCP Terraform, and everybody uses the same file. Then
+      there's the problem of two people running apply at the same time and corrupting the state.
+      State locking solves that: when a run starts, Terraform takes a lock, and any other run waits
+      or fails until the lock is released. With the S3 backend, locking used to need a DynamoDB table,
+      and newer versions can lock with a file in S3 itself. On top of that, we have a workflow: every
+      change is a pull request, CI runs terraform plan and posts it as a comment, someone reviews it,
+      and only the pipeline runs apply after the merge. Nobody applies from a laptop.
+    follow_ups:
+      - What do you do if a lock is stuck after a crashed run?
+      - Why should only the pipeline run apply?
+    docs: [https://developer.hashicorp.com/terraform/language/state/locking]
+    glossary: [tf-state-locking, tf-backend, tf-state]
+  - id: iv-tf-004
+    level: junior
+    type: technical
+    question: Describe the basic Terraform workflow. What do init, plan and apply do?
+    minutes: 1.5
+    tips: "Go through the commands in order, with one sentence each, and add what you check in the plan."
+    key_points:
+      - terraform init downloads providers and modules and sets up the backend
+      - terraform fmt and validate check style and syntax
+      - terraform plan shows what will be created, changed or destroyed
+      - terraform apply makes the changes, ideally from a saved plan
+      - Read the plan carefully, especially destroy and replace actions
+    model_answer: |
+      The first command is terraform init. It downloads the providers and modules, and connects to
+      the backend where the state lives. Then I usually run terraform fmt to format the code and
+      terraform validate to catch syntax errors. Next is terraform plan. It compares the code with
+      the state and the real infrastructure and shows what will be created, changed or destroyed. I
+      read the plan carefully, especially anything that says "must be replaced" or "destroy", because
+      a small change, like renaming something, can recreate a database. Then terraform apply makes the
+      changes. In a pipeline I save the plan to a file and apply exactly that file, so what was
+      reviewed is what gets applied. And terraform destroy removes everything, which I mainly use for
+      test environments.
+    follow_ups:
+      - Why apply a saved plan instead of running apply directly?
+      - What does the lock file do?
+    docs: [https://developer.hashicorp.com/terraform/intro/core-workflow]
+    glossary: [tf-plan, tf-saved-plan, tf-lock-file]
+  - id: iv-tf-005
+    level: mid
+    type: technical
+    question: What are Terraform modules, and how do you design a good one?
+    minutes: 2
+    tips: "Define a module, give a real example, then list your design rules."
+    key_points:
+      - A module is a folder of Terraform code you can reuse
+      - It takes input variables and returns outputs
+      - A good module does one clear job with sensible defaults
+      - Pin module versions, for example with Git tags
+      - Avoid wrapping a single resource or making a giant module
+    model_answer: |
+      A module is just a folder of Terraform files that you can call from other code, with input
+      variables and outputs. Every configuration is a root module, and it can call child modules.
+      For example, in my last company we had a service module that created everything a microservice
+      needed: an ECR repository, an IAM role, a few alarms and a DNS record. A team just called it
+      with the service name. For a good module, I try to give it one clear job, a small number of
+      variables with sensible defaults, and useful outputs. I document it with a README and an
+      example. And I version it, with Git tags or a private registry, so a change in the module
+      doesn't break every team at once. I avoid modules that just wrap a single resource, because
+      they add complexity without real value.
+    follow_ups:
+      - How do you test a module?
+      - How do you roll out a breaking change in a shared module?
+    docs: [https://developer.hashicorp.com/terraform/language/modules]
+    glossary: [tf-module, tf-variable, tf-output]
+  - id: iv-tf-006
+    level: mid
+    type: scenario
+    question: Someone changed a resource by hand in the AWS console. Terraform now shows a difference. What do you do?
+    minutes: 2
+    tips: "Explain what drift is, how you investigate it, the two ways to fix it, and how you prevent it."
+    key_points:
+      - This is configuration drift between code and reality
+      - Find out who changed what and why before acting
+      - Either update the code to keep the change, or apply to revert it
+      - Use a refresh-only plan to see and accept the real values
+      - Prevent it with limited console access and regular drift checks
+    model_answer: |
+      That's configuration drift: the real infrastructure no longer matches the code. First, I don't
+      just run apply, because that would revert the change, and maybe it was a fix during an incident.
+      So I look at the plan to see exactly what's different, and I check CloudTrail or ask in the team
+      channel who changed it and why. Then there are two options. If the change was correct, I
+      update the Terraform code so it matches, and the plan becomes clean. If it was a mistake, I let
+      Terraform apply the code and revert it. A refresh-only plan is useful to see the real values and
+      update the state without changing anything. To prevent it, we give read-only console access to
+      most people and run a scheduled plan every night that alerts us when drift appears.
+    follow_ups:
+      - What is ignore_changes, and when is it OK to use it?
+      - How would you detect drift automatically?
+    docs: [https://developer.hashicorp.com/terraform/tutorials/state/resource-drift]
+    glossary: [tf-drift, tf-refresh-only, tf-lifecycle]
+  - id: iv-tf-007
+    level: mid
+    type: technical
+    question: What is the difference between count and for_each?
+    minutes: 1.5
+    tips: "Explain how each one names the instances, then the classic problem with count."
+    key_points:
+      - Both create several instances of a resource
+      - count uses a number and indexes like [0], [1]
+      - for_each uses a map or set and keys like ["web"]
+      - Removing an item from the middle of a count list recreates other resources
+      - Use count for on and off switches, for_each for real collections
+    model_answer: |
+      Both let me create several copies of a resource from one block. With count, I give a number,
+      and the instances are identified by an index: zero, one, two. With for_each, I give a map or a
+      set of strings, and each instance is identified by its key, like users["alice"]. The difference
+      matters when the list changes. With count, if I remove an item from the middle of the list, all
+      the indexes after it move, and Terraform wants to destroy and recreate those resources. With
+      for_each, removing "alice" only removes alice. So I use for_each for real collections, like
+      users, buckets or subnets, and I use count mostly as an on-off switch, like count equals one if
+      a feature is enabled, otherwise zero.
+    follow_ups:
+      - How do you move from count to for_each without recreating resources?
+    docs: [https://developer.hashicorp.com/terraform/language/meta-arguments/for_each]
+    glossary: [tf-count, tf-for-each]
+  - id: iv-tf-008
+    level: senior
+    type: design
+    question: How would you manage dev, staging and production environments with Terraform?
+    minutes: 2.5
+    tips: "Compare the main options, choose one, and explain how you keep environments similar and production safe."
+    key_points:
+      - Use the same modules for every environment
+      - Separate state per environment (folders or workspaces)
+      - Different values come from tfvars or variables only
+      - Separate cloud accounts for production give a strong boundary
+      - Changes are promoted from dev to production through the pipeline
+      - Production applies need approval
+    model_answer: |
+      My main rule is: same code, different inputs, separate state. I put the real logic in modules,
+      and then I have one small root configuration per environment, usually a folder like envs/dev,
+      envs/staging and envs/prod. Each one calls the same modules with different values, like smaller
+      instances in dev, and each one has its own state file. Some teams use CLI workspaces instead,
+      and that's fine for very similar environments, but I find folders clearer and harder to get
+      wrong. I also like separate AWS accounts for production, because it's a strong security
+      boundary. Then changes are promoted through the pipeline: merge, apply to dev, check, then
+      staging, and production needs a manual approval. I pin module versions, so I can test a new
+      version in dev before production uses it.
+    follow_ups:
+      - What are the risks of CLI workspaces?
+      - How do you share outputs between configurations?
+    docs: [https://developer.hashicorp.com/terraform/language/state/workspaces]
+    glossary: [tf-module, tf-tfvars, tf-cli-workspace, tf-state]
+  - id: iv-tf-009
+    level: mid
+    type: technical
+    question: How do you handle secrets in Terraform?
+    minutes: 1.5
+    tips: "Say where secrets must not go, then where they should come from, and how you protect the state."
+    key_points:
+      - Never write secrets in .tf or tfvars files in Git
+      - Read them from a secret manager or environment variables
+      - Mark variables and outputs as sensitive
+      - Values can still end up in the state, so protect the state
+      - Ephemeral resources and write-only arguments keep values out of state
+    model_answer: |
+      First, secrets never go into the code or into tfvars files in Git. Instead I get them at run
+      time, for example from AWS Secrets Manager or Vault with a data source, or from environment
+      variables in the pipeline. I mark variables and outputs as sensitive, so Terraform hides them
+      in the plan output. But that only hides them from the screen, they can still be stored in the
+      state. So the state is treated as a secret too: an encrypted S3 bucket, strict access, and
+      versioning. Newer Terraform versions also have ephemeral resources and write-only arguments,
+      which keep values out of the state completely. And when possible, I let the service generate
+      and manage the password itself, like RDS can do with Secrets Manager, so Terraform never sees it.
+    follow_ups:
+      - Who should have access to the state bucket?
+    docs: [https://developer.hashicorp.com/terraform/language/manage-sensitive-data]
+    glossary: [tf-sensitive, tf-state, tf-vault, tf-ephemeral, tf-write-only]
+  - id: iv-tf-010
+    level: senior
+    type: scenario
+    question: You need to bring existing manual infrastructure under Terraform, and later rename resources without destroying them. How?
+    minutes: 2
+    tips: "Explain import first, then refactoring with moved blocks, and how you check that nothing is destroyed."
+    key_points:
+      - Use import blocks (or terraform import) to add existing resources to state
+      - Terraform can generate the configuration for imported resources
+      - The goal is a plan with no changes after the import
+      - Use moved blocks to rename or move resources into modules
+      - Always check the plan shows no destroy before applying
+    model_answer: |
+      For existing resources, I use import blocks. I write an import block with the resource address
+      and the real ID, for example the bucket name, and Terraform can even generate the configuration
+      for me with plan and the generate-config-out option. The generated code is a starting point, so
+      I clean it up and use variables. The goal is a plan that says "no changes" apart from the
+      import. Then later, when I refactor, like renaming a resource or moving it into a module, I
+      don't touch the state by hand. I add a moved block with the old and the new address, and
+      Terraform understands it's the same object. In both cases the most important check is the plan:
+      before I apply, I make sure there's no destroy or replace anywhere.
+    follow_ups:
+      - What is the difference between an import block and the terraform import command?
+      - When would you use a removed block?
+    docs: [https://developer.hashicorp.com/terraform/language/import]
+    glossary: [tf-import-block, tf-moved-block, tf-resource-address]

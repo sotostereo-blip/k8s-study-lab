@@ -1,0 +1,298 @@
+category: linux
+questions:
+  - id: iv-lnx-001
+    level: junior
+    type: technical
+    question: What is the difference between a process and a thread?
+    minutes: 1.5
+    tips: "Define both, give the key difference (shared memory), then a practical example."
+    key_points:
+      - A process is a running program with its own memory space
+      - Threads live inside a process and share its memory
+      - Creating a thread is cheaper than creating a process
+      - A crash in one thread can bring down the whole process
+      - Processes are isolated, so communication between them needs IPC
+    model_answer: |
+      A process is a running program. The kernel gives it its own memory space, its own file
+      descriptors and a PID. A thread is a unit of execution inside a process, and all the threads
+      of one process share the same memory. That's the key difference. Because they share memory,
+      threads are cheaper to create and they can communicate very quickly, but you need locks to
+      avoid race conditions, and if one thread crashes, usually the whole process dies. Processes
+      are isolated from each other, so they're safer, but they need things like pipes or sockets to
+      talk. For example, a web server like Nginx uses several worker processes, and many Java apps
+      use one process with lots of threads.
+    follow_ups:
+      - How can you see the threads of a process?
+      - What is a race condition?
+    docs: [https://man7.org/linux/man-pages/man7/pthreads.7.html]
+  - id: iv-lnx-002
+    level: mid
+    type: scenario
+    question: A Linux server is slow. What do you check?
+    minutes: 2.5
+    tips: "Go from general to specific. Name the resource (CPU, memory, disk, network) and the command you use for each one."
+    key_points:
+      - Ask what "slow" means and since when, and check recent changes
+      - Check load and CPU with uptime and top
+      - Check memory and swap with free
+      - Check disk I/O and space with iostat and df
+      - Check network and logs (journalctl, dmesg)
+      - Find the process responsible before changing anything
+    model_answer: |
+      First I'd ask a couple of questions: slow for whom, since when, and did anything change, like
+      a deploy? Then I'd log in and run uptime to see the load average, and top or htop to see if
+      the CPU is busy and which process is using it. I'd also check if a lot of time is spent in
+      I/O wait. Next, memory: free -h, and I'd look at swap, because heavy swapping makes
+      everything slow. Then disk: df -h for space and iostat for disk activity. If those look fine,
+      I'd look at the network with ss and check the logs with journalctl and dmesg, for example for
+      OOM kills or disk errors. Once I find the process that's causing it, I decide whether to
+      restart it, scale, or escalate it to the team that owns it.
+    follow_ups:
+      - What does high I/O wait tell you?
+      - How would you check this on 50 servers at once?
+    docs: [https://man7.org/linux/man-pages/man1/top.1.html]
+    glossary: [logs]
+  - id: iv-lnx-003
+    level: mid
+    type: scenario
+    question: df says the disk is 100% full, but du shows much less used space. What is happening?
+    minutes: 2
+    tips: "Explain the likely cause first, then how you confirm it and how you fix it safely."
+    key_points:
+      - A deleted file is still open by a running process
+      - The space is only freed when the process closes the file
+      - Find it with lsof and look for deleted files
+      - Fix by restarting or signalling the process, or truncating the file
+      - Prevent it with log rotation that tells the app to reopen files
+    model_answer: |
+      The most common reason is that someone deleted a big file, usually a log, while a process
+      still had it open. On Linux the file disappears from the directory, so du can't see it, but
+      the space isn't freed until the process closes the file. So df still shows the disk as full.
+      To confirm it, I'd run lsof and filter for deleted files, something like lsof +L1. That shows
+      the process and the size. To fix it, I'd restart that service gracefully, or if I can't
+      restart it, I can truncate the file through /proc. To stop it happening again, I'd configure
+      logrotate properly, so the application reopens its log file after rotation.
+    follow_ups:
+      - What else can fill a disk without big files?
+      - What is an inode and can you run out of them?
+    docs: [https://man7.org/linux/man-pages/man8/lsof.8.html]
+  - id: iv-lnx-004
+    level: junior
+    type: technical
+    question: Explain Linux file permissions. What does chmod 755 mean?
+    minutes: 1.5
+    tips: "Explain the three groups and the three permissions, then decode the number."
+    key_points:
+      - Permissions for user (owner), group and others
+      - Read, write and execute, worth 4, 2 and 1
+      - 755 means rwx for the owner and r-x for group and others
+      - Execute on a directory means you can enter it
+      - chown changes the owner, chmod changes the permissions
+    model_answer: |
+      Every file has an owner and a group, and permissions for three sets of people: the owner, the
+      group, and everybody else. For each set there are three permissions: read, write and execute.
+      In numbers, read is 4, write is 2 and execute is 1, and you add them up. So in 755, the 7 is
+      4 plus 2 plus 1, so the owner can read, write and execute. The two 5s are 4 plus 1, so the
+      group and others can read and execute but not write. That's typical for scripts and
+      directories. On a directory, execute means you can enter it. For a private file like an SSH
+      key, you'd use 600, so only the owner can read and write it.
+    follow_ups:
+      - What is the sticky bit?
+      - What is the difference between chmod and chown?
+    docs: [https://man7.org/linux/man-pages/man1/chmod.1.html]
+  - id: iv-lnx-005
+    level: junior
+    type: technical
+    question: What is systemd? How do you make a service start at boot and find out why it failed?
+    minutes: 1.5
+    tips: "Say what systemd is, then give the exact commands in the order you would use them."
+    key_points:
+      - systemd is the init system, the first process (PID 1)
+      - Services are defined in unit files
+      - systemctl enable makes a service start at boot
+      - systemctl status shows the state and the last log lines
+      - journalctl -u shows the full logs of a unit
+    model_answer: |
+      systemd is the init system on most modern Linux distributions. It's the first process, PID 1,
+      and it starts and supervises all the other services. Each service is described in a unit
+      file, with things like the command to run, the user, and the restart policy. To start a
+      service now, I use systemctl start, and to make it start at boot, systemctl enable. You can do
+      both with enable --now. If a service fails, I first run systemctl status with the service
+      name. It shows if it's active or failed, the exit code, and the last few log lines. Then I
+      use journalctl -u with the service name to read the full logs, often with -f to follow them
+      while I restart it.
+    follow_ups:
+      - How do you make systemd restart a service when it crashes?
+      - What do you do after you edit a unit file?
+    docs: [https://www.freedesktop.org/software/systemd/man/latest/systemctl.html]
+  - id: iv-lnx-006
+    level: junior
+    type: technical
+    question: What is the difference between a hard link and a symbolic link?
+    minutes: 1
+    tips: "Start with inodes, then compare the two links and say what happens when you delete the original."
+    key_points:
+      - A hard link is another name for the same inode
+      - A symbolic link is a small file that points to a path
+      - Deleting the original breaks a symlink but not a hard link
+      - Hard links cannot cross file systems or point to directories
+    model_answer: |
+      To explain it, I need to mention inodes. On Linux the real data and metadata of a file are in
+      an inode, and a file name is just an entry pointing to that inode. A hard link is simply a
+      second name for the same inode. So if you delete the original name, the data is still there,
+      because the other name still points to it. A symbolic link, or symlink, is different. It's a
+      small special file that contains a path to another file. If you delete or move the target,
+      the symlink breaks. Symlinks can point to directories and to other file systems, and hard
+      links can't. In practice I use symlinks much more, for example for switching between
+      versions of an app.
+    follow_ups:
+      - How can you see the inode number of a file?
+    docs: [https://man7.org/linux/man-pages/man7/symlink.7.html]
+  - id: iv-lnx-007
+    level: mid
+    type: technical
+    question: What does the load average tell you?
+    minutes: 1.5
+    tips: "Explain the three numbers, then how to read them against the number of CPUs."
+    key_points:
+      - Three numbers for the last 1, 5 and 15 minutes
+      - The average number of tasks running or waiting
+      - On Linux it also includes tasks waiting for disk I/O
+      - Compare it with the number of CPU cores
+      - The trend between the three numbers matters
+    model_answer: |
+      When you run uptime or top, you see three numbers: the load average over the last one, five
+      and fifteen minutes. It's roughly the average number of tasks that are running or waiting to
+      run. On Linux it also counts tasks waiting for disk I/O, so high load doesn't always mean
+      high CPU. The important thing is to compare it with the number of cores. A load of 4 on a
+      four-core machine means it's fully busy, but on a sixteen-core machine it's fine. I also look
+      at the trend. If the one-minute value is much higher than the fifteen-minute value, the
+      problem is starting now. Then I'd check top to see if it's CPU or I/O wait.
+    follow_ups:
+      - How do you find the number of CPU cores?
+      - What can cause high load with low CPU usage?
+    docs: [https://man7.org/linux/man-pages/man1/uptime.1.html]
+  - id: iv-lnx-008
+    level: mid
+    type: technical
+    question: What is the difference between SIGTERM and SIGKILL? And what is a zombie process?
+    minutes: 1.5
+    tips: "Compare the two signals, say which one to use first, then define zombies and how to clean them."
+    key_points:
+      - SIGTERM asks the process to stop and can be handled
+      - SIGKILL stops the process at once and cannot be caught
+      - Always try SIGTERM first so the app can clean up
+      - A zombie has finished but its parent has not read its exit status
+      - Zombies are fixed by the parent calling wait or by killing the parent
+    model_answer: |
+      SIGTERM, signal 15, is a polite request to stop. The process can catch it, finish its current
+      work, close connections and then exit. It's what kill sends by default, and it's what
+      Kubernetes and Docker send first. SIGKILL, signal 9, can't be caught. The kernel just stops
+      the process immediately, so there's no clean-up, and you can lose data. So I always try
+      SIGTERM first and only use SIGKILL if the process doesn't stop after a while. A zombie process
+      is a process that has already finished, but its parent hasn't read its exit status yet, so it
+      stays in the process table. You can't kill a zombie. You fix it by making the parent call
+      wait, or by restarting the parent.
+    follow_ups:
+      - Why is PID 1 special inside a container?
+      - What does kill -HUP usually do?
+    docs: [https://man7.org/linux/man-pages/man7/signal.7.html]
+  - id: iv-lnx-009
+    level: mid
+    type: technical
+    question: How do you write a safe and reliable Bash script?
+    minutes: 2
+    tips: "List the habits one by one with a short reason for each."
+    key_points:
+      - Use set -euo pipefail to stop on errors
+      - Quote variables to avoid word splitting
+      - Check inputs and print clear error messages
+      - Use trap to clean up temporary files
+      - Make it idempotent so it can run twice safely
+      - Check it with shellcheck
+    model_answer: |
+      I start almost every script with set -euo pipefail. -e stops the script when a command fails,
+      -u fails on undefined variables, and pipefail makes a pipeline fail if any command in it
+      fails, not only the last one. Then I always quote my variables, because file names with
+      spaces can break things in surprising ways. I check the arguments at the start and print a
+      clear usage message. If the script creates temporary files, I use mktemp and a trap to delete
+      them on exit. I try to make scripts idempotent, so running them twice doesn't break anything.
+      And I run shellcheck on everything, even in the CI pipeline. If a script gets longer than
+      about a hundred lines, I usually rewrite it in Python.
+    follow_ups:
+      - What does "idempotent" mean?
+      - When is Bash the wrong tool?
+    docs: [https://www.gnu.org/software/bash/manual/bash.html]
+    glossary: [tf-idempotent]
+  - id: iv-lnx-010
+    level: senior
+    type: technical
+    question: What happens when you type a command like ls in a shell and press Enter?
+    minutes: 2
+    tips: "Follow the order of events: parsing, finding the program, fork, exec, wait, exit code."
+    key_points:
+      - The shell parses the line and expands variables and wildcards
+      - It checks aliases, built-ins and functions first
+      - It searches the PATH for the program
+      - It forks a child process and the child calls exec
+      - The parent waits and saves the exit code in $?
+    model_answer: |
+      First the shell reads the line and parses it. It expands things like variables, wildcards and
+      the tilde. Then it checks if ls is an alias, a function or a built-in command. On many systems
+      ls is actually an alias for ls --color. If it's not a built-in, the shell searches each
+      directory in the PATH until it finds the ls binary. Then it calls fork, which creates a copy
+      of the shell as a child process, and the child calls exec to replace itself with the ls
+      program. The kernel loads the binary and its libraries. Meanwhile the parent shell waits.
+      When ls finishes, it returns an exit code, the shell stores it in dollar question mark, and
+      shows the prompt again.
+    follow_ups:
+      - Why is cd a built-in and not a separate program?
+      - How would you see the system calls that ls makes?
+    docs: [https://man7.org/linux/man-pages/man2/fork.2.html]
+  - id: iv-lnx-011
+    level: junior
+    type: technical
+    question: How do you find which process is listening on a port?
+    minutes: 1
+    tips: "Give the main command, explain the flags briefly, and mention an alternative."
+    key_points:
+      - ss -tlnp lists listening TCP ports with the process
+      - You need sudo to see processes of other users
+      - lsof -i with the port is an alternative
+      - Check it listens on the right address (0.0.0.0 vs 127.0.0.1)
+    model_answer: |
+      I'd use ss, which replaced netstat on modern systems. ss -tlnp shows TCP sockets that are
+      listening, with numeric ports and the process name and PID. You usually need sudo to see
+      processes that belong to other users. I'd pipe it to grep with the port number. Another option
+      is lsof -i colon and the port. I also look at the local address. If a service listens on
+      127.0.0.1, it only accepts connections from the same machine, and that's a very common reason
+      why an app works locally but not from outside. If it listens on 0.0.0.0, it accepts
+      connections on all interfaces.
+    follow_ups:
+      - How do you test if a remote port is open?
+    docs: [https://man7.org/linux/man-pages/man8/ss.8.html]
+  - id: iv-lnx-012
+    level: mid
+    type: scenario
+    question: You cannot SSH into a server. How do you troubleshoot it?
+    minutes: 2
+    tips: "Work layer by layer: network, port, SSH service, authentication. Use ssh -v to see where it fails."
+    key_points:
+      - Use ssh -v to see where the connection stops
+      - Check the network path and DNS (ping, nc on port 22)
+      - Check firewalls and security groups
+      - Check that sshd is running, using the console if needed
+      - Check keys, file permissions and the user
+    model_answer: |
+      First I'd run ssh with -v, because the verbose output tells me where it fails. If it times
+      out, it's usually network. I'd check that the hostname resolves, and test port 22 with nc.
+      A timeout often means a firewall or a security group is blocking it. If I get "connection
+      refused", the server is reachable but nothing is listening, so sshd may be down. If it's
+      "permission denied", it's authentication: the wrong key, the wrong user, or bad permissions
+      on the .ssh folder or the authorized_keys file. If I can't get in at all, I'd use the cloud
+      provider's serial console or session manager to check sshd and the logs, for example with
+      journalctl -u sshd.
+    follow_ups:
+      - What permissions should ~/.ssh and authorized_keys have?
+      - How can you access a server with no SSH at all on AWS?
+    docs: [https://man7.org/linux/man-pages/man1/ssh.1.html]

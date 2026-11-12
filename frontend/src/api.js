@@ -35,5 +35,14 @@ export const api = {
   mockStart: (track, tasks) => request('/mock/start', { method: 'POST', body: { track_id: track, tasks } }),
   mockCurrent: (track) => request(`/mock/current?track_id=${track}`),
   mockSubmit: (id) => request(`/mock/${id}/submit`, { method: 'POST' }),
+  interviewCategories: () => request('/interview/categories'),
+  interviewNext: (category, level, n = 10) =>
+    request(`/interview/next?n=${n}${category ? `&category=${category}` : ''}${level ? `&level=${level}` : ''}`),
+  interviewReview: (id) => request(`/interview/${id}/review`),
+  interviewGrade: (body) => request('/interview/grade', { method: 'POST', body }),
+  interviewMockStart: (body) => request('/interview/mock/start', { method: 'POST', body }),
+  interviewMockFinish: (id) => request(`/interview/mock/${id}/finish`, { method: 'POST' }),
+  interviewStats: () => request('/interview/stats'),
+  interviewPhrases: () => request('/interview/phrases'),
   mockAbandon: (id) => request(`/mock/${id}/abandon`, { method: 'POST' }),
 }

@@ -39,3 +39,9 @@ certifications:
     exam: terraform
     track: terraform
     description: Multiple choice exam, plus hands-on labs with Terraform and a local AWS emulator.
+  - id: interview
+    name: DevOps and Cloud Engineer job interviews (in English)
+    short: Interviews
+    area: Career
+    interview: true
+    description: Answer real interview questions aloud in English, check the key points, and run timed mock interviews.

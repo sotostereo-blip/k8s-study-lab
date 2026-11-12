@@ -1,0 +1,312 @@
+category: cicd
+questions:
+  - id: iv-cicd-001
+    level: junior
+    type: technical
+    question: What is the difference between continuous integration, continuous delivery and continuous deployment?
+    minutes: 1.5
+    tips: "Define the three in order, and make the difference between delivery and deployment very clear."
+    key_points:
+      - CI means merging small changes often, with an automatic build and tests
+      - Continuous delivery means every change is always ready to release
+      - In continuous delivery the release to production is a manual decision
+      - Continuous deployment releases every passing change to production automatically
+      - Continuous deployment needs very good tests and monitoring
+    model_answer: |
+      Continuous integration is about developers merging small changes into the main branch often, at
+      least daily, and every change triggers an automatic build and tests. So problems show up in
+      minutes, not at the end of the month. Continuous delivery goes further. Every change that
+      passes the pipeline is packaged and deployed to staging, so it's always ready to go to
+      production, but a person decides when to release, maybe with a button. Continuous deployment
+      removes that last manual step. If the pipeline is green, the change goes to production
+      automatically. That needs a lot of trust in your tests, plus good monitoring and quick
+      rollbacks. In my last team we did continuous delivery, with a one-click deploy to production.
+    follow_ups:
+      - What would you need before moving to continuous deployment?
+    docs: [https://docs.github.com/en/actions/get-started/continuous-integration]
+    glossary: [ci-cd]
+  - id: iv-cicd-002
+    level: mid
+    type: technical
+    question: Compare rolling, blue/green and canary deployments. When would you use each?
+    minutes: 2
+    tips: "Explain each strategy in one or two sentences, then compare them on risk, cost and rollback speed."
+    key_points:
+      - Rolling replaces old instances with new ones a few at a time
+      - Blue/green runs two full environments and switches all traffic at once
+      - Blue/green gives instant rollback but costs double during the release
+      - Canary sends a small percentage of traffic to the new version first
+      - Canary needs good metrics to decide whether to continue
+    model_answer: |
+      A rolling deployment replaces the old version a few instances at a time. It's the default in
+      Kubernetes, it's cheap, and there's no extra infrastructure, but for a while both versions run
+      together, and rolling back takes as long as rolling forward. Blue/green means I have two full
+      environments. Blue is live, I deploy the new version to green, test it, and then switch all the
+      traffic at once, usually at the load balancer. Rollback is instant, just switch back, but it
+      costs double during the release. Canary means I send a small part of the traffic, say five
+      percent, to the new version, watch the error rate and latency, and then increase it step by
+      step. It's the safest for big user-facing services, but it needs good metrics and tooling like
+      Argo Rollouts or a service mesh.
+    follow_ups:
+      - How do you handle database changes with blue/green?
+      - What metrics would you watch during a canary?
+    docs: [https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy]
+    glossary: [rolling-update, blue-green, canary, rollback]
+  - id: iv-cicd-003
+    level: junior
+    type: technical
+    question: What stages would you put in a typical CI/CD pipeline?
+    minutes: 2
+    tips: "Go through the stages in order, from commit to production, with one sentence for each."
+    key_points:
+      - Lint and unit tests run first because they are fast
+      - Build the artifact or container image once
+      - Security scans for dependencies, code and images
+      - Push the versioned artifact to a registry
+      - Deploy to staging and run integration or smoke tests
+      - Deploy to production with approval and monitoring
+    model_answer: |
+      I'd start with the fast checks, because I want quick feedback: linting, formatting and unit
+      tests. Then the build stage, where I build the container image once and tag it with the Git
+      commit SHA. Next, security checks: scanning dependencies, a static analysis tool, and an image
+      scan with something like Trivy. If all of that passes, I push the image to the registry. Then I
+      deploy that same image to staging and run integration tests or at least smoke tests against
+      it. Finally, the deploy to production, with a manual approval if the team needs it, and a step
+      that checks health and metrics after the deploy. I also like to fail the pipeline as early as
+      possible, so the slow steps don't run if a unit test is already broken.
+    follow_ups:
+      - How long should a good CI pipeline take?
+      - Where would you run end-to-end tests?
+    docs: [https://docs.github.com/en/actions/about-github-actions/understanding-github-actions]
+    glossary: [ci-cd, image-scanning, registry]
+  - id: iv-cicd-004
+    level: mid
+    type: technical
+    question: What is GitOps, and how does a tool like Argo CD work?
+    minutes: 2
+    tips: "Give the core principles, explain the pull model, and finish with the benefits and one challenge."
+    key_points:
+      - Git is the single source of truth for the desired state
+      - An agent in the cluster pulls changes from Git and applies them
+      - It continuously reconciles and detects drift
+      - Rollback is a Git revert, and Git history is the audit log
+      - CI does not need cluster credentials
+    model_answer: |
+      GitOps means the desired state of the system lives in Git, in declarative files like Kubernetes
+      manifests or Helm values. Instead of the pipeline pushing changes to the cluster, an agent
+      inside the cluster, like Argo CD or Flux, watches the repository and pulls the changes. It
+      keeps reconciling: it compares what's in Git with what's running, and if someone changes
+      something by hand, it shows the app as out of sync and can fix it automatically. The benefits
+      are nice. Every change is a commit, so you have a history and an audit trail for free.
+      Rollback is just git revert. And the CI system doesn't need credentials to production, which is
+      better for security. One challenge is secrets, because you can't just put them in Git, so you
+      need something like Sealed Secrets or External Secrets.
+    follow_ups:
+      - How do you promote a change from staging to production with GitOps?
+      - What is the difference between push-based and pull-based deployment?
+    docs: [https://argo-cd.readthedocs.io/en/stable/]
+    glossary: [gitops, reconciliation, manifest]
+  - id: iv-cicd-005
+    level: mid
+    type: scenario
+    question: The CI pipeline takes 40 minutes and developers are complaining. How do you make it faster?
+    minutes: 2
+    tips: "Start with measuring, then list the improvements from the biggest win to the smallest."
+    key_points:
+      - Measure first to find which steps take the most time
+      - Cache dependencies and Docker layers
+      - Run independent jobs in parallel
+      - Run only the tests affected by the change, or split tests across runners
+      - Use bigger or warm runners where it pays off
+      - Move slow end-to-end tests to a later stage or a nightly run
+    model_answer: |
+      First I'd measure, because I don't want to guess. Most CI tools show the duration of every job,
+      so I'd find the two or three slowest steps. Usually the big wins are caching and parallelism.
+      Caching dependencies, like npm or Maven packages, and Docker layers can save many minutes on
+      every run. Then I'd run independent jobs in parallel, for example linting, unit tests and the
+      security scan at the same time. If the tests are slow, I'd split them across several runners,
+      or in a monorepo only run the tests for the parts that changed. The slow end-to-end tests could
+      move to the merge pipeline or a nightly run. In my last job we went from about thirty-five
+      minutes to nine with these changes.
+    follow_ups:
+      - How do you cache Docker builds on short-lived runners?
+      - What is a reasonable target time for CI?
+    docs: [https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching]
+    glossary: [ci-cd]
+  - id: iv-cicd-006
+    level: mid
+    type: technical
+    question: How do you manage secrets in a CI/CD pipeline?
+    minutes: 1.5
+    tips: "Say what to avoid, the right storage, and how to avoid long-lived credentials."
+    key_points:
+      - Never commit secrets to the repository
+      - Store them in the CI secret store or a secret manager
+      - Prefer short-lived credentials through OIDC instead of static keys
+      - Limit secrets to protected branches and environments
+      - Mask secrets in logs and rotate them regularly
+    model_answer: |
+      Secrets never go into the repository, not even in a private one. The basic option is the CI
+      tool's own secret store, like GitHub Actions secrets, and I scope them to environments, so only
+      jobs on the main branch with approval can read the production secrets. Even better is to avoid
+      long-lived secrets completely. For cloud access, I use OIDC: the pipeline gets a short-lived
+      token from AWS by assuming a role, so there are no access keys stored anywhere that could leak.
+      For application secrets, the pipeline or the cluster reads them from a secret manager like
+      Vault. I also make sure secrets are masked in the logs, and I add a secret scanner in the
+      pipeline to catch anyone who commits a key by accident.
+    follow_ups:
+      - What would you do if a secret was pushed to Git by mistake?
+      - How does OIDC between GitHub and AWS work?
+    docs: [https://docs.github.com/en/actions/concepts/security/openid-connect]
+    glossary: [oidc, secret, tf-vault]
+  - id: iv-cicd-007
+    level: junior
+    type: technical
+    question: What is the difference between git merge and git rebase? Which branching strategy do you prefer?
+    minutes: 1.5
+    tips: "Explain both commands simply, the golden rule of rebase, then your branching choice with a reason."
+    key_points:
+      - Merge joins two branches with a merge commit and keeps history as it was
+      - Rebase replays your commits on top of another branch for a linear history
+      - Never rebase commits that others already use
+      - Trunk-based development uses short-lived branches merged often
+      - Long-lived feature branches cause big merge conflicts
+    model_answer: |
+      Both combine work from two branches. Merge creates a merge commit that joins them, and the
+      history stays exactly as it happened, which is safe but can look messy. Rebase takes my commits
+      and replays them on top of the other branch, so the history is a clean straight line. The golden
+      rule is: don't rebase commits that other people have already pulled, because you rewrite
+      history and cause problems for them. I usually rebase my own feature branch on main before
+      opening a pull request. For branching, I prefer trunk-based development: short-lived branches,
+      small pull requests, and merging to main at least once a day, with feature flags for unfinished
+      work. Long-lived branches like in GitFlow usually end in painful merges.
+    follow_ups:
+      - What is a squash merge?
+      - How do you resolve a merge conflict?
+    docs: [https://git-scm.com/docs/git-rebase]
+  - id: iv-cicd-008
+    level: mid
+    type: scenario
+    question: A deployment just broke production. What do you do?
+    minutes: 2
+    tips: "Show that you restore service first and investigate later. Then explain how you prevent it next time."
+    key_points:
+      - Confirm the impact and that it started with the deploy
+      - Roll back first, debug later
+      - Tell the team and stakeholders what is happening
+      - Check that metrics are back to normal
+      - Find the root cause and add a test or check to the pipeline
+    model_answer: |
+      My first goal is to restore service, not to find the bug. So I'd quickly confirm the problem
+      started with the deploy, by looking at the error rate and latency dashboards and the deploy
+      time. If it matches, I roll back right away. In Kubernetes that can be kubectl rollout undo, or
+      in GitOps a revert of the commit. At the same time I'd post in the incident channel, so people
+      know what's happening and don't all start debugging the same thing. Once the metrics are back
+      to normal, I'd investigate calmly: check the logs, the diff of the release, and reproduce it in
+      staging. Then we'd write a short postmortem and add something to the pipeline, like a new test
+      or an automatic canary check, so the same type of bug can't reach production again.
+    follow_ups:
+      - What if you cannot roll back, for example because of a database migration?
+      - How could the pipeline roll back automatically?
+    docs: [https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment]
+    glossary: [rollback]
+  - id: iv-cicd-009
+    level: mid
+    type: scenario
+    question: Your pipeline has flaky tests that fail randomly. How do you deal with them?
+    minutes: 1.5
+    tips: "Explain why flaky tests are dangerous, then how you find, isolate and fix them."
+    key_points:
+      - Flaky tests make people ignore red pipelines
+      - Track failures to find which tests are flaky
+      - Quarantine flaky tests so they do not block everyone
+      - Fix the root cause (timing, shared state, external services)
+      - Retries are a short-term workaround, not a fix
+    model_answer: |
+      Flaky tests are dangerous because people stop trusting the pipeline. When a red build is
+      "probably just flaky", someone eventually ignores a real failure. So I'd take it seriously.
+      First, find them. Most CI tools can show which tests fail and then pass on a retry, or we can
+      collect the results over a few weeks. Then I'd move the worst ones to a quarantine group that
+      still runs but doesn't block merges, and create a ticket for each one with an owner. Then fix
+      the real cause. Usually it's timing, like a sleep instead of waiting for a condition, tests
+      that share state or data, or tests that call a real external service. Automatic retries can be
+      a short-term workaround, but they hide the problem if you leave them forever.
+    follow_ups:
+      - How do you stop new flaky tests from being added?
+    docs: [https://docs.gitlab.com/ci/testing/unit_test_reports/]
+  - id: iv-cicd-010
+    level: senior
+    type: technical
+    question: How do you handle database schema migrations in a continuous delivery pipeline?
+    minutes: 2
+    tips: "Explain the risk, then the expand and contract pattern with a concrete example."
+    key_points:
+      - Migrations are versioned and run automatically by a tool (Flyway, Liquibase, etc.)
+      - Old and new app versions must both work with the schema during a deploy
+      - Use expand and contract, in several small releases
+      - Never rename or drop a column in the same release as the code change
+      - Take backups and test migrations on a copy of production data
+    model_answer: |
+      The tricky part is that during a rolling or blue/green deploy, the old and the new version of
+      the app run at the same time, against the same database. So every migration must be backward
+      compatible. I use the expand and contract pattern. For example, to rename a column: first
+      release, add the new column and make the app write to both. Second, copy the old data and make
+      the app read from the new column. Third, once nothing uses the old column, drop it. Each step
+      is a separate, safe deploy. The migrations themselves are versioned files, run automatically by
+      a tool like Flyway or Liquibase as a step before the app deploy. And I always test big
+      migrations on a copy of production data first, because a lock on a huge table can cause an
+      outage.
+    follow_ups:
+      - How do you roll back a migration?
+      - Should migrations run in an init container or a separate job?
+    docs: [https://documentation.red-gate.com/fd/migrations-271585107.html]
+  - id: iv-cicd-011
+    level: mid
+    type: technical
+    question: What are feature flags, and why are they useful for DevOps?
+    minutes: 1.5
+    tips: "Define them, give two or three uses, then mention the cost of keeping too many flags."
+    key_points:
+      - A feature flag turns a feature on or off without a new deploy
+      - It separates deploying code from releasing a feature
+      - It allows gradual rollouts to a percentage of users
+      - It works as a quick kill switch during incidents
+      - Old flags must be removed or they become technical debt
+    model_answer: |
+      A feature flag is a setting that turns a piece of code on or off at runtime, without a new
+      deploy. The big idea is that it separates deploying from releasing. We can merge and deploy
+      unfinished code to production with the flag off, which makes trunk-based development possible.
+      Then the product team decides when to turn it on. Flags also allow gradual rollouts, like
+      turning a feature on for internal users first, then ten percent of customers, then everyone.
+      And they're a great kill switch: if a new feature causes problems, you turn it off in seconds
+      instead of rolling back the whole release. The downside is that flags pile up, so we have a rule
+      to remove each flag within a few weeks after the feature is fully released.
+    follow_ups:
+      - How do you test code with many feature flags?
+    docs: [https://openfeature.dev/docs/reference/intro]
+  - id: iv-cicd-012
+    level: mid
+    type: technical
+    question: What does "build once, deploy many" mean, and how do you version your artifacts?
+    minutes: 1.5
+    tips: "Explain the principle and why it matters, then your versioning scheme."
+    key_points:
+      - Build the artifact once and promote the same one through every environment
+      - Rebuilding for each environment can produce a different artifact
+      - Environment differences come from configuration, not from the build
+      - Tag images with an immutable version like the Git SHA or semantic version
+      - Avoid the latest tag in deployments
+    model_answer: |
+      It means the pipeline builds the artifact, for example a container image, only one time, and
+      then that exact same image goes to dev, staging and production. If you rebuild for each
+      environment, you might get a different result, like a new version of a dependency, so what you
+      tested isn't what you deploy. The differences between environments come only from configuration,
+      like environment variables or Helm values. For versioning, I tag every image with the Git commit
+      SHA, so I always know which code is running, and for releases I add a semantic version like
+      2.4.1. I never deploy the latest tag, because it can change under you, and you can't tell what's
+      running or roll back reliably. For extra safety, you can deploy by image digest.
+    follow_ups:
+      - What is an image digest?
+      - How do you know which version is running in production right now?
+    docs: [https://docs.docker.com/get-started/docker-concepts/building-images/build-tag-and-publish-an-image/]
+    glossary: [image, digest, registry]

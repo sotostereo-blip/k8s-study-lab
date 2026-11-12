@@ -78,6 +78,9 @@ class Term(BaseModel):
     match: list[str] = []
     definition: str
     es: str
+    # Certification ids where the term is highlighted automatically (labs, interviews). Empty = all.
+    # For common words with a specific meaning in one area ("workflow", "bucket", "Role").
+    certs: list[str] = []
 
 
 class Word(BaseModel):
@@ -131,8 +134,19 @@ class LabTask(BaseModel):
 
 
 class LabEnvironment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
-    nodes: int = Field(ge=0)   # Kubernetes nodes; 0 = no cluster (e.g. Terraform + LocalStack)
+    nodes: int = Field(ge=0)   # Kubernetes nodes; 0 = no cluster (its toolbox must ship a `lab-ready` script)
+    label: str | None = None   # short label on the lab cards (default: "1 node", "2 nodes")
+    tools: str | None = None   # terminal bar text, e.g. "kubectl is ready (alias `k`)"
+    # bash run in the toolbox until it exits 0 before the task setup starts (after the nodes
+    # are Ready, for Kubernetes). Default: `lab-ready` when nodes is 0, nothing otherwise.
+    ready: str | None = None
+    ready_timeout: int = Field(default=300, ge=30, le=1200)
+
+    @property
+    def ready_command(self) -> str | None:
+        return self.ready or ("lab-ready" if self.nodes == 0 else None)
 
 
 class LabTrack(BaseModel):
@@ -145,6 +159,7 @@ class LabTrack(BaseModel):
     environments: dict[str, LabEnvironment]
     mock: bool = True                       # offer a multi-task mock exam for this track
     mock_environment: str | None = None     # environment that runs all mock exam tasks together
+    intro: str | None = None                # "Choosing a lab starts <intro> with a terminal in your browser"
 
 
 class Certification(BaseModel):
@@ -156,7 +171,52 @@ class Certification(BaseModel):
     area: str
     exam: str | None = None    # multiple-choice exam id (content/<id>/exam.yaml)
     track: str | None = None   # hands-on lab track id (content/<id>/labs.yaml)
+    interview: bool = False    # interview practice (content/interviews/)
     description: str = ""
+
+
+class InterviewCategory(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^[a-z]+$")
+    name: str
+    description: str = ""
+
+
+class InterviewQuestion(BaseModel):
+    """A job-interview question answered aloud (content/interviews/<category>.yaml)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^iv-[a-z]+-\d{3}$")
+    category: str = ""
+    level: Literal["junior", "mid", "senior"]
+    type: Literal["technical", "behavioral", "scenario", "design"]
+    question: str
+    key_points: list[str] = Field(min_length=2, max_length=8)   # what a good answer covers (self check)
+    model_answer: str                                           # a strong spoken answer, 60-200 words
+    follow_ups: list[str] = []                                  # what the interviewer may ask next
+    tips: str = ""                                              # how to structure the answer
+    glossary: list[str] = []
+    docs: list[str] = []
+    minutes: float = Field(default=2, ge=0.5, le=10)            # target speaking time
+
+    def public(self) -> dict:
+        """Without the key points and model answer (shown after answering)."""
+        return self.model_dump(include={"id", "category", "level", "type", "question", "tips", "glossary", "minutes"})
+
+
+class Phrase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str
+    es: str
+    note: str = ""
+
+
+class PhraseGroup(BaseModel):
+    """Useful spoken English for interviews (content/interviews/phrases.yaml)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    name: str
+    when: str
+    phrases: list[Phrase] = Field(min_length=1)
 
 
 class Library(BaseModel):
@@ -167,6 +227,9 @@ class Library(BaseModel):
     tasks: dict[str, LabTask] = {}
     vocabulary: dict[str, Word] = {}
     certifications: list[Certification] = []
+    interview_categories: dict[str, InterviewCategory] = {}
+    interview_questions: dict[str, InterviewQuestion] = {}
+    phrase_groups: list[PhraseGroup] = []
     errors: list[str] = []
 
     def tasks_for(self, track_id: str) -> list[LabTask]:
@@ -222,15 +285,17 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
             term_form_owner[m.lower()] = t.id
 
     vocabulary: dict[str, Word] = {}
-    vpath = content_dir / "vocabulary.yaml"
-    if vpath.exists():
-        term_forms = {m.lower() for t in glossary.values() for m in t.match}
-        seen_forms: dict[str, str] = {}
+    term_forms = {m.lower() for t in glossary.values() for m in t.match}
+    seen_forms: dict[str, str] = {}
+    # vocabulary.yaml plus one file per area in vocabulary.d/
+    for vpath in [content_dir / "vocabulary.yaml", *sorted((content_dir / "vocabulary.d").glob("*.yaml"))]:
+        if not vpath.exists():
+            continue
         for raw in _read(vpath).get("words", []):
             try:
                 w = Word(**raw)
             except Exception as e:
-                errors.append(f"vocabulary: {raw.get('id', '?')}: {e}")
+                errors.append(f"{vpath.name}: {raw.get('id', '?')}: {e}")
                 continue
             if w.id in vocabulary:
                 errors.append(f"vocabulary: duplicate id {w.id}")
@@ -312,6 +377,45 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
                 errors.append(f"{tfile}: duplicate task id {t.id}")
             tasks[t.id] = t
 
+    interview_categories: dict[str, InterviewCategory] = {}
+    interview_questions: dict[str, InterviewQuestion] = {}
+    phrase_groups: list[PhraseGroup] = []
+    idir = content_dir / "interviews"
+    if (idir / "interviews.yaml").exists():
+        for raw in _read(idir / "interviews.yaml").get("categories", []):
+            try:
+                c = InterviewCategory(**raw)
+            except Exception as e:
+                errors.append(f"interviews.yaml: {raw.get('id', '?')}: {e}")
+                continue
+            interview_categories[c.id] = c
+        for qfile in sorted(idir.glob("*.yaml")):
+            if qfile.name in ("interviews.yaml", "phrases.yaml"):
+                continue
+            data = _read(qfile)
+            cat = data.get("category")
+            if cat not in interview_categories:
+                errors.append(f"{qfile}: unknown interview category '{cat}'")
+                continue
+            for raw in data.get("questions", []):
+                try:
+                    q = InterviewQuestion(**raw, **({} if "category" in raw else {"category": cat}))
+                except Exception as e:
+                    errors.append(f"{qfile}: {raw.get('id', '?')}: {e}")
+                    continue
+                if q.id in interview_questions:
+                    errors.append(f"{qfile}: duplicate interview question id {q.id}")
+                for g in q.glossary:
+                    if g not in glossary:
+                        errors.append(f"{qfile}: {q.id} references unknown glossary term '{g}'")
+                interview_questions[q.id] = q
+        if (idir / "phrases.yaml").exists():
+            for raw in _read(idir / "phrases.yaml").get("groups", []):
+                try:
+                    phrase_groups.append(PhraseGroup(**raw))
+                except Exception as e:
+                    errors.append(f"phrases.yaml: {raw.get('id', '?')}: {e}")
+
     certifications: list[Certification] = []
     cpath = content_dir / "certifications.yaml"
     if cpath.exists():
@@ -325,7 +429,15 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
                 errors.append(f"certifications.yaml: {c.id}: unknown exam '{c.exam}'")
             if c.track and c.track not in tracks:
                 errors.append(f"certifications.yaml: {c.id}: unknown lab track '{c.track}'")
+            if c.interview and not interview_questions:
+                errors.append(f"certifications.yaml: {c.id}: no interview questions in content/interviews/")
             certifications.append(c)
+
+    cert_ids = {c.id for c in certifications}
+    for t in glossary.values():
+        for c in t.certs:
+            if cert_ids and c not in cert_ids:
+                errors.append(f"glossary: {t.id}: unknown certification '{c}' in certs")
 
     for t in tasks.values():
         for other in t.conflicts_with:
@@ -335,4 +447,6 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
     if errors and strict:
         raise ValueError("\n".join(errors))
     return Library(errors=errors, exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks,
-                   vocabulary=vocabulary, certifications=certifications)
+                   vocabulary=vocabulary, certifications=certifications,
+                   interview_categories=interview_categories, interview_questions=interview_questions,
+                   phrase_groups=phrase_groups)
