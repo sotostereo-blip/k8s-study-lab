@@ -17,6 +17,7 @@ task: |
 checks:
   - name: Deployment `frontend` still selects app=frontend
     run: '[ "$(kubectl get deploy frontend -o jsonpath="{.spec.selector.matchLabels.app}")" = frontend ]'
+    guard: true   # already true before the task; must stay true
   - name: Service `frontend-svc` has endpoints
     run: '[ -n "$(kubectl get endpoints frontend-svc -o jsonpath="{.subsets[*].addresses[*].ip}")" ]'
   - name: A Pod can open http://frontend-svc

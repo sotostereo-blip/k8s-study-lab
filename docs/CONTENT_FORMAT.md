@@ -68,10 +68,15 @@ task: |                        # what the student sees; supports `code`, **bold*
 checks:                        # bash in the toolbox; exit code 0 = pass
   - name: Deployment `broken-web` has 2 ready replicas
     run: '[ "$(kubectl get deploy broken-web -o jsonpath="{.status.readyReplicas}")" = 2 ]'
+  - name: The Deployment is still called broken-web in default
+    run: kubectl get deploy broken-web
+    guard: true                # already true before the task: no points, but breaking it = 0
 solution: |                    # shown only when the student asks
   kubectl set image deployment/broken-web nginx=nginx:1.27-alpine
 docs:
   - https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+mock_exam: true                # optional; false if the task changes the whole cluster
+conflicts_with: []             # optional; tasks that cannot share one cluster with this one
 ```
 
 Rules for tasks:
@@ -81,3 +86,9 @@ Rules for tasks:
 2. Before the task is solved, at least one check must fail; after the solution,
    all must pass. Test both on a real lab before opening a pull request.
 3. Use small public images with a fixed tag (`nginx:1.27-alpine`, `busybox:1.36`).
+4. **Mock exams run many tasks in one 2-node cluster.** Use object names no other task
+   uses. If your task drains or taints nodes, or reuses a name, set `mock_exam: false`
+   or list the other tasks in `conflicts_with` (on both tasks).
+5. Mark with `guard: true` every check that already passes before the task is solved
+   ("do not remove the taint", "the user cannot delete…"). Mock exams give partial credit
+   only for the other checks, so doing nothing scores 0.

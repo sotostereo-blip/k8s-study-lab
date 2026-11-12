@@ -17,7 +17,9 @@ Docker, with a terminal **inside the browser**. Solve it with `kubectl`, press
 *Check my work* and the app inspects the real cluster state. 38 tasks across the five
 CKA domains (troubleshooting, cluster architecture, networking, workloads, storage —
 including Helm, Kustomize, RBAC, certificates, NetworkPolicies and StatefulSets),
-on 1-node or 2-node clusters, with an exam-style timer and solutions. See [labs/README.md](labs/README.md).
+on 1-node or 2-node clusters, with an exam-style timer and solutions.
+**Mock exam**: 5, 10 or 15 tasks in one cluster with one countdown, graded at the end
+with partial credit and the 66% pass mark, plus a full review with solutions. See [labs/README.md](labs/README.md).
 
 Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).
 

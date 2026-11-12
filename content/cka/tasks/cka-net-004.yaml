@@ -33,3 +33,4 @@ solution: |
   # "path/*" in kubectl create ingress means pathType Prefix
 docs:
   - https://kubernetes.io/docs/concepts/services-networking/ingress/
+conflicts_with: [cka-wl-002]   # both create a Deployment called api

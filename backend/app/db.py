@@ -44,6 +44,16 @@ CREATE TABLE IF NOT EXISTS lab_attempts (
     seconds INTEGER,                  -- time since the lab was ready
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS mock_sessions (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    task_ids TEXT NOT NULL,           -- JSON list
+    minutes INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT,
+    score REAL,                       -- NULL when abandoned
+    results TEXT                      -- JSON, per task
+);
 """
 
 

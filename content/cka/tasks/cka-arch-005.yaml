@@ -14,6 +14,7 @@ checks:
     run: '[ "$(kubectl get priorityclass high-priority -o jsonpath="{.value}")" = 100000 ]'
   - name: It is not the global default
     run: '[ "$(kubectl get priorityclass high-priority -o jsonpath="{.globalDefault}")" != true ]'
+    guard: true   # already true before the task; must stay true
   - name: Pod `critical-app` has priority 100000
     run: '[ "$(kubectl get pod critical-app -o jsonpath="{.spec.priorityClassName}/{.spec.priority}")" = high-priority/100000 ]'
   - name: Pod `critical-app` is running

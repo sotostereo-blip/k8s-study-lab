@@ -150,3 +150,82 @@ def test_wrong_answer_explains_why(client):
     assert not r["correct"]
     assert "a" in r["why"] and r["why"]["a"]          # why the chosen option is wrong
     assert "b" not in r["why"]                         # the right answer uses 'explanation'
+
+
+def test_mock_exam_picks_compatible_tasks():
+    from app.main import pick_mock_tasks
+    lib = load_library(CONTENT)
+    track = lib.tracks["cka"]
+    for _ in range(30):
+        chosen = pick_mock_tasks(list(lib.tasks.values()), track.domains, 15)
+        ids = {t.id for t in chosen}
+        assert len(chosen) == 15 and len(ids) == 15
+        assert all(t.mock_exam for t in chosen)
+        assert all(not (set(t.conflicts_with) & ids) for t in chosen)
+        assert {t.domain for t in chosen} == {d.id for d in track.domains}  # every domain appears
+
+
+def test_mock_exam_flow(tmp_path):
+    docker = FakeDocker(failing_check="api-history.txt")
+    client = lab_client(tmp_path, docker)
+    assert client.get("/api/mock/current").json() is None
+    s = client.post("/api/mock/start", json={"tasks": 6}).json()
+    assert len(s["tasks"]) == 6 and s["minutes"] == sum(t["points"] for t in s["tasks"])
+    assert all("solution" not in t and "setup" not in t for t in s["tasks"])
+    assert wait_ready(client)["task_id"] == f"mock-{s['session_id']}"
+    assert client.get("/api/mock/current").json()["session_id"] == s["session_id"]
+
+    r = client.post(f"/api/mock/{s['session_id']}/submit").json()
+    assert len(r["tasks"]) == 6 and all("solution" in t for t in r["tasks"])
+    ids = [t["task_id"] for t in r["tasks"]]
+    expected = 100.0 if "cka-wl-002" not in ids else r["score"]
+    assert r["score"] == expected and r["passed"] == (r["score"] >= 66)
+    assert client.post(f"/api/mock/{s['session_id']}/submit").status_code == 409
+    assert client.get("/api/mock/current").json() is None
+    assert client.get("/api/labs").json()["mock_exams"][0]["score"] == r["score"]
+
+
+def test_mock_exam_partial_credit(tmp_path):
+    lib = load_library(CONTENT)
+    docker = FakeDocker()
+    client = lab_client(tmp_path, docker)
+    s = client.post("/api/mock/start", json={"tasks": 3}).json()
+    wait_ready(client)
+    first = lib.tasks[s["tasks"][0]["id"]]
+    docker.failing_check = next(c for c in first.checks if not c.guard).run  # fail one work check
+    r = client.post(f"/api/mock/{s['session_id']}/submit").json()
+    t0 = r["tasks"][0]
+    assert not t0["solved"] and 0 <= t0["earned"] < t0["points"]
+    assert r["score"] < 100
+
+
+def test_mock_exam_abandon(tmp_path):
+    client = lab_client(tmp_path, FakeDocker())
+    s = client.post("/api/mock/start", json={"tasks": 2}).json()
+    wait_ready(client)
+    assert client.post(f"/api/mock/{s['session_id']}/abandon").json()["ok"]
+    assert client.get("/api/mock/current").json() is None
+    assert client.get("/api/labs/status").json()["status"] == "idle"
+    assert client.get("/api/labs").json()["mock_exams"] == []   # abandoned exams have no score
+
+
+def test_mock_exam_guards(tmp_path):
+    """Guards give no points; breaking one makes the task worth 0."""
+    lib = load_library(CONTENT)
+    docker = FakeDocker()
+    client = lab_client(tmp_path, docker)
+    s = client.post("/api/mock/start", json={"tasks": 35}).json()   # every compatible task
+    ids = [t["id"] for t in s["tasks"]]
+    assert "cka-ts-002" in ids
+    wait_ready(client)
+    guard = next(c for c in lib.tasks["cka-ts-002"].checks if c.guard)
+    docker.failing_check = guard.run
+    r = client.post(f"/api/mock/{s['session_id']}/submit").json()
+    ts2 = next(t for t in r["tasks"] if t["task_id"] == "cka-ts-002")
+    assert ts2["earned"] == 0 and sum(c["passed"] for c in ts2["checks"]) == len(ts2["checks"]) - 1
+    assert all(t["earned"] == t["points"] for t in r["tasks"] if t["task_id"] != "cka-ts-002")
+
+
+def test_every_task_has_work_checks():
+    for t in load_library(CONTENT).tasks.values():
+        assert any(not c.guard for c in t.checks), t.id

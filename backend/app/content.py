@@ -83,6 +83,9 @@ class Check(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     run: str  # bash, run in the lab terminal container; exit code 0 = pass
+    # A guard is already true before the task (e.g. "do not remove the taint"). It gives no
+    # points in a mock exam, and breaking it makes the task worth 0.
+    guard: bool = False
 
 
 class LabTask(BaseModel):
@@ -99,10 +102,15 @@ class LabTask(BaseModel):
     checks: list[Check] = Field(min_length=1)
     solution: str
     docs: list[str] = Field(min_length=1)
+    # Mock exams run many tasks in ONE cluster. A task that changes the whole cluster
+    # (for example draining a node) sets mock_exam: false; tasks that cannot share a
+    # cluster (same object names, taints on every node) list each other in conflicts_with.
+    mock_exam: bool = True
+    conflicts_with: list[str] = []
 
     def public(self) -> dict:
         """Everything except the checker scripts (solution is shown on demand)."""
-        return self.model_dump(exclude={"checks", "setup", "solution"}) | {
+        return self.model_dump(exclude={"checks", "setup", "solution", "mock_exam", "conflicts_with"}) | {
             "checks": [c.name for c in self.checks]
         }
 
@@ -206,11 +214,18 @@ def load_library(content_dir: Path) -> Library:
                 errors.append(f"{tfile}: {t.id} must start with '{track.id}-'")
             if t.domain not in domain_ids:
                 errors.append(f"{tfile}: unknown domain '{t.domain}'")
+            if all(c.guard for c in t.checks):
+                errors.append(f"{tfile}: needs at least one check that is not a guard")
             if t.environment not in track.environments:
                 errors.append(f"{tfile}: unknown environment '{t.environment}'")
             if t.id in tasks:
                 errors.append(f"{tfile}: duplicate task id {t.id}")
             tasks[t.id] = t
+
+    for t in tasks.values():
+        for other in t.conflicts_with:
+            if other not in tasks:
+                errors.append(f"{t.id}: conflicts_with unknown task '{other}'")
 
     if errors:
         raise ValueError("\n".join(errors))

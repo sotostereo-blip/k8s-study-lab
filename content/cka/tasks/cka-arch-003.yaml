@@ -19,8 +19,10 @@ checks:
     run: '[ "$(kubectl auth can-i watch nodes --as alice)" = yes ]'
   - name: alice cannot delete nodes
     run: '[ "$(kubectl auth can-i delete nodes --as alice)" = no ]'
+    guard: true   # already true before the task; must stay true
   - name: alice cannot list Pods
     run: '[ "$(kubectl auth can-i list pods -A --as alice)" = no ]'
+    guard: true   # already true before the task; must stay true
 solution: |
   kubectl create clusterrole node-viewer --verb=get,list,watch --resource=nodes
   kubectl create clusterrolebinding node-viewer-binding --clusterrole=node-viewer --user=alice

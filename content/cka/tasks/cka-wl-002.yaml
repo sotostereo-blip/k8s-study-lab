@@ -29,3 +29,4 @@ solution: |
   kubectl rollout history deployment api > /root/api-history.txt
 docs:
   - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
+conflicts_with: [cka-net-004]   # both create a Deployment called api

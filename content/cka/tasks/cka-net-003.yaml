@@ -28,6 +28,7 @@ checks:
     run: '[ "$(kubectl -n secure get netpol db-allow-api -o jsonpath="{.spec.podSelector.matchLabels.app}")" = db ]'
   - name: Pod `api` can reach db
     run: kubectl -n secure exec api -- wget -qO- -T 4 http://db | grep -qi nginx
+    guard: true   # already true before the task; must stay true
   - name: Pod `other` cannot reach db
     run: '! kubectl -n secure exec other -- wget -qO- -T 4 http://db'
 solution: |

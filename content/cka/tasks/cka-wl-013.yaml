@@ -39,6 +39,7 @@ checks:
     run: test -f /root/kustomize/overlays/prod/kustomization.yaml
   - name: The base was not changed
     run: grep -q "nginx:1.26-alpine" /root/kustomize/base/deployment.yaml && grep -q "replicas. 1" /root/kustomize/base/deployment.yaml
+    guard: true   # already true before the task; must stay true
   - name: Deployment `prod-hello` in `prod` has 3 ready replicas
     run: '[ "$(kubectl -n prod get deploy prod-hello -o jsonpath="{.status.readyReplicas}")" = 3 ]'
   - name: It uses nginx:1.27-alpine

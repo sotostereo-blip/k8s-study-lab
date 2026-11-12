@@ -19,8 +19,10 @@ checks:
     run: '[ "$(kubectl auth can-i list deployments -n ci --as=system:serviceaccount:ci:deployer)" = yes ]'
   - name: deployer cannot delete deployments in ci
     run: '[ "$(kubectl auth can-i delete deployments -n ci --as=system:serviceaccount:ci:deployer)" = no ]'
+    guard: true   # already true before the task; must stay true
   - name: deployer cannot create deployments in default
     run: '[ "$(kubectl auth can-i create deployments -n default --as=system:serviceaccount:ci:deployer)" = no ]'
+    guard: true   # already true before the task; must stay true
   - name: RoleBinding `deployer-binding` exists
     run: kubectl -n ci get rolebinding deployer-binding
 solution: |

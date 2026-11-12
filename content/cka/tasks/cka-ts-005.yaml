@@ -35,6 +35,7 @@ task: |
 checks:
   - name: The container still has a readiness probe
     run: '[ -n "$(kubectl get deploy catalog -o jsonpath="{.spec.template.spec.containers[0].readinessProbe}")" ]'
+    guard: true   # already true before the task; must stay true
   - name: Deployment `catalog` has 2 ready replicas
     run: '[ "$(kubectl get deploy catalog -o jsonpath="{.status.readyReplicas}")" = 2 ]'
   - name: Service `catalog` has 2 endpoints

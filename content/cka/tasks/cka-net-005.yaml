@@ -30,6 +30,7 @@ checks:
     run: kubectl -n restricted get netpol allow-same-namespace
   - name: client (same namespace) can reach web
     run: kubectl -n restricted exec client -- wget -qO- -T 4 http://web | grep -qi nginx
+    guard: true   # already true before the task; must stay true
   - name: outsider (default namespace) cannot reach web
     run: '! kubectl exec outsider -- wget -qO- -T 4 http://web.restricted'
 solution: |

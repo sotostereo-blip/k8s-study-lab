@@ -19,6 +19,7 @@ task: |
 checks:
   - name: The taint on controlplane is still there
     run: kubectl get node controlplane -o json | jq -e '.spec.taints[] | select(.key=="node-role.kubernetes.io/control-plane")'
+    guard: true   # already true before the task; must stay true
   - name: DaemonSet `node-agent` has 2 ready Pods
     run: '[ "$(kubectl -n monitoring get ds node-agent -o jsonpath="{.status.desiredNumberScheduled}/{.status.numberReady}")" = 2/2 ]'
   - name: A `node-agent` Pod runs on controlplane
@@ -50,3 +51,4 @@ solution: |
   # tip: there is no "kubectl create daemonset"; start from a Deployment with $do and edit it
 docs:
   - https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+conflicts_with: [cka-wl-006]   # together they taint both nodes

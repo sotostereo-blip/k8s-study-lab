@@ -36,6 +36,12 @@ class ExamSubmitIn(BaseModel):
     answers: dict[str, list[str]]
 
 
+class MockStartIn(BaseModel):
+    track_id: str = "cka"
+    tasks: int = 10
+    minutes: int | None = None      # default: sum of the tasks' target minutes
+
+
 class EnglishEventIn(BaseModel):
     kind: str  # glossary_lookup | translation
     ref: str | None = None
@@ -72,6 +78,42 @@ def pick_exam_questions(lib: Library, exam_id: str, n: int) -> list[Question]:
     chosen = chosen[:n]
     random.shuffle(chosen)
     return chosen
+
+
+MOCK_ENV, MOCK_NODES = "two-node", 2  # one cluster for all exam tasks
+
+
+def pick_mock_tasks(tasks: list, domains: list, n: int) -> list:
+    """Sample tasks following the domain weights, skipping tasks that cannot share a cluster."""
+    pool = [t for t in tasks if t.mock_exam]
+    chosen: list = []
+
+    def compatible(t) -> bool:
+        return all(t.id not in c.conflicts_with and c.id not in t.conflicts_with for c in chosen)
+
+    def take(candidates, k):
+        random.shuffle(candidates)
+        for t in candidates:
+            if k <= 0 or len(chosen) >= n:
+                break
+            if t not in chosen and compatible(t):
+                chosen.append(t)
+                k -= 1
+
+    for d in domains:
+        take([t for t in pool if t.domain == d.id], max(1, round(n * d.weight / 100)))
+    take(list(pool), n - len(chosen))
+    random.shuffle(chosen)  # mixed order, like the real exam
+    return chosen[:n]
+
+
+def mock_setup_script(tasks: list) -> str:
+    """One script that prepares every task scenario, each in its own subshell."""
+    parts = []
+    for t in tasks:
+        if t.setup.strip():
+            parts.append(f'echo "== {t.id}"\n(\n{t.setup.rstrip()}\n) || {{ echo "setup failed: {t.id}"; exit 1; }}')
+    return "\n".join(parts)
 
 
 def create_app(content_dir: Path | None = None, db_path: Path | None = None,
@@ -282,6 +324,7 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
                 for t in sorted(lib.tasks.values(), key=lambda t: t.id)
             ],
             "lab": labs.status(),
+            "mock_exams": [dict(r) for r in mock_history()],
         }
 
     @app.get("/api/labs/status")
@@ -292,7 +335,7 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     def labs_start(task_id: str):
         task = get_task(task_id)
         track = lib.tracks[task.id.split("-")[0]]
-        return labs.start(task, track.environments[task.environment].nodes)
+        return labs.start(task.id, task.environment, track.environments[task.environment].nodes, task.setup)
 
     @app.post("/api/labs/stop")
     def labs_stop():
@@ -302,7 +345,7 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     def labs_check(task_id: str):
         task = get_task(task_id)
         try:
-            results = labs.check(task)
+            results = labs.check(task.id, task.checks)
         except RuntimeError as e:
             raise HTTPException(409, str(e))
         passed = sum(r["passed"] for r in results)
@@ -314,6 +357,125 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
                 (task.id, int(solved), passed, len(results), seconds),
             )
         return {"solved": solved, "passed": passed, "total": len(results), "seconds": seconds, "checks": results}
+
+    # ---------- mock exam: several tasks, one cluster, one timer ----------
+
+    def mock_history():
+        with db.connect() as conn:
+            return conn.execute(
+                "SELECT id, created_at, minutes, score, json_array_length(task_ids) AS tasks FROM mock_sessions "
+                "WHERE finished_at IS NOT NULL AND score IS NOT NULL ORDER BY created_at DESC LIMIT 5"
+            ).fetchall()
+
+    def mock_public(row) -> dict:
+        track = lib.tracks[row["track_id"]]
+        ids = json.loads(row["task_ids"])
+        lab = labs.status()
+        mine = lab["task_id"] == f"mock-{row['id']}"
+        return {
+            "session_id": row["id"],
+            "minutes": row["minutes"],
+            "passing_score": track.passing_score,
+            "tasks": [lib.tasks[i].public() | {"points": lib.tasks[i].minutes} for i in ids],
+            "lab": lab if mine else {**lab, "status": "idle", "terminal_url": None},
+            "finished": row["finished_at"] is not None,
+        }
+
+    def get_mock(session_id: str):
+        with db.connect() as conn:
+            row = conn.execute("SELECT * FROM mock_sessions WHERE id=?", (session_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Unknown mock exam")
+        return row
+
+    @app.post("/api/mock/start")
+    def mock_start(body: MockStartIn):
+        if body.track_id not in lib.tracks:
+            raise HTTPException(404, f"Unknown track '{body.track_id}'")
+        track = lib.tracks[body.track_id]
+        all_tasks = [t for t in lib.tasks.values() if t.id.startswith(f"{track.id}-")]
+        chosen = pick_mock_tasks(all_tasks, track.domains, max(1, body.tasks))
+        if not chosen:
+            raise HTTPException(400, "No tasks available for a mock exam")
+        minutes = body.minutes or sum(t.minutes for t in chosen)
+        sid = uuid.uuid4().hex
+        with db.connect() as conn:
+            # an unfinished exam is abandoned when a new one starts
+            conn.execute("UPDATE mock_sessions SET finished_at=datetime('now') WHERE finished_at IS NULL")
+            conn.execute(
+                "INSERT INTO mock_sessions (id, track_id, task_ids, minutes) VALUES (?,?,?,?)",
+                (sid, track.id, json.dumps([t.id for t in chosen]), minutes),
+            )
+        labs.start(f"mock-{sid}", MOCK_ENV, MOCK_NODES, mock_setup_script(chosen),
+                   setup_timeout=120 + 120 * len(chosen))
+        return mock_public(get_mock(sid))
+
+    @app.get("/api/mock/current")
+    def mock_current():
+        with db.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM mock_sessions WHERE finished_at IS NULL ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        return mock_public(row) if row else None
+
+    @app.post("/api/mock/{session_id}/submit")
+    def mock_submit(session_id: str):
+        row = get_mock(session_id)
+        if row["finished_at"]:
+            raise HTTPException(409, "This mock exam is already finished")
+        ids = json.loads(row["task_ids"])
+        seconds = labs.status()["elapsed_seconds"]
+        results, earned, total = [], 0.0, 0
+        for tid in ids:
+            t = lib.tasks[tid]
+            try:
+                checks = labs.check(f"mock-{session_id}", t.checks)
+            except RuntimeError as e:
+                raise HTTPException(409, "The exam cluster is not running: " + str(e))
+            passed = sum(c["passed"] for c in checks)
+            points = t.minutes
+            work = [r for c, r in zip(t.checks, checks) if not c.guard]
+            guards_ok = all(r["passed"] for c, r in zip(t.checks, checks) if c.guard)
+            # partial credit from the real work only; breaking a guard makes the task worth 0
+            got = round(points * sum(r["passed"] for r in work) / len(work), 1) if guards_ok else 0.0
+            earned += got
+            total += points
+            results.append({
+                "task_id": t.id, "title": t.title, "domain": t.domain, "points": points, "earned": got,
+                "solved": passed == len(checks), "guards_ok": guards_ok, "solution": t.solution, "docs": t.docs,
+                "checks": [r | {"guard": c.guard} for c, r in zip(t.checks, checks)],
+            })
+        score = round(100 * earned / total, 1)
+        with db.connect() as conn:
+            conn.execute(
+                "UPDATE mock_sessions SET finished_at=datetime('now'), score=?, results=? WHERE id=?",
+                (score, json.dumps(results), session_id),
+            )
+            for r in results:
+                conn.execute(
+                    "INSERT INTO lab_attempts (task_id, passed, checks_passed, checks_total, seconds) VALUES (?,?,?,?,?)",
+                    (r["task_id"], int(r["solved"]), sum(c["passed"] for c in r["checks"]), len(r["checks"]), None),
+                )
+        track = lib.tracks[row["track_id"]]
+        return {
+            "score": score,
+            "passed": score >= track.passing_score,
+            "passing_score": track.passing_score,
+            "minutes": row["minutes"],
+            "elapsed_seconds": seconds,
+            "overtime": bool(seconds and seconds > row["minutes"] * 60),
+            "tasks": results,
+        }
+
+    @app.post("/api/mock/{session_id}/abandon")
+    def mock_abandon(session_id: str):
+        get_mock(session_id)
+        with db.connect() as conn:
+            conn.execute("UPDATE mock_sessions SET finished_at=datetime('now') WHERE id=? AND finished_at IS NULL",
+                         (session_id,))
+        if labs.status()["task_id"] == f"mock-{session_id}":
+            labs.stop()
+        return {"ok": True}
 
     @app.get("/api/labs/{task_id}/solution")
     def labs_solution(task_id: str):

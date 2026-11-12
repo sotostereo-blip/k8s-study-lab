@@ -14,6 +14,7 @@ task: |
 checks:
   - name: The taint on node01 is still there
     run: kubectl get node node01 -o json | jq -e '.spec.taints[] | select(.key=="dedicated" and .value=="gpu" and .effect=="NoSchedule")'
+    guard: true   # already true before the task; must stay true
   - name: Pod `gpu-job` tolerates the taint
     run: kubectl get pod gpu-job -o json | jq -e '.spec.tolerations[] | select(.key=="dedicated")'
   - name: Pod `gpu-job` is running on node01
@@ -32,3 +33,4 @@ solution: |
   # A toleration only ALLOWS the node; the nodeSelector makes the Pod go there.
 docs:
   - https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+conflicts_with: [cka-wl-009, cka-wl-005, cka-ts-009]   # taint on node01 blocks their Pods; with wl-009 both nodes are tainted

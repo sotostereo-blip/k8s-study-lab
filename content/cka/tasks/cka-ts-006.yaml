@@ -43,6 +43,7 @@ checks:
     run: '[ "$(kubectl get pvc reports-pvc -o jsonpath="{.status.phase}")" = Bound ]'
   - name: PVC asks for 100Mi
     run: '[ "$(kubectl get pvc reports-pvc -o jsonpath="{.spec.resources.requests.storage}")" = 100Mi ]'
+    guard: true   # already true before the task; must stay true
   - name: Pod `reports` is running and uses reports-pvc
     run: '[ "$(kubectl get pod reports -o jsonpath="{.status.phase}/{.spec.volumes[0].persistentVolumeClaim.claimName}")" = Running/reports-pvc ]'
 solution: |

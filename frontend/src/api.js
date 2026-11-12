@@ -27,4 +27,8 @@ export const api = {
   labStop: () => request('/labs/stop', { method: 'POST' }),
   labCheck: (id) => request(`/labs/${id}/check`, { method: 'POST' }),
   labSolution: (id) => request(`/labs/${id}/solution`),
+  mockStart: (tasks) => request('/mock/start', { method: 'POST', body: { tasks } }),
+  mockCurrent: () => request('/mock/current'),
+  mockSubmit: (id) => request(`/mock/${id}/submit`, { method: 'POST' }),
+  mockAbandon: (id) => request(`/mock/${id}/abandon`, { method: 'POST' }),
 }

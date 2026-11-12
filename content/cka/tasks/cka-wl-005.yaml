@@ -25,3 +25,4 @@ solution: |
   kubectl apply -f pod.yaml
 docs:
   - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+conflicts_with: [cka-wl-006]   # its taint on node01 would block fast-app

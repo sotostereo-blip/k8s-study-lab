@@ -30,6 +30,7 @@ checks:
     run: '[ "$(kubectl get pod report -o jsonpath="{.status.phase}")" = Running ]'
   - name: It still uses busybox:1.36
     run: '[ "$(kubectl get pod report -o jsonpath="{.spec.containers[0].image}")" = busybox:1.36 ]'
+    guard: true   # already true before the task; must stay true
 solution: |
   kubectl describe pod report | grep -A5 Events   # Insufficient cpu
   kubectl get pod report -o yaml > report.yaml

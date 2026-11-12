@@ -18,7 +18,7 @@
 - [x] 38 CKA tasks with checkers that inspect real cluster state (incl. Helm, Kustomize, CSR, Ingress)
 - [x] Web terminal in the browser (ttyd) and exam-style timer
 - [ ] More tasks: Gateway API, kubeadm upgrade, etcd backup (need a kubeadm-based environment)
-- [ ] Multi-task mock exam (several tasks, one timer, weighted score)
+- [x] Multi-task mock exam (several tasks, one cluster, one timer, partial credit)
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`

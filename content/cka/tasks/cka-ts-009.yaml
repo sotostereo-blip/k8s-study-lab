@@ -16,6 +16,7 @@ task: |
 checks:
   - name: The Deployment still selects disktype=fast
     run: '[ "$(kubectl get deploy analytics -o jsonpath="{.spec.template.spec.nodeSelector.disktype}")" = fast ]'
+    guard: true   # already true before the task; must stay true
   - name: node01 has the label disktype=fast (controlplane does not)
     run: '[ "$(kubectl get node node01 -o jsonpath="{.metadata.labels.disktype}")" = fast ] && [ -z "$(kubectl get node controlplane -o jsonpath="{.metadata.labels.disktype}")" ]'
   - name: 2 replicas are ready on node01
@@ -26,3 +27,4 @@ solution: |
   kubectl label node node01 disktype=fast
 docs:
   - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+conflicts_with: [cka-wl-006]   # its taint on node01 would block the analytics Pods

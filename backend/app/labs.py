@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from .content import LabTask
+from .content import Check
 
 # runner(cmd, stdin, timeout) -> (exit_code, combined output)
 Runner = Callable[[list[str], str | None, float], tuple[int, str]]
@@ -87,22 +87,23 @@ class LabManager:
 
     # ---------- lifecycle ----------
 
-    def start(self, task: LabTask, nodes: int) -> dict:
-        if not self.compose_file(task.environment).exists():
-            raise ValueError(f"No compose file for environment '{task.environment}'")
+    def start(self, lab_id: str, env: str, nodes: int, setup: str = "", setup_timeout: float = 300) -> dict:
+        """Start a clean cluster for `lab_id` (a task id, or "mock-<session>" for a mock exam)."""
+        if not self.compose_file(env).exists():
+            raise ValueError(f"No compose file for environment '{env}'")
         with self.lock:
             self.generation += 1
             gen = self.generation
-            self.state = LabState(status="starting", task_id=task.id, environment=task.environment)
-        threading.Thread(target=self._start, args=(gen, task, nodes), daemon=True).start()
+            self.state = LabState(status="starting", task_id=lab_id, environment=env)
+        threading.Thread(target=self._start, args=(gen, env, nodes, setup, setup_timeout), daemon=True).start()
         return self.status()
 
-    def _start(self, gen: int, task: LabTask, nodes: int) -> None:
+    def _start(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float) -> None:
         with self.docker_lock:
             if gen == self.generation:
-                self._start_locked(gen, task, nodes)
+                self._start_locked(gen, env, nodes, setup, setup_timeout)
 
-    def _start_locked(self, gen: int, task: LabTask, nodes: int) -> None:
+    def _start_locked(self, gen: int, env: str, nodes: int, setup: str, setup_timeout: float) -> None:
         def alive() -> bool:
             return gen == self.generation
 
@@ -111,7 +112,6 @@ class LabManager:
                 self.state.status, self.state.error = "error", msg
                 self._log("ERROR: " + msg)
 
-        env = task.environment
         self._log("Removing any previous lab…")
         self.run(self.compose(None, "down", "-v", "--remove-orphans"), None, 120)
         if not alive():
@@ -140,9 +140,9 @@ class LabManager:
         if rc != 0:
             return fail("Cluster add-ons did not start: " + out[-400:])
 
-        if task.setup.strip() and alive():
+        if setup.strip() and alive():
             self._log("Preparing the task scenario…")
-            rc, out = self.bash(task.setup, 300)
+            rc, out = self.bash(setup, setup_timeout)
             if rc != 0:
                 return fail("Task setup failed: " + out[-600:])
 
@@ -166,11 +166,11 @@ class LabManager:
 
     # ---------- grading ----------
 
-    def check(self, task: LabTask) -> list[dict]:
-        if self.state.status != "ready" or self.state.task_id != task.id:
+    def check(self, lab_id: str, checks: list[Check]) -> list[dict]:
+        if self.state.status != "ready" or self.state.task_id != lab_id:
             raise RuntimeError("This lab is not running. Start it first.")
         results = []
-        for c in task.checks:
+        for c in checks:
             rc, out = self.bash(c.run, 90)
             results.append({"name": c.name, "passed": rc == 0, "output": out[-300:] if rc else ""})
         return results
