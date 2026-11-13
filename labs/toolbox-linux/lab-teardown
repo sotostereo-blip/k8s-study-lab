@@ -1,0 +1,26 @@
+#!/bin/bash
+# Run by the app (and scripts/verify_labs.py) just before the lab containers are removed.
+# Loop devices, device-mapper (LVM) volumes and swap belong to the kernel of the Docker host,
+# not to the container, so they would stay behind after `docker compose down`. Release only
+# what this container created.
+
+# swap files of this container (swapoff by path resolves to this container's file)
+awk 'NR > 1 && $2 == "file" {print $1}' /proc/swaps | while read -r f; do
+  [ -f "$f" ] && swapoff "$f" 2>/dev/null
+done
+
+# file systems on LVM volumes, then the volume groups (the LVM devices file lists only our disks)
+findmnt -rn -o TARGET,SOURCE | awk '$2 ~ /^\/dev\/mapper\// {print $1}' | sort -r | while read -r m; do
+  umount -l "$m" 2>/dev/null
+done
+for lv in $(lvs --noheadings -o lv_path 2>/dev/null); do
+  swapoff "$lv" 2>/dev/null
+done
+vgchange -an >/dev/null 2>&1
+
+# loop devices whose backing file is in this container (losetup -j matches the file itself)
+find / -xdev \( -path /proc -o -path /sys -o -path /dev \) -prune -o -type f -size +1M \
+     \( -name '*.img' -o -name '*.raw' -o -name '*.disk' \) -print 2>/dev/null | while read -r f; do
+  losetup -j "$f" -n -O NAME 2>/dev/null | xargs -r -n1 losetup -d 2>/dev/null
+done
+exit 0

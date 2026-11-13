@@ -1,18 +1,19 @@
 # Hands-on labs for the CAPA (Certified Argo Project Associate). The real exam is multiple choice;
-# these tasks build the skills behind it on a real cluster with Argo CD, Argo Rollouts and
-# Argo Workflows (Argo Events is covered only by the question bank).
+# these tasks build the skills behind it on a real cluster with Argo CD, Argo Rollouts,
+# Argo Workflows and Argo Events.
 id: capa
 name: Certified Argo Project Associate
 exam_minutes: 90
 passing_score: 75
-intro: "a one-node k3s cluster with Argo CD, Argo Rollouts, Argo Workflows and a Git server"
+intro: "a one-node k3s cluster with Argo CD, Argo Rollouts, Argo Workflows, Argo Events and a Git server"
 domains:
   - { id: argo-workflows, name: "Argo Workflows", weight: 36 }
   - { id: argo-cd, name: "Argo CD", weight: 34 }
   - { id: argo-rollouts, name: "Argo Rollouts", weight: 18 }
+  - { id: argo-events, name: "Argo Events", weight: 12 }
 environments:
   argocd:
-    name: "k3s v1.37 + Argo CD 3.5, Argo Rollouts 1.10, Argo Workflows 4.1 + Git server"
+    name: "k3s v1.37 + Argo CD 3.5, Argo Rollouts 1.10, Argo Workflows 4.1, Argo Events 1.9 + Git server"
     nodes: 1
     label: "Argo"
     tools: "`kubectl`, `argocd` (logged in), `argo`, `kubectl argo rollouts`, `git`, `helm`; Git server `http://git.lab/<name>.git`"

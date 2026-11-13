@@ -1,0 +1,130 @@
+id: capa-ev-002
+title: Start a Workflow from a webhook event with a Sensor
+domain: argo-events
+difficulty: 3
+minutes: 10
+environment: argocd
+setup: |
+  kubectl create namespace ev-build >/dev/null
+  kubectl apply -n ev-build -f - >/dev/null <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: EventBus
+  metadata: { name: default }
+  spec:
+    jetstream: { version: latest, replicas: 1, streamConfig: "replicas: 1" }
+  ---
+  apiVersion: argoproj.io/v1alpha1
+  kind: EventSource
+  metadata: { name: webhook }
+  spec:
+    service: { ports: [{ port: 12000, targetPort: 12000 }] }
+    webhook:
+      push: { port: "12000", endpoint: /push, method: POST }
+  ---
+  apiVersion: argoproj.io/v1alpha1
+  kind: WorkflowTemplate
+  metadata: { name: build }
+  spec:
+    entrypoint: main
+    arguments: { parameters: [{ name: message, value: none }] }
+    templates:
+    - name: main
+      container: { image: "busybox:1.36", command: [echo, "building: {{workflow.parameters.message}}"] }
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata: { name: operate-workflow-sa }
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata: { name: operate-workflow }
+  rules:
+  - { apiGroups: [argoproj.io], resources: [workflows], verbs: [create, get, list, watch] }
+  - { apiGroups: [argoproj.io], resources: [workflowtemplates], verbs: [get, list, watch] }
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata: { name: operate-workflow }
+  roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: operate-workflow }
+  subjects: [{ kind: ServiceAccount, name: operate-workflow-sa }]
+  YAML
+  for i in $(seq 1 60); do
+    kubectl -n ev-build wait pod -l eventsource-name=webhook --for=condition=Ready --timeout=3s >/dev/null 2>&1 && break
+    sleep 2
+  done
+task: |
+  In the namespace `ev-build` there is a JetStream **EventBus** `default`, a webhook
+  **EventSource** `webhook` (event `push`, Service `webhook-eventsource-svc` on port 12000,
+  path `/push`), the **WorkflowTemplate** `build` (parameter `message`) and the ServiceAccount
+  `operate-workflow-sa`, which may create Workflows.
+
+  1. Create the **Sensor** `build` that runs with the ServiceAccount `operate-workflow-sa`,
+     depends on the event `push` of the EventSource `webhook`, and has an **Argo Workflow
+     trigger** that submits a Workflow **from the template `build`**. The parameter `message`
+     must get the value of `message` in the JSON body of the event.
+  2. Send the event `{"message":"ship-it"}` to the webhook as JSON (header
+     `Content-Type: application/json`, or the Sensor cannot read `body.message`). A Workflow
+     with `message` = `ship-it` must finish with phase `Succeeded`.
+checks:
+  - name: The Sensor `build` depends on webhook / push and runs
+    run: |
+      kubectl -n ev-build get sensor build -o json | \
+        jq -e '[.spec.dependencies[] | select(.eventSourceName == "webhook" and .eventName == "push")] | length > 0' >/dev/null && \
+      kubectl -n ev-build wait pod -l sensor-name=build --for=condition=Ready --timeout=20s >/dev/null
+  - name: The Sensor created a Workflow from `build` with message `ship-it` that Succeeded
+    run: |
+      n=$(kubectl -n ev-build get workflows -l events.argoproj.io/sensor=build -o json | jq '[.items[]
+        | select(.spec.workflowTemplateRef.name == "build" and .status.phase == "Succeeded")
+        | select([.spec.arguments.parameters[]? | select(.name == "message" and .value == "ship-it")] | length > 0)] | length')
+      [ "$n" -ge 1 ]
+solution: |
+  kubectl apply -n ev-build -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: Sensor
+  metadata:
+    name: build
+  spec:
+    template:
+      serviceAccountName: operate-workflow-sa   # the Sensor pod creates the Workflow with this identity
+    dependencies:
+    - name: push                                # a name used inside this Sensor
+      eventSourceName: webhook
+      eventName: push
+    triggers:
+    - template:
+        name: run-build
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: build-
+              spec:
+                workflowTemplateRef:
+                  name: build
+                arguments:
+                  parameters:
+                  - name: message
+                    value: none                 # replaced by the event data
+          parameters:
+          - src:
+              dependencyName: push
+              dataKey: body.message             # JSON body of the HTTP request
+            dest: spec.arguments.parameters.0.value
+  YAML
+  kubectl -n ev-build wait pod -l sensor-name=build --for=condition=Ready --timeout=120s
+  sleep 5                                       # let the Sensor subscribe to the EventBus
+  kubectl -n ev-build port-forward svc/webhook-eventsource-svc 12000:12000 >/dev/null &
+  sleep 2
+  curl -X POST -H 'Content-Type: application/json' -d '{"message":"ship-it"}' http://localhost:12000/push
+  kill $!
+  # Without the JSON header the body is not parsed and the Sensor logs
+  # "unable to resolve 'push' parameter value": check with kubectl -n ev-build logs -l sensor-name=build
+  until kubectl -n ev-build get wf -o name | grep -q .; do sleep 2; done
+  argo wait -n ev-build @latest
+  argo list -n ev-build                         # or: kubectl -n ev-build get wf
+docs:
+  - https://argoproj.github.io/argo-events/sensors/triggers/argo-workflow/
+  - https://argoproj.github.io/argo-events/tutorials/02-parameterization/

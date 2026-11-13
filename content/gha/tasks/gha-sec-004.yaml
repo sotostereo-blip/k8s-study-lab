@@ -1,0 +1,116 @@
+id: gha-sec-004
+title: Deploy to AWS with OIDC instead of access keys
+domain: security
+difficulty: 3
+minutes: 12
+environment: gitea
+setup: |
+  mkdir -p /root/deploy-oidc/.github/workflows /root/deploy-oidc/aws && cd /root/deploy-oidc
+  echo "# Deploy app" > README.md
+  cat > .github/workflows/deploy.yml <<'YAML'
+  name: Deploy
+  on: workflow_dispatch
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: eu-west-1
+        - run: aws s3 sync ./site s3://deploy-oidc-site
+  YAML
+  echo '{ "Version": "2012-10-17", "Statement": [] }' > aws/trust-policy.json
+  lab-publish /root/deploy-oidc "Deploy with access keys"
+task: |
+  The workflow `Deploy` in `student/deploy-oidc` logs in to AWS with long-lived access keys
+  stored as secrets. Change it to **OpenID Connect (OIDC)**: GitHub gives each run a short-lived
+  token, and AWS trades it for temporary credentials of an IAM role. The AWS account
+  `111122223333` already has the OIDC provider `token.actions.githubusercontent.com` and the role
+  `arn:aws:iam::111122223333:role/gha-deploy`.
+
+  1. In `.github/workflows/deploy.yml`, give the job the permissions `id-token: write` and
+     `contents: read`, and make `aws-actions/configure-aws-credentials@v4` assume the role
+     (`role-to-assume`, region `eu-west-1`). Remove the access key secrets.
+  2. Write the role **trust policy** in `aws/trust-policy.json`. It must let only runs on the
+     branch **main** of `student/deploy-oidc` assume the role: not pull requests, other branches
+     or other repositories. The audience is `sts.amazonaws.com`.
+  3. Push to `main`.
+
+  *Gitea vs GitHub:* Gitea Actions cannot issue OIDC tokens, so do not run the workflow here.
+  The lab checks your files, and tests your trust policy with example GitHub tokens.
+checks:
+  - name: 'The job has the permissions `id-token: write` and `contents: read`'
+    run: |
+      wf=$(lab-file deploy-oidc .github/workflows/deploy.yml) || exit 1
+      # job permissions win over the workflow permissions
+      if [ "$(echo "$wf" | yq '.jobs.deploy | has("permissions")')" = true ]; then p=.jobs.deploy.permissions; else p=.permissions; fi
+      echo "$wf" | yq -e "$p.\"id-token\" == \"write\" and $p.contents == \"read\"" >/dev/null
+  - name: configure-aws-credentials assumes role/gha-deploy in eu-west-1, with no access keys
+    run: |
+      wf=$(lab-file deploy-oidc .github/workflows/deploy.yml) || exit 1
+      echo "$wf" | yq -e '[.jobs.deploy.steps[] | select(.uses // "" | test("^aws-actions/configure-aws-credentials@"))
+        | select(.with["role-to-assume"] == "arn:aws:iam::111122223333:role/gha-deploy" and .with["aws-region"] == "eu-west-1")]
+        | length == 1' >/dev/null && ! echo "$wf" | grep -qE 'aws-access-key-id|aws-secret-access-key|AWS_SECRET'
+  - name: The trust policy lets main of student/deploy-oidc assume the role
+    run: |
+      lab-file deploy-oidc aws/trust-policy.json > /tmp/trust.json || exit 1
+      lab-trust-allows /tmp/trust.json repo:student/deploy-oidc:ref:refs/heads/main
+  - name: 'The trust policy rejects pull requests, other branches, other repositories and other audiences'
+    guard: true
+    run: |
+      lab-file deploy-oidc aws/trust-policy.json > /tmp/trust.json || exit 1
+      for sub in repo:student/deploy-oidc:pull_request repo:student/deploy-oidc:ref:refs/heads/dev \
+                 repo:attacker/deploy-oidc:ref:refs/heads/main repo:student/other:ref:refs/heads/main; do
+        lab-trust-allows /tmp/trust.json "$sub" && { echo "allowed: $sub"; exit 1; }
+      done
+      ! lab-trust-allows /tmp/trust.json repo:student/deploy-oidc:ref:refs/heads/main other-audience
+solution: |
+  cd /root/deploy-oidc
+  cat > .github/workflows/deploy.yml <<'YAML'
+  name: Deploy
+  on: workflow_dispatch
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      permissions:
+        id-token: write          # lets the job ask GitHub for an OIDC token
+        contents: read           # still needed by actions/checkout
+      steps:
+        - uses: actions/checkout@v4
+        - uses: aws-actions/configure-aws-credentials@v4
+          with:
+            role-to-assume: arn:aws:iam::111122223333:role/gha-deploy
+            aws-region: eu-west-1
+        - run: aws s3 sync ./site s3://deploy-oidc-site
+  YAML
+  cat > aws/trust-policy.json <<'JSON'
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Federated": "arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com"
+        },
+        "Action": "sts:AssumeRoleWithWebIdentity",
+        "Condition": {
+          "StringEquals": {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            "token.actions.githubusercontent.com:sub": "repo:student/deploy-oidc:ref:refs/heads/main"
+          }
+        }
+      }
+    ]
+  }
+  JSON
+  git add -A && git commit -m "Deploy with OIDC" && git push
+  # The `sub` claim says where the run comes from: repo:OWNER/REPO:ref:refs/heads/BRANCH for a
+  # push, repo:OWNER/REPO:pull_request for a pull request, repo:OWNER/REPO:environment:NAME for
+  # a job with an environment. A wildcard like repo:student/* would let every repository in.
+docs:
+  - https://docs.github.com/en/actions/concepts/security/openid-connect
+  - https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws
+  - https://github.com/aws-actions/configure-aws-credentials

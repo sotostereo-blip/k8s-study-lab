@@ -30,6 +30,9 @@ labs/
 Rules for every environment: the service that runs the terminal is called `toolbox`, only it
 publishes a host port (`127.0.0.1:${TERMINAL_PORT:-7681}`), and environments without
 Kubernetes ship a `lab-ready` script that the app runs until the lab is usable.
+Loop devices, LVM volumes and swap belong to the Docker host's kernel, not to a container, so a
+toolbox that lets tasks create them ships a `lab-teardown` script (see `toolbox-linux/`): the app
+and `scripts/verify_labs.py` run it in every lab container before `docker compose down`.
 The `argocd` toolbox is built FROM `k8s-study-lab/toolbox:3`: on a new machine start a
 Kubernetes lab once first (or run `docker compose -f labs/envs/single-node/compose.yaml build`).
 

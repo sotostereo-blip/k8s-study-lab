@@ -1,0 +1,54 @@
+id: lfcs-stor-004
+title: Create an LVM volume group and logical volume
+domain: storage
+difficulty: 2
+minutes: 8
+environment: linux
+setup: |
+  mkdir -p /srv/disks
+  for d in disk1 disk2; do
+    truncate -s 200M /srv/disks/$d.img
+    losetup -f --show /srv/disks/$d.img
+  done > /root/spare-disks.txt
+task: |
+  Two empty 200 MiB disks are attached to this server. Their device names are in
+  `/root/spare-disks.txt` (you can also see them with `losetup -l` or `lsblk`).
+
+  1. Make both disks LVM **physical volumes** and create the **volume group** `vgdata` with both.
+  2. Create the **logical volume** `lvweb` of **300 MiB** in `vgdata` (it needs space from both disks).
+  3. Create an **ext4** filesystem on it and mount it on `/srv/web`.
+  4. Add a line to `/etc/fstab` so `/srv/web` is mounted at boot. Check it with `mount -a`.
+checks:
+  - name: The volume group vgdata uses both disks
+    run: |
+      [ "$(vgs --noheadings -o pv_count vgdata 2>/dev/null | tr -d ' ')" = 2 ]
+  - name: The logical volume vgdata/lvweb is 300 MiB
+    run: |
+      size=$(lvs --noheadings --units m --nosuffix -o lv_size vgdata/lvweb 2>/dev/null | tr -d ' ' | cut -d. -f1)
+      [ -n "$size" ] && [ "$size" -ge 296 ] && [ "$size" -le 304 ]
+  - name: An ext4 filesystem from vgdata/lvweb is mounted on /srv/web
+    run: |
+      [ "$(findmnt -no FSTYPE /srv/web)" = ext4 ] && \
+      [ "$(readlink -f "$(findmnt -no SOURCE /srv/web)")" = "$(readlink -f /dev/vgdata/lvweb)" ]
+  - name: /etc/fstab mounts vgdata/lvweb on /srv/web
+    run: |
+      src=$(findmnt --fstab -n -o SOURCE --target /srv/web) || exit 1
+      case "$src" in UUID=*|LABEL=*) dev=$(blkid -t "$src" -o device | head -1) ;; *) dev=$src ;; esac
+      [ -n "$dev" ] && [ "$(readlink -f "$dev")" = "$(readlink -f /dev/vgdata/lvweb)" ]
+solution: |
+  cat /root/spare-disks.txt            # for example /dev/loop3 and /dev/loop4
+  A=$(sed -n 1p /root/spare-disks.txt); B=$(sed -n 2p /root/spare-disks.txt)
+  pvcreate "$A" "$B"                   # physical volumes
+  vgcreate vgdata "$A" "$B"            # volume group from both disks
+  lvcreate -n lvweb -L 300M vgdata     # logical volume (bigger than one disk)
+  mkfs.ext4 /dev/vgdata/lvweb
+  mkdir -p /srv/web
+  echo '/dev/vgdata/lvweb  /srv/web  ext4  defaults  0  2' >> /etc/fstab
+  systemctl daemon-reload
+  mount -a
+  pvs; vgs; lvs; df -hT /srv/web
+  # /dev/vgdata/lvweb and /dev/mapper/vgdata-lvweb are the same device. UUID=... (blkid) also works.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/lvm.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/lvcreate.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html

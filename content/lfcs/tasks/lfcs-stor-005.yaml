@@ -1,0 +1,56 @@
+id: lfcs-stor-005
+title: Extend a full logical volume with a new disk
+domain: storage
+difficulty: 3
+minutes: 7
+environment: linux
+setup: |
+  mkdir -p /srv/disks
+  truncate -s 200M /srv/disks/shop1.img /srv/disks/shop2.img
+  A=$(losetup -f --show /srv/disks/shop1.img)
+  B=$(losetup -f --show /srv/disks/shop2.img)
+  echo "$B" > /root/new-disk.txt
+  pvcreate -q "$A"
+  vgcreate -q vgshop "$A"
+  lvcreate -q -y -n lvdb -L 180M vgshop
+  mkfs.ext4 -q /dev/vgshop/lvdb
+  mkdir -p /srv/db
+  mount /dev/vgshop/lvdb /srv/db
+  echo "orders 2026" > /srv/db/orders.txt
+task: |
+  The database files live on `/srv/db`, an ext4 filesystem on the logical volume `vgshop/lvdb`
+  (180 MiB). The volume group `vgshop` has almost no free space left. A new disk was added: its
+  device name is in `/root/new-disk.txt`.
+
+  1. Add the new disk to the volume group `vgshop`.
+  2. Grow `lvdb` to **360 MiB** and grow its filesystem too, **while it stays mounted**.
+     The file `/srv/db/orders.txt` must not be lost.
+checks:
+  - name: The volume group vgshop has two physical volumes
+    run: |
+      [ "$(vgs --noheadings -o pv_count vgshop 2>/dev/null | tr -d ' ')" = 2 ]
+  - name: The logical volume vgshop/lvdb is 360 MiB or more
+    run: |
+      size=$(lvs --noheadings --units m --nosuffix -o lv_size vgshop/lvdb 2>/dev/null | tr -d ' ' | cut -d. -f1)
+      [ -n "$size" ] && [ "$size" -ge 356 ]
+  - name: The filesystem on /srv/db is bigger than 300 MiB
+    run: |
+      [ "$(findmnt -bno SIZE /srv/db)" -ge $(( 300 * 1024 * 1024 )) ]
+  - name: /srv/db is still mounted and orders.txt is there
+    guard: true
+    run: |
+      [ "$(findmnt -no FSTYPE /srv/db)" = ext4 ] && grep -q "orders 2026" /srv/db/orders.txt
+solution: |
+  cat /root/new-disk.txt                    # for example /dev/loop5
+  B=$(cat /root/new-disk.txt)
+  vgs vgshop                                # VFree is almost 0
+  pvcreate "$B"
+  vgextend vgshop "$B"                      # the volume group gets the new space
+  lvextend -r -L 360M vgshop/lvdb           # -r also grows the filesystem (resize2fs, online)
+  df -h /srv/db
+  # Without -r: lvextend -L 360M vgshop/lvdb && resize2fs /dev/vgshop/lvdb
+  # XFS: xfs_growfs /srv/db (XFS can grow online, but it cannot shrink).
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/vgextend.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/lvextend.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/resize2fs.8.html

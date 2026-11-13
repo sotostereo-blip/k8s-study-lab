@@ -19,6 +19,12 @@ from .content import Check
 Runner = Callable[[list[str], str | None, float], tuple[int, str]]
 
 
+# Runs lab-teardown in every running container of the lab project that has it.
+TEARDOWN = ("for c in $(docker ps -q --filter label=com.docker.compose.project={project}); do "
+            "docker exec \"$c\" sh -c 'command -v lab-teardown >/dev/null 2>&1 && lab-teardown || true' "
+            ">/dev/null 2>&1; done; true")
+
+
 def subprocess_runner(cmd: list[str], stdin: str | None, timeout: float) -> tuple[int, str]:
     try:
         p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=timeout)
@@ -82,6 +88,12 @@ class LabManager:
         return self.run(self.compose(env, "exec", "-T", "toolbox", "bash", "-s"),
                         "set -o pipefail\n" + script, timeout)
 
+    def teardown(self) -> None:
+        """Before removing the lab: let each container release kernel objects it created (loop
+        devices, LVM volumes, swap), which `docker compose down` would leave on the Docker host.
+        Images that need it ship a `lab-teardown` script; the others are skipped."""
+        self.run(["sh", "-c", TEARDOWN.format(project=self.PROJECT)], None, 120)
+
     def _log(self, msg: str, gen: int | None = None) -> None:
         if gen is None or gen == self.generation:   # a stale thread must not write into a newer lab's log
             self.state.log.append(f"[{time.strftime('%H:%M:%S')}] {msg}")
@@ -120,6 +132,7 @@ class LabManager:
                 self._log("ERROR: " + msg)
 
         self._log("Removing any previous lab…")
+        self.teardown()
         self.run(self.compose(None, "down", "-v", "--remove-orphans"), None, 120)
         if not alive():
             return
@@ -178,6 +191,7 @@ class LabManager:
             self.state = LabState(status="stopping", environment=env)
         with self.docker_lock:
             if gen == self.generation:   # a newer start does its own "down" first
+                self.teardown()
                 self.run(self.compose(env, "down", "-v", "--remove-orphans"), None, 180)
         with self.lock:
             if gen == self.generation:   # never overwrite the state of a lab started after this stop

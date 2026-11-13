@@ -41,15 +41,18 @@
 - [x] Argo CAPA: 100 questions + 14 labs (Argo CD, Rollouts, Workflows) + mock exam
 - [x] Prometheus PCA: 100 questions + 19 labs (Prometheus, Alertmanager, exporters) + mock exam
 - [x] AWS SAA-C03: 150 questions + 12 AWS CLI labs on LocalStack + mock exam
-- [ ] LFCS storage labs with LVM and swap (need a VM; loop devices are shared in Docker Desktop)
-- [ ] Argo Events labs (EventBus), Grafana dashboard labs
+- [x] LFCS storage labs with LVM and swap (LVM devices file + `lab-teardown`, so nothing stays in the shared kernel)
+- [x] Argo Events labs (JetStream EventBus, webhook EventSource, Sensor that submits a Workflow)
+- [x] GH-200 OIDC lab (workflow permissions + IAM trust policy tested with example tokens; Gitea cannot issue OIDC tokens)
+- [ ] Grafana dashboard labs
 - [ ] Later: Ansible (RHCE), HashiCorp Vault Associate
 - [x] Real exam facts per certification (questions, time, cost, prerequisites, validity)
 - [x] Study plan by exam date (work for today, phases, pace) and readiness score (`backend/app/plan.py`)
-- [ ] Certification path map (KCNA → CKA → CKS, Kubestronaut) with expiry reminders
-- [ ] Exam-like mock details: DOMC questions for DCA, AWS ESL +30 minutes, docs-only browser in labs
+- [x] Certification path map (KCNA → CKA → CKS, Kubestronaut) with expiry reminders
+- [x] Exam-like mock details: DOMC questions for DCA, AWS ESL +30 minutes, allowed docs in lab mock exams
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
+- [x] AI feedback on interview answers: key points, English corrections, an improved answer
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`
 - [ ] "Explain it" exercise: write why an answer is right; the LLM corrects grammar and technical accuracy
 

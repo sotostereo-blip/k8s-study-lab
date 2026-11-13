@@ -11,10 +11,10 @@ A local study environment for **Cloud Engineer / DevOps certifications**, built 
 | **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
 | **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
 | **Terraform Associate (004)** — HashiCorp | 152 questions | 17 tasks (Terraform + LocalStack) |
-| **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 30 tasks + mock exam (Ubuntu servers with systemd) |
+| **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 33 tasks + mock exam (Ubuntu servers with systemd, LVM, swap) |
 | **DCA** — Docker Certified Associate | 120 questions | 23 tasks + mock exam (Docker Engine, Swarm, registry) |
-| **GH-200** — GitHub Actions | 100 questions | 18 tasks + mock exam (Gitea Actions, GitHub compatible) |
-| **CAPA** — Certified Argo Project Associate | 100 questions | 14 tasks + mock exam (Argo CD, Rollouts, Workflows) |
+| **GH-200** — GitHub Actions | 100 questions | 19 tasks + mock exam (Gitea Actions, GitHub compatible) |
+| **CAPA** — Certified Argo Project Associate | 100 questions | 16 tasks + mock exam (Argo CD, Rollouts, Workflows, Events) |
 | **PCA** — Prometheus Certified Associate | 100 questions | 19 tasks + mock exam (Prometheus, Alertmanager, exporters) |
 | **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
 | **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |

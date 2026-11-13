@@ -33,6 +33,7 @@ os.environ.setdefault("K8S_LAB_NO_AUTOAPP", "1")
 
 from app.content import load_library  # noqa: E402
 from app.main import mock_setup_script  # noqa: E402
+from app.labs import TEARDOWN  # noqa: E402
 
 
 class Env:
@@ -75,6 +76,8 @@ class Env:
                 time.sleep(3)
 
     def down(self):
+        # release loop devices, LVM volumes and swap first (see labs/toolbox-linux/lab-teardown)
+        subprocess.run(["sh", "-c", TEARDOWN.format(project=self.project)], capture_output=True, timeout=180)
         name, self.name = self.name, None
         self.dc("down", "-v", "--remove-orphans", timeout=300)
         self.name = name

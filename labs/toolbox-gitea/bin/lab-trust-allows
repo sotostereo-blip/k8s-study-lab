@@ -1,0 +1,29 @@
+#!/bin/bash
+# lab-trust-allows POLICY.json SUB [AUD] - exit 0 if the IAM role trust policy lets a GitHub
+# Actions OIDC token with this `sub` (and `aud`, default sts.amazonaws.com) assume the role
+# (account 111122223333). A small model of AWS: Allow statements, sts:AssumeRoleWithWebIdentity,
+# the GitHub OIDC provider as Federated principal, and StringEquals / StringLike conditions.
+# Used by the lab checks, because Gitea Actions cannot issue OIDC tokens.
+policy="${1:?usage: lab-trust-allows POLICY.json SUB [AUD]}"; sub="${2:?}"; aud="${3:-sts.amazonaws.com}"
+provider=arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com
+claims=$(jq -nc --arg sub "$sub" --arg aud "$aud" '{sub: $sub, aud: $aud}')
+jq -e --arg provider "$provider" --argjson claims "$claims" "$(cat <<'JQ'
+# Is a token with these claims allowed by the IAM trust policy (input)? Supports the condition
+# operators used with GitHub OIDC: StringEquals and StringLike (with * and ?).
+def arr: if type == "array" then . else [.] end;
+def glob: "^" + (gsub("(?<c>[.+^$(){}|\\[\\]\\\\])"; "\\\(.c)") | gsub("\\*"; ".*") | gsub("\\?"; ".")) + "$";
+def claim($k): ($k | sub("^token\\.actions\\.githubusercontent\\.com:"; "")) as $n | $claims[$n];
+def cond_ok:
+  (.Condition // {}) | to_entries | all(
+    .key as $op | .value | to_entries | all(
+      claim(.key) as $c | (.value | arr) as $vals |
+      if $c == null then false
+      elif $op == "StringEquals" then ($vals | index($c)) != null
+      elif $op == "StringLike" then any($vals[]; . as $p | $c | test($p | glob))
+      else false end));
+[.Statement | arr | .[] | select(.Effect == "Allow")
+  | select((.Action | arr | index("sts:AssumeRoleWithWebIdentity")) != null)
+  | select((.Principal.Federated // "" | arr | index($provider)) != null)
+  | select(cond_ok)] | length > 0
+JQ
+)" "$policy" >/dev/null 2>&1

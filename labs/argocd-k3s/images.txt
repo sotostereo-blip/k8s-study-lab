@@ -11,3 +11,8 @@ quay.io/argoproj/argoexec:v4.1.6
 docker.io/library/nginx:1.27-alpine
 docker.io/library/nginx:1.28-alpine
 docker.io/library/busybox:1.36
+# Argo Events v1.9.11: controller, EventSource and Sensor pods, and the JetStream EventBus
+quay.io/argoproj/argo-events:v1.9.11
+docker.io/library/nats:2.10.29
+docker.io/natsio/prometheus-nats-exporter:0.14.0
+docker.io/natsio/nats-server-config-reloader:0.14.0

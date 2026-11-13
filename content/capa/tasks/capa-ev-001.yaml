@@ -1,0 +1,80 @@
+id: capa-ev-001
+title: Create an EventBus and a webhook EventSource
+domain: argo-events
+difficulty: 2
+minutes: 8
+environment: argocd
+setup: |
+  kubectl create namespace ev-hook >/dev/null
+task: |
+  Argo Events runs in the cluster (controller in the namespace `argo-events`). Work in the
+  namespace `ev-hook`.
+
+  1. Create the **EventBus** `default` with **JetStream** (`version: latest`). This lab has one
+     node, so use `replicas: 1` and set the stream replicas to 1 too:
+     `streamConfig: "replicas: 1"` (in production keep the default of 3).
+  2. Create the **EventSource** `webhook` with one **webhook** event called `push` that listens on
+     port `12000`, endpoint `/push`, method `POST`, and a Service on port `12000`.
+  3. Send a test event, for example with `kubectl port-forward` and
+     `curl -X POST -H 'Content-Type: application/json' -d '{"message":"hi"}' http://localhost:12000/push`.
+     The answer is `success`.
+checks:
+  - name: The JetStream EventBus `default` runs
+    run: |
+      kubectl -n ev-hook get eventbus default -o json | jq -e '.spec.jetstream != null' >/dev/null && \
+      kubectl -n ev-hook wait pod -l eventbus-name=default --for=condition=Ready --timeout=20s >/dev/null
+  - name: The EventSource `webhook` has the event `push` on port 12000, endpoint /push
+    run: |
+      kubectl -n ev-hook get eventsource webhook -o json | \
+        jq -e '.spec.webhook.push.port == "12000" and .spec.webhook.push.endpoint == "/push"' >/dev/null && \
+      kubectl -n ev-hook wait pod -l eventsource-name=webhook --for=condition=Ready --timeout=20s >/dev/null
+  - name: A POST to the Service on port 12000, path /push, is accepted
+    run: |
+      svc=$(kubectl -n ev-hook get svc -l eventsource-name=webhook -o jsonpath='{.items[0].metadata.name}')
+      [ -n "$svc" ] || exit 1
+      kubectl -n ev-hook port-forward "svc/$svc" 18301:12000 >/tmp/ev-pf.log 2>&1 &
+      pf=$!
+      ok=1
+      for i in $(seq 1 15); do
+        out=$(curl -s -m 3 -X POST -d '{"message":"check"}' http://localhost:18301/push) && [ "$out" = success ] && { ok=0; break; }
+        sleep 1
+      done
+      kill $pf 2>/dev/null
+      exit $ok
+solution: |
+  kubectl apply -n ev-hook -f - <<'YAML'
+  apiVersion: argoproj.io/v1alpha1
+  kind: EventBus
+  metadata:
+    name: default              # EventSources and Sensors use the EventBus "default" unless they name another
+  spec:
+    jetstream:
+      version: latest
+      replicas: 1              # one node in this lab (production: 3)
+      streamConfig: |
+        replicas: 1
+  ---
+  apiVersion: argoproj.io/v1alpha1
+  kind: EventSource
+  metadata:
+    name: webhook
+  spec:
+    service:                   # creates the Service webhook-eventsource-svc
+      ports:
+      - port: 12000
+        targetPort: 12000
+    webhook:
+      push:                    # the event name; a Sensor depends on webhook + push
+        port: "12000"
+        endpoint: /push
+        method: POST
+  YAML
+  kubectl -n ev-hook get eventbus,eventsource,pods,svc
+  kubectl -n ev-hook port-forward svc/webhook-eventsource-svc 12000:12000 &
+  sleep 2
+  curl -X POST -H 'Content-Type: application/json' -d '{"message":"hi"}' \
+    http://localhost:12000/push                # prints: success
+  kill $!
+docs:
+  - https://argoproj.github.io/argo-events/eventbus/jetstream/
+  - https://argoproj.github.io/argo-events/eventsources/setup/webhook/

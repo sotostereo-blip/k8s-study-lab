@@ -1,0 +1,12 @@
+# Argo Events controller (EventBus, EventSource and Sensor CRDs). The images are preloaded in the
+# k3s server image, so the controller must not pull them again (upstream uses imagePullPolicy Always).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argo-events
+resources: [install.yaml]
+patches:
+  - target: { kind: Deployment, name: controller-manager }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

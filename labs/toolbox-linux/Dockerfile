@@ -21,7 +21,10 @@ RUN systemctl mask getty@tty1.service console-getty.service systemd-modules-load
       apt-daily.timer apt-daily-upgrade.timer motd-news.timer dpkg-db-backup.timer e2scrub_all.timer fstrim.timer \
  && systemctl disable nginx.service \
  && sed -i 's/^\(\s*udev_sync\s*=\).*/\1 0/; s/^\(\s*udev_rules\s*=\).*/\1 0/' /etc/lvm/lvm.conf \
- && printf 'activation {\n  udev_sync = 0\n  udev_rules = 0\n}\n' > /etc/lvm/lvmlocal.conf
+ && printf 'activation {\n  udev_sync = 0\n  udev_rules = 0\n}\ndevices {\n  use_devicesfile = 1\n}\n' > /etc/lvm/lvmlocal.conf \
+ && mkdir -p /etc/lvm/devices && : > /etc/lvm/devices/system.devices
+# The LVM devices file makes LVM use only the disks (loop devices) created in this container:
+# the kernel and its loop devices are shared with every other container on the Docker host.
 # SSH: root on one host can log in to the other with the lab key (like a jump host in the exam).
 RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh \
  && ssh-keygen -q -t ed25519 -N '' -C lab-root -f /root/.ssh/id_ed25519 \
@@ -30,8 +33,9 @@ RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh \
  && systemctl enable ssh.service
 COPY ttyd.service /etc/systemd/system/ttyd.service
 COPY lab-ready /usr/local/bin/lab-ready
+COPY lab-teardown /usr/local/bin/lab-teardown
 COPY bashrc /root/.bashrc
-RUN chmod +x /usr/local/bin/lab-ready && systemctl enable ttyd.service \
+RUN chmod +x /usr/local/bin/lab-ready /usr/local/bin/lab-teardown && systemctl enable ttyd.service \
  && rm -rf /var/log/journal /var/lib/dbus/machine-id && : > /etc/machine-id
 # Empty machine-id: every container gets its own. No /var/log/journal: the journal is volatile
 # (in /run) until someone makes it persistent, as on a fresh minimal install.

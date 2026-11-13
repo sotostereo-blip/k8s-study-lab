@@ -623,3 +623,24 @@ def test_ai_feedback_with_a_client(tmp_path):
     assert kw["fallbacks"] == "default" and "more better" in kw["messages"][0]["content"]
     refused = TestClient(create_app(CONTENT, tmp_path / "u.db", coach=Coach(client=FakeClaude("refusal"))))
     assert refused.post("/api/interview/feedback", json={"question_id": qid, "answer": "one two three four five six"}).status_code == 502
+
+
+def test_lab_teardown_runs_before_down(tmp_path):
+    docker = FakeDocker()
+    client = lab_client(tmp_path, docker)
+    client.post("/api/labs/lfcs-stor-004/start")
+    wait_ready(client)
+    client.post("/api/labs/stop")
+    kinds = ["teardown" if c[:2] == ["sh", "-c"] and "lab-teardown" in c[2] else "down" if "down" in c else None
+             for c in docker.calls]
+    kinds = [k for k in kinds if k]
+    # every "docker compose down" comes right after the teardown of the lab containers
+    assert kinds and all(kinds[i - 1] == "teardown" for i, k in enumerate(kinds) if k == "down")
+
+
+def test_new_labs_exist():
+    lib = load_library(CONTENT)
+    for t in ("lfcs-stor-004", "lfcs-stor-005", "lfcs-stor-006", "capa-ev-001", "capa-ev-002", "gha-sec-004"):
+        assert t in lib.tasks
+    assert "argo-events" in {d.id for d in lib.tracks["capa"].domains}
+

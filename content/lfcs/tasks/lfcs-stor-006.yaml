@@ -1,0 +1,44 @@
+id: lfcs-stor-006
+title: Add a swap file and make it permanent
+domain: storage
+difficulty: 2
+minutes: 6
+environment: linux
+setup: |
+  mkdir -p /srv/disks /data
+  truncate -s 256M /srv/disks/data02.img
+  mkfs.ext4 -q -L DATA02 /srv/disks/data02.img
+  echo '/srv/disks/data02.img  /data  ext4  loop,defaults  0  0' >> /etc/fstab
+  systemctl daemon-reload
+  mount /data
+task: |
+  The server needs more swap. In this lab the root filesystem cannot hold a swap file, so use
+  the ext4 filesystem mounted on `/data`.
+
+  1. Create a **128 MiB** swap file `/data/swapfile`. Only root may read or write it.
+  2. Turn it on now, without turning off the swap that is already there.
+  3. Add it to `/etc/fstab` so it is used at every boot.
+checks:
+  - name: /data/swapfile is 128 MiB or more and has mode 600
+    run: |
+      [ -f /data/swapfile ] && [ "$(stat -c %a /data/swapfile)" = 600 ] && \
+      [ "$(stat -c %s /data/swapfile)" -ge $(( 128 * 1024 * 1024 )) ]
+  - name: /data/swapfile has a swap signature (mkswap)
+    run: '[ "$(blkid -o value -s TYPE /data/swapfile)" = swap ]'
+  - name: /data/swapfile is active swap
+    run: swapon --show=NAME --noheadings | grep -qx /data/swapfile
+  - name: /etc/fstab has /data/swapfile as swap
+    run: awk '$1 == "/data/swapfile" && $3 == "swap"' /etc/fstab | grep -q .
+solution: |
+  dd if=/dev/zero of=/data/swapfile bs=1M count=128   # or: fallocate -l 128M /data/swapfile
+  chmod 600 /data/swapfile                            # swapon warns about insecure permissions
+  mkswap /data/swapfile
+  swapon /data/swapfile
+  echo '/data/swapfile  none  swap  defaults  0  0' >> /etc/fstab
+  swapon --show            # or: free -h, cat /proc/swaps
+  # Check the fstab line: swapoff /data/swapfile && swapon -a && swapon --show
+  # A swap file needs a filesystem that supports it (ext4, XFS); overlay and tmpfs do not.
+docs:
+  - https://manpages.ubuntu.com/manpages/noble/man8/mkswap.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man8/swapon.8.html
+  - https://manpages.ubuntu.com/manpages/noble/man5/fstab.5.html
