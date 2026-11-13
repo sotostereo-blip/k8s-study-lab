@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import { EnglishBar, EnglishText } from './english.jsx'
 
@@ -43,7 +43,7 @@ export default function Labs({ trackId }) {
         a terminal in your browser. Solve the task, then press <b>Check my work</b>.
         · {solved}/{data.tasks.length} solved
       </p>
-      {track.mock && <MockPanel trackId={trackId} passing={track.passing_score} history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
+      {track.mock && <MockPanel trackId={trackId} passing={track.passing_score} rules={track.exam_rules} history={data.mock_exams} pending={pendingMock} onOpen={setMock} onAbandoned={reload}
         busy={data.lab.status === 'starting' || data.lab.status === 'ready'} />}
       {running && (
         <div className="banner">
@@ -232,12 +232,17 @@ function Markdown({ text }) {
   })
 }
 
+// Real exam conditions: show the task as plain text, without glossary highlights
+const PlainText = createContext(false)
+
 function Inline({ text }) {
+  const plain = useContext(PlainText)
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
+  const words = (t, i) => (plain ? <span key={i}>{t}</span> : <EnglishText key={i} text={t} />)
   return parts.map((p, i) =>
     p.startsWith('`') ? <code key={i}>{p.slice(1, -1)}</code>
-      : p.startsWith('**') ? <strong key={i}><EnglishText text={p.slice(2, -2)} /></strong>
-        : <EnglishText key={i} text={p} />)
+      : p.startsWith('**') ? <strong key={i}>{words(p.slice(2, -2))}</strong>
+        : words(p, i))
 }
 
 /* key words should not come from names inside `code` (gpu-job is not the word Job) */
@@ -252,12 +257,42 @@ function fmt(s) {
 
 /* ---------- Mock exam: several tasks in one cluster, one timer, scored at the end ---------- */
 
-function MockPanel({ trackId, passing, history, pending, onOpen, onAbandoned, busy }) {
-  const [count, setCount] = useState(10)
+const realKey = (sid) => `mock-real-${sid}`
+const isReal = (sid) => { try { return localStorage.getItem(realKey(sid)) === '1' } catch { return false } }
+const loadNotes = (sid) => { try { return localStorage.getItem(`mock-notes-${sid}`) || '' } catch { return '' } }
+const saveNotes = (sid, v) => { try { localStorage.setItem(`mock-notes-${sid}`, v) } catch { /* private mode */ } }
+
+/* What the real hands-on exam lets you use (content/<track>/labs.yaml exam_rules). */
+function ExamRules({ rules, open = false }) {
+  if (!rules) return null
+  return (
+    <details className="exam-rules" open={open}>
+      <summary>Allowed in the real exam</summary>
+      {rules.docs.length > 0 ? (
+        <>
+          <p className="small">Only these websites, in the browser of the exam machine:</p>
+          <ul>{rules.docs.map((d) => <li key={d.url}><a href={d.url} target="_blank" rel="noreferrer">{d.name}</a> <span className="muted small">{d.url.replace('https://', '')}</span></li>)}</ul>
+        </>
+      ) : <p className="small"><b>No websites.</b></p>}
+      {rules.local.length > 0 && <><p className="small">Inside the exam server:</p><ul>{rules.local.map((x) => <li key={x}>{x}</li>)}</ul></>}
+      {rules.notes.length > 0 && <ul>{rules.notes.map((x) => <li key={x} className="small">{x}</li>)}</ul>}
+      <p className="small muted">Source: <a href={rules.source} target="_blank" rel="noreferrer">Linux Foundation, Resources Allowed</a>.
+        To practise, keep only these pages open and close everything else.</p>
+    </details>
+  )
+}
+
+function MockPanel({ trackId, passing, rules, history, pending, onOpen, onAbandoned, busy }) {
+  const [count, setCount] = useState(rules ? 15 : 10)
+  const [real, setReal] = useState(false)
   const [starting, setStarting] = useState(false)
   const start = async () => {
     setStarting(true)
-    try { onOpen(await api.mockStart(trackId, count)) } finally { setStarting(false) }
+    try {
+      const s = await api.mockStart(trackId, count)
+      try { localStorage.setItem(realKey(s.session_id), real ? '1' : '0') } catch { /* private mode */ }
+      onOpen(s)
+    } finally { setStarting(false) }
   }
   return (
     <div className="mock-panel">
@@ -290,11 +325,16 @@ function MockPanel({ trackId, passing, history, pending, onOpen, onAbandoned, bu
                 <option value={15}>15 tasks (about as long as the real exam)</option>
               </select>
             </label>
+            <label className="check-row small">
+              <input type="checkbox" checked={real} onChange={(e) => setReal(e.target.checked)} />
+              <span><b>Real exam conditions:</b> no translation, glossary or listening{rules ? '; use only the allowed docs' : ''}.</span>
+            </label>
             <button className="primary" disabled={starting} onClick={start}>{starting ? 'Starting…' : 'Start mock exam'}</button>
             {busy && <small className="sub">This stops the lab that is running now.</small>}
           </>
         )}
       </div>
+      {rules && <ExamRules rules={rules} />}
     </div>
   )
 }
@@ -311,6 +351,8 @@ function MockExam({ session, track, domains, onExit }) {
   const [confirming, setConfirming] = useState(null)  // 'finish' | 'abandon'
   const readyAt = useRef(null)
   const submitted = useRef(false)
+  const real = isReal(session.session_id)
+  const [notes, setNotes] = useState(() => loadNotes(session.session_id))
   const status = lab?.status || 'idle'
   const total = session.minutes * 60
 
@@ -369,8 +411,8 @@ function MockExam({ session, track, domains, onExit }) {
           <span>{task.points} points</span>
         </div>
         <h1>{task.title}</h1>
-        <div className="task-text"><Markdown text={task.task} /></div>
-        <EnglishBar key={task.id} text={`${task.title}\n${noCode(task.task)}`} speakText={`${task.title}. ${speakable(task.task)}`} />
+        <div className="task-text"><PlainText.Provider value={real}><Markdown text={task.task} /></PlainText.Provider></div>
+        {!real && <EnglishBar key={task.id} text={`${task.title}\n${noCode(task.task)}`} speakText={`${task.title}. ${speakable(task.task)}`} />}
         <div className="actions">
           <button disabled={i === 0} onClick={() => setI(i - 1)}>Previous</button>
           <button disabled={i === session.tasks.length - 1} onClick={() => setI(i + 1)}>Next</button>
@@ -400,6 +442,13 @@ function MockExam({ session, track, domains, onExit }) {
           </div>
         )}
         {error && <p className="error">{error}</p>}
+        {real && <p className="small muted">Real exam conditions: English helpers are off.</p>}
+        <ExamRules rules={track.exam_rules} />
+        <details className="exam-rules">
+          <summary>Notes</summary>
+          <textarea className="notepad" value={notes} placeholder="Names, ports, tasks to come back to…"
+            onChange={(e) => { setNotes(e.target.value); saveNotes(session.session_id, e.target.value) }} />
+        </details>
       </div>
 
       <div className="lab-terminal">

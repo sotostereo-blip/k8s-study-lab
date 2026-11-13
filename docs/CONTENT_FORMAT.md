@@ -191,6 +191,26 @@ container port 7681, published as `127.0.0.1:${TERMINAL_PORT:-7681}:7681`. No ot
 may publish host ports (several labs and verifications run at the same time). With `nodes: 0`
 the default `ready` command is `lab-ready`, a script the toolbox image must ship.
 
+## Exam-like mock exams
+
+`exam.yaml` can describe special formats of the real exam:
+
+```yaml
+domc: 42          # how many of the exam_questions are DOMC (options one at a time, YES/NO)
+esl_minutes: 30   # extra time for non-native English speakers (AWS ESL +30)
+```
+
+Hands-on tracks whose real exam is performance-based list what the exam allows (`labs.yaml`):
+
+```yaml
+exam_rules:
+  docs:                                   # websites allowed in the exam browser
+    - { name: "Kubernetes Documentation", url: "https://kubernetes.io/docs/" }
+  local: ["Man pages"]                    # resources inside the exam machine
+  notes: ["Only one browser, inside the exam machine."]
+  source: "https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed"
+```
+
 ## Job interviews (`content/interviews/`)
 
 ```yaml

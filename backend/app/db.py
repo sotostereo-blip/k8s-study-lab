@@ -93,6 +93,12 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
 );
 """
 
+# Columns added after the first release: (table, column, definition). Added when missing.
+MIGRATIONS = [
+    ("exam_sessions", "domc", "TEXT NOT NULL DEFAULT '[]'"),   # JSON list of question ids shown as DOMC
+    ("exam_sessions", "conditions", "TEXT NOT NULL DEFAULT '{}'"),  # JSON: {"real": bool, "esl": bool}
+]
+
 
 class Database:
     def __init__(self, path: Path):
@@ -100,6 +106,10 @@ class Database:
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            for table, column, definition in MIGRATIONS:
+                cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+                if column not in cols:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     @contextmanager
     def connect(self):

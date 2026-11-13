@@ -53,7 +53,13 @@ Choose the certification in the selector at the top of the page.
 
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
   When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
-- **Mock exams** that follow the official domain weights, with a timer and a per-domain report.
+- **Mock exams** that follow the official domain weights, with a timer, *Flag for review*, and a
+  per-domain report that links your weak domains to practice. Options to make them feel like the real exam:
+  - **Real exam conditions**: no glossary, translation or listening (the real exam is only in English).
+  - **DOMC** (Docker DCA): about 3 of every 4 questions show their options one at a time; you answer
+    YES or NO to each, cannot go back, and the question can end early, like the real DCA exam.
+  - **ESL +30 minutes** (AWS SAA): the extra time AWS gives when English is not your first language
+    (you must request it in your AWS Certification account before booking).
 - **Hands-on labs**: choose a task and a real environment starts in Docker with a terminal
   **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, with API audit
   logging for CKS, or with Argo CD), Ubuntu servers with systemd, a Docker Engine, Gitea with
@@ -61,7 +67,9 @@ Choose the certification in the selector at the top of the page.
   press *Check my work*, and the app inspects the real state. Every task was verified on a real
   environment (fails before, passes after the solution). See [labs/README.md](labs/README.md).
 - **Lab mock exams** (CKA, CKAD, CKS, LFCS, DCA, GH-200, CAPA, PCA, AWS): 5, 10 or 15 tasks in one lab environment with one countdown,
-  graded at the end with partial credit, plus a full review with solutions.
+  graded at the end with partial credit, plus a full review with solutions. For CKA, CKAD, CKS and LFCS the
+  mock exam lists **what the real exam allows** (only kubernetes.io/docs and a few other sites; LFCS: no
+  websites, only man pages and /usr/share), has a notes box, and can hide the English helpers.
 - **Job interviews in English** (DevOps / Cloud Engineer): hear the question, answer aloud
   (speech to text in Chrome, or type), tick the key points you covered, listen to a model
   answer and the likely follow-ups. Timed **mock interviews** open with a behavioral (STAR)

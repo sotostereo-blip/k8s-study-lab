@@ -22,3 +22,13 @@ environments:
     ready_timeout: 300
 mock: true
 mock_environment: linux   # all mock exam tasks run together on the same two servers
+# Real exam rules (Linux Foundation "Resources Allowed", checked 2026-11). Shown in the mock exam.
+exam_rules:
+  docs: []
+  local:
+    - "Man pages (man, apropos, --help)"
+    - "Documents installed by the distribution (/usr/share and its subdirectories, like /usr/share/doc)"
+    - "Packages from the distribution (you may install them with apt or dnf)"
+  notes:
+    - "No websites at all: everything must come from the terminal of the exam server."
+  source: "https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed"

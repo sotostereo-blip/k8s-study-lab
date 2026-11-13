@@ -69,6 +69,11 @@ class Exam(BaseModel):
     passing_score: int
     domains: list[Domain]
     facts_note: str | None = None   # e.g. which exam facts are not published officially
+    # Exam-like mock exams. domc: how many of the real exam_questions are DOMC items (options
+    # shown one at a time, answer YES or NO to each). esl_minutes: extra time the provider gives
+    # when English is not your first language (it must be requested before booking).
+    domc: int = Field(default=0, ge=0)
+    esl_minutes: int = Field(default=0, ge=0)
 
 
 class Term(BaseModel):
@@ -149,6 +154,21 @@ class LabEnvironment(BaseModel):
         return self.ready or ("lab-ready" if self.nodes == 0 else None)
 
 
+class DocLink(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    url: str = Field(pattern=r"^https://")
+
+
+class ExamRules(BaseModel):
+    """What you may use during the real hands-on exam (shown in the mock exam)."""
+    model_config = ConfigDict(extra="forbid")
+    docs: list[DocLink] = []    # websites allowed in the exam browser
+    local: list[str] = []       # resources inside the exam machine (man pages, /usr/share/doc…)
+    notes: list[str] = []
+    source: str = Field(pattern=r"^https://")
+
+
 class LabTrack(BaseModel):
     """Lab metadata for one exam (content/<exam>/labs.yaml)."""
     id: str
@@ -160,6 +180,7 @@ class LabTrack(BaseModel):
     mock: bool = True                       # offer a multi-task mock exam for this track
     mock_environment: str | None = None     # environment that runs all mock exam tasks together
     intro: str | None = None                # "Choosing a lab starts <intro> with a terminal in your browser"
+    exam_rules: ExamRules | None = None     # real performance-based exam: allowed docs and tools
 
 
 class OfficialExam(BaseModel):

@@ -305,3 +305,23 @@ ol.roadmap li { position: relative; padding: 0 0 8px 18px; }
 ol.roadmap li::before { content: ''; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
 ol.roadmap li.current::before { background: var(--accent); }
 ol.roadmap li p { margin: 2px 0 8px; }
+
+/* exam-like mock exams */
+.exam-options { display: grid; gap: 10px; margin: 12px 0; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.check-row input { margin-top: 4px; flex: none; }
+.domc-option { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 14px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); }
+.domc-option .opt-body { flex: 1 1 240px; }
+.domc-buttons { display: flex; gap: 8px; }
+.domc-buttons button { min-width: 72px; }
+.domc-done { padding: 12px; border-radius: 8px; background: var(--accent-soft); margin: 0; }
+td .bar { position: relative; }
+td .bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+tr.weak td:first-child { color: var(--ko); font-weight: 600; }
+.weak-list { margin: 12px 0; padding: 10px 14px; border-left: 3px solid var(--ko); background: var(--surface); border-radius: 6px; }
+.weak-list p { margin: 0 0 6px; }
+.weak-list ul { margin: 0; padding-left: 18px; }
+.exam-rules { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 14px; }
+.exam-rules ul { margin: 4px 0; padding-left: 18px; }
+.exam-rules summary { cursor: pointer; font-weight: 600; }
+.notepad { width: 100%; min-height: 90px; font-family: var(--mono); font-size: 13px; margin-top: 6px; box-sizing: border-box; }

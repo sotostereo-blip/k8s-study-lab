@@ -17,3 +17,19 @@ domains:
 environments:
   secure-node: { name: "1 node with API audit logging", nodes: 1 }
 mock_environment: secure-node
+# Real exam rules (Linux Foundation "Resources Allowed", checked 2026-11). Shown in the mock exam.
+exam_rules:
+  docs:
+    - { name: "Kubernetes Documentation", url: "https://kubernetes.io/docs/" }
+    - { name: "Kubernetes Blog", url: "https://kubernetes.io/blog/" }
+    - { name: "Falco Documentation", url: "https://falco.org/docs/" }
+    - { name: "bom CLI reference", url: "https://kubernetes-sigs.github.io/bom/cli-reference/" }
+    - { name: "etcd Documentation", url: "https://etcd.io/docs/" }
+    - { name: "NGINX Ingress Controller configuration", url: "https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/" }
+    - { name: "Cilium Documentation", url: "https://docs.cilium.io/" }
+    - { name: "Istio Documentation", url: "https://istio.io/latest/docs/" }
+  notes:
+    - "Only one browser, inside the exam machine. Search on kubernetes.io/docs is allowed, but do not open external search results."
+    - "Each task can also show task-specific links in its Quick Reference box."
+    - "You may read files under /usr/share and install packages from the distribution."
+  source: "https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed"

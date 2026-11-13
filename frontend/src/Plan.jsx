@@ -109,7 +109,7 @@ function Today({ today, goal, onGo }) {
                     )}
                   </div>
                   <span className="mins">{it.minutes} min</span>
-                  <button onClick={() => onGo(it.tab)}>{done ? 'Open' : 'Start'}</button>
+                  <button onClick={() => onGo(it.tab, it.domain ? { domain: it.domain } : undefined)}>{done ? 'Open' : 'Start'}</button>
                 </li>
               )
             })}

@@ -461,3 +461,80 @@ def test_study_plan_for_an_exam_date(client):
     assert labs and labs[0]["tasks"][0].startswith("cka-")
     assert client.delete("/api/plan?cert_id=kcna").json()["ok"]
     assert client.get("/api/plan?cert_id=kcna").json()["goal"] is None
+
+
+def test_domc_walk_rules():
+    from app import domc
+    lib = load_library(CONTENT)
+    single = next(q for q in lib.questions_for("dca") if q.type == "single")
+    right = single.answer[0]
+    seed = "s1"
+    first = domc.walk(seed, single, {})
+    assert first["next"] and not first["done"]
+    # YES to the right option decides it (maybe one extra unscored option follows)
+    order = domc.order(seed, single)
+    responses = {o: False for o in order[:order.index(right)]} | {right: True}
+    step = domc.walk(seed, single, responses)
+    assert step["selected"] == [right]
+    if not step["done"]:
+        step = domc.walk(seed, single, responses | {step["next"]: True})
+        assert step["done"] and step["selected"] == [right]   # the extra answer is not scored
+    # NO to the right option ends it, wrong
+    responses = {o: False for o in order[:order.index(right) + 1]}
+    step = domc.walk(seed, single, responses)
+    assert step["selected"] == []
+    multi = next((q for q in lib.questions_for("dca") if q.type == "multiple"), None)
+    if multi:
+        order = domc.order(seed, multi)
+        wrong = next(o for o in order if o not in multi.answer)
+        before = order[:order.index(wrong)]
+        responses = {o: (o in multi.answer) for o in before} | {wrong: True}
+        selected = domc.walk(seed, multi, responses)["selected"]
+        if set(multi.answer) <= set(before):   # decided right before the wrong option appears
+            assert set(selected) == set(multi.answer)
+        else:                                  # a YES to a wrong option ends it, wrong
+            assert wrong in selected
+
+
+def test_dca_mock_exam_uses_domc(client):
+    s = client.post("/api/exam/start", json={"exam_id": "dca", "questions": 20}).json()
+    domc_qs = [q for q in s["questions"] if q.get("style") == "domc"]
+    assert len(domc_qs) == round(20 * 42 / 55)
+    assert all(q["options"] == [] for q in domc_qs)    # options come one at a time
+    lib = load_library(CONTENT)
+    answers, responses = {}, {}
+    for q in domc_qs:   # answer YES only to right options
+        r, seen = {}, 0
+        while True:
+            step = client.post(f"/api/exam/{s['session_id']}/domc", json={"question_id": q["id"], "responses": r}).json()
+            if step["done"]:
+                break
+            r[step["next"]["id"]] = step["next"]["id"] in lib.questions[q["id"]].answer
+            seen += 1
+            assert seen <= 6
+        responses[q["id"]] = r
+    for q in s["questions"]:
+        if q.get("style") != "domc":
+            answers[q["id"]] = lib.questions[q["id"]].answer
+    res = client.post(f"/api/exam/{s['session_id']}/submit", json={"answers": answers, "domc": responses}).json()
+    assert res["score"] == 100
+    assert all(r["domc"] for r in res["review"] if r.get("style") == "domc")
+    plain = client.post("/api/exam/start", json={"exam_id": "dca", "questions": 10, "domc": False}).json()
+    assert not any(q.get("style") for q in plain["questions"])
+    kcna = client.post("/api/exam/start", json={"exam_id": "kcna", "questions": 10}).json()
+    bad = client.post(f"/api/exam/{kcna['session_id']}/domc", json={"question_id": kcna["questions"][0]["id"]})
+    assert bad.status_code == 400
+
+
+def test_esl_extra_time(client):
+    full = client.post("/api/exam/start", json={"exam_id": "saa", "questions": 65, "esl": True}).json()
+    assert full["minutes"] == 130 + 30 and full["conditions"]["esl"]
+    no = client.post("/api/exam/start", json={"exam_id": "kcna", "questions": 60, "esl": True}).json()
+    assert no["minutes"] == 90 and not no["conditions"]["esl"]   # KCNA gives no ESL extra time here
+
+
+def test_hands_on_tracks_list_real_exam_rules(client):
+    for track in ("cka", "ckad", "cks", "lfcs"):
+        t = client.get(f"/api/labs?track_id={track}").json()["tracks"][0]
+        assert t["exam_rules"]["source"].startswith("https://docs.linuxfoundation.org")
+    assert client.get("/api/labs?track_id=lfcs").json()["tracks"][0]["exam_rules"]["docs"] == []

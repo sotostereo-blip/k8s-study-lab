@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import plan, srs
+from . import domc, plan, srs
 from .content import Library, Question, load_library
 from .db import Database
 from .labs import LabManager, Runner, subprocess_runner
@@ -31,10 +31,19 @@ class ExamStartIn(BaseModel):
     exam_id: str = "kcna"
     questions: int | None = None   # default: official count (capped by bank size)
     minutes: int | None = None     # default: official duration, scaled to count
+    real: bool = False             # real exam conditions: no translations or glossary (frontend)
+    esl: bool = False              # add the provider's extra time for non-native English speakers
+    domc: bool | None = None       # show DOMC questions like the real exam (default: when it has them)
 
 
 class ExamSubmitIn(BaseModel):
     answers: dict[str, list[str]]
+    domc: dict[str, dict[str, bool]] = {}   # DOMC questions: option id -> YES/NO
+
+
+class DomcIn(BaseModel):
+    question_id: str
+    responses: dict[str, bool] = {}
 
 
 class MockStartIn(BaseModel):
@@ -316,37 +325,77 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
         qs = pick_exam_questions(lib, exam.id, body.questions or exam.exam_questions)
         if not qs:
             raise HTTPException(400, "No questions available for this exam yet")
-        minutes = body.minutes or max(1, round(exam.exam_minutes * len(qs) / exam.exam_questions))
+        scale = len(qs) / exam.exam_questions
+        minutes = body.minutes or max(1, round(exam.exam_minutes * scale))
+        esl = bool(body.esl and exam.esl_minutes)
+        if esl:
+            minutes += max(1, round(exam.esl_minutes * scale))
+        use_domc = exam.domc > 0 if body.domc is None else body.domc
+        n_domc = min(len(qs), round(len(qs) * exam.domc / exam.exam_questions)) if use_domc and exam.domc else 0
+        domc_ids = {q.id for q in random.sample(qs, n_domc)}
         sid = uuid.uuid4().hex
+        conditions = {"real": body.real, "esl": esl}
         with db.connect() as conn:
             conn.execute(
-                "INSERT INTO exam_sessions (id, exam_id, question_ids, minutes) VALUES (?,?,?,?)",
-                (sid, exam.id, json.dumps([q.id for q in qs]), minutes),
+                "INSERT INTO exam_sessions (id, exam_id, question_ids, minutes, domc, conditions) VALUES (?,?,?,?,?,?)",
+                (sid, exam.id, json.dumps([q.id for q in qs]), minutes, json.dumps(sorted(domc_ids)),
+                 json.dumps(conditions)),
             )
-        return {"session_id": sid, "minutes": minutes, "questions": [q.public() for q in qs]}
+        out = []
+        for q in qs:
+            pub = q.public()
+            if q.id in domc_ids:   # the options come one at a time from /domc
+                pub |= {"style": "domc", "options": [], "select": None}
+            out.append(pub)
+        return {"session_id": sid, "minutes": minutes, "questions": out, "conditions": conditions}
+
+    def open_session(conn, session_id: str):
+        s = conn.execute("SELECT * FROM exam_sessions WHERE id=?", (session_id,)).fetchone()
+        if not s:
+            raise HTTPException(404, "Unknown exam session")
+        if s["finished_at"]:
+            raise HTTPException(409, "Exam already submitted")
+        return s
+
+    @app.post("/api/exam/{session_id}/domc")
+    def exam_domc(session_id: str, body: DomcIn):
+        """Next option of a DOMC question, given the YES/NO answers so far."""
+        with db.connect() as conn:
+            s = open_session(conn, session_id)
+        if body.question_id not in json.loads(s["domc"]):
+            raise HTTPException(400, "This question is not a DOMC question in this exam")
+        q = lib.questions[body.question_id]
+        step = domc.walk(session_id, q, body.responses)
+        text = {o.id: o.text for o in q.options}
+        return {"done": step["done"], "next": None if step["next"] is None else
+                {"id": step["next"], "text": text[step["next"]]}}
 
     @app.post("/api/exam/{session_id}/submit")
     def exam_submit(session_id: str, body: ExamSubmitIn):
         with db.connect() as conn:
-            s = conn.execute("SELECT * FROM exam_sessions WHERE id=?", (session_id,)).fetchone()
-            if not s:
-                raise HTTPException(404, "Unknown exam session")
-            if s["finished_at"]:
-                raise HTTPException(409, "Exam already submitted")
+            s = open_session(conn, session_id)
             exam = lib.exams[s["exam_id"]]
             qids = json.loads(s["question_ids"])
+            domc_ids = set(json.loads(s["domc"]))
             started = datetime.strptime(s["started_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             elapsed = (datetime.now(timezone.utc) - started).total_seconds() / 60
             per_domain: dict[str, dict] = {}
             reviews = []
             for qid in qids:
                 q = lib.questions[qid]
-                sel = body.answers.get(qid, [])
+                extra = {}
+                if qid in domc_ids:
+                    responses = body.domc.get(qid, {})
+                    sel = domc.walk(session_id, q, responses)["selected"]
+                    extra = {"style": "domc", "domc": [{"id": o, "yes": responses[o]}
+                                                       for o in domc.order(session_id, q) if o in responses]}
+                else:
+                    sel = body.answers.get(qid, [])
                 ok = record(conn, q, sel, "exam")
                 d = per_domain.setdefault(q.domain, {"correct": 0, "total": 0})
                 d["total"] += 1
                 d["correct"] += int(ok)
-                reviews.append(review(q, sel) | {"question": q.question, "options": [o.model_dump() for o in q.options]})
+                reviews.append(review(q, sel) | extra | {"question": q.question, "options": [o.model_dump() for o in q.options]})
             correct = sum(d["correct"] for d in per_domain.values())
             score = round(100 * correct / len(qids), 1)
             conn.execute(
@@ -363,6 +412,7 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             "overtime": elapsed > s["minutes"],
             "domains": per_domain,
             "review": reviews,
+            "conditions": json.loads(s["conditions"]),
         }
 
     @app.post("/api/english/event")

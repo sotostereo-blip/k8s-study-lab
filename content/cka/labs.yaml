@@ -14,3 +14,15 @@ environments:
   single-node: { name: "1 node (controlplane)", nodes: 1 }
   two-node: { name: "2 nodes (controlplane + node01)", nodes: 2 }
 mock_environment: two-node   # all mock exam tasks run together in one 2-node cluster
+# Real exam rules (Linux Foundation "Resources Allowed", checked 2026-11). Shown in the mock exam.
+exam_rules:
+  docs:
+    - { name: "Kubernetes Documentation", url: "https://kubernetes.io/docs/" }
+    - { name: "Kubernetes Blog", url: "https://kubernetes.io/blog/" }
+    - { name: "Helm Documentation", url: "https://helm.sh/docs/" }
+    - { name: "Gateway API Documentation", url: "https://gateway-api.sigs.k8s.io/" }
+  notes:
+    - "Only one browser, inside the exam machine. Search on kubernetes.io/docs is allowed, but do not open external search results."
+    - "Each task can also show task-specific links in its Quick Reference box."
+    - "You may read files under /usr/share and install packages from the distribution."
+  source: "https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed"

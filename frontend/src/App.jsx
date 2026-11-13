@@ -32,6 +32,7 @@ export default function App() {
   const [certs, setCerts] = useState([])
   const [certId, setCertId] = useState(loadCert)
   const [tab, setTab] = useState(null)
+  const [practiceDomain, setPracticeDomain] = useState('')
   const [glossary, setGlossary] = useState([])
   const [vocabulary, setVocabulary] = useState([])
   const [exams, setExams] = useState([])
@@ -52,6 +53,7 @@ export default function App() {
     const c = certs.find((x) => x.id === id)
     setTab(c ? 'plan' : null)
   }
+  const go = (t, opts) => { if (opts?.domain !== undefined) setPracticeDomain(opts.domain); setTab(t) }
   const areas = [...new Set(certs.map((c) => c.area))]
 
   const english = useMemo(() => ({ glossary, vocabulary, cert: cert?.id }), [glossary, vocabulary, cert?.id])
@@ -73,16 +75,16 @@ export default function App() {
         </div>
         <nav>
           {tabs.map((t) => (
-            <button key={t.id} className={current === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
+            <button key={t.id} className={current === t.id ? 'active' : ''} onClick={() => { if (t.id === 'practice') setPracticeDomain(''); setTab(t.id) }}>{t.label}</button>
           ))}
         </nav>
       </header>
       <main className={current === 'labs' ? 'wide' : ''}>
         {error && <p className="error">Cannot reach the API: {error}. Is the backend running on port 8000?</p>}
-        {cert && current === 'plan' && <Plan key={cert.id} cert={cert} onGo={setTab} />}
-        {exam && current === 'dashboard' && <Dashboard key={exam.id} exam={exam} cert={cert} onGo={setTab} />}
-        {exam && current === 'practice' && <Practice key={exam.id} exam={exam} glossary={glossary} />}
-        {exam && current === 'exam' && <ExamMode key={exam.id} exam={exam} glossary={glossary} />}
+        {cert && current === 'plan' && <Plan key={cert.id} cert={cert} onGo={go} />}
+        {exam && current === 'dashboard' && <Dashboard key={exam.id} exam={exam} cert={cert} onGo={go} />}
+        {exam && current === 'practice' && <Practice key={`${exam.id}-${practiceDomain}`} exam={exam} glossary={glossary} initialDomain={practiceDomain} />}
+        {exam && current === 'exam' && <ExamMode key={exam.id} exam={exam} glossary={glossary} onGo={go} />}
         {current === 'glossary' && <GlossaryPage glossary={glossary} vocabulary={vocabulary} />}
         {cert?.track && current === 'labs' && <Labs key={cert.track} trackId={cert.track} />}
         {current === 'english' && <EnglishPage />}
@@ -98,17 +100,17 @@ export default function App() {
 
 /* ---------- Glossary-aware text (see english.jsx) ---------- */
 
-function GlossaryText({ text, termIds, onTranslate }) {
+function GlossaryText({ text, termIds, onTranslate, plain }) {
   // `inline code` (commands, HCL, YAML) is shown as code and never highlighted as English
   const parts = (text || '').split(/(`[^`]+`)/g)
   return <span>{parts.map((p, i) => (p.startsWith('`') && p.endsWith('`') && p.length > 1
     ? <code key={i}>{p.slice(1, -1)}</code>
-    : <EnglishText key={i} text={p} termIds={termIds} onTranslate={onTranslate} />))}</span>
+    : plain ? <span key={i}>{p}</span> : <EnglishText key={i} text={p} termIds={termIds} onTranslate={onTranslate} />))}</span>
 }
 
 /* ---------- Question card ---------- */
 
-function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, number }) {
+function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, number, plain }) {
   const toggle = (id) => {
     if (result) return
     if (q.type === 'single') onChange([id])
@@ -121,9 +123,9 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
         <span>{q.domain.replaceAll('-', ' ')}</span>
         <span>{'●'.repeat(q.difficulty)}{'○'.repeat(3 - q.difficulty)}</span>
       </div>
-      <p className="question"><GlossaryText text={q.question} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} /></p>
-      <EnglishBar text={[q.question, ...q.options.map((o) => o.text)].join('\n')} termIds={q.glossary} onTranslate={onTranslate}
-        speakText={`${q.question} ${q.options.map((o) => `Option ${o.id.toUpperCase()}: ${o.text}.`).join(' ')}`} />
+      <p className="question"><GlossaryText text={q.question} termIds={q.glossary} plain={plain} onTranslate={onTranslate} /></p>
+      {!plain && <EnglishBar text={[q.question, ...q.options.map((o) => o.text)].join('\n')} termIds={q.glossary} onTranslate={onTranslate}
+        speakText={`${q.question} ${q.options.map((o) => `Option ${o.id.toUpperCase()}: ${o.text}.`).join(' ')}`} />}
       {q.type === 'multiple' && <p className="hint">Select {q.select} answers.</p>}
       <ul className="options">
         {q.options.map((o) => {
@@ -135,7 +137,7 @@ function QuestionCard({ q, glossary, selected, onChange, result, onTranslate, nu
               <button className={cls} onClick={() => toggle(o.id)} disabled={!!result}>
                 <span className="key">{o.id.toUpperCase()}</span>
                 <span className="opt-body">
-                  <GlossaryText text={o.text} termIds={q.glossary} glossary={glossary} onTranslate={onTranslate} />
+                  <GlossaryText text={o.text} termIds={q.glossary} plain={plain} onTranslate={onTranslate} />
                   {result && !isAns && !isSel && result.why?.[o.id] && <span className="why"><GlossaryText text={result.why[o.id]} termIds={q.glossary} onTranslate={onTranslate} /></span>}
                 </span>
               </button>
@@ -257,8 +259,8 @@ function RealExam({ cert }) {
 
 /* ---------- Practice (spaced repetition) ---------- */
 
-function Practice({ exam, glossary }) {
-  const [domain, setDomain] = useState('')
+function Practice({ exam, glossary, initialDomain = '' }) {
+  const [domain, setDomain] = useState(initialDomain)
   const [batch, setBatch] = useState(null)
   const [i, setI] = useState(0)
   const [selected, setSelected] = useState([])
@@ -315,13 +317,20 @@ function Practice({ exam, glossary }) {
 
 /* ---------- Exam mode ---------- */
 
-function ExamMode({ exam, glossary }) {
+function ExamMode({ exam, glossary, onGo }) {
   const [session, setSession] = useState(null)
   const [answers, setAnswers] = useState({})
+  const [domcAnswers, setDomcAnswers] = useState({})   // DOMC: { qid: { optionId: yes } }
+  const [domcDone, setDomcDone] = useState({})
+  const [flags, setFlags] = useState({})
   const [i, setI] = useState(0)
   const [left, setLeft] = useState(0)
   const [result, setResult] = useState(null)
-  const [count, setCount] = useState(20)
+  const [confirming, setConfirming] = useState(false)
+  const [count, setCount] = useState(Math.min(20, exam.exam_questions))
+  const [real, setReal] = useState(false)
+  const [esl, setEsl] = useState(false)
+  const [domc, setDomc] = useState(exam.domc > 0)
 
   useEffect(() => {
     if (!session || result) return
@@ -332,25 +341,56 @@ function ExamMode({ exam, glossary }) {
   }, [session, result])
 
   const start = async () => {
-    const s = await api.examStart({ exam_id: exam.id, questions: count })
-    setSession(s); setAnswers({}); setI(0); setResult(null)
+    const s = await api.examStart({ exam_id: exam.id, questions: count, real, esl, domc })
+    setSession(s); setAnswers({}); setDomcAnswers({}); setDomcDone({}); setFlags({}); setI(0); setResult(null); setConfirming(false)
   }
-  const submit = async () => setResult(await api.examSubmit(session.session_id, answers))
+  const submit = async () => setResult(await api.examSubmit(session.session_id, answers, domcAnswers))
 
-  if (result) return <ExamResult result={result} exam={exam} onAgain={() => { setSession(null); setResult(null) }} />
+  if (result) return <ExamResult result={result} exam={exam} flags={flags} onGo={onGo} onAgain={() => { setSession(null); setResult(null) }} />
 
-  if (!session) return (
-    <section>
-      <h1>Mock exam</h1>
-      <p className="sub">Questions follow the official domain weights. The real exam has {exam.exam_questions} questions in {exam.exam_minutes} minutes; time scales with the number you choose.</p>
-      <div className="toolbar">
-        <label>Questions <input type="number" min="5" max={exam.exam_questions} value={count} onChange={(e) => setCount(+e.target.value)} /></label>
-        <button className="primary" onClick={start}>Start exam</button>
-      </div>
-    </section>
-  )
+  if (!session) {
+    const scale = count / exam.exam_questions
+    const minutes = Math.max(1, Math.round(exam.exam_minutes * scale)) + (esl && exam.esl_minutes ? Math.max(1, Math.round(exam.esl_minutes * scale)) : 0)
+    return (
+      <section>
+        <h1>Mock exam</h1>
+        <p className="sub">Questions follow the official domain weights. The real exam has {exam.exam_questions} questions in {exam.exam_minutes} minutes; time scales with the number you choose.</p>
+        <div className="toolbar">
+          <label>Questions <input type="number" min="5" max={exam.exam_questions} value={count} onChange={(e) => setCount(+e.target.value)} /></label>
+          <button className="link" onClick={() => setCount(exam.exam_questions)}>Full length ({exam.exam_questions})</button>
+          <span className="sub">{minutes} minutes</span>
+        </div>
+        <div className="exam-options">
+          <label className="check-row">
+            <input type="checkbox" checked={real} onChange={(e) => setReal(e.target.checked)} />
+            <span><b>Real exam conditions.</b> No glossary, no Spanish translation and no listening: the real exam is only in
+              English. Use it when you practise for the day of the exam.</span>
+          </label>
+          {exam.domc > 0 && (
+            <label className="check-row">
+              <input type="checkbox" checked={domc} onChange={(e) => setDomc(e.target.checked)} />
+              <span><b>DOMC questions, like the real exam</b> ({exam.domc} of {exam.exam_questions}). The options appear one at a
+                time and you answer YES or NO to each. You cannot go back to an option, and the question can end early.</span>
+            </label>
+          )}
+          {exam.esl_minutes > 0 && (
+            <label className="check-row">
+              <input type="checkbox" checked={esl} onChange={(e) => setEsl(e.target.checked)} />
+              <span><b>English is not my first language (+{exam.esl_minutes} minutes).</b> The real exam gives this extra time only
+                if you request the ESL accommodation in your exam account <i>before</i> you book the exam.</span>
+            </label>
+          )}
+        </div>
+        <div className="actions"><button className="primary" onClick={start}>Start exam</button></div>
+      </section>
+    )
+  }
 
   const q = session.questions[i]
+  const isDomc = (x) => x.style === 'domc'
+  const answered = (x) => (isDomc(x) ? domcDone[x.id] : answers[x.id]?.length > 0)
+  const unanswered = session.questions.filter((x) => !answered(x)).length
+  const flagged = session.questions.filter((x) => flags[x.id]).length
   const mm = String(Math.floor(left / 60)).padStart(2, '0')
   const ss = String(left % 60).padStart(2, '0')
   return (
@@ -359,42 +399,124 @@ function ExamMode({ exam, glossary }) {
         <span className={`timer ${left < 60 ? 'low' : ''}`}>{mm}:{ss}</span>
         <div className="dots">
           {session.questions.map((x, k) => (
-            <button key={x.id} className={[k === i && 'cur', answers[x.id]?.length && 'done'].filter(Boolean).join(' ')} onClick={() => setI(k)}>{k + 1}</button>
+            <button key={x.id} className={[k === i && 'cur', answered(x) && 'done', flags[x.id] && 'flag'].filter(Boolean).join(' ')} onClick={() => setI(k)}>{k + 1}</button>
           ))}
         </div>
       </div>
-      <QuestionCard q={q} glossary={glossary} selected={answers[q.id] || []} number={`${i + 1}/${session.questions.length}`}
-        onChange={(sel) => setAnswers({ ...answers, [q.id]: sel })} />
-      <div className="actions">
-        <button disabled={i === 0} onClick={() => setI(i - 1)}>Previous</button>
-        {i < session.questions.length - 1
-          ? <button className="primary" onClick={() => setI(i + 1)}>Next</button>
-          : <button className="primary" onClick={submit}>Submit exam</button>}
-        {left === 0 && <button className="primary" onClick={submit}>Time is up — submit</button>}
-      </div>
+      {isDomc(q)
+        ? <DomcCard key={q.id} q={q} sessionId={session.session_id} plain={session.conditions?.real}
+            number={`${i + 1}/${session.questions.length}`} responses={domcAnswers[q.id] || {}} done={!!domcDone[q.id]}
+            onAnswer={(r, done) => { setDomcAnswers((a) => ({ ...a, [q.id]: r })); if (done) setDomcDone((d) => ({ ...d, [q.id]: true })) }} />
+        : <QuestionCard q={q} glossary={glossary} selected={answers[q.id] || []} number={`${i + 1}/${session.questions.length}`}
+            plain={session.conditions?.real} onChange={(sel) => setAnswers({ ...answers, [q.id]: sel })} />}
+      {confirming ? (
+        <div className="confirm">
+          <p>Submit the exam now?{unanswered ? ` ${unanswered} question${unanswered > 1 ? 's are' : ' is'} not answered (they count as wrong).` : ''}
+            {flagged ? ` ${flagged} flagged for review.` : ''}</p>
+          <div className="actions">
+            <button className="primary" onClick={submit}>Yes, submit</button>
+            <button onClick={() => setConfirming(false)}>Keep working</button>
+          </div>
+        </div>
+      ) : (
+        <div className="actions">
+          <button disabled={i === 0} onClick={() => setI(i - 1)}>Previous</button>
+          {i < session.questions.length - 1
+            ? <button className="primary" onClick={() => setI(i + 1)}>Next</button>
+            : <button className="primary" onClick={() => setConfirming(true)}>Submit exam</button>}
+          <button onClick={() => setFlags({ ...flags, [q.id]: !flags[q.id] })}>{flags[q.id] ? '★ Flagged' : '☆ Flag for review'}</button>
+          {i < session.questions.length - 1 && <button className="link" onClick={() => setConfirming(true)}>Submit now</button>}
+          {left === 0 && <button className="primary" onClick={submit}>Time is up — submit</button>}
+        </div>
+      )}
     </section>
   )
 }
 
-function ExamResult({ result, exam, onAgain }) {
-  const names = Object.fromEntries(exam.domains.map((d) => [d.id, d.name]))
+/* DOMC: one option at a time, YES or NO; the server says when the question is over. */
+function DomcCard({ q, sessionId, number, responses, done, onAnswer, plain }) {
+  const [current, setCurrent] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (done) return
+    api.examDomc(sessionId, q.id, responses).then((s) => setCurrent(s.next))
+  }, [q.id])
+  const answer = async (yes) => {
+    setBusy(true)
+    const r = { ...responses, [current.id]: yes }
+    const s = await api.examDomc(sessionId, q.id, r)
+    onAnswer(r, s.done)
+    setCurrent(s.next); setBusy(false)
+  }
+  const seen = Object.keys(responses).length
+  return (
+    <div className="card domc">
+      <div className="meta">
+        <span>Question {number}</span>
+        <span>DOMC</span>
+        <span>{q.domain.replaceAll('-', ' ')}</span>
+      </div>
+      <p className="question"><GlossaryText text={q.question} termIds={q.glossary} plain={plain} /></p>
+      {!plain && <EnglishBar text={q.question} termIds={q.glossary} speakText={q.question} />}
+      <p className="hint">One option at a time. Is this option a right answer? More than one option can be right.</p>
+      {done || !current ? (
+        <p className="domc-done">✓ Answer recorded ({seen} option{seen === 1 ? '' : 's'} seen). You cannot change it.</p>
+      ) : (
+        <div className="domc-option">
+          <span className="key">{seen + 1}</span>
+          <span className="opt-body"><GlossaryText text={current.text} termIds={q.glossary} plain={plain} /></span>
+          <div className="domc-buttons">
+            <button className="primary" disabled={busy} onClick={() => answer(true)}>YES</button>
+            <button disabled={busy} onClick={() => answer(false)}>NO</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExamResult({ result, exam, flags, onGo, onAgain }) {
+  const domains = Object.fromEntries(exam.domains.map((d) => [d.id, d]))
+  const rows = Object.entries(result.domains).map(([id, d]) => ({ id, ...d, pct: Math.round((100 * d.correct) / d.total) }))
+    .sort((a, b) => (domains[b.id]?.weight || 0) - (domains[a.id]?.weight || 0))
+  const weak = rows.filter((r) => r.pct < result.passing_score)
+  const c = result.conditions || {}
+  const tags = [c.real && 'real exam conditions', c.esl && `ESL +${exam.esl_minutes} min`,
+    result.review.some((r) => r.style === 'domc') && 'DOMC'].filter(Boolean)
   return (
     <section>
       <h1>{result.score}% — {result.passed ? 'Pass' : 'Not yet'}</h1>
-      <p className="sub">{result.correct}/{result.total} correct · passing score {result.passing_score}% · {result.elapsed_minutes} min{result.overtime ? ' (over time)' : ''}</p>
+      <p className="sub">{result.correct}/{result.total} correct · passing score {result.passing_score}% · {result.elapsed_minutes} min{result.overtime ? ' (over time)' : ''}
+        {tags.length > 0 && ` · ${tags.join(' · ')}`}</p>
+      <h2>By domain</h2>
       <table>
-        <thead><tr><th>Domain</th><th>Result</th><th></th></tr></thead>
+        <thead><tr><th>Domain</th><th>Weight</th><th>Result</th><th></th></tr></thead>
         <tbody>
-          {Object.entries(result.domains).map(([id, d]) => {
-            const pct = Math.round((100 * d.correct) / d.total)
-            return <tr key={id}><td>{names[id]}</td><td>{d.correct}/{d.total}</td><td><div className="bar"><i style={{ width: `${pct}%` }} /></div></td></tr>
-          })}
+          {rows.map((d) => (
+            <tr key={d.id} className={d.pct < result.passing_score ? 'weak' : ''}>
+              <td>{domains[d.id]?.name}</td><td>{domains[d.id]?.weight}%</td><td>{d.correct}/{d.total} ({d.pct}%)</td>
+              <td><div className="bar"><i style={{ width: `${d.pct}%` }} /><em style={{ left: `${result.passing_score}%` }} /></div></td>
+            </tr>
+          ))}
         </tbody>
       </table>
+      {weak.length > 0 ? (
+        <div className="weak-list">
+          <p><b>Study next:</b> these domains are below the passing score. You pass with your total score, but a weak
+            domain with a big weight pulls the total down.</p>
+          <ul>{weak.map((d) => (
+            <li key={d.id}><button className="link" onClick={() => onGo?.('practice', { domain: d.id })}>
+              Practise “{domains[d.id]?.name}” ({d.pct}%, weight {domains[d.id]?.weight}%)</button></li>
+          ))}</ul>
+        </div>
+      ) : <p className="pace pace-ahead">Every domain is at or above the passing score.</p>}
       <h2>Review</h2>
       {result.review.map((r, k) => (
-        <details key={r.question_id} className={`review ${r.correct ? 'ok' : 'ko'}`}>
-          <summary>{k + 1}. {r.correct ? '✓' : '✗'} {r.question}</summary>
+        <details key={r.question_id} className={`review ${r.correct ? 'ok' : 'ko'}`} open={!r.correct && flags?.[r.question_id]}>
+          <summary>{k + 1}. {r.correct ? '✓' : '✗'} {flags?.[r.question_id] ? '★ ' : ''}{r.question}</summary>
+          {r.style === 'domc' && (
+            <p className="small muted">DOMC — you saw: {r.domc.length ? r.domc.map((x) => `${x.id.toUpperCase()} ${x.yes ? 'YES' : 'NO'}`).join(', ') : 'no options (not answered)'}</p>
+          )}
           <ul>{r.options.map((o) => (
             <li key={o.id} className={r.answer.includes(o.id) ? 'right' : r.selected.includes(o.id) ? 'wrong' : ''}>
               {o.id.toUpperCase()}. {o.text}

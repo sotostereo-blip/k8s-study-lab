@@ -8,6 +8,7 @@ format: multiple-choice
 exam_minutes: 130
 exam_questions: 65
 passing_score: 72
+esl_minutes: 30   # ESL +30 accommodation: request it in your AWS Certification account before booking
 facts_note: >-
   Official (SAA-C03 exam guide): 65 questions (50 scored + 15 unscored that you cannot tell apart),
   130 minutes, multiple choice (1 right answer out of 4) and multiple response (2 or more right out
