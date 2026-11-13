@@ -18,3 +18,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
       - run: cd frontend && npm install && npm run build
+  docker-install:   # the install path in INSTALL.md: docker compose up, then the health check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose up -d --build
+      - run: |
+          for i in $(seq 1 45); do curl -sf http://localhost:5173/api/health && exit 0; sleep 2; done
+          docker compose ps; docker compose logs; exit 1

@@ -6,12 +6,15 @@ Starting a lab tears down the previous one, so every lab starts from a clean clu
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
+
+import yaml
 
 from .content import Check
 
@@ -23,6 +26,36 @@ Runner = Callable[[list[str], str | None, float], tuple[int, str]]
 TEARDOWN = ("for c in $(docker ps -q --filter label=com.docker.compose.project={project}); do "
             "docker exec \"$c\" sh -c 'command -v lab-teardown >/dev/null 2>&1 && lab-teardown || true' "
             ">/dev/null 2>&1; done; true")
+
+
+def base_images(labs_dir: Path, env: str) -> list[tuple[str, str, str]]:
+    """Lab images built FROM another lab image (e.g. the Argo CD toolbox is FROM
+    k8s-study-lab/toolbox:3). `docker compose up --build` cannot build that base first, so the
+    caller must. Returns (image, environment, service) for each base image the environment needs:
+    build it with `docker compose -f envs/<environment>/compose.yaml build <service>` (BuildKit)."""
+    def services(e: str) -> dict:
+        f = labs_dir / "envs" / e / "compose.yaml"
+        return (yaml.safe_load(f.read_text()) or {}).get("services") or {} if f.exists() else {}
+
+    def context(e: str, svc: dict) -> Path | None:
+        b = svc.get("build")
+        ctx = b if isinstance(b, str) else (b or {}).get("context")
+        return (labs_dir / "envs" / e / ctx).resolve() if ctx else None
+
+    built = {}   # image name -> (environment, service) that builds it
+    for f in sorted((labs_dir / "envs").glob("*/compose.yaml")):
+        for name, svc in services(f.parent.name).items():
+            if svc.get("image") and svc.get("build"):
+                built.setdefault(svc["image"], (f.parent.name, name))
+    need = []
+    for svc in services(env).values():
+        ctx = context(env, svc)
+        dockerfile = ctx / "Dockerfile" if ctx else None
+        if dockerfile and dockerfile.exists():
+            for img in re.findall(r"^FROM\s+(k8s-study-lab/\S+)", dockerfile.read_text(), re.M):
+                if img in built and (img, *built[img]) not in need:
+                    need.append((img, *built[img]))
+    return need
 
 
 def subprocess_runner(cmd: list[str], stdin: str | None, timeout: float) -> tuple[int, str]:
@@ -137,6 +170,12 @@ class LabManager:
         if not alive():
             return
         self._log(f"Starting the lab environment: {env} (first time: downloads images, a few minutes)…")
+        for image, base_env, service in base_images(self.labs_dir, env):
+            if self.run(["docker", "image", "inspect", image], None, 30)[0] != 0:
+                self._log(f"Building the base image {image} (first time only)…", gen)
+                rc, out = self.run(self.compose(base_env, "build", service), None, 1200)
+                if rc != 0:
+                    return fail(out[-800:] or f"could not build {image}")
         rc, out = self.run(self.compose(env, "up", "-d", "--build", "--quiet-pull"), None, 600)
         if rc != 0:
             return fail(out[-800:] or "docker compose up failed")

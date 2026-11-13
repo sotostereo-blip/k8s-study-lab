@@ -1,7 +1,10 @@
+# The whole app: `docker compose up -d --build`, then open http://localhost:5173
+# Change the host ports with APP_PORT / API_PORT in .env if 5173 or 8000 are taken.
 services:
   backend:
     build: ./backend
-    ports: ["8000:8000"]
+    restart: unless-stopped
+    ports: ["${API_PORT:-8000}:8000"]
     env_file:
       - path: .env
         required: false
@@ -9,13 +12,21 @@ services:
       - ./backend/app:/app/app      # live reload while developing
       - ./content:/content:ro       # study content (questions, glossary)
       - ./data:/data                # your progress (SQLite), not committed
-      - ./labs:/labs:ro             # hands-on lab environments (k3s + web terminal)
-      - /var/run/docker.sock:/var/run/docker.sock   # lets the backend start/stop labs
+      - ./labs:/labs:ro             # hands-on lab environments (built and started by the backend)
+      - /var/run/docker.sock:/var/run/docker.sock   # lets the backend start/stop labs on your Docker
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
   frontend:
     build: ./frontend
-    ports: ["5173:5173"]
+    restart: unless-stopped
+    ports: ["${APP_PORT:-5173}:5173"]
     environment:
       VITE_API_TARGET: http://backend:8000
     volumes:
       - ./frontend/src:/app/src
-    depends_on: [backend]
+    depends_on:
+      backend: { condition: service_healthy }

@@ -11,7 +11,8 @@ Spanish but all study content must be in **simple, clear English**.
 - Backend tests: `cd backend && pytest -q`
 - Run backend: `cd backend && uvicorn app.main:app --reload`
 - Run frontend: `cd frontend && npm run dev` (proxies `/api` to :8000)
-- Everything: `docker compose up --build`
+- Everything: `docker compose up -d --build` (install guide for people and AI assistants: `INSTALL.md`)
+- Build all lab images ahead of time: `sh scripts/build_labs.sh [env…]`
 - Verify lab tasks on real environments (Docker): `python scripts/verify_labs.py tasks <ids…>` or
   `--track <id>`; whole mock exam: `python scripts/verify_labs.py mock <track>`
 - Debug a lab by hand: `docker compose -p k8slab -f labs/envs/single-node/compose.yaml up -d --build`
@@ -35,5 +36,7 @@ Spanish but all study content must be in **simple, clear English**.
 - AI features must stay optional: the app must work with no API key (`app/ai.py`, off without
   `ANTHROPIC_API_KEY`; tests use a fake client and never call the real API).
 - When you change exam facts in `certifications.yaml`, set `official.checked` to the current month.
+- Lab compose files never bind-mount repo files (the backend may run in Docker); bake them into an image.
+- Keep `INSTALL.md` working when you change ports, services or requirements (CI runs the Docker install).
 - Lab containers that create kernel objects (loop devices, LVM, swap) need a `lab-teardown` script.
 - Run the validator and tests before finishing any change.

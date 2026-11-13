@@ -1,7 +1,13 @@
 # k8s-study-lab
 
-A local study environment for **Cloud Engineer / DevOps certifications**, built to practise
-**the exam content and technical English at the same time**.
+[![CI](https://github.com/sotostereo-blip/k8s-study-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sotostereo-blip/k8s-study-lab/actions/workflows/ci.yml)
+
+A free, local study environment for **Cloud Engineer / DevOps certifications**: practice questions,
+mock exams and **real hands-on labs in the browser** (Kubernetes clusters, Linux servers, Docker, Gitea
+Actions, Prometheus, Argo, Terraform and AWS on LocalStack), plus DevOps **job interviews in English**.
+Built to practise **the exam content and technical English at the same time**.
+
+Everything runs on your machine with Docker. No account, no cloud costs, your progress stays in a local file.
 
 | Certification | Multiple choice | Hands-on labs (terminal in the browser) |
 |---|---|---|
@@ -19,28 +25,42 @@ A local study environment for **Cloud Engineer / DevOps certifications**, built 
 | **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
 | **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |
 
-### The real exams (checked November 2026)
+## Quick start
 
-| Exam | Questions | Time | Price (USD) | Prerequisite | Valid |
-|---|---|---|---|---|---|
-| KCNA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
-| KCSA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
-| CKA | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
-| CKAD | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
-| CKS | 15-20 hands-on tasks | 2 h | 445, 1 free retake | passed CKA | 2 years |
-| Terraform Associate (004) | ~57 multiple choice | 1 h | 70.50 + tax, no retake | — | 2 years |
-| LFCS | ~17-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
-| DCA | 55 (13 MC + 42 DOMC) | 90 min | 199, no retake | — | 2 years |
-| GH-200 | ~60-75 multiple choice | 100 min | by country (~99 in the US) | — | 2 years |
-| CAPA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
-| PCA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
-| AWS SAA-C03 | 65 multiple choice | 130 min | 150, no retake | — | 3 years |
+You need **Docker Desktop** (or Docker Engine + Compose 2.24+ on Linux), about 4 GB of memory for Docker
+and free ports 5173, 8000 and 7681.
 
-"~" means the provider does not publish the number. More detail (passing score, renewal, what the price
-includes, official link) is in the **Real exam** tab of each certification and in `content/certifications.yaml`.
-Prices change: check the official page before you pay.
+```bash
+git clone https://github.com/sotostereo-blip/k8s-study-lab.git
+cd k8s-study-lab
+cp .env.example .env          # optional settings (ports, AI key)
+docker compose up -d --build
+```
 
-Choose the certification in the selector at the top of the page.
+Open **http://localhost:5173** and choose a certification at the top of the page.
+The first build takes a few minutes. Each kind of lab builds its images the first time you open one
+(`sh scripts/build_labs.sh` builds them all ahead of time, ~15 GB).
+
+Stop with `docker compose down`; update with `git pull && docker compose up -d --build`.
+Your progress is kept in `data/progress.db`.
+
+### Install it with an AI assistant
+
+[INSTALL.md](INSTALL.md) is a step-by-step guide written so that an AI coding assistant
+(Claude Code, Codex, Cursor, Copilot…) can install and check everything on your machine.
+Open a terminal where you want the project and give your assistant this prompt:
+
+```text
+Install and start the project https://github.com/sotostereo-blip/k8s-study-lab on this machine.
+Clone it, then follow INSTALL.md step by step: check each "Expected" result before the next step,
+and use its Troubleshooting table if something fails. Do not change the application code.
+When it works, give me the URL to open.
+```
+
+Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshooting are all in
+[INSTALL.md](INSTALL.md).
+
+## What you can do
 
 - **Plan**: set your exam date and the time you have each day. The app gives you the work for today
   (reviews due, new questions focused on your weakest and heaviest domains, labs to solve, and mock exams
@@ -94,28 +114,40 @@ Choose the certification in the selector at the top of the page.
   - the app counts lookups, translations and listens, so you can watch your need for
     Spanish go down.
 
-Everything runs on your machine. Your progress is stored in a local SQLite file (`data/`).
+## The real exams (checked November 2026)
 
-## Quick start
+| Exam | Questions | Time | Price (USD) | Prerequisite | Valid |
+|---|---|---|---|---|---|
+| KCNA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| KCSA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| CKA | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| CKAD | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| CKS | 15-20 hands-on tasks | 2 h | 445, 1 free retake | passed CKA | 2 years |
+| Terraform Associate (004) | ~57 multiple choice | 1 h | 70.50 + tax, no retake | — | 2 years |
+| LFCS | ~17-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
+| DCA | 55 (13 MC + 42 DOMC) | 90 min | 199, no retake | — | 2 years |
+| GH-200 | ~60-75 multiple choice | 100 min | by country (~99 in the US) | — | 2 years |
+| CAPA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| PCA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
+| AWS SAA-C03 | 65 multiple choice | 130 min | 150, no retake | — | 3 years |
 
-```bash
-cp .env.example .env        # optional
-docker compose up --build
-```
+"~" means the provider does not publish the number. More detail (passing score, renewal, what the price
+includes, official link) is in the **Real exam** tab of each certification and in `content/certifications.yaml`.
+Prices change: check the official page before you pay.
 
-Open http://localhost:5173. The API runs on http://localhost:8000 (docs at `/docs`).
+## Settings (`.env`)
 
-### Keeping the exam facts fresh
+All optional; the app works without a `.env` file.
 
-Prices, question counts and rules change. Every certification records the month its facts were
-checked (`official.checked`); after 6 months the **Real exam** tab says they may be out of date.
+| Variable | Default | What it does |
+|---|---|---|
+| `APP_PORT` | `5173` | host port of the web app |
+| `API_PORT` | `8000` | host port of the API (docs at `/docs`) |
+| `ANTHROPIC_API_KEY` | empty | turns on the optional AI feedback (see below) |
+| `LLM_MODEL` | `claude-opus-5-5` | Claude model for the AI feedback |
+| `AI_FEEDBACK` | on with a key | `0` turns the AI feedback off |
 
-```bash
-python scripts/check_facts.py            # which facts are older than 6 months
-python scripts/check_facts.py --online   # also open each official page and look for price and minutes
-```
-
-### Optional: AI feedback on interview answers
+## Optional: AI feedback on interview answers
 
 Put your Anthropic API key in `.env` (never commit it):
 
@@ -128,51 +160,63 @@ ANTHROPIC_API_KEY=sk-ant-...
 Only the question, its key points and your answer are sent, and only when you press the button.
 Each request is billed to your Anthropic account (a few cents at most).
 
-### Without Docker
+## Keeping the exam facts fresh
+
+Prices, question counts and rules change. Every certification records the month its facts were
+checked (`official.checked`); after 6 months the **Real exam** tab says they may be out of date.
 
 ```bash
-# backend
+python scripts/check_facts.py            # which facts are older than 6 months
+python scripts/check_facts.py --online   # also open each official page and look for price and minutes
+```
+
+## Development
+
+```bash
+# backend (Python 3.12+)
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-# frontend (another terminal)
+# frontend (Node 22+, another terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-## Project layout
+Checks: `python scripts/validate_content.py` and `cd backend && pytest -q` (CI runs both on every push).
+Lab tasks are verified on real environments with `python scripts/verify_labs.py` (see [labs/README.md](labs/README.md)).
 
 ```
-backend/     FastAPI API, SQLite progress, spaced repetition
+backend/     FastAPI API, SQLite progress, spaced repetition, lab manager
 frontend/    React (Vite) UI
-content/     Questions, glossary and lab tasks as YAML  ← contributions welcome
-labs/        Docker Compose lab environments (k3s cluster + web terminal)
-scripts/     validate_content.py
+content/     Questions, glossary, interview questions and lab tasks as YAML  ← contributions welcome
+labs/        Docker Compose lab environments (k3s, Ubuntu, Docker, Gitea, Prometheus, LocalStack…)
+scripts/     content validator, lab verifier, lab image builder, exam-facts check
 docs/        CONTENT_FORMAT.md, ROADMAP.md
 ```
 
-## Adding questions
+## Contributing questions and labs
 
-See [docs/CONTENT_FORMAT.md](docs/CONTENT_FORMAT.md), then run:
+See [docs/CONTENT_FORMAT.md](docs/CONTENT_FORMAT.md), then run the validator and the tests.
 
-```bash
-python scripts/validate_content.py
-cd backend && pytest -q
-```
+**All questions must be original**, based on the public curriculum and the official docs.
+Certification exams are covered by confidentiality agreements; never add questions remembered from a real exam.
 
-**All questions must be original.** CNCF exams are covered by a confidentiality
-agreement; never add questions remembered from a real exam.
+Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## Roadmap
+## En español
 
-See [docs/ROADMAP.md](docs/ROADMAP.md).
+Entorno de estudio local y gratuito para certificaciones Cloud / DevOps (KCNA, CKA, CKAD, CKS, LFCS,
+Terraform, Docker DCA, GitHub Actions, Argo, Prometheus, AWS SAA) con preguntas, simulacros, labs reales en
+el navegador y entrevistas de trabajo. El contenido está en inglés simple, con ayuda en español a pedido.
+Para instalarlo necesitas Docker Desktop y ejecutar los comandos de **Quick start**, o pedirle a tu
+asistente de IA que siga [INSTALL.md](INSTALL.md) (puedes pegarle el prompt de arriba).
 
 ## License
 
 Code: [MIT](LICENSE). Content in `content/`: [CC BY-SA 4.0](content/LICENSE).
 
-This project is not affiliated with the CNCF or the Linux Foundation.
-Kubernetes is a registered trademark of The Linux Foundation.
+This project is not affiliated with the CNCF, the Linux Foundation, HashiCorp, Docker, GitHub, AWS or
+any exam provider. Kubernetes is a registered trademark of The Linux Foundation.

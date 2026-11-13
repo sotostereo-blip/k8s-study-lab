@@ -10,7 +10,7 @@ labs/
 ├── toolbox-terraform/    # image: terraform 1.12, AWS CLI, providers mirrored offline
 ├── toolbox-linux/        # image: Ubuntu 24.04 with systemd, sshd and admin tools (LFCS)
 ├── toolbox-docker/, dind/            # Docker CLI + a Docker-in-Docker engine with preloaded images (DCA)
-├── toolbox-gitea/, gitea-runner/     # git + Gitea API helpers, Gitea act_runner (GH-200)
+├── toolbox-gitea/, gitea-runner/, gitea-server/  # git + Gitea API helpers, act_runner, Gitea (GH-200)
 ├── toolbox-prometheus/, prometheus-apps/   # promtool, amtool; demo apps and an alert webhook (PCA)
 ├── argocd-k3s/, argocd-toolbox/, argocd-git/  # k3s with Argo images preloaded, argocd/argo CLIs, Git server (CAPA)
 ├── toolbox-aws/          # AWS CLI for LocalStack (AWS SAA)
@@ -33,8 +33,11 @@ Kubernetes ship a `lab-ready` script that the app runs until the lab is usable.
 Loop devices, LVM volumes and swap belong to the Docker host's kernel, not to a container, so a
 toolbox that lets tasks create them ships a `lab-teardown` script (see `toolbox-linux/`): the app
 and `scripts/verify_labs.py` run it in every lab container before `docker compose down`.
-The `argocd` toolbox is built FROM `k8s-study-lab/toolbox:3`: on a new machine start a
-Kubernetes lab once first (or run `docker compose -f labs/envs/single-node/compose.yaml build`).
+The `argocd` toolbox is built FROM `k8s-study-lab/toolbox:3`; the app and `scripts/verify_labs.py`
+build such base images first when they are missing (`base_images()` in `backend/app/labs.py`).
+Compose files must not bind-mount files from the repository (`./file:/path`): the backend may run in
+Docker and use the host engine, where those paths do not exist. Bake files into a lab image instead
+(see `gitea-server/`). To build every lab image ahead of time: `sh scripts/build_labs.sh`.
 
 The backend starts them for you when you open a lab. It runs
 `docker compose -p k8slab -f labs/envs/<env>/compose.yaml up -d --build`,

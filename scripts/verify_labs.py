@@ -33,7 +33,7 @@ os.environ.setdefault("K8S_LAB_NO_AUTOAPP", "1")
 
 from app.content import load_library  # noqa: E402
 from app.main import mock_setup_script  # noqa: E402
-from app.labs import TEARDOWN  # noqa: E402
+from app.labs import TEARDOWN, base_images  # noqa: E402
 
 
 class Env:
@@ -58,6 +58,11 @@ class Env:
         """spec: the track's LabEnvironment (nodes, ready command)."""
         self.down()
         self.name = name
+        for image, base_env, service in base_images(ROOT / "labs", name):
+            if subprocess.run(["docker", "image", "inspect", image], capture_output=True).returncode:
+                subprocess.run(["docker", "compose", "-p", self.project, "-f",
+                                str(ROOT / "labs" / "envs" / base_env / "compose.yaml"), "build", service],
+                               check=True, timeout=1200)
         rc, out = self.dc("up", "-d", "--build", "--quiet-pull")
         if rc:
             sys.exit(f"docker compose up failed:\n{out[-1500:]}")

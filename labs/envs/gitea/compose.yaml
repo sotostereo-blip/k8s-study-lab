@@ -5,7 +5,8 @@ x-runner-token: &runner-token
 
 services:
   gitea:
-    image: gitea/gitea:28.3.0
+    build: ../../gitea-server
+    image: k8s-study-lab/gitea-server:1
     entrypoint: ["/bin/sh", "/lab/gitea-start.sh"]
     stop_grace_period: 3s
     environment:
@@ -26,8 +27,6 @@ services:
       GITEA__actions__DEFAULT_ACTIONS_URL: github
       GITEA__log__LEVEL: warn
       GITEA__mailer__ENABLED: "false"
-    volumes:
-      - ./gitea-start.sh:/lab/gitea-start.sh:ro
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:3000/api/v1/users/student"]
       interval: 2s
