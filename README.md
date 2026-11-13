@@ -80,6 +80,9 @@ Choose the certification in the selector at the top of the page.
   question and mix topics; the app tracks your speaking pace (words per minute) and filler
   words. A **Phrases** tab has spoken English for interviews (buying time, trade-offs,
   admitting you don't know…).
+  **Optional AI feedback** (Claude): after an answer, press *Get AI feedback* to see which key points
+  you covered, what to improve, corrections to your English and an improved version of your own
+  answer. It is off unless the backend has an `ANTHROPIC_API_KEY`; everything else works without it.
 - **Built-in English support**, everywhere (questions, labs and mock exams):
   - technical terms (blue, dashed) and everyday exam words such as *ensure*, *by default*
     or *eventually* (amber, dotted) are clickable: simple English definition, example,
@@ -101,6 +104,19 @@ docker compose up --build
 ```
 
 Open http://localhost:5173. The API runs on http://localhost:8000 (docs at `/docs`).
+
+### Optional: AI feedback on interview answers
+
+Put your Anthropic API key in `.env` (never commit it):
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+# LLM_MODEL=claude-opus-5-5   # optional, the default
+# AI_FEEDBACK=0              # turn it off again
+```
+
+Only the question, its key points and your answer are sent, and only when you press the button.
+Each request is billed to your Anthropic account (a few cents at most).
 
 ### Without Docker
 

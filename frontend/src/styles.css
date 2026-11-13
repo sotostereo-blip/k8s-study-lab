@@ -348,3 +348,11 @@ tr.weak td:first-child { color: var(--ko); font-weight: 600; }
 .verdict.accent { background: var(--accent-soft); color: var(--accent); }
 .earned-form { display: grid; gap: 6px; margin-top: 8px; font-size: 14px; }
 .earned-form label { display: flex; flex-direction: column; gap: 2px; }
+
+/* optional AI interview feedback */
+.ai-feedback { margin: 12px 0; }
+.ai-card { border-color: var(--accent); }
+.ai-card h3 { margin-top: 0; }
+.ai-points li { list-style: none; }
+.ok-text { color: var(--ok); font-weight: 600; }
+.english-fixes s { color: var(--muted); }

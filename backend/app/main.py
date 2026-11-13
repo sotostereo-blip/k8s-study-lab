@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import domc, path, plan, srs
+from . import ai, domc, path, plan, srs
 from .content import Library, Question, load_library
 from .db import Database
 from .labs import LabManager, Runner, subprocess_runner
@@ -75,6 +75,12 @@ class InterviewMockIn(BaseModel):
 class GoalIn(BaseModel):
     exam_date: date
     minutes_per_day: int = Field(default=60, ge=15, le=600)
+
+
+class FeedbackIn(BaseModel):
+    question_id: str
+    answer: str = Field(min_length=1, max_length=6000)
+    seconds: int | None = None
 
 
 class EarnedIn(BaseModel):
@@ -154,13 +160,15 @@ def mock_setup_script(tasks: list) -> str:
 
 
 def create_app(content_dir: Path | None = None, db_path: Path | None = None,
-               labs_dir: Path | None = None, lab_runner: Runner = subprocess_runner) -> FastAPI:
+               labs_dir: Path | None = None, lab_runner: Runner = subprocess_runner,
+               coach: ai.Coach | None = None) -> FastAPI:
     content_dir = content_dir or Path(os.getenv("CONTENT_DIR", ROOT / "content"))
     db_path = db_path or Path(os.getenv("DB_PATH", ROOT / "data" / "progress.db"))
     labs_dir = labs_dir or Path(os.getenv("LABS_DIR", ROOT / "labs"))
     lib = load_library(content_dir)
     db = Database(db_path)
     labs = LabManager(labs_dir, lab_runner)
+    coach = coach or ai.Coach()
 
     app = FastAPI(title="K8s Study Lab", version="0.1.0")
     app.add_middleware(
@@ -785,6 +793,35 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
         spoken = [r for r in results if r["seconds"] and r["words"]]
         wpm = round(60 * sum(r["words"] for r in spoken) / sum(r["seconds"] for r in spoken)) if spoken else None
         return {"score": score, "minutes": s["minutes"], "words_per_minute": wpm, "questions": results}
+
+    @app.get("/api/ai/status")
+    def ai_status():
+        return {"enabled": coach.enabled, "model": coach.model if coach.enabled else None}
+
+    @app.post("/api/interview/feedback")
+    def interview_feedback(body: FeedbackIn):
+        """Optional AI feedback on one answer. Nothing is stored."""
+        if not coach.enabled:
+            raise HTTPException(503, "AI feedback is off. Set ANTHROPIC_API_KEY for the backend to turn it on.")
+        q = get_iv(body.question_id)
+        if len(body.answer.split()) < 5:
+            raise HTTPException(400, "Say or type a longer answer first (at least a few sentences).")
+        try:
+            import anthropic
+        except ImportError:
+            raise HTTPException(503, "Install the anthropic package to use AI feedback.")
+        try:
+            return coach.feedback(q, body.answer, body.seconds)
+        except anthropic.AuthenticationError:
+            raise HTTPException(502, "The Anthropic API key was not accepted. Check ANTHROPIC_API_KEY.")
+        except anthropic.RateLimitError:
+            raise HTTPException(429, "Too many AI requests right now. Wait a minute and try again.")
+        except anthropic.APIStatusError as e:
+            raise HTTPException(502, f"The AI service returned an error ({e.status_code}). Try again later.")
+        except anthropic.APIConnectionError:
+            raise HTTPException(502, "Cannot reach the AI service. Check your internet connection.")
+        except RuntimeError as e:
+            raise HTTPException(502, str(e))
 
     @app.get("/api/interview/stats")
     def interview_stats():

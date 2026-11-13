@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 os.environ["K8S_LAB_NO_AUTOAPP"] = "1"
+os.environ["AI_FEEDBACK"] = "0"   # tests never call the real AI service
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -576,3 +577,49 @@ def test_path_warns_when_exam_needs_a_missing_prerequisite(client):
     m = client.get("/api/path").json()
     assert next(c for c in m["certs"] if c["id"] == "cks")["status"] == "goal"
     assert any(r["cert_id"] == "cks" and "CKA" in r["text"] for r in m["reminders"])
+
+
+class FakeClaude:
+    """Stands in for anthropic.Anthropic(): records the request, returns fixed feedback."""
+
+    def __init__(self, stop_reason="end_turn"):
+        from types import SimpleNamespace
+        self.calls = []
+        self.stop_reason = stop_reason
+        self.beta = SimpleNamespace(messages=SimpleNamespace(parse=self.parse))
+
+    def parse(self, **kw):
+        from types import SimpleNamespace
+        from app.ai import Feedback
+        self.calls.append(kw)
+        fb = Feedback(summary="Clear and short.", key_points=[
+            {"index": 0, "covered": True, "note": "You explained it."},
+            {"index": 1, "covered": False, "note": "Missing."},
+            {"index": 99, "covered": True, "note": "bad index"}],
+            strengths=["Clear"], improve=["Give an example"],
+            english=[{"said": "more better", "better": "better", "why": "Use one comparative."}],
+            better_answer="A better answer.")
+        return SimpleNamespace(stop_reason=self.stop_reason, model="claude-opus-5-5",
+                               parsed_output=None if self.stop_reason != "end_turn" else fb)
+
+
+def test_ai_feedback_is_off_without_a_key(client):
+    assert client.get("/api/ai/status").json()["enabled"] is False
+    qid = next(iter(load_library(CONTENT).interview_questions))
+    r = client.post("/api/interview/feedback", json={"question_id": qid, "answer": "one two three four five six"})
+    assert r.status_code == 503
+
+
+def test_ai_feedback_with_a_client(tmp_path):
+    from app.ai import Coach
+    fake = FakeClaude()
+    c = TestClient(create_app(CONTENT, tmp_path / "t.db", coach=Coach(client=fake)))
+    assert c.get("/api/ai/status").json() == {"enabled": True, "model": "claude-opus-5-5"}
+    qid = next(iter(load_library(CONTENT).interview_questions))
+    assert c.post("/api/interview/feedback", json={"question_id": qid, "answer": "too short"}).status_code == 400
+    r = c.post("/api/interview/feedback", json={"question_id": qid, "answer": "I think it is more better to use a pod here", "seconds": 40}).json()
+    assert r["covered"] == [0] and all(k["index"] < 99 for k in r["key_points"])
+    kw = fake.calls[0]
+    assert kw["fallbacks"] == "default" and "more better" in kw["messages"][0]["content"]
+    refused = TestClient(create_app(CONTENT, tmp_path / "u.db", coach=Coach(client=FakeClaude("refusal"))))
+    assert refused.post("/api/interview/feedback", json={"question_id": qid, "answer": "one two three four five six"}).status_code == 502

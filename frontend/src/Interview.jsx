@@ -9,6 +9,9 @@ const Recognition = typeof window !== 'undefined' && (window.SpeechRecognition |
 const FILLERS = ['um', 'uh', 'erm', 'like', 'you know', 'basically', 'actually', 'kind of', 'sort of']
 const STOP = new Set('a an the and or but of to in on for with is are be by it this that as at from your you i we can how what why when which their there they them use used using have has will would should could do does'.split(' '))
 
+let aiStatus = null   // fetched once: is the optional AI feedback on?
+const getAiStatus = () => (aiStatus ??= api.aiStatus().catch(() => ({ enabled: false })))
+
 const words = (t) => (t.trim() ? t.trim().split(/\s+/).length : 0)
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 const label = { technical: 'technical', behavioral: 'behavioral (STAR)', scenario: 'scenario', design: 'system design' }
@@ -162,6 +165,7 @@ export function AnswerCard({ q, number, sessionId, onDone, doneLabel = 'Next que
             ))}
           </ul>
           {answer && <details><summary>Your answer</summary><p className="your-answer">{answer}</p></details>}
+          <AiFeedback q={q} points={review.key_points} answer={answer} seconds={seconds} onTicks={setCovered} />
           <h3>Model answer <ListenButton text={review.model_answer} refId={`iv:${q.id}`} /> <ListenButton text={review.model_answer} refId={`iv:${q.id}`} label="Slow" slow /></h3>
           <p className="model-answer"><EnglishText text={review.model_answer} termIds={q.glossary} /></p>
           <p className="sub">Shadowing: listen to one sentence, pause, and repeat it aloud with the same rhythm.</p>
@@ -179,6 +183,63 @@ export function AnswerCard({ q, number, sessionId, onDone, doneLabel = 'Next que
               {covered.length}/{review.key_points.length} points · {doneLabel}
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Optional: feedback from Claude on the answer (only when the backend has an API key). */
+function AiFeedback({ q, points, answer, seconds, onTicks }) {
+  const [status, setStatus] = useState(null)
+  const [fb, setFb] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  useEffect(() => { getAiStatus().then(setStatus) }, [])
+  if (!status) return null
+  if (!status.enabled) {
+    return <p className="muted small">AI feedback is optional and off. To turn it on, start the backend with an
+      ANTHROPIC_API_KEY (see the README).</p>
+  }
+  const ask = async () => {
+    setBusy(true); setError(null)
+    try { setFb(await api.interviewFeedback({ question_id: q.id, answer, seconds })) } catch (e) { setError(e.message) }
+    setBusy(false)
+  }
+  return (
+    <div className="ai-feedback">
+      {!fb && (
+        <p>
+          <button disabled={busy || words(answer) < 5} onClick={ask}>{busy ? 'Asking the AI… (10–30 s)' : '✨ Get AI feedback'}</button>
+          <span className="muted small"> Sends the question and your answer to the Claude API. Nothing is saved.</span>
+        </p>
+      )}
+      {error && <p className="error small">{error}</p>}
+      {fb && (
+        <div className="card ai-card">
+          <h3>AI feedback</h3>
+          <p>{fb.summary}</p>
+          <ul className="keypoints ai-points">
+            {fb.key_points.map((k) => (
+              <li key={k.index}><span className={k.covered ? 'ok-text' : 'ko-text'}>{k.covered ? '✓' : '✗'}</span>{' '}
+                <EnglishText text={points[k.index] || ''} /> <span className="muted small">— {k.note}</span></li>
+            ))}
+          </ul>
+          <p><button className="link" onClick={() => onTicks(fb.covered)}>Use the AI ticks for the key points above</button>
+            <span className="muted small"> (you can still change them)</span></p>
+          {fb.strengths.length > 0 && <><b>Good</b><ul>{fb.strengths.map((x) => <li key={x}>{x}</li>)}</ul></>}
+          {fb.improve.length > 0 && <><b>Do better next time</b><ul>{fb.improve.map((x) => <li key={x}>{x}</li>)}</ul></>}
+          {fb.english.length > 0 && (
+            <>
+              <b>Your English</b>
+              <ul className="english-fixes">{fb.english.map((e, i) => (
+                <li key={i}><s>{e.said}</s> → <b>{e.better}</b> <span className="muted small">{e.why}</span></li>
+              ))}</ul>
+            </>
+          )}
+          <b>Your answer, improved</b> <ListenButton text={fb.better_answer} refId={`iv:${q.id}`} />
+          <p className="model-answer">{fb.better_answer}</p>
+          <p className="muted small">AI feedback can be wrong. Check it against the key points and the model answer. ({fb.model})</p>
         </div>
       )}
     </div>
