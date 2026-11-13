@@ -2,6 +2,7 @@
 # exam  = multiple-choice question bank (content/<exam>/exam.yaml)
 # track = hands-on labs (content/<track>/labs.yaml)
 # official = facts about the real exam, checked against the official page (month in `checked`)
+# after = suggested study order (shown on the path map). official.requires = must hold first.
 certifications:
   - id: kcna
     name: Kubernetes and Cloud Native Associate
@@ -21,6 +22,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       notes:
         - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
@@ -30,6 +32,7 @@ certifications:
     name: Kubernetes and Cloud Native Security Associate
     short: KCSA
     area: Kubernetes
+    after: [kcna]   # suggested study order (not required)
     exam: kcsa
     description: Multiple choice. Security of Kubernetes and the cloud native platform.
     official:
@@ -44,6 +47,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       notes:
         - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
@@ -53,6 +57,7 @@ certifications:
     name: Certified Kubernetes Administrator
     short: CKA
     area: Kubernetes
+    after: [kcna]   # suggested study order (not required)
     track: cka
     description: Hands-on. Run and fix a real cluster from the command line.
     official:
@@ -68,6 +73,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years (certifications earned before April 1, 2024 were valid for 3 years)
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires. If you pass the CKS (on or after June 18, 2026), your CKA is extended to the same date.
       notes:
         - You can open the official Kubernetes documentation during the exam.
@@ -78,6 +84,7 @@ certifications:
     name: Certified Kubernetes Application Developer
     short: CKAD
     area: Kubernetes
+    after: [kcna]   # suggested study order (not required)
     track: ckad
     description: Hands-on. Build, deploy, configure and debug applications on Kubernetes.
     official:
@@ -93,6 +100,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years (certifications earned before April 1, 2024 were valid for 3 years)
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       notes:
         - You can open the official Kubernetes documentation during the exam.
@@ -103,6 +111,7 @@ certifications:
     name: Certified Kubernetes Security Specialist
     short: CKS
     area: Kubernetes
+    after: [cka]   # suggested study order (not required)
     track: cks
     description: Hands-on. Secure a cluster and its workloads (requires a passed CKA for the real exam).
     official:
@@ -118,6 +127,9 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: You must pass the CKA before you can take the CKS
       valid: 2 years
+      valid_years: 2
+      requires: [cka]
+      extends: { cka: "2026-06-18" }   # a CKS passed on/after this date extends the CKA to the same date
       renewal: Pass the same exam again before your certification expires.
       notes:
         - You can open the official Kubernetes documentation and some tool docs during the exam.
@@ -142,6 +154,7 @@ certifications:
         - No free retake. If you fail, you pay again.
       prerequisites: None (HashiCorp recommends basic terminal skills and some Terraform experience)
       valid: 2 years
+      valid_years: 2
       renewal: Pass the current Associate exam in the last 6 months before it expires, or pass the Terraform Professional exam (USD 200).
       notes:
         - Version 004 covers Terraform 1.12. Version 003 was retired in January 2026.
@@ -167,6 +180,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       notes:
         - The exam runs on Ubuntu.
@@ -190,6 +204,7 @@ certifications:
         - No free retake. You wait 14 days and pay again.
       prerequisites: None (Mirantis recommends 6 to 12 months of Docker experience)
       valid: 2 years
+      valid_years: 2
       renewal: Pass the exam again.
       notes:
         - In DOMC questions you answer yes or no to each option and cannot go back.
@@ -213,6 +228,7 @@ certifications:
         - No free retake. You can retake it 24 hours after the first attempt.
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: GitHub certifications are moving to the Microsoft renewal process. Check the official page before your certification expires.
       notes:
         - The exam was updated in January 2026. Old study guides may show different domains.
@@ -222,6 +238,7 @@ certifications:
     name: Certified Argo Project Associate
     short: CAPA
     area: CI/CD and GitOps
+    after: [kcna]   # suggested study order (not required)
     exam: capa
     track: capa
     description: Multiple choice. Argo Workflows, Argo CD, Argo Rollouts and Argo Events, plus hands-on labs on a cluster with Argo and a Git server.
@@ -237,6 +254,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       checked: "2026-11"
       url: https://training.linuxfoundation.org/certification/certified-argo-project-associate-capa/
@@ -244,6 +262,7 @@ certifications:
     name: Prometheus Certified Associate
     short: PCA
     area: Observability
+    after: [kcna]   # suggested study order (not required)
     exam: pca
     track: pca
     description: Multiple choice. PromQL, scraping, instrumentation, alerting and observability concepts, plus hands-on labs on a real Prometheus stack.
@@ -259,6 +278,7 @@ certifications:
         - 12 months to schedule the exam after you buy it
       prerequisites: None
       valid: 2 years
+      valid_years: 2
       renewal: Pass the same exam again before your certification expires.
       checked: "2026-11"
       url: https://training.linuxfoundation.org/certification/prometheus-certified-associate/
@@ -281,6 +301,7 @@ certifications:
         - After you pass, you get a 50% discount voucher for your next AWS exam.
       prerequisites: None (AWS recommends at least 1 year of hands-on experience with AWS)
       valid: 3 years
+      valid_years: 3
       renewal: Pass the current SAA exam again, or pass the Solutions Architect - Professional exam.
       notes:
         - Non-native English speakers can ask for 30 extra minutes (ESL +30) before booking.
@@ -292,3 +313,11 @@ certifications:
     area: Career
     interview: true
     description: Answer real interview questions aloud in English, check the key points, and run timed mock interviews.
+
+# Programs that group several certifications (shown on the path map).
+programs:
+  - id: kubestronaut
+    name: Kubestronaut
+    certs: [kcna, kcsa, cka, ckad, cks]
+    description: CNCF program for people who hold all five Kubernetes certifications at the same time (all must be active).
+    url: https://www.cncf.io/training/kubestronaut/

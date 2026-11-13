@@ -46,6 +46,10 @@ Choose the certification in the selector at the top of the page.
   (reviews due, new questions focused on your weakest and heaviest domains, labs to solve, and mock exams
   that get more frequent as the exam gets close) and a road map: *Learn* → *Practice* (last 3 weeks) →
   *Final week* → *Rest*. It also tells you if you are ahead of or behind plan.
+- **My path**: a map of the certifications in a suggested order (*Start here → Next → Then*), the exams
+  that need another one first (the CKS needs a passed CKA), and Kubestronaut progress. Record a
+  certification when you pass it: the app shows when it expires and reminds you on every page 90 days
+  before (a CKS passed on or after June 18, 2026 extends your CKA, as the Linux Foundation rule says).
 - **Am I ready?** An estimated exam score: your last 3 mock exams (60%) mixed with your practice (40%),
   following the official domain weights. It compares the estimate with the passing score and says
   *Not ready yet*, *Almost ready* or *Ready* (two mock exams in a row 5 points above the passing score).

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 import Labs from './Labs.jsx'
 import Plan from './Plan.jsx'
+import PathMap, { Reminders } from './Path.jsx'
 import { InterviewPractice, MockInterview, Phrases } from './Interview.jsx'
 import { EnglishBar, EnglishContext, EnglishPage, EnglishText, ListenButton } from './english.jsx'
 
@@ -20,6 +21,7 @@ function tabsFor(cert) {
       { id: 'phrases', label: 'Phrases' },
     ] : []),
     ...(cert?.official ? [{ id: 'real-exam', label: 'Real exam' }] : []),
+    { id: 'path', label: 'My path' },
     { id: 'english', label: 'English' },
     { id: 'glossary', label: 'Glossary' },
   ]
@@ -37,12 +39,16 @@ export default function App() {
   const [vocabulary, setVocabulary] = useState([])
   const [exams, setExams] = useState([])
   const [error, setError] = useState(null)
+  const [path, setPath] = useState(null)
+  const loadPath = () => api.path().then(setPath).catch(() => {})
 
   useEffect(() => {
     Promise.all([api.glossary(), api.exams(), api.vocabulary(), api.certifications()])
       .then(([g, e, v, c]) => { setGlossary(g); setExams(e); setVocabulary(v); setCerts(c) })
       .catch((e) => setError(e.message))
+    loadPath()
   }, [])
+  useEffect(() => { if (tab === 'path' || tab === 'plan') loadPath() }, [tab, certId])
 
   const cert = certs.find((c) => c.id === certId) || certs[0]
   const exam = exams.find((e) => e.id === cert?.exam)
@@ -81,6 +87,8 @@ export default function App() {
       </header>
       <main className={current === 'labs' ? 'wide' : ''}>
         {error && <p className="error">Cannot reach the API: {error}. Is the backend running on port 8000?</p>}
+        {current !== 'path' && <Reminders path={path} onOpen={() => setTab('path')} />}
+        {current === 'path' && <PathMap path={path} onChange={setPath} onStudy={chooseCert} />}
         {cert && current === 'plan' && <Plan key={cert.id} cert={cert} onGo={go} />}
         {exam && current === 'dashboard' && <Dashboard key={exam.id} exam={exam} cert={cert} onGo={go} />}
         {exam && current === 'practice' && <Practice key={`${exam.id}-${practiceDomain}`} exam={exam} glossary={glossary} initialDomain={practiceDomain} />}

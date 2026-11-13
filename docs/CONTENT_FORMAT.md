@@ -46,6 +46,19 @@ Shown in the **Real exam** tab. Write what the official page says; when a number
       url: https://training.linuxfoundation.org/...
 ```
 
+### Path map fields
+
+```yaml
+  - id: cks
+    after: [cka]                     # suggested study order (not a rule)
+    official:
+      valid_years: 2                 # expiry date = pass date + valid_years
+      requires: [cka]                # the real exam needs this certification first
+      extends: { cka: "2026-06-18" } # passing on/after the date extends the CKA to the same expiry
+programs:                            # groups like CNCF Kubestronaut (top level of certifications.yaml)
+  - { id: kubestronaut, name: Kubestronaut, certs: [kcna, kcsa, cka, ckad, cks], description: "…", url: "https://…" }
+```
+
 ## Glossary terms
 
 ```yaml

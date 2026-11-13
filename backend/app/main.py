@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import domc, plan, srs
+from . import domc, path, plan, srs
 from .content import Library, Question, load_library
 from .db import Database
 from .labs import LabManager, Runner, subprocess_runner
@@ -75,6 +75,11 @@ class InterviewMockIn(BaseModel):
 class GoalIn(BaseModel):
     exam_date: date
     minutes_per_day: int = Field(default=60, ge=15, le=600)
+
+
+class EarnedIn(BaseModel):
+    passed_on: date
+    expires_on: date | None = None   # the date on your certificate, when it differs
 
 
 class VocabAnswerIn(BaseModel):
@@ -913,6 +918,44 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
                 "ON CONFLICT(cert_id) DO UPDATE SET exam_date=excluded.exam_date, minutes_per_day=excluded.minutes_per_day",
                 (cert_id, body.exam_date.isoformat(), body.minutes_per_day))
         return study_plan(cert_id)
+
+    # ---------- certification path map ----------
+
+    @app.get("/api/path")
+    def path_map(today: date | None = None):
+        today = today or date.today()
+        with db.connect() as conn:
+            earned = {r["cert_id"]: {"passed_on": date.fromisoformat(r["passed_on"]),
+                                     "expires_on": date.fromisoformat(r["expires_on"]) if r["expires_on"] else None}
+                      for r in conn.execute("SELECT * FROM earned_certs")}
+            goals = {r["cert_id"]: date.fromisoformat(r["exam_date"])
+                     for r in conn.execute("SELECT cert_id, exam_date FROM study_goals")}
+        ready = {}
+        for c in lib.certifications:
+            if c.official and (c.exam or c.track) and c.id not in earned:
+                r = plan.readiness(*parts_for(c))
+                ready[c.id] = {"estimate": r["estimate"], "passing": r["passing"], "verdict": r["verdict"]}
+        return path.build(lib.certifications, lib.programs, earned, goals, ready, today)
+
+    @app.put("/api/earned")
+    def set_earned(cert_id: str, body: EarnedIn):
+        get_cert(cert_id)
+        if body.passed_on > date.today():
+            raise HTTPException(400, "The pass date is in the future")
+        if body.expires_on and body.expires_on <= body.passed_on:
+            raise HTTPException(400, "The expiry date must be after the pass date")
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO earned_certs (cert_id, passed_on, expires_on) VALUES (?,?,?) ON CONFLICT(cert_id) "
+                "DO UPDATE SET passed_on=excluded.passed_on, expires_on=excluded.expires_on",
+                (cert_id, body.passed_on.isoformat(), body.expires_on.isoformat() if body.expires_on else None))
+        return path_map()
+
+    @app.delete("/api/earned")
+    def delete_earned(cert_id: str):
+        with db.connect() as conn:
+            conn.execute("DELETE FROM earned_certs WHERE cert_id=?", (cert_id,))
+        return path_map()
 
     @app.delete("/api/plan")
     def delete_goal(cert_id: str):

@@ -1,6 +1,7 @@
 """Load and validate study content from YAML files in content/."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -195,6 +196,10 @@ class OfficialExam(BaseModel):
     includes: list[str] = []            # free retake, simulator sessions…
     prerequisites: str = "None"         # certification you must hold first
     valid: str                          # how long the certification lasts
+    valid_years: int | None = Field(default=None, ge=1, le=10)   # for expiry dates on the path map
+    requires: list[str] = []            # certification ids you must hold before taking this exam
+    # passing this exam on/after the date extends another certification to the same expiry date
+    extends: dict[str, str] = {}
     renewal: str = ""                   # how to keep it
     notes: list[str] = []
     url: str = Field(pattern=r"^https://")
@@ -213,6 +218,17 @@ class Certification(BaseModel):
     interview: bool = False    # interview practice (content/interviews/)
     description: str = ""
     official: OfficialExam | None = None   # the real exam: questions, time, cost, validity
+    after: list[str] = []      # suggested study order: certifications to study first (not required)
+
+
+class Program(BaseModel):
+    """A group of certifications, like CNCF Kubestronaut (content/certifications.yaml `programs`)."""
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    name: str
+    certs: list[str] = Field(min_length=2)
+    description: str
+    url: str = Field(pattern=r"^https://")
 
 
 class InterviewCategory(BaseModel):
@@ -270,6 +286,7 @@ class Library(BaseModel):
     interview_categories: dict[str, InterviewCategory] = {}
     interview_questions: dict[str, InterviewQuestion] = {}
     phrase_groups: list[PhraseGroup] = []
+    programs: list[Program] = []
     errors: list[str] = []
 
     def tasks_for(self, track_id: str) -> list[LabTask]:
@@ -473,7 +490,26 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
                 errors.append(f"certifications.yaml: {c.id}: no interview questions in content/interviews/")
             certifications.append(c)
 
+    programs: list[Program] = []
+    if cpath.exists():
+        for raw in _read(cpath).get("programs", []):
+            try:
+                programs.append(Program(**raw))
+            except Exception as e:
+                errors.append(f"certifications.yaml: program {raw.get('id', '?')}: {e}")
     cert_ids = {c.id for c in certifications}
+    for c in certifications:
+        refs = c.after + ((c.official.requires + list(c.official.extends)) if c.official else [])
+        for r in refs:
+            if r not in cert_ids or r == c.id:
+                errors.append(f"certifications.yaml: {c.id}: unknown certification '{r}' in after/requires/extends")
+        for d in (c.official.extends.values() if c.official else []):
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d):
+                errors.append(f"certifications.yaml: {c.id}: extends date must be YYYY-MM-DD")
+    for pr in programs:
+        for r in pr.certs:
+            if r not in cert_ids:
+                errors.append(f"certifications.yaml: program {pr.id}: unknown certification '{r}'")
     for t in glossary.values():
         for c in t.certs:
             if cert_ids and c not in cert_ids:
@@ -489,4 +525,4 @@ def load_library(content_dir: Path, strict: bool = True) -> Library:
     return Library(errors=errors, exams=exams, questions=questions, glossary=glossary, tracks=tracks, tasks=tasks,
                    vocabulary=vocabulary, certifications=certifications,
                    interview_categories=interview_categories, interview_questions=interview_questions,
-                   phrase_groups=phrase_groups)
+                   phrase_groups=phrase_groups, programs=programs)

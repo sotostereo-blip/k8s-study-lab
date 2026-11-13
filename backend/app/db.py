@@ -83,6 +83,11 @@ CREATE TABLE IF NOT EXISTS study_goals (
     minutes_per_day INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (date('now', 'localtime'))
 );
+CREATE TABLE IF NOT EXISTS earned_certs (
+    cert_id TEXT PRIMARY KEY,
+    passed_on TEXT NOT NULL,          -- YYYY-MM-DD
+    expires_on TEXT                   -- YYYY-MM-DD from the certificate; NULL = passed_on + valid_years
+);
 CREATE TABLE IF NOT EXISTS interview_sessions (
     id TEXT PRIMARY KEY,
     question_ids TEXT NOT NULL,       -- JSON list

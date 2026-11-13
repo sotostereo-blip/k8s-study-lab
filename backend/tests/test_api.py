@@ -538,3 +538,41 @@ def test_hands_on_tracks_list_real_exam_rules(client):
         t = client.get(f"/api/labs?track_id={track}").json()["tracks"][0]
         assert t["exam_rules"]["source"].startswith("https://docs.linuxfoundation.org")
     assert client.get("/api/labs?track_id=lfcs").json()["tracks"][0]["exam_rules"]["docs"] == []
+
+
+def test_path_map_levels_prerequisites_and_expiry(client):
+    m = client.get("/api/path?today=2026-11-12").json()
+    by = {c["id"]: c for c in m["certs"]}
+    assert "interview" not in by
+    assert by["kcna"]["level"] == 0 and by["cka"]["level"] == 1 and by["cks"]["level"] == 2
+    assert by["cks"]["missing_requires"] == ["cka"]
+    assert m["programs"][0]["id"] == "kubestronaut" and not m["programs"][0]["complete"]
+    # pass the CKA: expires 2 years later
+    client.put("/api/earned?cert_id=cka", json={"passed_on": "2025-01-20"})
+    m = client.get("/api/path?today=2026-11-12").json()
+    cka = next(c for c in m["certs"] if c["id"] == "cka")
+    assert cka["expires_on"] == "2027-01-20" and cka["status"] == "expiring"
+    assert m["reminders"][0]["cert_id"] == "cka"
+    assert next(c for c in m["certs"] if c["id"] == "cks")["missing_requires"] == []
+    # a CKS passed after 2026-06-18 extends the CKA to the same date
+    client.put("/api/earned?cert_id=cks", json={"passed_on": "2026-07-01"})
+    m = client.get("/api/path?today=2026-11-12").json()
+    cka = next(c for c in m["certs"] if c["id"] == "cka")
+    assert cka["expires_on"] == "2028-07-01" and cka["extended_by"] == "CKS" and cka["status"] == "active"
+    # expired, manual expiry date, delete, and bad dates
+    client.put("/api/earned?cert_id=saa", json={"passed_on": "2023-01-10"})
+    assert next(c for c in client.get("/api/path?today=2026-11-12").json()["certs"] if c["id"] == "saa")["status"] == "expired"
+    client.put("/api/earned?cert_id=saa", json={"passed_on": "2023-01-10", "expires_on": "2027-06-10"})
+    assert next(c for c in client.get("/api/path?today=2026-11-12").json()["certs"] if c["id"] == "saa")["status"] == "active"
+    client.delete("/api/earned?cert_id=saa")
+    assert next(c for c in client.get("/api/path").json()["certs"] if c["id"] == "saa")["status"] == "none"
+    assert client.put("/api/earned?cert_id=kcna", json={"passed_on": "2999-01-01"}).status_code == 400
+
+
+def test_path_warns_when_exam_needs_a_missing_prerequisite(client):
+    from datetime import date, timedelta
+    day = (date.today() + timedelta(days=30)).isoformat()
+    client.put("/api/plan?cert_id=cks", json={"exam_date": day})
+    m = client.get("/api/path").json()
+    assert next(c for c in m["certs"] if c["id"] == "cks")["status"] == "goal"
+    assert any(r["cert_id"] == "cks" and "CKA" in r["text"] for r in m["reminders"])

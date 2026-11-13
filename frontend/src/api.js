@@ -48,5 +48,8 @@ export const api = {
   mockAbandon: (id) => request(`/mock/${id}/abandon`, { method: 'POST' }),
   plan: (cert) => request(`/plan?cert_id=${cert}`),
   planSet: (cert, body) => request(`/plan?cert_id=${cert}`, { method: 'PUT', body }),
+  path: () => request('/path'),
+  earnedSet: (cert, body) => request(`/earned?cert_id=${cert}`, { method: 'PUT', body }),
+  earnedDelete: (cert) => request(`/earned?cert_id=${cert}`, { method: 'DELETE' }),
   planDelete: (cert) => request(`/plan?cert_id=${cert}`, { method: 'DELETE' }),
 }
