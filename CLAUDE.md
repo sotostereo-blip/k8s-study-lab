@@ -7,6 +7,7 @@ Spanish but all study content must be in **simple, clear English**.
 
 ## Commands
 - Validate content: `python scripts/validate_content.py`
+- Exam facts age: `python scripts/check_facts.py` (`--online` also opens the official pages)
 - Backend tests: `cd backend && pytest -q`
 - Run backend: `cd backend && uvicorn app.main:app --reload`
 - Run frontend: `cd frontend && npm run dev` (proxies `/api` to :8000)
@@ -31,5 +32,8 @@ Spanish but all study content must be in **simple, clear English**.
   only highlighted in that certification.
 - Study plan and readiness score: pure functions in `backend/app/plan.py` (progress is read in
   `main.py` `parts_for`); keep the formulas explained in the README.
-- AI features must stay optional: the app must work with no API key.
+- AI features must stay optional: the app must work with no API key (`app/ai.py`, off without
+  `ANTHROPIC_API_KEY`; tests use a fake client and never call the real API).
+- When you change exam facts in `certifications.yaml`, set `official.checked` to the current month.
+- Lab containers that create kernel objects (loop devices, LVM, swap) need a `lab-teardown` script.
 - Run the validator and tests before finishing any change.

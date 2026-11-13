@@ -644,3 +644,12 @@ def test_new_labs_exist():
         assert t in lib.tasks
     assert "argo-events" in {d.id for d in lib.tracks["capa"].domains}
 
+
+def test_exam_facts_age(client):
+    from datetime import date
+    from app.facts import age_months
+    assert age_months("2026-11", date(2027, 5, 1)) == 6 and age_months("2026-11", date(2027, 6, 1)) == 7
+    now = {c["id"]: c for c in client.get("/api/certifications?today=2026-12-01").json()}
+    later = {c["id"]: c for c in client.get("/api/certifications?today=2027-08-01").json()}
+    assert now["cka"]["facts_stale"] is False and later["cka"]["facts_stale"] is True
+    assert "facts_stale" not in now["interview"]

@@ -199,7 +199,7 @@ function Dashboard({ exam, cert, onGo }) {
       <p className="sub">{exam.exam_questions} questions · {exam.exam_minutes} minutes · pass with {exam.passing_score}%</p>
       {exam.facts_note && <p className="facts-note">ℹ️ {exam.facts_note}</p>}
       {cert?.official && (
-        <p className="sub">Real exam: {cert.official.cost} · valid {cert.official.valid} ·{' '}
+        <p className="sub">Real exam: {cert.official.cost} · valid {cert.official.valid}{cert.facts_stale ? ' · ⚠️ facts may be out of date' : ''} ·{' '}
           <button className="link" onClick={() => onGo('real-exam')}>all the facts</button></p>
       )}
       <div className="tiles">
@@ -249,6 +249,10 @@ function RealExam({ cert }) {
     <section className="real-exam">
       <h1>{cert.name}</h1>
       <p className="sub">The real exam, as described on the official page.</p>
+      {cert.facts_stale && (
+        <p className="reminder">⚠️ These facts were checked {cert.facts_age_months} months ago ({o.checked}) and may be out of
+          date. Check the <a href={o.url} target="_blank" rel="noreferrer">official page</a> before you pay or book.</p>
+      )}
       <div className="tiles">
         <div className="tile"><b>{o.minutes}</b><span>minutes</span></div>
         <div className="tile"><b>{/^USD [\d.]+/.exec(o.cost)?.[0] || 'Varies'}</b><span>exam price</span></div>

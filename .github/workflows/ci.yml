@@ -9,6 +9,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -r backend/requirements.txt
       - run: python scripts/validate_content.py
+      - run: python scripts/check_facts.py --warn-only   # warns when exam facts are over 6 months old
       - run: cd backend && pytest -q
   frontend:
     runs-on: ubuntu-latest

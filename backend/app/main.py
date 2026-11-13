@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import ai, domc, path, plan, srs
+from . import ai, domc, facts, path, plan, srs
 from .content import Library, Question, load_library
 from .db import Database
 from .labs import LabManager, Runner, subprocess_runner
@@ -484,8 +484,10 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
         return lib.tasks[task_id]
 
     @app.get("/api/certifications")
-    def certifications():
-        return [c.model_dump() for c in lib.certifications]
+    def certifications(today: date | None = None):
+        ages = {r["id"]: r for r in facts.report(lib.certifications, today or date.today())}
+        return [c.model_dump() | ({"facts_age_months": ages[c.id]["months"], "facts_stale": ages[c.id]["stale"]}
+                                  if c.id in ages else {}) for c in lib.certifications]
 
     def get_track(track_id: str):
         if track_id not in lib.tracks:

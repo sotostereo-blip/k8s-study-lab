@@ -105,6 +105,16 @@ docker compose up --build
 
 Open http://localhost:5173. The API runs on http://localhost:8000 (docs at `/docs`).
 
+### Keeping the exam facts fresh
+
+Prices, question counts and rules change. Every certification records the month its facts were
+checked (`official.checked`); after 6 months the **Real exam** tab says they may be out of date.
+
+```bash
+python scripts/check_facts.py            # which facts are older than 6 months
+python scripts/check_facts.py --online   # also open each official page and look for price and minutes
+```
+
 ### Optional: AI feedback on interview answers
 
 Put your Anthropic API key in `.env` (never commit it):
