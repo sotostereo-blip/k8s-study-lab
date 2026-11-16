@@ -1,0 +1,42 @@
+id: cka-arch-006
+title: Back up etcd with etcdctl
+domain: cluster-architecture
+difficulty: 2
+minutes: 8
+environment: kubeadm
+mock_exam: false   # needs the kubeadm environment
+setup: |
+  kubectl create namespace billing
+  kubectl -n billing create configmap rates --from-literal=eur=1.08
+  # the etcd revision now: a snapshot taken after this point is newer
+  ssh -n controlplane '/usr/local/lib/lab/etcdctl endpoint status -w json | jq ".[0].Status.header.revision" > /root/.lab-setup-revision'
+task: |
+  This cluster was installed with kubeadm. etcd runs as a static Pod on the node `controlplane`
+  (connect with `ssh controlplane`). `etcdctl` is installed there.
+
+  Take a snapshot of etcd and save it as `/opt/backup/etcd-backup.db` on `controlplane`.
+  - etcd listens on `https://127.0.0.1:2379`
+  - CA certificate: `/etc/kubernetes/pki/etcd/ca.crt`
+  - client certificate and key: `/etc/kubernetes/pki/etcd/server.crt` and `/etc/kubernetes/pki/etcd/server.key`
+
+  Check the snapshot with `etcdutl snapshot status /opt/backup/etcd-backup.db -w table`.
+checks:
+  - name: /opt/backup/etcd-backup.db is a valid etcd snapshot
+    run: ssh -n controlplane 'etcdutl snapshot status /opt/backup/etcd-backup.db -w json' | jq -e '.totalKey > 0' >/dev/null
+  - name: The snapshot was taken now (it contains the current data)
+    run: |
+      ssh -n controlplane '[ "$(etcdutl snapshot status /opt/backup/etcd-backup.db -w json | jq .revision)" -ge "$(cat /root/.lab-setup-revision)" ]'
+solution: |
+  ssh controlplane
+  mkdir -p /opt/backup
+  ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+    --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+    --cert=/etc/kubernetes/pki/etcd/server.crt \
+    --key=/etc/kubernetes/pki/etcd/server.key \
+    snapshot save /opt/backup/etcd-backup.db
+  etcdutl snapshot status /opt/backup/etcd-backup.db -w table
+  exit
+auto_solution: |
+  ssh -n controlplane 'mkdir -p /opt/backup && etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-backup.db'
+docs:
+  - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster

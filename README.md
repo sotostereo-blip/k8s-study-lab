@@ -15,15 +15,15 @@ Everything runs on your machine with Docker. No account, no cloud costs, your pr
 |---|---|---|
 | **KCNA** — Kubernetes and Cloud Native Associate | 150 questions | — |
 | **KCSA** — Kubernetes and Cloud Native Security Associate | 120 questions | — |
-| **CKA** — Certified Kubernetes Administrator | — | 38 tasks + mock exam |
+| **CKA** — Certified Kubernetes Administrator | — | 45 tasks + mock exam (incl. Gateway API, etcd backup/restore, kubeadm upgrade and join) |
 | **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
 | **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
-| **Terraform Associate (004)** — HashiCorp | 152 questions | 17 tasks (Terraform + LocalStack) |
+| **Terraform Associate (004)** — HashiCorp | 152 questions | 19 tasks (Terraform + LocalStack) |
 | **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 33 tasks + mock exam (Ubuntu servers with systemd, LVM, swap) |
 | **DCA** — Docker Certified Associate | 120 questions | 23 tasks + mock exam (Docker Engine, Swarm, registry) |
 | **GH-200** — GitHub Actions | 100 questions | 19 tasks + mock exam (Gitea Actions, GitHub compatible) |
 | **CAPA** — Certified Argo Project Associate | 100 questions | 16 tasks + mock exam (Argo CD, Rollouts, Workflows, Events) |
-| **PCA** — Prometheus Certified Associate | 100 questions | 19 tasks + mock exam (Prometheus, Alertmanager, exporters) |
+| **PCA** — Prometheus Certified Associate | 100 questions | 22 tasks + mock exam (Prometheus, Alertmanager, Grafana, exporters) |
 | **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
 | **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |
 
@@ -110,8 +110,8 @@ Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshoot
   - **ESL +30 minutes** (AWS SAA): the extra time AWS gives when English is not your first language
     (you must request it in your AWS Certification account before booking).
 - **Hands-on labs**: choose a task and a real environment starts in Docker with a terminal
-  **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, with API audit
-  logging for CKS, or with Argo CD), Ubuntu servers with systemd, a Docker Engine, Gitea with
+  **inside the browser** — a Kubernetes 1.37 cluster (k3s; 1 node, 2 nodes, with the Gateway API, with API
+  audit logging for CKS, or with Argo CD), a kubeadm cluster with real control-plane nodes you reach with `ssh`, Ubuntu servers with systemd, a Docker Engine, Gitea with
   Actions, a Prometheus stack, or Terraform / the AWS CLI with LocalStack, a free local AWS emulator. Solve it,
   press *Check my work*, and the app inspects the real state. Every task was verified on a real
   environment (fails before, passes after the solution). See [labs/README.md](labs/README.md).
@@ -206,6 +206,7 @@ checked (`official.checked`); after 6 months the **Real exam** tab says they may
 ```bash
 python scripts/check_facts.py            # which facts are older than 6 months
 python scripts/check_facts.py --online   # also open each official page and look for price and minutes
+python scripts/check_links.py            # every docs link in the questions and labs still opens
 ```
 
 ## Development

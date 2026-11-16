@@ -1,0 +1,107 @@
+id: cka-net-008
+title: Migrate an Ingress to the Gateway API
+domain: services-networking
+difficulty: 3
+minutes: 12
+environment: gateway
+mock_exam: false   # needs the Gateway API environment
+setup: |
+  kubectl create namespace web
+  for v in v1 v2; do
+    kubectl -n web create deployment app-$v --image=nginx:1.27-alpine -- sh -c \
+      "echo app-$v > /usr/share/nginx/html/index.html; mkdir -p /usr/share/nginx/html/beta; echo app-$v > /usr/share/nginx/html/beta/index.html; exec nginx -g 'daemon off;'"
+    kubectl -n web expose deployment app-$v --port=80
+  done
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: app
+    namespace: web
+  spec:
+    ingressClassName: legacy-nginx
+    rules:
+    - host: app.example.com
+      http:
+        paths:
+        - path: /beta
+          pathType: Prefix
+          backend:
+            service: { name: app-v2, port: { number: 80 } }
+        - path: /
+          pathType: Prefix
+          backend:
+            service: { name: app-v1, port: { number: 80 } }
+  YAML
+  kubectl -n web rollout status deployment app-v1 --timeout=180s
+  kubectl -n web rollout status deployment app-v2 --timeout=180s
+task: |
+  The team is moving from Ingress to the Gateway API. In the namespace `web` there is an
+  Ingress `app` for the host `app.example.com` (its old controller was removed):
+  - path prefix `/beta` goes to the Service `app-v2` (port 80)
+  - everything else (`/`) goes to the Service `app-v1` (port 80)
+
+  1. Create a Gateway `app-gw` in `web` with GatewayClass `traefik` and one HTTP listener
+     on port 80 for the hostname `app.example.com`.
+  2. Create an HTTPRoute `app` in `web`, attached to `app-gw`, with the **same routing** as the Ingress.
+  3. Delete the Ingress `app`.
+
+  Test: `curl -H "Host: app.example.com" http://server/` must answer `app-v1`, and
+  `http://server/beta/` must answer `app-v2`.
+checks:
+  - name: Gateway `app-gw` (GatewayClass traefik) is Programmed with an HTTP listener on port 80 for app.example.com
+    run: |
+      kubectl -n web get gateway app-gw -o json | jq -e '.spec.gatewayClassName=="traefik"
+        and any(.spec.listeners[]; .protocol=="HTTP" and .port==80 and .hostname=="app.example.com")
+        and any(.status.conditions[]; .type=="Programmed" and .status=="True")' >/dev/null
+  - name: HTTPRoute `app` is accepted by app-gw
+    run: |
+      kubectl -n web get httproute app -o json | jq -e 'any(.status.parents[]?; .parentRef.name=="app-gw"
+        and any(.conditions[]; .type=="Accepted" and .status=="True"))' >/dev/null
+  - name: "/ answers app-v1"
+    run: '[ "$(curl -s -m 5 -H "Host: app.example.com" http://server/)" = app-v1 ]'
+  - name: "/beta/ answers app-v2"
+    run: '[ "$(curl -s -m 5 -H "Host: app.example.com" http://server/beta/)" = app-v2 ]'
+  - name: The Ingress `app` is deleted
+    run: '! kubectl -n web get ingress app 2>/dev/null'
+solution: |
+  kubectl -n web get ingress app -o yaml      # read the rules you must copy
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: Gateway
+  metadata:
+    name: app-gw
+    namespace: web
+  spec:
+    gatewayClassName: traefik
+    listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: app.example.com
+  ---
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    name: app
+    namespace: web
+  spec:
+    parentRefs:
+    - name: app-gw
+    hostnames:
+    - app.example.com
+    rules:
+    - matches:
+      - path: { type: PathPrefix, value: /beta }
+      backendRefs:
+      - { name: app-v2, port: 80 }
+    - matches:
+      - path: { type: PathPrefix, value: / }
+      backendRefs:
+      - { name: app-v1, port: 80 }
+  YAML
+  kubectl -n web delete ingress app
+  curl -H "Host: app.example.com" http://server/beta/
+docs:
+  - https://gateway-api.sigs.k8s.io/guides/getting-started/migrating-from-ingress/
+  - https://kubernetes.io/docs/concepts/services-networking/gateway/

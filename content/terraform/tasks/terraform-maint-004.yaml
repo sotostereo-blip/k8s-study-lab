@@ -1,0 +1,60 @@
+id: terraform-maint-004
+title: Replace a resource with create_before_destroy
+domain: maintain
+difficulty: 3
+minutes: 10
+environment: terraform
+setup: |
+  mkdir -p /root/queues && cd /root/queues
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_sqs_queue" "jobs" {
+    name_prefix = "jobs-"
+  }
+
+  output "queue_url" {
+    value = aws_sqs_queue.jobs.url
+  }
+  TF
+  terraform init -input=false >/dev/null
+  terraform apply -auto-approve -input=false >/dev/null
+task: |
+  In `/root/queues`, the SQS queue `aws_sqs_queue.jobs` must get a new name: change its
+  `name_prefix` from `jobs-` to `work-`. A new name forces Terraform to **replace** the queue.
+  By default Terraform destroys the old queue first, and the workers lose their queue for a moment.
+
+  1. Make Terraform **create the new queue before it destroys the old one**.
+  2. Change the prefix to `work-`.
+  3. Save the plan to `/root/queues/replace.tfplan` (`terraform plan -out=replace.tfplan`), read it
+     (`terraform show replace.tfplan`: look for `+/-` or `-/+`), then apply that plan.
+checks:
+  - name: The saved plan replaces the queue with create first, then delete
+    run: |
+      cd /root/queues && terraform show -json replace.tfplan | jq -e '.resource_changes[]
+        | select(.address=="aws_sqs_queue.jobs") | .change.actions == ["create","delete"]' >/dev/null
+  - name: The queue in the state is called work-…
+    run: '[ "$(terraform -chdir=/root/queues output -raw queue_url | sed "s#.*/##" | cut -c1-5)" = work- ]'
+  - name: The old jobs-… queue is gone and only one queue is left
+    run: |
+      q=$(aws sqs list-queues --output json | jq -r '.QueueUrls[]? | split("/")[-1]' | grep -E '^(jobs|work)-')
+      [ "$(echo "$q" | grep -c .)" = 1 ] && echo "$q" | grep -q '^work-'
+solution: |
+  cd /root/queues
+  # main.tf:
+  #   resource "aws_sqs_queue" "jobs" {
+  #     name_prefix = "work-"
+  #     lifecycle {
+  #       create_before_destroy = true
+  #     }
+  #   }
+  vim main.tf
+  terraform plan -out=replace.tfplan    # +/- create replacement and then destroy
+  terraform show replace.tfplan
+  terraform apply replace.tfplan
+auto_solution: |
+  cd /root/queues
+  sed -i 's/^  name_prefix = "jobs-"$/  name_prefix = "work-"\n  lifecycle {\n    create_before_destroy = true\n  }/' main.tf
+  terraform plan -input=false -out=replace.tfplan >/dev/null && terraform apply -input=false replace.tfplan >/dev/null
+docs:
+  - https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#create_before_destroy
+  - https://developer.hashicorp.com/terraform/cli/commands/plan#out-filename

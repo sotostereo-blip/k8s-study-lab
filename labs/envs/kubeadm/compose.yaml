@@ -1,0 +1,30 @@
+# kubeadm cluster (CKA: etcd backup/restore, kubeadm upgrade, kubeadm join) + browser terminal.
+#   controlplane: kubeadm init, Kubernetes v1.36.4 (kind node image with systemd and containerd)
+#   node01: kubeadm installed, NOT joined to the cluster
+#   toolbox: kubectl + `ssh controlplane`, `ssh node01`
+x-node: &node
+  build: ../../kubeadm-node
+  image: k8s-study-lab/kubeadm-node:1
+  privileged: true
+  cgroup: private
+  security_opt: [seccomp=unconfined, apparmor=unconfined]
+  tmpfs: ["/tmp", "/run"]
+  stop_signal: SIGRTMIN+3
+  stop_grace_period: 20s
+  environment: { container: docker }
+  volumes: ["lab:/lab", "/var"]
+services:
+  controlplane:
+    <<: *node
+    hostname: controlplane
+  node01:
+    <<: *node
+    hostname: node01
+  toolbox:
+    build: ../../toolbox-kubeadm
+    image: k8s-study-lab/toolbox-kubeadm:1
+    depends_on: [controlplane]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: ["lab:/lab"]
+volumes:
+  lab: {}

@@ -1,0 +1,80 @@
+id: cka-net-009
+title: Canary release with HTTPRoute weights
+domain: services-networking
+difficulty: 2
+minutes: 8
+environment: gateway
+mock_exam: false   # needs the Gateway API environment
+setup: |
+  kubectl create namespace store
+  for v in stable canary; do
+    kubectl -n store create deployment api-$v --image=nginx:1.27-alpine -- sh -c \
+      "echo $v > /usr/share/nginx/html/index.html; exec nginx -g 'daemon off;'"
+    kubectl -n store expose deployment api-$v --port=80
+  done
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: Gateway
+  metadata:
+    name: store-gw
+    namespace: store
+  spec:
+    gatewayClassName: traefik
+    listeners:
+    - { name: http, protocol: HTTP, port: 80, hostname: api.example.com }
+  ---
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    name: api
+    namespace: store
+  spec:
+    parentRefs: [{ name: store-gw }]
+    hostnames: [api.example.com]
+    rules:
+    - backendRefs:
+      - { name: api-stable, port: 80 }
+  YAML
+  kubectl -n store rollout status deployment api-stable --timeout=180s
+  kubectl -n store rollout status deployment api-canary --timeout=180s
+task: |
+  In the namespace `store`, the HTTPRoute `api` (Gateway `store-gw`, host `api.example.com`)
+  sends all traffic to the Service `api-stable`.
+
+  Start a canary release: change the HTTPRoute `api` so that about **90%** of the requests go to
+  `api-stable` and about **10%** go to the Service `api-canary` (both on port 80).
+  Use backend weights `90` and `10`. Do not create a new Gateway or HTTPRoute.
+
+  Test: `for i in $(seq 20); do curl -s -H "Host: api.example.com" http://server/; done | sort | uniq -c`
+checks:
+  - name: HTTPRoute `api` has backends api-stable (weight 90) and api-canary (weight 10)
+    run: |
+      kubectl -n store get httproute api -o json | jq -e '[.spec.rules[].backendRefs[] | {(.name): (.weight // 1)}] | add
+        | .["api-stable"]==90 and .["api-canary"]==10' >/dev/null
+  - name: The route is still accepted and its backends are resolved
+    guard: true   # already true before the task; must stay true
+    run: |
+      kubectl -n store get httproute api -o json | jq -e 'any(.status.parents[]?;
+        [.conditions[] | select(.type=="Accepted" or .type=="ResolvedRefs") | .status] == ["True","True"])' >/dev/null
+  - name: Both versions answer through the Gateway
+    run: |
+      out=$(for i in $(seq 60); do curl -s -m 3 -H "Host: api.example.com" http://server/; echo; done)
+      echo "$out" | grep -qx stable && echo "$out" | grep -qx canary
+  - name: Only one HTTPRoute in `store`
+    run: '[ "$(kubectl -n store get httproute -o name | wc -l)" -eq 1 ]'
+    guard: true
+solution: |
+  kubectl -n store edit httproute api
+  # under rules[0].backendRefs:
+  #   - name: api-stable
+  #     port: 80
+  #     weight: 90
+  #   - name: api-canary
+  #     port: 80
+  #     weight: 10
+auto_solution: |
+  kubectl -n store patch httproute api --type=json -p '[{"op":"replace","path":"/spec/rules/0/backendRefs","value":[
+    {"name":"api-stable","port":80,"weight":90},{"name":"api-canary","port":80,"weight":10}]}]'
+docs:
+  - https://gateway-api.sigs.k8s.io/guides/user-guides/traffic-splitting/
+  - https://kubernetes.io/docs/concepts/services-networking/gateway/

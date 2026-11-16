@@ -97,7 +97,7 @@ solution: |
   terraform state list                # module.logs.aws_s3_bucket.this, module.media...
 docs:
   - https://developer.hashicorp.com/terraform/language/block/module
-  - https://developer.hashicorp.com/terraform/language/modules/sources#local-paths
+  - https://developer.hashicorp.com/terraform/language/block/module#source
 auto_solution: |
   cd /root/bucket-module
   cat > main.tf <<'TF'

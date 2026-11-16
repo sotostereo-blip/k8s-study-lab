@@ -1,0 +1,63 @@
+id: terraform-config-006
+title: A hidden dependency with depends_on
+domain: configuration
+difficulty: 2
+minutes: 8
+environment: terraform
+setup: |
+  mkdir -p /root/releases && cd /root/releases
+  cp /opt/lab/aws-provider.tf .
+  cat > main.tf <<'TF'
+  resource "aws_s3_bucket" "releases" {
+    bucket = "tfdep-releases"
+  }
+
+  # Every object must be versioned, so an overwrite can be undone.
+  resource "aws_s3_bucket_versioning" "releases" {
+    bucket = aws_s3_bucket.releases.id
+    versioning_configuration {
+      status = "Enabled"
+    }
+  }
+
+  resource "aws_s3_object" "manifest" {
+    bucket  = aws_s3_bucket.releases.id
+    key     = "manifest.json"
+    content = jsonencode({ release = "2026.11" })
+  }
+  TF
+  terraform init -input=false >/dev/null
+task: |
+  In `/root/releases`, the object `manifest.json` must be **versioned**: it must be uploaded
+  only **after** versioning is enabled on the bucket. Today Terraform creates the versioning
+  and the object at the same time (both only reference the bucket), so the first upload can
+  happen before versioning is on.
+
+  1. Make `aws_s3_object.manifest` wait for `aws_s3_bucket_versioning.releases`. The object does
+     not use any value of the versioning resource, so use an **explicit** dependency.
+  2. Apply, and check that the object has a version id:
+     `aws s3api head-object --bucket tfdep-releases --key manifest.json --query VersionId`
+  3. Look at the order in `terraform graph` (optional).
+checks:
+  - name: aws_s3_object.manifest has depends_on = [aws_s3_bucket_versioning.releases]
+    run: |
+      cd /root/releases && terraform show -json | jq -e '.values.root_module.resources[]
+        | select(.address=="aws_s3_object.manifest") | .depends_on | index("aws_s3_bucket_versioning.releases") != null' >/dev/null
+  - name: manifest.json was uploaded with a version id (versioning was already on)
+    run: |
+      v=$(aws s3api head-object --bucket tfdep-releases --key manifest.json --query VersionId --output text 2>/dev/null)
+      [ -n "$v" ] && [ "$v" != None ] && [ "$v" != null ]
+solution: |
+  cd /root/releases
+  # in main.tf, inside resource "aws_s3_object" "manifest":
+  #   depends_on = [aws_s3_bucket_versioning.releases]
+  vim main.tf
+  terraform apply
+  aws s3api head-object --bucket tfdep-releases --key manifest.json --query VersionId
+auto_solution: |
+  cd /root/releases
+  sed -i 's/^  key     = "manifest.json"$/  key     = "manifest.json"\n  depends_on = [aws_s3_bucket_versioning.releases]/' main.tf
+  terraform apply -auto-approve -input=false >/dev/null
+docs:
+  - https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on
+  - https://developer.hashicorp.com/terraform/tutorials/configuration-language/dependencies

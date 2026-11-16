@@ -1,0 +1,91 @@
+id: pca-alert-007
+title: Create a Grafana dashboard with the HTTP API
+domain: alerting
+difficulty: 2
+minutes: 12
+environment: prometheus
+setup: |
+  # a Prometheus data source with uid "metrics" (created once, also when other tasks need it)
+  curl -sf -u admin:admin http://grafana:3000/api/datasources/uid/metrics >/dev/null ||
+    curl -sf -u admin:admin -H 'Content-Type: application/json' http://grafana:3000/api/datasources \
+      -d '{"name":"Metrics","uid":"metrics","type":"prometheus","access":"proxy","url":"http://prometheus:9090"}' >/dev/null
+  mkdir -p /root/answers
+  cat > /root/answers/shop-dashboard.json <<'JSON'
+  {
+    "overwrite": true,
+    "dashboard": {
+      "uid": "CHANGE-ME",
+      "title": "CHANGE-ME",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "CHANGE-ME",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "metrics" },
+          "targets": [ { "refId": "A", "expr": "CHANGE-ME" } ]
+        }
+      ]
+    }
+  }
+  JSON
+task: |
+  Grafana runs at `http://grafana:3000` (user `admin`, password `admin`) and has a Prometheus
+  data source with the uid `metrics`. A starting file is in `/root/answers/shop-dashboard.json`.
+
+  Create a dashboard with the Grafana **HTTP API** (`POST /api/dashboards/db`):
+  - uid `shop-overview`, title `Shop overview`
+  - a **time series** panel `Requests per second` with the per-second rate of
+    `http_requests_total` of job `shop` over 5 minutes, summed **by status**
+  - a **stat** panel `Orders in queue` with the gauge `shop_orders_in_queue` of job `shop`
+  - both panels use the data source uid `metrics`
+
+  Test: `curl -s -u admin:admin http://grafana:3000/api/dashboards/uid/shop-overview | jq .dashboard.panels`
+checks:
+  - name: Dashboard `shop-overview` exists with the title "Shop overview"
+    run: curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/shop-overview | jq -e '.dashboard.title=="Shop overview"' >/dev/null
+  - name: 'Time series panel "Requests per second": sum by (status) of rate(http_requests_total{job="shop"}[5m])'
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/shop-overview | jq -e 'any(.dashboard.panels[];
+        .type=="timeseries" and .title=="Requests per second" and any(.targets[];
+          (.expr|gsub(" ";"")) as $e | ($e|test("^sum(by\\(status\\))?\\(rate\\(http_requests_total\\{job=\"shop\"\\}\\[5m\\]\\)\\)(by\\(status\\))?$"))
+          and ($e|test("by\\(status\\)"))))' >/dev/null
+  - name: Stat panel "Orders in queue" shows shop_orders_in_queue of job shop
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/shop-overview | jq -e 'any(.dashboard.panels[];
+        .type=="stat" and .title=="Orders in queue" and any(.targets[]; .expr|gsub(" ";"")|test("shop_orders_in_queue\\{job=\"shop\"\\}")))' >/dev/null
+  - name: Every panel uses the data source uid `metrics`
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/shop-overview | jq -e '(.dashboard.panels|length) >= 2
+        and all(.dashboard.panels[]; (.datasource.uid // "") == "metrics" or all(.targets[]; (.datasource.uid // "") == "metrics"))' >/dev/null
+solution: |
+  cat > /root/answers/shop-dashboard.json <<'JSON'
+  {
+    "overwrite": true,
+    "dashboard": {
+      "uid": "shop-overview",
+      "title": "Shop overview",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "timeseries", "title": "Requests per second",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "metrics" },
+          "targets": [ { "refId": "A", "expr": "sum by (status) (rate(http_requests_total{job=\"shop\"}[5m]))" } ]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Orders in queue",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "metrics" },
+          "targets": [ { "refId": "A", "expr": "shop_orders_in_queue{job=\"shop\"}" } ]
+        }
+      ]
+    }
+  }
+  JSON
+  curl -s -u admin:admin -H 'Content-Type: application/json' \
+    -X POST http://grafana:3000/api/dashboards/db -d @/root/answers/shop-dashboard.json
+docs:
+  - https://grafana.com/docs/grafana/latest/developer-resources/api-reference/http-api/dashboard/
+  - https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/view-dashboard-json-model/

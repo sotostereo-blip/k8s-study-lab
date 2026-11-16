@@ -4,6 +4,7 @@ set -o pipefail
 curl -sf http://prometheus:9090/-/ready >/dev/null \
   && curl -sf http://alertmanager:9093/-/ready >/dev/null \
   && curl -sf http://pushgateway:9091/-/ready >/dev/null \
+  && curl -sf http://grafana:3000/api/health | jq -e '.database == "ok"' >/dev/null \
   && curl -sf http://webhook:9000/healthz >/dev/null \
   && curl -sf http://node-exporter:9100/metrics >/dev/null \
   && curl -sf http://payments:8000/metrics >/dev/null \

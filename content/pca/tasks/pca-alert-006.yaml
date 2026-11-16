@@ -1,0 +1,48 @@
+id: pca-alert-006
+title: Add Prometheus to Grafana with a provisioning file
+domain: alerting
+difficulty: 1
+minutes: 8
+environment: prometheus
+task: |
+  Grafana runs at `http://grafana:3000` (user `admin`, password `admin`). It reads provisioning
+  files from `/lab/grafana/provisioning/`.
+
+  Add Prometheus as a Grafana **data source** with a provisioning file
+  `/lab/grafana/provisioning/datasources/prometheus.yaml`:
+  - name `Prometheus`, uid `prometheus`, type `prometheus`
+  - URL `http://prometheus:9090`, access `proxy`
+  - it is the **default** data source
+
+  Then make Grafana read the file without a restart:
+  `curl -X POST -u admin:admin http://grafana:3000/api/admin/provisioning/datasources/reload`
+
+  Test: `curl -s -u admin:admin http://grafana:3000/api/datasources/uid/prometheus | jq`
+checks:
+  - name: Data source `prometheus` points to http://prometheus:9090 and is the default
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/datasources/uid/prometheus | jq -e '.name=="Prometheus"
+        and .type=="prometheus" and (.url|rtrimstr("/"))=="http://prometheus:9090" and .isDefault' >/dev/null
+  - name: It comes from a provisioning file (read-only in the UI)
+    run: curl -sf -u admin:admin http://grafana:3000/api/datasources/uid/prometheus | jq -e '.readOnly' >/dev/null
+  - name: 'Grafana can query it: up{job="shop"} returns data'
+    run: |
+      curl -sf -u admin:admin -H 'Content-Type: application/json' http://grafana:3000/api/ds/query -d '{"from":"now-5m","to":"now",
+        "queries":[{"refId":"A","datasource":{"uid":"prometheus"},"expr":"up{job=\"shop\"}","instant":true}]}' \
+        | jq -e '.results.A.frames | length > 0' >/dev/null
+solution: |
+  cat > /lab/grafana/provisioning/datasources/prometheus.yaml <<'YAML'
+  apiVersion: 1
+  datasources:
+    - name: Prometheus
+      uid: prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus:9090
+      isDefault: true
+  YAML
+  curl -X POST -u admin:admin http://grafana:3000/api/admin/provisioning/datasources/reload
+  curl -s -u admin:admin http://grafana:3000/api/datasources/uid/prometheus | jq
+docs:
+  - https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources
+  - https://prometheus.io/docs/visualization/grafana/

@@ -13,6 +13,23 @@ domains:
 environments:
   single-node: { name: "1 node (controlplane)", nodes: 1 }
   two-node: { name: "2 nodes (controlplane + node01)", nodes: 2 }
+  gateway:
+    name: "1 node with the Gateway API (Traefik)"
+    label: "Gateway API"
+    nodes: 1
+    # Traefik is installed by k3s after the node is Ready: wait for the GatewayClass and Traefik
+    ready: >-
+      [ "$(kubectl get gatewayclass traefik -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null)" = True ]
+      && kubectl -n kube-system rollout status deployment traefik --timeout=5s >/dev/null 2>&1
+      && curl -s -o /dev/null http://server/
+    ready_timeout: 420
+  kubeadm:
+    name: "kubeadm cluster v1.36 (controlplane; node01 not joined yet)"
+    label: "kubeadm"
+    nodes: 1
+    tools: "kubectl is ready (alias `k`) · `ssh controlplane` · `ssh node01`"
+    ready: "ssh -o ConnectTimeout=3 -n controlplane true && ssh -o ConnectTimeout=3 -n node01 true"
+    ready_timeout: 420
 mock_environment: two-node   # all mock exam tasks run together in one 2-node cluster
 # Real exam rules (Linux Foundation "Resources Allowed", checked 2026-11). Shown in the mock exam.
 exam_rules:

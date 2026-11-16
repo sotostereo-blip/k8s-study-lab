@@ -1,4 +1,4 @@
-# Prometheus lab (no Kubernetes): Prometheus, Alertmanager, node-exporter, Pushgateway,
+# Prometheus lab (no Kubernetes): Prometheus, Alertmanager, node-exporter, Pushgateway, Grafana,
 # three copies of a demo app with metrics, an Alertmanager webhook receiver and a terminal.
 # The config files live in the shared `lab` volume, seeded by the toolbox and edited at /lab.
 x-app: &app
@@ -44,6 +44,24 @@ services:
   pushgateway:
     image: prom/pushgateway:v1.11.2
     restart: unless-stopped
+
+  # Grafana: http://grafana:3000 from the terminal, user admin / password admin.
+  # Provisioning files are read from /lab/grafana/provisioning (edit them in the terminal).
+  grafana:
+    image: grafana/grafana:13.2.6
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_PATHS_PROVISIONING: /lab/grafana/provisioning
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_LOG_LEVEL: warn
+    volumes: ["lab:/lab:ro"]
+    depends_on: { toolbox: { condition: service_healthy } }
 
   shop:
     <<: *app

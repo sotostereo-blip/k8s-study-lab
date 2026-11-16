@@ -1,0 +1,39 @@
+# kubeadm init configuration for the lab control plane (based on the one kind uses for nodes in containers)
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+nodeRegistration:
+  name: controlplane
+  criSocket: unix:///run/containerd/containerd.sock
+  ignorePreflightErrors: [all]
+  kubeletExtraArgs:
+  - { name: node-ip, value: "@IP@" }
+localAPIEndpoint:
+  advertiseAddress: "@IP@"
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: v1.36.4
+clusterName: lab
+controlPlaneEndpoint: controlplane:6443
+apiServer:
+  certSANs: [controlplane, localhost, 127.0.0.1]
+networking:
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/16
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+cgroupRoot: /kubelet
+failSwapOn: false
+imageGCHighThresholdPercent: 100
+evictionHard:
+  nodefs.available: "0%"
+  nodefs.inodesFree: "0%"
+  imagefs.available: "0%"
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: iptables
+conntrack:
+  maxPerCore: 0

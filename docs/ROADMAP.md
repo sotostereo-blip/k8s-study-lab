@@ -10,16 +10,18 @@
 - [x] Explain why each wrong option is wrong (`why` on every distractor)
 - [x] English everywhere: exam-English vocabulary, key-word bar, text to speech, vocabulary
       practice with spaced repetition (KCNA and CKA labs)
-- [ ] Second review pass of all questions against current docs
+- [x] Second review pass of all questions against current docs (November 2026: 1072 questions, 86 fixed,
+      every docs link checked with `scripts/check_links.py`)
 - [x] Reading-speed indicator per question (words per minute) and pace vs. the real exam's time per question
 
 ## Phase 2 — Hands-on labs (CKA first)
 - [x] Lab environments with Docker Compose: k3s 1-node and 2-node + toolbox (`labs/`)
 - [x] Backend endpoints to start, reset, stop and check a lab
 - [x] Task format: `content/cka/tasks/<id>.yaml` (task, setup, checks, solution)
-- [x] 38 CKA tasks with checkers that inspect real cluster state (incl. Helm, Kustomize, CSR, Ingress)
+- [x] 45 CKA tasks with checkers that inspect real cluster state (incl. Helm, Kustomize, CSR, Ingress, Gateway API)
 - [x] Web terminal in the browser (ttyd) and exam-style timer
-- [ ] More tasks: Gateway API, kubeadm upgrade, etcd backup (need a kubeadm-based environment)
+- [x] Gateway API tasks (k3s with Traefik as the Gateway controller)
+- [x] kubeadm environment (kind node images, SSH to the nodes): etcd backup and restore, kubeadm upgrade 1.36 → 1.37, kubeadm join
 - [x] Multi-task mock exam (several tasks, one cluster, one timer, partial credit)
 
 ## Phase 2b — More certifications (Cloud Engineer / DevOps)
@@ -30,7 +32,7 @@
 - [x] CKS: 24 labs over the 6 official domains + mock exam (audit-log environment)
 - [x] Labs on Kubernetes 1.37 (same version as the CKA/CKAD/CKS curriculum)
 - [ ] CKS topics that need a real node: AppArmor, Falco, kube-bench, API server flags
-- [ ] Terraform labs for `depends_on` / `create_before_destroy` (need plan-JSON checks)
+- [x] Terraform labs for `depends_on` / `create_before_destroy` (state and plan-JSON checks)
 - [x] Platform: any lab environment (Linux, Docker, Gitea, Prometheus…), per-environment ready check,
       mock exams without Kubernetes, glossary terms scoped to certifications
 - [x] DevOps job interviews in English: 135 questions in 11 categories, self-check key points,
@@ -44,7 +46,7 @@
 - [x] LFCS storage labs with LVM and swap (LVM devices file + `lab-teardown`, so nothing stays in the shared kernel)
 - [x] Argo Events labs (JetStream EventBus, webhook EventSource, Sensor that submits a Workflow)
 - [x] GH-200 OIDC lab (workflow permissions + IAM trust policy tested with example tokens; Gitea cannot issue OIDC tokens)
-- [ ] Grafana dashboard labs
+- [x] Grafana labs: data source provisioning, dashboards with the HTTP API and as code with a variable
 - [ ] Later: Ansible (RHCE), HashiCorp Vault Associate
 - [x] Real exam facts per certification (questions, time, cost, prerequisites, validity)
 - [x] Study plan by exam date (work for today, phases, pace) and readiness score (`backend/app/plan.py`)

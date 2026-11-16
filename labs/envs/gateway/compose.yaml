@@ -1,0 +1,23 @@
+# One-node k3s cluster with the Gateway API (Traefik as the Gateway controller, GatewayClass `traefik`)
+# + browser terminal. In the toolbox, the node answers HTTP on http://server (port 80 of the node).
+services:
+  server:
+    build: ../../k3s-gateway
+    image: k8s-study-lab/k3s-gateway:1
+    hostname: controlplane
+    command: server --tls-san=server --node-name=controlplane
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_TOKEN: study-lab
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      K3S_KUBECONFIG_MODE: "644"
+    volumes: [kubeconfig:/output]
+  toolbox:
+    build: ../../toolbox
+    image: k8s-study-lab/toolbox:3
+    depends_on: [server]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: [kubeconfig:/output:ro]
+volumes:
+  kubeconfig:

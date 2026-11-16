@@ -1,0 +1,27 @@
+# k3s applies every file in /var/lib/rancher/k3s/server/manifests at start.
+# Turns on Traefik's Gateway API provider (GatewayClass "traefik") with listeners on the usual
+# ports 80 and 443, and no default Gateway: the student creates the Gateways.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesGateway:
+        enabled: true
+    gateway:
+      enabled: false
+    ports:
+      web:
+        port: 80
+      websecure:
+        port: 443
+    securityContext:
+      capabilities:
+        drop: [ALL]
+        add: [NET_BIND_SERVICE]
+      runAsNonRoot: false
+      runAsUser: 0
+      runAsGroup: 0

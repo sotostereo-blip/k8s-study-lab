@@ -7,6 +7,8 @@ solve tasks in the browser, like in the real exam.
 ```
 labs/
 ├── toolbox/              # image: kubectl 1.37, helm, trivy, kube-linter, jq, ttyd (web terminal)
+├── k3s-gateway/          # k3s with Traefik's Gateway API provider on ports 80/443 (CKA Gateway API)
+├── kubeadm-node/, toolbox-kubeadm/  # kind node image + sshd, etcdctl, local apt repo with 1.37 packages; terminal with ssh
 ├── toolbox-terraform/    # image: terraform 1.12, AWS CLI, providers mirrored offline
 ├── toolbox-linux/        # image: Ubuntu 24.04 with systemd, sshd and admin tools (LFCS)
 ├── toolbox-docker/, dind/            # Docker CLI + a Docker-in-Docker engine with preloaded images (DCA)
@@ -17,6 +19,8 @@ labs/
 └── envs/
     ├── single-node/      # k3s v1.37: controlplane only            (CKA, CKAD)
     ├── two-node/         # k3s v1.37: controlplane + node01        (CKA scheduling, drain, taints)
+    ├── gateway/          # k3s v1.37 + Gateway API (Traefik)       (CKA Gateway API)
+    ├── kubeadm/          # kubeadm v1.36: controlplane + node01 (not joined)  (CKA etcd, upgrade, join)
     ├── secure-node/      # k3s v1.37 with API audit logging        (CKS)
     ├── argocd/           # k3s v1.37 + Argo CD, Rollouts, Workflows + a Git server (CAPA)
     ├── terraform/        # LocalStack (free AWS emulator) + terraform (Terraform labs)
@@ -24,7 +28,7 @@ labs/
     ├── linux/            # two Ubuntu servers with systemd and SSH (LFCS)
     ├── docker/           # Docker Engine 29 (dind) + local registry (DCA)
     ├── gitea/            # Gitea with Actions + a runner (GH-200)
-    └── prometheus/       # Prometheus, Alertmanager, node-exporter, Pushgateway, demo apps (PCA)
+    └── prometheus/       # Prometheus, Alertmanager, Grafana, node-exporter, Pushgateway, demo apps (PCA)
 ```
 
 Rules for every environment: the service that runs the terminal is called `toolbox`, only it

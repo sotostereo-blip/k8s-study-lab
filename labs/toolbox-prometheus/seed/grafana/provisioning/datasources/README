@@ -1,0 +1,2 @@
+# Grafana reads data source files (*.yaml) from this folder at start and on
+# POST /api/admin/provisioning/datasources/reload

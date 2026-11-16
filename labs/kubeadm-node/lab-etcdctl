@@ -1,0 +1,5 @@
+#!/bin/sh
+# etcdctl with the control plane's etcd endpoint and certificates. Used by the lab setup and checks
+# only (not in PATH: in the tasks you type the flags yourself, as in the exam).
+exec etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key "$@"

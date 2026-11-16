@@ -6,7 +6,10 @@ LABS = Path(__file__).resolve().parents[2] / "labs"
 
 
 def test_argocd_toolbox_needs_the_kubernetes_toolbox_first():
-    assert base_images(LABS, "argocd") == [("k8s-study-lab/toolbox:3", "secure-node", "toolbox")]
+    ((image, env, service),) = base_images(LABS, "argocd")
+    assert (image, service) == ("k8s-study-lab/toolbox:3", "toolbox")
+    assert "k8s-study-lab/toolbox:3" in (LABS / "envs" / env / "compose.yaml").read_text()
+    assert [b[0] for b in base_images(LABS, "kubeadm")] == ["k8s-study-lab/toolbox:3"]
 
 
 def test_environments_built_from_public_images_need_nothing():

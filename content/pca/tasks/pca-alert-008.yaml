@@ -1,0 +1,71 @@
+id: pca-alert-008
+title: Provision a Grafana dashboard with a variable
+domain: alerting
+difficulty: 3
+minutes: 15
+environment: prometheus
+setup: |
+  curl -sf -u admin:admin http://grafana:3000/api/datasources/uid/metrics >/dev/null ||
+    curl -sf -u admin:admin -H 'Content-Type: application/json' http://grafana:3000/api/datasources \
+      -d '{"name":"Metrics","uid":"metrics","type":"prometheus","access":"proxy","url":"http://prometheus:9090"}' >/dev/null
+task: |
+  Grafana (`http://grafana:3000`, admin/admin) has a Prometheus data source with the uid `metrics`.
+  Teams want dashboards **as code**: files that Grafana loads at start.
+
+  1. Create a dashboard provider `/lab/grafana/provisioning/dashboards/apps.yaml` that loads the
+     dashboard JSON files from the folder `/lab/grafana/dashboards`.
+  2. Create `/lab/grafana/dashboards/apps.json`: a dashboard with uid `apps` and title `Apps`, with
+     - a **query variable** `app` (data source uid `metrics`) whose values come from
+       `label_values(app_info, app)`
+     - a time series panel `Request rate` with `sum(rate(http_requests_total{job="$app"}[5m]))`
+  3. Load it without a restart:
+     `curl -X POST -u admin:admin http://grafana:3000/api/admin/provisioning/dashboards/reload`
+checks:
+  - name: Dashboard `apps` is provisioned from a file
+    run: curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/apps | jq -e '.meta.provisioned and .dashboard.title=="Apps"' >/dev/null
+  - name: Variable `app` is a query variable on label_values(app_info, app)
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/apps | jq -e 'any(.dashboard.templating.list[];
+        .name=="app" and .type=="query" and ((.query|if type=="object" then .query else . end)|gsub(" ";"")) == "label_values(app_info,app)")' >/dev/null
+  - name: 'Panel "Request rate" uses $app in sum(rate(http_requests_total{job="$app"}[5m]))'
+    run: |
+      curl -sf -u admin:admin http://grafana:3000/api/dashboards/uid/apps | jq -e 'any(.dashboard.panels[]; .title=="Request rate"
+        and any(.targets[]; (.expr|gsub(" ";"")) == "sum(rate(http_requests_total{job=\"$app\"}[5m]))"))' >/dev/null
+solution: |
+  cat > /lab/grafana/provisioning/dashboards/apps.yaml <<'YAML'
+  apiVersion: 1
+  providers:
+    - name: apps
+      type: file
+      options:
+        path: /lab/grafana/dashboards
+  YAML
+  cat > /lab/grafana/dashboards/apps.json <<'JSON'
+  {
+    "uid": "apps",
+    "title": "Apps",
+    "time": { "from": "now-30m", "to": "now" },
+    "templating": {
+      "list": [
+        {
+          "name": "app", "type": "query", "refresh": 1,
+          "datasource": { "type": "prometheus", "uid": "metrics" },
+          "query": "label_values(app_info, app)"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1, "type": "timeseries", "title": "Request rate",
+        "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+        "datasource": { "type": "prometheus", "uid": "metrics" },
+        "targets": [ { "refId": "A", "expr": "sum(rate(http_requests_total{job=\"$app\"}[5m]))" } ]
+      }
+    ]
+  }
+  JSON
+  curl -X POST -u admin:admin http://grafana:3000/api/admin/provisioning/dashboards/reload
+  curl -s -u admin:admin http://grafana:3000/api/dashboards/uid/apps | jq .meta.provisioned
+docs:
+  - https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
+  - https://grafana.com/docs/grafana/latest/visualizations/dashboards/variables/add-template-variables/#add-a-query-variable

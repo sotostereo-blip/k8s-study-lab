@@ -1,0 +1,21 @@
+#!/bin/bash
+# Runs once at boot (lab-node.service). On every node: accept the lab SSH key from the terminal.
+# On `controlplane`: kubeadm init, the kind CNI (kindnet), and the kubeconfig for the terminal.
+# `node01` stays out of the cluster: tasks join it with kubeadm.
+set -u
+mkdir -p /root/.ssh && chmod 700 /root/.ssh
+until [ -s /lab/ssh/id_ed25519.pub ]; do sleep 1; done
+cp /lab/ssh/id_ed25519.pub /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
+
+[ "$(hostname)" = controlplane ] || exit 0
+[ -f /etc/kubernetes/admin.conf ] && exit 0
+ip=$(hostname -i | awk '{print $1}')
+sed "s/@IP@/$ip/g" /kind/lab/kubeadm.yaml > /etc/kubernetes/lab-kubeadm.yaml
+kubeadm init --config /etc/kubernetes/lab-kubeadm.yaml --skip-token-print > /var/log/lab-kubeadm-init.log 2>&1 || exit 1
+export KUBECONFIG=/etc/kubernetes/admin.conf
+sed 's#{{ .PodSubnet }}#10.244.0.0/16#g' /kind/manifests/default-cni.yaml | kubectl apply -f - >> /var/log/lab-kubeadm-init.log 2>&1
+kubectl apply -f /kind/manifests/default-storage.yaml >> /var/log/lab-kubeadm-init.log 2>&1
+# one schedulable node until node01 joins (like the other single-node labs)
+kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule- >/dev/null 2>&1
+mkdir -p /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config
+cp /etc/kubernetes/admin.conf /lab/kubeconfig.yaml.tmp && mv /lab/kubeconfig.yaml.tmp /lab/kubeconfig.yaml

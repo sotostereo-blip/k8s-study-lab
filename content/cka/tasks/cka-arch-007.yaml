@@ -1,0 +1,55 @@
+id: cka-arch-007
+title: Restore etcd from a snapshot
+domain: cluster-architecture
+difficulty: 3
+minutes: 15
+environment: kubeadm
+mock_exam: false   # needs the kubeadm environment
+setup: |
+  kubectl create namespace payments
+  kubectl -n payments create configmap release --from-literal=version=1.4.0
+  ssh -n controlplane 'mkdir -p /opt/backup && /usr/local/lib/lab/etcdctl snapshot save /opt/backup/payments.db >/dev/null 2>&1'
+  # the mistake that the restore must undo
+  kubectl -n payments delete configmap release
+  kubectl -n payments create configmap broken-change --from-literal=oops=true
+task: |
+  Someone deleted the ConfigMap `release` in the namespace `payments` and created a wrong
+  ConfigMap `broken-change`. A snapshot taken before the mistake is on the node `controlplane`
+  (`ssh controlplane`): `/opt/backup/payments.db`.
+
+  1. Restore the snapshot into the new data directory `/var/lib/etcd-from-backup` (use `etcdutl`).
+  2. Change the etcd static Pod (`/etc/kubernetes/manifests/etcd.yaml`) so that etcd uses
+     `/var/lib/etcd-from-backup` as its data directory on the node.
+  3. When etcd has restarted, restart the API server so it reads the restored data
+     (for example: `crictl stop $(crictl ps -q --name kube-apiserver)`; the kubelet starts it again).
+
+  In the end the ConfigMap `release` must exist again and `broken-change` must be gone.
+checks:
+  - name: The etcd static Pod uses /var/lib/etcd-from-backup on the node
+    run: |
+      ssh -n controlplane cat /etc/kubernetes/manifests/etcd.yaml | grep -Eq 'path: /var/lib/etcd-from-backup/?$'
+  - name: etcd has the ConfigMap `release` again and not `broken-change`
+    run: |
+      ssh -n controlplane '[ -n "$(/usr/local/lib/lab/etcdctl get /registry/configmaps/payments/release --keys-only)" ] && [ -z "$(/usr/local/lib/lab/etcdctl get /registry/configmaps/payments/broken-change --keys-only)" ]'
+  - name: The API server works and shows the restored ConfigMap
+    run: kubectl get --raw=/readyz >/dev/null && kubectl -n payments get configmap release >/dev/null && ! kubectl -n payments get configmap broken-change 2>/dev/null
+solution: |
+  ssh controlplane
+  etcdutl snapshot restore /opt/backup/payments.db --data-dir /var/lib/etcd-from-backup
+  vi /etc/kubernetes/manifests/etcd.yaml
+  # in volumes, the hostPath of the etcd data volume (etcd-data):
+  #   hostPath:
+  #     path: /var/lib/etcd-from-backup
+  #     type: DirectoryOrCreate
+  # wait until the new etcd container runs (about 30 s):
+  crictl ps --name etcd
+  crictl stop $(crictl ps -q --name kube-apiserver)
+  exit
+  kubectl -n payments get configmap
+auto_solution: |
+  ssh -n controlplane 'etcdutl snapshot restore /opt/backup/payments.db --data-dir /var/lib/etcd-from-backup >/dev/null 2>&1 && sed -i "s#path: /var/lib/etcd\$#path: /var/lib/etcd-from-backup#" /etc/kubernetes/manifests/etcd.yaml'
+  sleep 45
+  ssh -n controlplane 'crictl stop $(crictl ps -q --name kube-apiserver) >/dev/null 2>&1'
+  for i in $(seq 60); do kubectl get --raw=/readyz >/dev/null 2>&1 && break; sleep 3; done
+docs:
+  - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster

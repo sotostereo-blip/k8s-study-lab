@@ -1,0 +1,78 @@
+id: cka-net-007
+title: Expose an app with a Gateway and an HTTPRoute
+domain: services-networking
+difficulty: 2
+minutes: 8
+environment: gateway
+mock_exam: false   # needs the Gateway API environment
+setup: |
+  kubectl create namespace shop
+  kubectl -n shop create deployment web --image=nginx:1.27-alpine
+  kubectl -n shop expose deployment web --port=80
+  kubectl -n shop rollout status deployment web --timeout=180s
+task: |
+  The cluster has the Gateway API installed. Its GatewayClass is called `traefik`.
+  In the namespace `shop` there is a Deployment `web` with a Service `web` on port 80.
+
+  1. Create a Gateway called `shop-gw` in `shop`:
+     - GatewayClass `traefik`
+     - one listener called `http`: protocol `HTTP`, port `80`, hostname `shop.example.com`
+  2. Create an HTTPRoute called `web` in `shop` that sends all requests for the host
+     `shop.example.com` (path prefix `/`) to the Service `web` on port 80.
+
+  Test from the terminal: `curl -H "Host: shop.example.com" http://server/`
+  (the node answers on port 80).
+checks:
+  - name: Gateway `shop-gw` uses GatewayClass traefik and is Programmed
+    run: |
+      [ "$(kubectl -n shop get gateway shop-gw -o jsonpath='{.spec.gatewayClassName}')" = traefik ] &&
+      [ "$(kubectl -n shop get gateway shop-gw -o jsonpath='{.status.conditions[?(@.type=="Programmed")].status}')" = True ]
+  - name: Listener `http` is HTTP on port 80 for shop.example.com
+    run: |
+      kubectl -n shop get gateway shop-gw -o json | jq -e '.spec.listeners[] | select(.name=="http")
+        | .protocol=="HTTP" and .port==80 and .hostname=="shop.example.com"' >/dev/null
+  - name: HTTPRoute `web` is attached to shop-gw and its backend is resolved
+    run: |
+      kubectl -n shop get httproute web -o json | jq -e '.status.parents[]? | select(.parentRef.name=="shop-gw")
+        | [.conditions[] | select(.type=="Accepted" or .type=="ResolvedRefs") | .status] == ["True","True"]' >/dev/null
+  - name: "http://server/ with Host shop.example.com returns the nginx page"
+    run: 'curl -s -m 5 -H "Host: shop.example.com" http://server/ | grep -qi "welcome to nginx"'
+solution: |
+  cat <<'YAML' | kubectl apply -f -
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: Gateway
+  metadata:
+    name: shop-gw
+    namespace: shop
+  spec:
+    gatewayClassName: traefik
+    listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: shop.example.com
+  ---
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    name: web
+    namespace: shop
+  spec:
+    parentRefs:
+    - name: shop-gw
+    hostnames:
+    - shop.example.com
+    rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /
+      backendRefs:
+      - name: web
+        port: 80
+  YAML
+  kubectl -n shop get gateway,httproute
+  curl -H "Host: shop.example.com" http://server/
+docs:
+  - https://kubernetes.io/docs/concepts/services-networking/gateway/
+  - https://gateway-api.sigs.k8s.io/guides/user-guides/http-routing/

@@ -1,0 +1,13 @@
+[Unit]
+Description=Lab node setup (SSH key; kubeadm init on the control plane)
+After=containerd.service network-online.target
+Wants=containerd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/lab-node
+RemainAfterExit=yes
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
