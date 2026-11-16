@@ -130,6 +130,7 @@ const DATA_LABELS = {   // [one, many]
   lab_mock_exams: ['lab mock exam', 'lab mock exams'],
   interview_answers: ['interview answer', 'interview answers'],
   english_words: ['English word in practice', 'English words in practice'],
+  explanations_written: ['explanation written', 'explanations written'],
   passed_certifications: ['passed certification', 'passed certifications'],
 }
 

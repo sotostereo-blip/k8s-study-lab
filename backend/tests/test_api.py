@@ -590,8 +590,15 @@ class FakeClaude:
 
     def parse(self, **kw):
         from types import SimpleNamespace
-        from app.ai import Explanation, Feedback
+        from app.ai import Explanation, ExplainItCheck, Feedback
         self.calls.append(kw)
+        if kw["output_format"] is ExplainItCheck:
+            chk = ExplainItCheck(verdict="partly", technical="True, but the main reason is scaling.",
+                                 missing=["Each service scales alone."], english_ok=False,
+                                 english=[{"said": "more easy", "better": "easier", "why": "Short adjectives take -er."}],
+                                 better="Teams can deploy each service alone, which is easier.")
+            return SimpleNamespace(stop_reason=self.stop_reason, model="claude-opus-5-5",
+                                   parsed_output=None if self.stop_reason != "end_turn" else chk)
         if kw["output_format"] is Explanation:
             ex = Explanation(idea="Pods are the smallest unit.", why_right="D is right.", your_choice="B is tempting.",
                              example="```bash\nkubectl get pods\n```", remember="Pods hold containers.",
@@ -683,3 +690,19 @@ def test_explain_more_with_a_client(tmp_path):
     refused = TestClient(create_app(CONTENT, tmp_path / "u.db", coach=Coach(client=FakeClaude("refusal"))))
     r = refused.post("/api/practice/explain", json={"question_id": q.id, "selected": list(q.answer)})
     assert r.status_code == 502
+
+
+def test_explain_it_checks_and_counts(tmp_path):
+    from app.ai import Coach
+    fake = FakeClaude()
+    c = TestClient(create_app(CONTENT, tmp_path / "t.db", coach=Coach(client=fake)))
+    qid = "kcna-fund-001"
+    assert c.post("/api/practice/explain-it", json={"question_id": qid, "text": "too short"}).status_code == 400
+    text = "Because each team can deploy its service more easy without the other teams."
+    r = c.post("/api/practice/explain-it", json={"question_id": qid, "text": text}).json()
+    assert r["verdict"] == "partly" and r["english"][0]["better"] == "easier"
+    assert r["stats"] == {"written": 1, "correct": 0, "english_ok": 0}
+    assert "<student_explanation>" in fake.calls[0]["messages"][0]["content"]
+    assert c.get("/api/progress/summary").json()["explanations_written"] == 1
+    off = TestClient(create_app(CONTENT, tmp_path / "o.db"))
+    assert off.post("/api/practice/explain-it", json={"question_id": qid, "text": text}).status_code == 503

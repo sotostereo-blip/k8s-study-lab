@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
-import { ExplainMore, useAiEnabled } from './AiHelp.jsx'
+import { AiTools, useAiEnabled } from './AiHelp.jsx'
+import { ReadingLine, ReadingTile, useStopwatch } from './Pace.jsx'
 import Labs from './Labs.jsx'
 import Plan from './Plan.jsx'
 import PathMap, { Reminders } from './Path.jsx'
@@ -55,6 +56,8 @@ export default function App() {
   const exam = exams.find((e) => e.id === cert?.exam)
   const tabs = tabsFor(cert)
   const current = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
+  // on a phone the menu is one scrollable row: keep the open tab in view
+  useEffect(() => { document.querySelector('header nav button.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }, [current])
   const chooseCert = (id) => {
     setCertId(id); saveCert(id)
     const c = certs.find((x) => x.id === id)
@@ -207,6 +210,7 @@ function Dashboard({ exam, cert, onGo }) {
         <div className="tile"><b>{due}</b><span>questions due for review</span></div>
         <div className="tile"><b>{stats.exams[0]?.score ?? '—'}{stats.exams[0] ? '%' : ''}</b><span>last mock exam</span></div>
         <div className="tile"><b>{trRate}%</b><span>answers that needed Spanish (goal: 0)</span></div>
+        <ReadingTile examId={exam.id} />
       </div>
       <table>
         <thead><tr><th>Domain</th><th>Weight</th><th>Bank</th><th>Accuracy</th><th>Mastered</th></tr></thead>
@@ -281,6 +285,7 @@ function Practice({ exam, glossary, initialDomain = '' }) {
   const [result, setResult] = useState(null)
   const [translated, setTranslated] = useState(false)
   const [score, setScore] = useState({ ok: 0, total: 0 })
+  const watch = useStopwatch(`${batch?.questions?.[i]?.id}-${i}`)
 
   const load = () => {
     api.practiceNext(exam.id, domain || undefined, 10).then((b) => {
@@ -293,7 +298,9 @@ function Practice({ exam, glossary, initialDomain = '' }) {
   const q = batch.questions[i]
 
   const check = async () => {
-    const r = await api.answer({ question_id: q.id, selected, used_translation: translated })
+    const answered = watch.elapsed()
+    const r = await api.answer({ question_id: q.id, selected, used_translation: translated,
+      read_seconds: watch.first() ?? answered, answer_seconds: answered })
     setResult(r)
     setScore((s) => ({ ok: s.ok + (r.correct ? 1 : 0), total: s.total + 1 }))
   }
@@ -316,9 +323,10 @@ function Practice({ exam, glossary, initialDomain = '' }) {
         </div>
       ) : (
         <>
-          <QuestionCard q={q} glossary={glossary} selected={selected} onChange={setSelected}
+          <QuestionCard q={q} glossary={glossary} selected={selected} onChange={(s) => { watch.markFirst(); setSelected(s) }}
             result={result} onTranslate={() => setTranslated(true)} number={`${i + 1}/${batch.questions.length}`} />
-          {result && ai && <ExplainMore key={q.id} q={q} selected={selected} />}
+          {result && <ReadingLine r={result.reading} budget={Math.round((exam.exam_minutes * 60) / exam.exam_questions)} />}
+          {result && ai && <AiTools key={q.id} q={q} selected={selected} />}
           <div className="actions">
             {!result
               ? <button className="primary" disabled={!selected.length} onClick={check}>Check answer</button>

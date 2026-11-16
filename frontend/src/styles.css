@@ -401,3 +401,16 @@ table.trend td:last-child { white-space: nowrap; }
 .ai-remember { margin-top: 14px !important; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); }
 .ai-check { margin: 12px 0; }
 .ai-answer { padding: 8px 12px; border-left: 3px solid var(--accent); margin: 8px 0 12px; }
+.your-text { margin: 10px 0; padding: 8px 12px; border-left: 3px solid var(--border); color: var(--muted); font-style: italic; }
+.english-fixes s { color: var(--ko); }
+
+/* Reading pace */
+.reading-line { margin: 8px 2px 0; }
+.reading-tile span.small { display: block; margin-top: 4px; }
+.reading-tile.good span.small { color: var(--ok); }
+.reading-tile.slow span.small { color: var(--ko); }
+@media (max-width: 600px) {
+  header nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  header nav::-webkit-scrollbar { display: none; }
+  header nav button { flex: 0 0 auto; }
+}

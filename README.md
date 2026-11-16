@@ -48,7 +48,18 @@ Stop with `docker compose down`; update with `git pull && docker compose up -d -
 Your progress is kept in `data/progress.db`; **My path → Your data** downloads it as a backup or imports it
 on another computer.
 
-### Install it with an AI assistant
+### Use it on your phone or install it as an app
+
+- **Same Wi-Fi:** open `http://<your computer's IP>:5173` on the phone (find the IP with `ipconfig getifaddr en0`
+  on macOS or `hostname -I` on Linux). Practice, mock exams, the plan and interviews work on a phone; the labs
+  need a bigger screen and a keyboard.
+- **Install it as an app** (its own icon, full screen, opens even when the computer is off with the pages you
+  last opened): on the computer, open http://localhost:5173 in Chrome or Edge and use *Install* in the address
+  bar. A phone needs **https** for this: one simple way is [Tailscale](https://tailscale.com/kb/1312/serve)
+  (`tailscale serve 5173` gives an https address for your devices), then *Add to Home Screen*.
+  Answers are saved on the computer, so the computer must be on to save new progress.
+
+
 
 [INSTALL.md](INSTALL.md) is a step-by-step guide written so that an AI coding assistant
 (Claude Code, Codex, Cursor, Copilot…) can install and check everything on your machine.
@@ -126,7 +137,11 @@ Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshoot
   - an **English** tab to practise those words with spaced repetition; the words you
     looked up most come first;
   - the app counts lookups, translations and listens, so you can watch your need for
-    Spanish go down.
+    Spanish go down;
+  - **reading speed**: after each practice question you see how fast you read it (words per minute) and how
+    long you took; the Dashboard compares your recent pace with the time the real exam gives per question;
+  - **Explain it in English (AI, optional)**: write why the right answer is right, and get corrections to
+    the technical content and to your English.
 
 ## The real exams (checked November 2026)
 

@@ -89,6 +89,14 @@ CREATE TABLE IF NOT EXISTS earned_certs (
     passed_on TEXT NOT NULL,          -- YYYY-MM-DD
     expires_on TEXT                   -- YYYY-MM-DD from the certificate; NULL = passed_on + valid_years
 );
+CREATE TABLE IF NOT EXISTS explain_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id TEXT NOT NULL,
+    words INTEGER NOT NULL,
+    verdict TEXT NOT NULL,            -- correct | partly | wrong (technical)
+    english_ok INTEGER NOT NULL,      -- 1 if the AI found no English mistakes
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS interview_sessions (
     id TEXT PRIMARY KEY,
     question_ids TEXT NOT NULL,       -- JSON list
@@ -104,6 +112,9 @@ MIGRATIONS = [
     ("exam_sessions", "domc", "TEXT NOT NULL DEFAULT '[]'"),   # JSON list of question ids shown as DOMC
     ("exam_sessions", "conditions", "TEXT NOT NULL DEFAULT '{}'"),  # JSON: {"real": bool, "esl": bool}
     ("exam_sessions", "domains", "TEXT NOT NULL DEFAULT '{}'"),  # JSON: {domain: {correct, total}}
+    ("attempts", "read_seconds", "REAL"),      # practice: question shown -> first option picked
+    ("attempts", "answer_seconds", "REAL"),    # practice: question shown -> "Check answer"
+    ("attempts", "words", "INTEGER"),          # words in the question and its options
 ]
 
 
@@ -115,6 +126,7 @@ SUMMARY = {
     "lab_mock_exams": "SELECT COUNT(*) FROM mock_sessions WHERE finished_at IS NOT NULL",
     "interview_answers": "SELECT COUNT(*) FROM interview_attempts",
     "english_words": "SELECT COUNT(*) FROM vocab_cards",
+    "explanations_written": "SELECT COUNT(*) FROM explain_attempts",
     "passed_certifications": "SELECT COUNT(*) FROM earned_certs",
 }
 MAX_IMPORT_BYTES = 200 * 1024 * 1024

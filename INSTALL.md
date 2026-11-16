@@ -141,6 +141,13 @@ curl -s -X POST http://localhost:5173/api/labs/stop >/dev/null && echo "lab stop
 **Expected:** `lab ready`, `terminal: 200`, `lab stopped`.
 If `lfcs-ess-001` does not exist, list the lab ids with `curl -s http://localhost:5173/api/labs?track_id=lfcs`.
 
+## 6b. (Optional) Phone and installable app
+
+The app is also reachable from other devices on the same network at `http://<this computer's IP>:5173`.
+Installing it as an app (PWA) works on `http://localhost` and on any `https://` address. For a phone, an
+easy https option is Tailscale: `tailscale serve 5173` (the Vite server accepts `*.ts.net` and `*.local`
+host names; add others with `ALLOWED_HOSTS=name1,name2` in the frontend environment).
+
 ## 7. Daily use
 
 ```bash

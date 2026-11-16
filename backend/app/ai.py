@@ -8,6 +8,7 @@ or chose are sent, and only when you press an AI button.
 from __future__ import annotations
 
 import os
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -80,6 +81,33 @@ class Explanation(BaseModel):
     check_question: str = Field(description="A new short question to check understanding (not multiple choice)")
     check_answer: str = Field(description="The answer to check_question, 1 or 2 sentences")
     answer_to_student: str = Field(description="Answer to the student's own question; empty if none")
+
+
+EXPLAIN_IT_SYSTEM = """You check short written explanations for IT certification exams (Kubernetes, Linux,
+Docker, Terraform, AWS, CI/CD, observability). The student is a Spanish speaker learning technical
+English. After answering a practice question they wrote, in English, why the right answer is right.
+Check two things: is it technically correct, and is the English correct and natural?
+
+Rules:
+- Write in simple, clear English (CEFR B1). Be encouraging but honest.
+- verdict "correct": the explanation gives the real reason. "partly": true but misses the main
+  reason, or mixes a correct idea with a wrong one. "wrong": the reason is false.
+- Judge the technical content with the written explanation and the official docs as reference.
+  Accept other correct reasons too.
+- English: correct only real mistakes (grammar, wrong word, unnatural phrase), at most 5, most
+  important first. Do not correct style that is already fine.
+- "better" keeps the student's ideas and length, fixes all mistakes, and adds the missing reason
+  in one short sentence if needed.
+"""
+
+
+class ExplainItCheck(BaseModel):
+    verdict: Literal["correct", "partly", "wrong"]
+    technical: str = Field(description="1 to 3 sentences on the technical content")
+    missing: list[str] = Field(description="Up to 3 important ideas the explanation misses; empty if none")
+    english: list[EnglishFix] = Field(description="Up to 5 English corrections; empty if none")
+    better: str = Field(description="The student's explanation, corrected and natural")
+    english_ok: bool = Field(description="True if the English had no real mistakes")
 
 
 class Coach:
@@ -164,3 +192,9 @@ class Coach:
                 + "\n\nExplain the topic.")
         ex, model = self._parse(EXPLAIN_SYSTEM, user, Explanation)
         return ex.model_dump() | {"model": model, "correct": right}
+
+    def explain_it(self, q: Question, exam_name: str, text: str) -> dict:
+        user = (self.question_text(q, exam_name)
+                + f"\n\n<student_explanation>\n{text.strip()}\n</student_explanation>\n\nCheck it.")
+        chk, model = self._parse(EXPLAIN_IT_SYSTEM, user, ExplainItCheck)
+        return chk.model_dump() | {"model": model}

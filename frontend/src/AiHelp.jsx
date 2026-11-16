@@ -28,9 +28,23 @@ export function AiText({ text }) {
   ))
 }
 
-/* "Explain more" under a practice question, after it is checked. */
-export function ExplainMore({ q, selected }) {
-  const [state, setState] = useState('idle')   // idle | asking | loading | done | error
+/* The AI buttons under a practice question, after it is checked. */
+export function AiTools({ q, selected }) {
+  const [mode, setMode] = useState(null)   // null | more | ask | it
+  if (mode === 'more' || mode === 'ask') return <ExplainMore q={q} selected={selected} startAsking={mode === 'ask'} />
+  if (mode === 'it') return <ExplainIt q={q} onClose={() => setMode(null)} />
+  return (
+    <div className="ai-explain">
+      <button className="ai-button" onClick={() => setMode('more')}>✨ Explain more (AI)</button>
+      <button className="ai-button" onClick={() => setMode('it')}>✍️ Explain it in English (AI)</button>
+      <button className="link" onClick={() => setMode('ask')}>Ask a question about it</button>
+    </div>
+  )
+}
+
+/* "Explain more": a longer explanation, optionally answering the student's own question. */
+function ExplainMore({ q, selected, startAsking }) {
+  const [state, setState] = useState(startAsking ? 'asking' : 'loading')   // asking | loading | done | error
   const [ask, setAsk] = useState('')
   const [ex, setEx] = useState(null)
   const [error, setError] = useState(null)
@@ -44,14 +58,7 @@ export function ExplainMore({ q, selected }) {
       setError(e.message); setState('error')
     }
   }
-  if (state === 'idle') {
-    return (
-      <div className="ai-explain">
-        <button className="ai-button" onClick={run}>✨ Explain more (AI)</button>
-        <button className="link" onClick={() => setState('asking')}>Ask a question about it</button>
-      </div>
-    )
-  }
+  useEffect(() => { if (!startAsking) run() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="ai-explain card">
       {(state === 'asking' || state === 'error') && (
@@ -81,6 +88,70 @@ export function ExplainMore({ q, selected }) {
           </div>
           <p className="muted small">AI can make mistakes: the official docs linked above are the reference.</p>
           <button className="link" onClick={() => { setState('asking'); setEx(null) }}>Ask another question</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+const VERDICT = {
+  correct: { label: 'Technically correct', cls: 'ok', icon: '✓' },
+  partly: { label: 'Partly correct', cls: 'warn', icon: '◐' },
+  wrong: { label: 'Not correct', cls: 'ko', icon: '✗' },
+}
+
+/* "Explain it": the student writes why the right answer is right; the AI checks the technical
+   content and the English, and returns a corrected version. */
+function ExplainIt({ q, onClose }) {
+  const [text, setText] = useState('')
+  const [state, setState] = useState('writing')   // writing | loading | done
+  const [out, setOut] = useState(null)
+  const [error, setError] = useState(null)
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0
+  const send = async (e) => {
+    e.preventDefault()
+    setState('loading'); setError(null)
+    try { setOut(await api.practiceExplainIt({ question_id: q.id, text })); setState('done') } catch (err) { setError(err.message); setState('writing') }
+  }
+  const v = out && VERDICT[out.verdict]
+  return (
+    <div className="ai-explain card">
+      <h4>✍️ Explain it in English</h4>
+      {state !== 'done' && (
+        <form onSubmit={send}>
+          <p className="small muted">Write 1 to 3 sentences: <i>why</i> is the right answer right? Explaining it in your own
+            words is one of the best ways to remember it, and practises your technical English.</p>
+          <textarea rows={4} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)}
+            placeholder="The right answer is … because …" disabled={state === 'loading'} />
+          <div className="actions">
+            <button className="ai-button" type="submit" disabled={words < 8 || state === 'loading'}>
+              {state === 'loading' ? 'Checking…' : 'Check my explanation'}
+            </button>
+            <span className="muted small">{words} words{words < 8 ? ' (8 or more)' : ''}</span>
+            <button type="button" className="link" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      )}
+      {error && <p className="error">{error}</p>}
+      {state === 'done' && out && (
+        <>
+          <p className="ai-label">AI check · {out.model}</p>
+          <p><span className={`verdict ${v.cls}`}>{v.icon} {v.label}</span>{' '}
+            <span className={`verdict ${out.english_ok ? 'ok' : 'warn'}`}>{out.english_ok ? '✓ English OK' : '✎ English to fix'}</span></p>
+          <blockquote className="your-text">{text}</blockquote>
+          <AiText text={out.technical} />
+          {out.missing.length > 0 && <><h4>Also say</h4><ul>{out.missing.map((m, i) => <li key={i}>{m}</li>)}</ul></>}
+          {out.english.length > 0 && (
+            <><h4>English</h4>
+              <ul className="english-fixes">{out.english.map((f, i) => (
+                <li key={i}><s>{f.said}</s> → <b>{f.better}</b> <span className="muted small">{f.why}</span></li>
+              ))}</ul></>
+          )}
+          <h4>Your explanation, improved</h4>
+          <p className="ai-remember">{out.better}</p>
+          {out.stats && <p className="muted small">Explanations written: {out.stats.written} · technically correct: {out.stats.correct || 0} · with no English mistakes: {out.stats.english_ok || 0}</p>}
+          <p className="muted small">AI can make mistakes: the official docs linked above are the reference.</p>
+          <button className="link" onClick={() => { setState('writing'); setOut(null) }}>Try again</button>
         </>
       )}
     </div>

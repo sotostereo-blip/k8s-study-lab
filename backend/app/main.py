@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import ai, domc, facts, history, path, plan, srs
+from . import ai, domc, facts, history, path, plan, reading, srs
 from .content import Library, Question, load_library
 from .db import Database, ProgressFileError
 from .labs import LabManager, Runner, subprocess_runner
@@ -25,6 +25,8 @@ class AnswerIn(BaseModel):
     question_id: str
     selected: list[str]
     used_translation: bool = False
+    read_seconds: float | None = Field(default=None, ge=0, le=36000)     # shown -> first option picked
+    answer_seconds: float | None = Field(default=None, ge=0, le=36000)   # shown -> checked
 
 
 class ExamStartIn(BaseModel):
@@ -81,6 +83,11 @@ class ExplainIn(BaseModel):
     question_id: str
     selected: list[str] = []
     ask: str | None = Field(default=None, max_length=1000)   # optional question of the student
+
+
+class ExplainItIn(BaseModel):
+    question_id: str
+    text: str = Field(max_length=2000)
 
 
 class FeedbackIn(BaseModel):
@@ -194,11 +201,14 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             raise HTTPException(404, f"Unknown question '{qid}'")
         return lib.questions[qid]
 
-    def record(conn, q: Question, selected: list[str], mode: str, used_translation: bool = False) -> bool:
+    def record(conn, q: Question, selected: list[str], mode: str, used_translation: bool = False,
+               read_seconds: float | None = None, answer_seconds: float | None = None) -> bool:
         ok = is_correct(q, selected)
         conn.execute(
-            "INSERT INTO attempts (question_id, selected, correct, mode, used_translation) VALUES (?,?,?,?,?)",
-            (q.id, json.dumps(selected), int(ok), mode, int(used_translation)),
+            "INSERT INTO attempts (question_id, selected, correct, mode, used_translation, read_seconds, "
+            "answer_seconds, words) VALUES (?,?,?,?,?,?,?,?)",
+            (q.id, json.dumps(selected), int(ok), mode, int(used_translation), read_seconds, answer_seconds,
+             reading.words(q)),
         )
         row = conn.execute("SELECT box FROM cards WHERE question_id=?", (q.id,)).fetchone()
         box = srs.next_box(row["box"] if row else 1, ok)
@@ -353,9 +363,26 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     @app.post("/api/practice/answer")
     def practice_answer(body: AnswerIn):
         q = get_question(body.question_id)
+        n = reading.words(q)
         with db.connect() as conn:
-            record(conn, q, body.selected, "practice", body.used_translation)
-        return review(q, body.selected)
+            record(conn, q, body.selected, "practice", body.used_translation, body.read_seconds, body.answer_seconds)
+        out = review(q, body.selected)
+        if body.read_seconds and reading.MIN_SECONDS <= body.read_seconds <= reading.MAX_SECONDS:
+            out["reading"] = {"words": n, "read_seconds": round(body.read_seconds, 1),
+                              "wpm": reading.wpm(n, body.read_seconds),
+                              "answer_seconds": round(body.answer_seconds or body.read_seconds)}
+        return out
+
+    @app.get("/api/reading")
+    def reading_pace(exam_id: str):
+        """Your reading pace in recent practice of this exam, against the real exam's time per question."""
+        exam = get_exam(exam_id)
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT question_id, read_seconds, answer_seconds, words FROM attempts "
+                "WHERE mode='practice' AND read_seconds IS NOT NULL AND question_id LIKE ? ORDER BY id DESC LIMIT 400",
+                (f"{exam.id}-%",)).fetchall()
+        return reading.pace([dict(r) for r in rows], exam)
 
     @app.post("/api/exam/start")
     def exam_start(body: ExamStartIn):
@@ -824,6 +851,26 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     @app.get("/api/ai/status")
     def ai_status():
         return {"enabled": coach.enabled, "model": coach.model if coach.enabled else None}
+
+    @app.post("/api/practice/explain-it")
+    def practice_explain_it(body: ExplainItIn):
+        """Optional AI: check the student's own English explanation of why the answer is right."""
+        if not coach.enabled:
+            raise HTTPException(503, "AI help is off. Set ANTHROPIC_API_KEY for the backend to turn it on.")
+        q = lib.questions.get(body.question_id)
+        if not q:
+            raise HTTPException(404, "Unknown question")
+        words = len(body.text.split())
+        if words < 8:
+            raise HTTPException(400, "Write at least one full sentence (8 words or more).")
+        out = call_ai(lambda: coach.explain_it(q, lib.exams[q.id.split("-")[0]].name, body.text))
+        with db.connect() as conn:
+            conn.execute("INSERT INTO explain_attempts (question_id, words, verdict, english_ok) VALUES (?,?,?,?)",
+                         (q.id, words, out["verdict"], int(out["english_ok"])))
+            out["stats"] = dict(conn.execute(
+                "SELECT COUNT(*) AS written, SUM(verdict='correct') AS correct, SUM(english_ok) AS english_ok "
+                "FROM explain_attempts").fetchone())
+        return out
 
     def call_ai(fn):
         """Run one AI request and turn its errors into clear HTTP errors."""

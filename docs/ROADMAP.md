@@ -11,7 +11,7 @@
 - [x] English everywhere: exam-English vocabulary, key-word bar, text to speech, vocabulary
       practice with spaced repetition (KCNA and CKA labs)
 - [ ] Second review pass of all questions against current docs
-- [ ] Reading-speed indicator per question (words per minute)
+- [x] Reading-speed indicator per question (words per minute) and pace vs. the real exam's time per question
 
 ## Phase 2 — Hands-on labs (CKA first)
 - [x] Lab environments with Docker Compose: k3s 1-node and 2-node + toolbox (`labs/`)
@@ -57,10 +57,12 @@
 - [x] Export / import of all progress (My path → Your data), with a backup before every import
 - [x] README screenshots and a lab GIF (`scripts/screenshots/`)
 
+- [x] Installable app (PWA): manifest, icons, offline shell; phone access over the LAN or https
+
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [x] AI feedback on interview answers: key points, English corrections, an improved answer
 - [x] "Explain more" button: LLM follow-up on top of the written `why`, plus your own question
-- [ ] "Explain it" exercise: write why an answer is right; the LLM corrects grammar and technical accuracy
+- [x] "Explain it" exercise: write why an answer is right; the LLM corrects grammar and technical accuracy
 
 ## Phase 4 — More exams
 - [ ] Full mock exams
