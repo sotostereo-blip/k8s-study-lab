@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
+import History from './History.jsx'
 
 const VERDICT = {
   ready: { label: 'Ready', cls: 'ok' },
@@ -36,6 +37,7 @@ export default function Plan({ cert, onGo }) {
         : <GoalLine goal={data.goal} today={data.today} onEdit={() => setEditing(true)} onRemove={remove} />}
       {data.today && <Today today={data.today} goal={data.goal} onGo={onGo} />}
       <Readiness r={data.readiness} onGo={onGo} />
+      <History certId={cert.id} />
       {data.today?.roadmap?.length > 0 && <Roadmap phases={data.today.roadmap} />}
     </section>
   )

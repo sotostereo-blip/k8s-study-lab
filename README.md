@@ -82,13 +82,15 @@ Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshoot
   that need another one first (the CKS needs a passed CKA), and Kubestronaut progress. Record a
   certification when you pass it: the app shows when it expires and reminds you on every page 90 days
   before (a CKS passed on or after June 18, 2026 extends your CKA, as the Linux Foundation rule says).
+- **Mock exam history** (Plan tab): your mock exam scores over time against the passing line, and per
+  official domain the first result, the average of the last 3 and the change, so you see what improved.
 - **Am I ready?** An estimated exam score: your last 3 mock exams (60%) mixed with your practice (40%),
   following the official domain weights. It compares the estimate with the passing score and says
   *Not ready yet*, *Almost ready* or *Ready* (two mock exams in a row 5 points above the passing score).
   For a hands-on exam (CKA, CKAD, CKS, LFCS) the labs count most.
 
 - **Practice** with spaced repetition (Leitner boxes): questions you miss come back sooner.
-  When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer.
+  When you pick a wrong option, the app tells you **why that option is wrong**, then explains the right answer. With an API key, *Explain more (AI)* goes deeper.
 - **Mock exams** that follow the official domain weights, with a timer, *Flag for review*, and a
   per-domain report that links your weak domains to practice. Options to make them feel like the real exam:
   - **Real exam conditions**: no glossary, translation or listening (the real exam is only in English).
@@ -160,7 +162,14 @@ All optional; the app works without a `.env` file.
 | `LLM_MODEL` | `claude-opus-5-5` | Claude model for the AI feedback |
 | `AI_FEEDBACK` | on with a key | `0` turns the AI feedback off |
 
-## Optional: AI feedback on interview answers
+## Optional: AI help (Claude)
+
+Two buttons appear when the backend has an Anthropic API key; everything else works without one:
+
+- **Explain more (AI)** under a practice question, after you check it: the idea behind the question, why
+  the right answer is right, why your choice was tempting, a concrete example, one thing to remember and a
+  question to check yourself. You can also ask your own question about it (in English or Spanish).
+- **Get AI feedback** on interview answers (see above).
 
 Put your Anthropic API key in `.env` (never commit it):
 
@@ -170,7 +179,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 # AI_FEEDBACK=0              # turn it off again
 ```
 
-Only the question, its key points and your answer are sent, and only when you press the button.
+Only the question (with its answer, explanation and docs links) and what you wrote or chose are sent,
+and only when you press an AI button. Nothing is stored.
 Each request is billed to your Anthropic account (a few cents at most).
 
 ## Keeping the exam facts fresh

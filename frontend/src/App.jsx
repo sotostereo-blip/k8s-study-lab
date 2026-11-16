@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
+import { ExplainMore, useAiEnabled } from './AiHelp.jsx'
 import Labs from './Labs.jsx'
 import Plan from './Plan.jsx'
 import PathMap, { Reminders } from './Path.jsx'
@@ -272,6 +273,7 @@ function RealExam({ cert }) {
 /* ---------- Practice (spaced repetition) ---------- */
 
 function Practice({ exam, glossary, initialDomain = '' }) {
+  const ai = useAiEnabled()
   const [domain, setDomain] = useState(initialDomain)
   const [batch, setBatch] = useState(null)
   const [i, setI] = useState(0)
@@ -316,6 +318,7 @@ function Practice({ exam, glossary, initialDomain = '' }) {
         <>
           <QuestionCard q={q} glossary={glossary} selected={selected} onChange={setSelected}
             result={result} onTranslate={() => setTranslated(true)} number={`${i + 1}/${batch.questions.length}`} />
+          {result && ai && <ExplainMore key={q.id} q={q} selected={selected} />}
           <div className="actions">
             {!result
               ? <button className="primary" disabled={!selected.length} onClick={check}>Check answer</button>

@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
 MIGRATIONS = [
     ("exam_sessions", "domc", "TEXT NOT NULL DEFAULT '[]'"),   # JSON list of question ids shown as DOMC
     ("exam_sessions", "conditions", "TEXT NOT NULL DEFAULT '{}'"),  # JSON: {"real": bool, "esl": bool}
+    ("exam_sessions", "domains", "TEXT NOT NULL DEFAULT '{}'"),  # JSON: {domain: {correct, total}}
 ]
 
 

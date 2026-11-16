@@ -59,8 +59,9 @@
 
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [x] AI feedback on interview answers: key points, English corrections, an improved answer
-- [ ] "Explain more" button: LLM follow-up on top of the written `why`
+- [x] "Explain more" button: LLM follow-up on top of the written `why`, plus your own question
 - [ ] "Explain it" exercise: write why an answer is right; the LLM corrects grammar and technical accuracy
 
 ## Phase 4 — More exams
-- [ ] Full mock exams and progress history
+- [ ] Full mock exams
+- [x] Mock exam history: score chart and per-domain trend (Plan tab)

@@ -362,3 +362,42 @@ tr.weak td:first-child { color: var(--ko); font-weight: 600; }
 .your-data h2 { margin-top: 0; }
 .actions a.button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; text-decoration: none; font-size: 0.95em; }
 .your-data p.ok { color: var(--ok); }
+
+/* Mock exam history chart (palette validated with the dataviz validator, light and dark) */
+:root { --series-1: #2a78d6; }
+@media (prefers-color-scheme: dark) { :root { --series-1: #3987e5; } }
+.history-block { margin-top: 28px; }
+.history-series { margin-bottom: 16px; }
+.history-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.history-head h3 { margin: 0; font-size: 1.05em; }
+.score-chart { position: relative; margin: 12px 0; }
+.score-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.score-chart .grid { stroke: var(--border); stroke-width: 1; }
+.score-chart .axis { fill: var(--muted); font-size: 11px; }
+.score-chart .axis.value { fill: var(--text); font-weight: 600; font-size: 12px; }
+.score-chart .pass { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.score-chart .series { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.score-chart .dot { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; }
+.score-chart .crosshair { stroke: var(--muted); stroke-width: 1; }
+.chart-tip { position: absolute; top: 4px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; font-size: 0.85em; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+table.trend { margin: 8px 0 10px; font-size: 0.92em; }
+table.trend td.up { color: var(--ok); } table.trend td.down { color: var(--ko); }
+table.trend td:last-child { white-space: nowrap; }
+.history-series details table { margin-top: 8px; }
+.table-scroll { overflow-x: auto; }
+@media (max-width: 560px) { table.trend th:nth-child(2), table.trend td:nth-child(2) { display: none; } table.trend { font-size: 0.85em; } }
+
+/* Explain more (AI) */
+.ai-explain { margin: 12px 0; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ai-explain.card { display: block; border-color: var(--accent); }
+.ai-explain h4 { margin: 14px 0 4px; font-size: 0.95em; }
+.ai-explain p { margin: 4px 0; }
+.ai-explain textarea { display: block; width: 100%; margin: 6px 0 10px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font: inherit; box-sizing: border-box; }
+.ai-button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); cursor: pointer; font: inherit; }
+.ai-label { color: var(--muted); font-size: 0.8em; text-transform: uppercase; letter-spacing: .04em; }
+.ai-code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 0.88em; }
+.ai-remember { margin-top: 14px !important; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); }
+.ai-check { margin: 12px 0; }
+.ai-answer { padding: 8px 12px; border-left: 3px solid var(--accent); margin: 8px 0 12px; }

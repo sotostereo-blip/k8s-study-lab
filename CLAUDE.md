@@ -35,7 +35,8 @@ Spanish but all study content must be in **simple, clear English**.
 - Study plan and readiness score: pure functions in `backend/app/plan.py` (progress is read in
   `main.py` `parts_for`); keep the formulas explained in the README.
 - AI features must stay optional: the app must work with no API key (`app/ai.py`, off without
-  `ANTHROPIC_API_KEY`; tests use a fake client and never call the real API).
+  `ANTHROPIC_API_KEY`; tests use a fake client and never call the real API). New AI features: a pydantic
+  output schema + `Coach._parse`, an endpoint wrapped in `call_ai`, a UI shown only when `useAiEnabled()`.
 - When you change exam facts in `certifications.yaml`, set `official.checked` to the current month.
 - Lab compose files never bind-mount repo files (the backend may run in Docker); bake them into an image.
 - Keep `INSTALL.md` working when you change ports, services or requirements (CI runs the Docker install).

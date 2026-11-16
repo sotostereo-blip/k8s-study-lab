@@ -590,8 +590,15 @@ class FakeClaude:
 
     def parse(self, **kw):
         from types import SimpleNamespace
-        from app.ai import Feedback
+        from app.ai import Explanation, Feedback
         self.calls.append(kw)
+        if kw["output_format"] is Explanation:
+            ex = Explanation(idea="Pods are the smallest unit.", why_right="D is right.", your_choice="B is tempting.",
+                             example="```bash\nkubectl get pods\n```", remember="Pods hold containers.",
+                             check_question="What runs a container?", check_answer="A Pod.",
+                             answer_to_student="Yes.")
+            return SimpleNamespace(stop_reason=self.stop_reason, model="claude-opus-5-5",
+                                   parsed_output=None if self.stop_reason != "end_turn" else ex)
         fb = Feedback(summary="Clear and short.", key_points=[
             {"index": 0, "covered": True, "note": "You explained it."},
             {"index": 1, "covered": False, "note": "Missing."},
@@ -653,3 +660,26 @@ def test_exam_facts_age(client):
     later = {c["id"]: c for c in client.get("/api/certifications?today=2027-08-01").json()}
     assert now["cka"]["facts_stale"] is False and later["cka"]["facts_stale"] is True
     assert "facts_stale" not in now["interview"]
+
+
+def test_explain_more_is_off_without_a_key(client):
+    r = client.post("/api/practice/explain", json={"question_id": "kcna-fund-001", "selected": ["a"]})
+    assert r.status_code == 503
+
+
+def test_explain_more_with_a_client(tmp_path):
+    from app.ai import Coach
+    fake = FakeClaude()
+    c = TestClient(create_app(CONTENT, tmp_path / "t.db", coach=Coach(client=fake)))
+    q = load_library(CONTENT).questions["kcna-fund-001"]
+    wrong = next(o.id for o in q.options if o.id not in q.answer)
+    r = c.post("/api/practice/explain", json={"question_id": q.id, "selected": [wrong],
+                                              "ask": "Is a Pod a container?"}).json()
+    assert r["correct"] is False and r["remember"] and r["model"] == "claude-opus-5-5"
+    user = fake.calls[0]["messages"][0]["content"]
+    assert q.question in user and "(correct)" in user and "wrong" in user
+    assert "<student_question>" in user and q.docs[0] in user
+    assert c.post("/api/practice/explain", json={"question_id": "nope-x-001"}).status_code == 404
+    refused = TestClient(create_app(CONTENT, tmp_path / "u.db", coach=Coach(client=FakeClaude("refusal"))))
+    r = refused.post("/api/practice/explain", json={"question_id": q.id, "selected": list(q.answer)})
+    assert r.status_code == 502

@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import ai, domc, facts, path, plan, srs
+from . import ai, domc, facts, history, path, plan, srs
 from .content import Library, Question, load_library
 from .db import Database, ProgressFileError
 from .labs import LabManager, Runner, subprocess_runner
@@ -75,6 +75,12 @@ class InterviewMockIn(BaseModel):
 class GoalIn(BaseModel):
     exam_date: date
     minutes_per_day: int = Field(default=60, ge=15, le=600)
+
+
+class ExplainIn(BaseModel):
+    question_id: str
+    selected: list[str] = []
+    ask: str | None = Field(default=None, max_length=1000)   # optional question of the student
 
 
 class FeedbackIn(BaseModel):
@@ -431,8 +437,8 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             correct = sum(d["correct"] for d in per_domain.values())
             score = round(100 * correct / len(qids), 1)
             conn.execute(
-                "UPDATE exam_sessions SET finished_at=datetime('now'), score=? WHERE id=?",
-                (score, session_id),
+                "UPDATE exam_sessions SET finished_at=datetime('now'), score=?, domains=? WHERE id=?",
+                (score, json.dumps(per_domain), session_id),
             )
         return {
             "score": score,
@@ -819,20 +825,14 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     def ai_status():
         return {"enabled": coach.enabled, "model": coach.model if coach.enabled else None}
 
-    @app.post("/api/interview/feedback")
-    def interview_feedback(body: FeedbackIn):
-        """Optional AI feedback on one answer. Nothing is stored."""
-        if not coach.enabled:
-            raise HTTPException(503, "AI feedback is off. Set ANTHROPIC_API_KEY for the backend to turn it on.")
-        q = get_iv(body.question_id)
-        if len(body.answer.split()) < 5:
-            raise HTTPException(400, "Say or type a longer answer first (at least a few sentences).")
+    def call_ai(fn):
+        """Run one AI request and turn its errors into clear HTTP errors."""
         try:
             import anthropic
         except ImportError:
-            raise HTTPException(503, "Install the anthropic package to use AI feedback.")
+            raise HTTPException(503, "Install the anthropic package to use the AI features.")
         try:
-            return coach.feedback(q, body.answer, body.seconds)
+            return fn()
         except anthropic.AuthenticationError:
             raise HTTPException(502, "The Anthropic API key was not accepted. Check ANTHROPIC_API_KEY.")
         except anthropic.RateLimitError:
@@ -843,6 +843,27 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             raise HTTPException(502, "Cannot reach the AI service. Check your internet connection.")
         except RuntimeError as e:
             raise HTTPException(502, str(e))
+
+    @app.post("/api/interview/feedback")
+    def interview_feedback(body: FeedbackIn):
+        """Optional AI feedback on one answer. Nothing is stored."""
+        if not coach.enabled:
+            raise HTTPException(503, "AI feedback is off. Set ANTHROPIC_API_KEY for the backend to turn it on.")
+        q = get_iv(body.question_id)
+        if len(body.answer.split()) < 5:
+            raise HTTPException(400, "Say or type a longer answer first (at least a few sentences).")
+        return call_ai(lambda: coach.feedback(q, body.answer, body.seconds))
+
+    @app.post("/api/practice/explain")
+    def practice_explain(body: ExplainIn):
+        """Optional AI: a longer explanation of a question after answering it. Nothing is stored."""
+        if not coach.enabled:
+            raise HTTPException(503, "AI help is off. Set ANTHROPIC_API_KEY for the backend to turn it on.")
+        q = lib.questions.get(body.question_id)
+        if not q:
+            raise HTTPException(404, "Unknown question")
+        exam = lib.exams[q.id.split("-")[0]]
+        return call_ai(lambda: coach.explain(q, exam.name, body.selected, body.ask))
 
     @app.get("/api/interview/stats")
     def interview_stats():
@@ -951,6 +972,28 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
     def readiness(cert_id: str):
         parts, main = parts_for(get_cert(cert_id))
         return plan.readiness(parts, main)
+
+    @app.get("/api/history")
+    def exam_history(cert_id: str):
+        """Every finished mock exam of a certification, oldest first, with per-domain results."""
+        cert = get_cert(cert_id)
+        out = []
+        with db.connect() as conn:
+            if cert.exam:
+                exam = lib.exams[cert.exam]
+                rows = conn.execute(
+                    "SELECT finished_at, score, domains FROM exam_sessions WHERE exam_id=? AND score IS NOT NULL "
+                    "ORDER BY finished_at, started_at", (exam.id,)).fetchall()
+                out.append(history.series("exam", "Multiple-choice mock exams", exam.passing_score,
+                                          [history.exam_point(r) for r in rows], exam.domains))
+            if cert.track:
+                track = lib.tracks[cert.track]
+                rows = conn.execute(
+                    "SELECT finished_at, score, results FROM mock_sessions WHERE track_id=? AND score IS NOT NULL "
+                    "ORDER BY finished_at, created_at", (track.id,)).fetchall()
+                out.append(history.series("labs", "Lab mock exams", track.passing_score,
+                                          [history.lab_point(r) for r in rows], track.domains))
+        return {"cert_id": cert_id, "series": out}
 
     @app.get("/api/plan")
     def study_plan(cert_id: str, today: date | None = None):

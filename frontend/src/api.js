@@ -12,6 +12,7 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  history: (cert) => request(`/history?cert_id=${cert}`),
   progressSummary: () => request('/progress/summary'),
   progressImport: async (file) => {
     const res = await fetch('/api/progress/import', {
@@ -53,6 +54,7 @@ export const api = {
   interviewMockStart: (body) => request('/interview/mock/start', { method: 'POST', body }),
   interviewMockFinish: (id) => request(`/interview/mock/${id}/finish`, { method: 'POST' }),
   aiStatus: () => request('/ai/status'),
+  practiceExplain: (body) => request('/practice/explain', { method: 'POST', body }),
   interviewFeedback: (body) => request('/interview/feedback', { method: 'POST', body }),
   interviewStats: () => request('/interview/stats'),
   interviewPhrases: () => request('/interview/phrases'),
