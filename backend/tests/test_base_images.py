@@ -18,3 +18,22 @@ def test_no_lab_bind_mounts_files_from_the_repo():
     # the backend can run in Docker and use the host engine: host paths would not match
     for f in (LABS / "envs").glob("*/compose.yaml"):
         assert "- ./" not in f.read_text() and "- ../" not in f.read_text(), f
+
+
+def test_ready_made_images_are_downloaded_and_missing_ones_built_here():
+    from app.labs import LabManager
+
+    calls = []
+
+    def runner(cmd, stdin, timeout):
+        calls.append(cmd)
+        if cmd[:2] == ["docker", "pull"]:   # only the toolbox is published
+            return (0, "") if cmd[-1].endswith("/toolbox-gitea:1") else (1, "not found")
+        if cmd[:3] == ["docker", "image", "inspect"]:
+            return (0, "") if cmd[-1] == "k8s-study-lab/gitea-runner:1" else (1, "")
+        return 0, ""
+
+    m = LabManager(LABS, runner=runner)
+    m.registry = "ghcr.io/me/k8s-study-lab"
+    assert m.pull_prebuilt("gitea", 0) == ["gitea"]     # runner is already here, gitea is not
+    assert ["docker", "tag", "ghcr.io/me/k8s-study-lab/toolbox-gitea:1", "k8s-study-lab/toolbox-gitea:1"] in calls

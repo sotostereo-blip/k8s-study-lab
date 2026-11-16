@@ -39,6 +39,14 @@ Compose files must not bind-mount files from the repository (`./file:/path`): th
 Docker and use the host engine, where those paths do not exist. Bake files into a lab image instead
 (see `gitea-server/`). To build every lab image ahead of time: `sh scripts/build_labs.sh`.
 
+**Ready-made images.** `.github/workflows/lab-images.yml` publishes every lab image (amd64 + arm64) to
+`ghcr.io/<owner>/k8s-study-lab/<name>:<tag>` when `labs/` changes on `main`, only while the repository is
+public (`python scripts/lab_images.py` lists them). With `LAB_IMAGE_REGISTRY` set (the default in
+`docker-compose.yml`), the backend runs `docker pull` for each image of an environment before starting it,
+tags it with its local name, and builds locally only the images it could not download. When you edit a
+lab image, set `LAB_IMAGE_REGISTRY=` (empty) in `.env` so your local build is used, and bump the image tag
+in the compose file when the change is not compatible with older content.
+
 The backend starts them for you when you open a lab. It runs
 `docker compose -p k8slab -f labs/envs/<env>/compose.yaml up -d --build`,
 waits for the nodes and/or the environment's `ready` command, runs the task `setup`, and later the task `checks`.

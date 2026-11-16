@@ -12,6 +12,15 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  progressSummary: () => request('/progress/summary'),
+  progressImport: async (file) => {
+    const res = await fetch('/api/progress/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file,
+    })
+    const out = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(out.detail || `HTTP ${res.status}`)
+    return out
+  },
   exams: () => request('/exams'),
   certifications: () => request('/certifications'),
   glossary: () => request('/glossary'),

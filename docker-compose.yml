@@ -8,6 +8,9 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # ready-made lab images published by .github/workflows/lab-images.yml; set it empty to build them here
+      LAB_IMAGE_REGISTRY: ${LAB_IMAGE_REGISTRY-ghcr.io/sotostereo-blip/k8s-study-lab}
     volumes:
       - ./backend/app:/app/app      # live reload while developing
       - ./content:/content:ro       # study content (questions, glossary)

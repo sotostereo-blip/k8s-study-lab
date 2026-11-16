@@ -12,7 +12,8 @@ Spanish but all study content must be in **simple, clear English**.
 - Run backend: `cd backend && uvicorn app.main:app --reload`
 - Run frontend: `cd frontend && npm run dev` (proxies `/api` to :8000)
 - Everything: `docker compose up -d --build` (install guide for people and AI assistants: `INSTALL.md`)
-- Build all lab images ahead of time: `sh scripts/build_labs.sh [env…]`
+- Get all lab images ahead of time: `sh scripts/build_labs.sh [env…]` (downloads ready-made ones from
+  `LAB_IMAGE_REGISTRY`; empty value = build locally, needed when you edit `labs/`)
 - Verify lab tasks on real environments (Docker): `python scripts/verify_labs.py tasks <ids…>` or
   `--track <id>`; whole mock exam: `python scripts/verify_labs.py mock <track>`
 - Debug a lab by hand: `docker compose -p k8slab -f labs/envs/single-node/compose.yaml up -d --build`

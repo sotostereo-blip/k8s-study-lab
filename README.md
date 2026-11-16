@@ -9,6 +9,8 @@ Built to practise **the exam content and technical English at the same time**.
 
 Everything runs on your machine with Docker. No account, no cloud costs, your progress stays in a local file.
 
+![Solving a CKA lab in the browser: the task on the left, a real Kubernetes cluster in the terminal, and the checks turning green](docs/images/lab.gif)
+
 | Certification | Multiple choice | Hands-on labs (terminal in the browser) |
 |---|---|---|
 | **KCNA** — Kubernetes and Cloud Native Associate | 150 questions | — |
@@ -38,11 +40,13 @@ docker compose up -d --build
 ```
 
 Open **http://localhost:5173** and choose a certification at the top of the page.
-The first build takes a few minutes. Each kind of lab builds its images the first time you open one
-(`sh scripts/build_labs.sh` builds them all ahead of time, ~15 GB).
+The first build takes a few minutes. Each kind of lab gets its images the first time you open one:
+ready-made images are downloaded from GitHub (`ghcr.io`) when published, otherwise they are built on your
+machine (`sh scripts/build_labs.sh` gets them all ahead of time, ~15 GB).
 
 Stop with `docker compose down`; update with `git pull && docker compose up -d --build`.
-Your progress is kept in `data/progress.db`.
+Your progress is kept in `data/progress.db`; **My path → Your data** downloads it as a backup or imports it
+on another computer.
 
 ### Install it with an AI assistant
 
@@ -61,6 +65,14 @@ Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshoot
 [INSTALL.md](INSTALL.md).
 
 ## What you can do
+
+| Study plan and readiness | Practice with English help |
+|---|---|
+| ![Study plan: the work for today and the estimated exam score](docs/images/plan.png) | ![A practice question: why the chosen option is wrong, and a glossary card for "microservices"](docs/images/practice.png) |
+| **Progress per domain** | **Certification path** |
+| ![Dashboard: accuracy and mastered questions per official domain](docs/images/dashboard.png) | ![My path: Kubestronaut progress and the suggested order of exams](docs/images/path.png) |
+| **Hands-on labs** | **Job interviews in English** |
+| ![A solved CKA lab with all checks passed](docs/images/lab.png) | ![Interview practice: categories and a behavioral question](docs/images/interview.png) |
 
 - **Plan**: set your exam date and the time you have each day. The app gives you the work for today
   (reviews due, new questions focused on your weakest and heaviest domains, labs to solve, and mock exams
@@ -143,6 +155,7 @@ All optional; the app works without a `.env` file.
 |---|---|---|
 | `APP_PORT` | `5173` | host port of the web app |
 | `API_PORT` | `8000` | host port of the API (docs at `/docs`) |
+| `LAB_IMAGE_REGISTRY` | `ghcr.io/sotostereo-blip/k8s-study-lab` | where ready-made lab images are downloaded from; empty = build them locally |
 | `ANTHROPIC_API_KEY` | empty | turns on the optional AI feedback (see below) |
 | `LLM_MODEL` | `claude-opus-5-5` | Claude model for the AI feedback |
 | `AI_FEEDBACK` | on with a key | `0` turns the AI feedback off |
@@ -193,7 +206,7 @@ backend/     FastAPI API, SQLite progress, spaced repetition, lab manager
 frontend/    React (Vite) UI
 content/     Questions, glossary, interview questions and lab tasks as YAML  ← contributions welcome
 labs/        Docker Compose lab environments (k3s, Ubuntu, Docker, Gitea, Prometheus, LocalStack…)
-scripts/     content validator, lab verifier, lab image builder, exam-facts check
+scripts/     content validator, lab verifier, lab images, exam-facts check, README screenshots
 docs/        CONTENT_FORMAT.md, ROADMAP.md
 ```
 

@@ -51,6 +51,12 @@
 - [x] Certification path map (KCNA → CKA → CKS, Kubestronaut) with expiry reminders
 - [x] Exam-like mock details: DOMC questions for DCA, AWS ESL +30 minutes, allowed docs in lab mock exams
 
+## Sharing and installing
+- [x] Install guide for people and AI assistants (`INSTALL.md`), CI runs the Docker install
+- [x] Ready-made lab images on GHCR (amd64 + arm64), built locally only when missing
+- [x] Export / import of all progress (My path → Your data), with a backup before every import
+- [x] README screenshots and a lab GIF (`scripts/screenshots/`)
+
 ## Phase 3 — AI tutor and English feedback (optional, needs API key)
 - [x] AI feedback on interview answers: key points, English corrections, an improved answer
 - [ ] "Explain more" button: LLM follow-up on top of the written `why`

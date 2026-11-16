@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -105,16 +106,82 @@ MIGRATIONS = [
 ]
 
 
+# What the "Your data" panel counts: label -> SQL
+SUMMARY = {
+    "answers": "SELECT COUNT(*) FROM attempts",
+    "mock_exams": "SELECT COUNT(*) FROM exam_sessions WHERE finished_at IS NOT NULL",
+    "lab_attempts": "SELECT COUNT(*) FROM lab_attempts",
+    "lab_mock_exams": "SELECT COUNT(*) FROM mock_sessions WHERE finished_at IS NOT NULL",
+    "interview_answers": "SELECT COUNT(*) FROM interview_attempts",
+    "english_words": "SELECT COUNT(*) FROM vocab_cards",
+    "passed_certifications": "SELECT COUNT(*) FROM earned_certs",
+}
+MAX_IMPORT_BYTES = 200 * 1024 * 1024
+
+
+class ProgressFileError(ValueError):
+    """The uploaded file is not a progress file of this app."""
+
+
 class Database:
     def __init__(self, path: Path):
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.migrate()
+
+    def migrate(self) -> None:
         with self.connect() as conn:
             conn.executescript(SCHEMA)
             for table, column, definition in MIGRATIONS:
                 cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
                 if column not in cols:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+    # ---------- export / import of the whole progress file ----------
+
+    def summary(self) -> dict:
+        with self.connect() as conn:
+            return {k: conn.execute(q).fetchone()[0] for k, q in SUMMARY.items()}
+
+    def export_bytes(self) -> bytes:
+        """A consistent copy of the whole database (safe while the app is writing)."""
+        with self.connect() as conn:
+            return conn.serialize()
+
+    def import_bytes(self, data: bytes) -> Path:
+        """Replace all progress with an exported file. The current progress is saved first in
+        backups/ next to the database; returns that backup's path."""
+        if len(data) > MAX_IMPORT_BYTES:
+            raise ProgressFileError("The file is too large to be a progress file.")
+        if not data.startswith(b"SQLite format 3\x00"):
+            raise ProgressFileError("This is not a progress file (k8s-study-lab-progress-….db).")
+        src = sqlite3.connect(":memory:")
+        try:
+            try:
+                src.deserialize(data)
+                ok = src.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+                tables = {r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            except sqlite3.DatabaseError as e:
+                raise ProgressFileError(f"The file is damaged: {e}") from e
+            if not ok:
+                raise ProgressFileError("The file is damaged (integrity check failed).")
+            if not {"attempts", "cards"} <= tables:
+                raise ProgressFileError("This SQLite file is not a k8s-study-lab progress file.")
+            backups = self.path.parent / "backups"
+            backups.mkdir(exist_ok=True)
+            backup = backups / f"progress-before-import-{time.strftime('%Y%m%d-%H%M%S')}.db"
+            b = sqlite3.connect(backup)
+            try:
+                with self.connect() as live:
+                    live.backup(b)
+            finally:
+                b.close()
+            with self.connect() as live:
+                src.backup(live)          # page-by-page copy into the live file
+        finally:
+            src.close()
+        self.migrate()                    # an older export gets the newer tables and columns
+        return backup
 
     @contextmanager
     def connect(self):

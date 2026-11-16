@@ -72,6 +72,7 @@ Every value is optional. Edit `.env` only if you need to:
 |---|---|---|
 | `APP_PORT` | port 5173 is busy | `APP_PORT=5180` |
 | `API_PORT` | port 8000 is busy | `API_PORT=8010` |
+| `LAB_IMAGE_REGISTRY` | set it empty (`LAB_IMAGE_REGISTRY=`) to always build lab images locally, e.g. after editing `labs/` | |
 | `ANTHROPIC_API_KEY` | the user wants AI feedback on interview answers (paid, optional) | `sk-ant-...` |
 
 Never commit `.env` (it is already in `.gitignore`).
@@ -99,11 +100,13 @@ Open **http://localhost:5173** in a browser. Choose a certification in the selec
 
 ## 5. (Optional) Prepare the hands-on labs
 
-Nothing to do: the first time the user opens a lab, the app builds that lab's images
-(a few minutes, then seconds). To build them ahead of time, for example before an offline session:
+Nothing to do: the first time the user opens a lab, the app gets that lab's images. It downloads
+**ready-made images** from GitHub (`ghcr.io`) when the project publishes them, and builds the missing ones
+on this machine (a few minutes per lab, the Argo CD lab ~10). After that a lab starts in seconds.
+To get them ahead of time, for example before an offline session:
 
 ```bash
-sh scripts/build_labs.sh                     # every lab environment: ~15 GB, 15-40 minutes
+sh scripts/build_labs.sh                     # every lab environment: ~15 GB
 sh scripts/build_labs.sh single-node linux   # or only some (names: ls labs/envs)
 ```
 
@@ -146,7 +149,9 @@ docker compose down       # stop; your progress stays in ./data
 git pull && docker compose up -d --build   # update to a new version
 ```
 
-Progress (answers, mock exams, plan) is saved in `data/progress.db`. Back up that file to keep it.
+Progress (answers, mock exams, plan) is saved in `data/progress.db`. To keep a backup or move it to
+another computer, use **My path → Your data → Download my progress**, and **Import progress…** on the other one
+(the progress it replaces is saved in `data/backups/`).
 New versions add database columns automatically; progress is never deleted.
 
 To remove everything (app, lab containers and images; this deletes the progress only if you also delete `data/`):
@@ -167,7 +172,8 @@ docker images --format '{{.Repository}}:{{.Tag}}' | grep '^k8s-study-lab' | xarg
 | `port is already allocated` / `address already in use` | 5173 or 8000 is taken | Set `APP_PORT` / `API_PORT` in `.env`, then `docker compose up -d` |
 | `env_file … unknown field "path"` or `required` error | Docker Compose older than 2.24 | Update Docker Desktop / the compose plugin |
 | Page loads but shows errors / no certifications | backend not ready yet | Wait 20 s; check `docker compose logs backend` |
-| Lab stays in *starting* for a long time the first time | images are being built (Argo CD: ~5 min) | Wait; or pre-build with `sh scripts/build_labs.sh <env>` |
+| Lab stays in *starting* for a long time the first time | images are being downloaded or built (Argo CD: up to ~10 min) | Wait; or prepare them with `sh scripts/build_labs.sh <env>` |
+| Lab log says `Building … here (no ready-made image)` | the images are not published (private repository, or offline) | Nothing to fix: they are built locally once |
 | Lab error `permission denied … docker.sock` (Linux) | the socket is not accessible | Check `ls -l /var/run/docker.sock`; Docker must run as root (default), not rootless |
 | Lab error `toomanyrequests` / rate limit while pulling | Docker Hub or ECR public rate limit | Wait a minute and open the lab again; or `docker login` |
 | Lab terminal is blank / `localhost:7681` refused | port 7681 is taken, or the lab stopped | Free port 7681; open the lab again |

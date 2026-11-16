@@ -1,0 +1,83 @@
+# Publishes the lab images to GitHub Container Registry (ghcr.io/<owner>/k8s-study-lab/<name>:<tag>),
+# for linux/amd64 and linux/arm64, so the app downloads them instead of building ~15 GB on every machine.
+# The app falls back to building an image locally when it cannot download it.
+# Runs only while the repository is public: GHCR storage for private repositories is billed.
+# After the first run, make each package public once: GitHub → your profile → Packages → package →
+# Package settings → Change visibility → Public.
+name: Lab images
+on:
+  push:
+    branches: [main]
+    paths: ["labs/**", "scripts/lab_images.py", ".github/workflows/lab-images.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+concurrency: { group: lab-images, cancel-in-progress: false }
+jobs:
+  plan:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.m.outputs.registry }}
+      base: ${{ steps.m.outputs.base }}
+      rest: ${{ steps.m.outputs.rest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml pydantic
+      - id: m
+        run: |
+          reg="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/k8s-study-lab"
+          echo "registry=$reg" >> "$GITHUB_OUTPUT"
+          python scripts/lab_images.py --github-output "$reg" >> "$GITHUB_OUTPUT"
+  base:   # images other lab images are built FROM (k8s-study-lab/toolbox:3)
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: { include: "${{ fromJSON(needs.plan.outputs.base) }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ matrix.remote }}
+          build-contexts: ${{ matrix.build_contexts }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.description=k8s-study-lab lab image ${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+  rest:
+    needs: [plan, base]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: { include: "${{ fromJSON(needs.plan.outputs.rest) }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ matrix.remote }}
+          build-contexts: ${{ matrix.build_contexts }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.description=k8s-study-lab lab image ${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

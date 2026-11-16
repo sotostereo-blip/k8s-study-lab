@@ -356,3 +356,9 @@ tr.weak td:first-child { color: var(--ko); font-weight: 600; }
 .ai-points li { list-style: none; }
 .ok-text { color: var(--ok); font-weight: 600; }
 .english-fixes s { color: var(--muted); }
+
+/* Your data (export / import) */
+.your-data { margin-top: 24px; }
+.your-data h2 { margin-top: 0; }
+.actions a.button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; text-decoration: none; font-size: 0.95em; }
+.your-data p.ok { color: var(--ok); }

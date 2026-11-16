@@ -9,13 +9,13 @@ import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import ai, domc, facts, path, plan, srs
 from .content import Library, Question, load_library
-from .db import Database
+from .db import Database, ProgressFileError
 from .labs import LabManager, Runner, subprocess_runner
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -202,6 +202,25 @@ def create_app(content_dir: Path | None = None, db_path: Path | None = None,
             (q.id, box, srs.due_at(box)),
         )
         return ok
+
+    @app.get("/api/progress/summary")
+    def progress_summary():
+        return db.summary()
+
+    @app.get("/api/progress/export")
+    def progress_export():
+        name = f"k8s-study-lab-progress-{date.today().isoformat()}.db"
+        return Response(db.export_bytes(), media_type="application/vnd.sqlite3",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/api/progress/import")
+    async def progress_import(request: Request):
+        """Body: the raw bytes of an exported progress file. Replaces all progress."""
+        try:
+            backup = db.import_bytes(await request.body())
+        except ProgressFileError as e:
+            raise HTTPException(400, str(e)) from e
+        return {"summary": db.summary(), "backup": backup.name}
 
     @app.get("/api/health")
     def health():

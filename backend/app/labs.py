@@ -28,34 +28,55 @@ TEARDOWN = ("for c in $(docker ps -q --filter label=com.docker.compose.project={
             ">/dev/null 2>&1; done; true")
 
 
+def _services(labs_dir: Path, env: str) -> dict:
+    f = labs_dir / "envs" / env / "compose.yaml"
+    return ((yaml.safe_load(f.read_text()) or {}).get("services") or {}) if f.exists() else {}
+
+
+def _context(labs_dir: Path, env: str, svc: dict) -> Path | None:
+    b = svc.get("build")
+    ctx = b if isinstance(b, str) else (b or {}).get("context")
+    return (labs_dir / "envs" / env / ctx).resolve() if ctx else None
+
+
+def env_builds(labs_dir: Path, env: str) -> list[tuple[str, str, Path]]:
+    """(service, image, build context) for every service of the environment built from labs/."""
+    return [(name, svc["image"], _context(labs_dir, env, svc))
+            for name, svc in _services(labs_dir, env).items() if svc.get("image") and svc.get("build")]
+
+
+def lab_builds(labs_dir: Path) -> dict[str, tuple[str, str, Path]]:
+    """image -> (environment, service, build context), over every lab environment."""
+    built = {}
+    for f in sorted((labs_dir / "envs").glob("*/compose.yaml")):
+        for service, image, ctx in env_builds(labs_dir, f.parent.name):
+            built.setdefault(image, (f.parent.name, service, ctx))
+    return built
+
+
+def bases_of(context: Path) -> list[str]:
+    """Lab images (k8s-study-lab/...) that a Dockerfile is built FROM."""
+    f = context / "Dockerfile"
+    return re.findall(r"^FROM\s+(k8s-study-lab/\S+)", f.read_text(), re.M) if f.exists() else []
+
+
 def base_images(labs_dir: Path, env: str) -> list[tuple[str, str, str]]:
     """Lab images built FROM another lab image (e.g. the Argo CD toolbox is FROM
     k8s-study-lab/toolbox:3). `docker compose up --build` cannot build that base first, so the
     caller must. Returns (image, environment, service) for each base image the environment needs:
     build it with `docker compose -f envs/<environment>/compose.yaml build <service>` (BuildKit)."""
-    def services(e: str) -> dict:
-        f = labs_dir / "envs" / e / "compose.yaml"
-        return (yaml.safe_load(f.read_text()) or {}).get("services") or {} if f.exists() else {}
-
-    def context(e: str, svc: dict) -> Path | None:
-        b = svc.get("build")
-        ctx = b if isinstance(b, str) else (b or {}).get("context")
-        return (labs_dir / "envs" / e / ctx).resolve() if ctx else None
-
-    built = {}   # image name -> (environment, service) that builds it
-    for f in sorted((labs_dir / "envs").glob("*/compose.yaml")):
-        for name, svc in services(f.parent.name).items():
-            if svc.get("image") and svc.get("build"):
-                built.setdefault(svc["image"], (f.parent.name, name))
+    built = lab_builds(labs_dir)
     need = []
-    for svc in services(env).values():
-        ctx = context(env, svc)
-        dockerfile = ctx / "Dockerfile" if ctx else None
-        if dockerfile and dockerfile.exists():
-            for img in re.findall(r"^FROM\s+(k8s-study-lab/\S+)", dockerfile.read_text(), re.M):
-                if img in built and (img, *built[img]) not in need:
-                    need.append((img, *built[img]))
+    for _, _, ctx in env_builds(labs_dir, env):
+        for img in bases_of(ctx):
+            if img in built and (img, *built[img][:2]) not in need:
+                need.append((img, *built[img][:2]))
     return need
+
+
+def prebuilt_name(registry: str, image: str) -> str:
+    """k8s-study-lab/toolbox:3 -> <registry>/toolbox:3 (the name CI publishes it under)."""
+    return f"{registry.rstrip('/')}/{image.split('/', 1)[1]}"
 
 
 def subprocess_runner(cmd: list[str], stdin: str | None, timeout: float) -> tuple[int, str]:
@@ -99,6 +120,8 @@ class LabManager:
         self.port = terminal_port or int(os.getenv("LAB_TERMINAL_PORT", "7681"))
         self.terminal_url = os.getenv("LAB_TERMINAL_URL", f"http://localhost:{self.port}")
         self.poll = poll_seconds
+        # where CI publishes ready-made lab images; empty = always build them here
+        self.registry = os.getenv("LAB_IMAGE_REGISTRY", "").strip()
         self.state = LabState()
         self.lock = threading.Lock()
         self.docker_lock = threading.Lock()  # one docker compose up/down sequence at a time
@@ -126,6 +149,24 @@ class LabManager:
         devices, LVM volumes, swap), which `docker compose down` would leave on the Docker host.
         Images that need it ship a `lab-teardown` script; the others are skipped."""
         self.run(["sh", "-c", TEARDOWN.format(project=self.PROJECT)], None, 120)
+
+    def pull_prebuilt(self, env: str, gen: int) -> list[str]:
+        """Download the ready-made images of this environment from LAB_IMAGE_REGISTRY and tag them
+        with their local names. Returns the services that still need a local build: those whose
+        image could not be downloaded and is not already on this machine (offline, private registry)."""
+        to_build, seen = [], set()
+        for service, image, _ in env_builds(self.labs_dir, env):
+            if image in seen:      # several services can share one image
+                continue
+            seen.add(image)
+            remote = prebuilt_name(self.registry, image)
+            self._log(f"Downloading the ready-made image {remote}…", gen)
+            rc, _ = self.run(["docker", "pull", "-q", remote], None, 1800)
+            if rc == 0:
+                self.run(["docker", "tag", remote, image], None, 30)
+            elif self.run(["docker", "image", "inspect", image], None, 30)[0] != 0:
+                to_build.append(service)
+        return to_build
 
     def _log(self, msg: str, gen: int | None = None) -> None:
         if gen is None or gen == self.generation:   # a stale thread must not write into a newer lab's log
@@ -170,13 +211,26 @@ class LabManager:
         if not alive():
             return
         self._log(f"Starting the lab environment: {env} (first time: downloads images, a few minutes)…")
-        for image, base_env, service in base_images(self.labs_dir, env):
-            if self.run(["docker", "image", "inspect", image], None, 30)[0] != 0:
-                self._log(f"Building the base image {image} (first time only)…", gen)
-                rc, out = self.run(self.compose(base_env, "build", service), None, 1200)
-                if rc != 0:
-                    return fail(out[-800:] or f"could not build {image}")
-        rc, out = self.run(self.compose(env, "up", "-d", "--build", "--quiet-pull"), None, 600)
+        if self.registry:
+            to_build = self.pull_prebuilt(env, gen)
+            if not alive():
+                return
+        else:
+            to_build = None   # build every lab image here (`up --build`)
+        if to_build is None or to_build:
+            for image, base_env, service in base_images(self.labs_dir, env):
+                if self.run(["docker", "image", "inspect", image], None, 30)[0] != 0:
+                    self._log(f"Building the base image {image} (first time only)…", gen)
+                    rc, out = self.run(self.compose(base_env, "build", service), None, 1200)
+                    if rc != 0:
+                        return fail(out[-800:] or f"could not build {image}")
+        if to_build:
+            self._log(f"Building {', '.join(to_build)} here (no ready-made image)…", gen)
+            rc, out = self.run(self.compose(env, "build", *to_build), None, 1800)
+            if rc != 0:
+                return fail(out[-800:] or "docker compose build failed")
+        up = ["up", "-d", "--quiet-pull"] + (["--build"] if to_build is None else [])
+        rc, out = self.run(self.compose(env, *up), None, 600)
         if rc != 0:
             return fail(out[-800:] or "docker compose up failed")
 

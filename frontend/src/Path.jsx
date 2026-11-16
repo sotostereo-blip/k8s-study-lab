@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 
 const COLUMNS = ['Start here', 'Next', 'Then']
@@ -61,6 +61,7 @@ export default function PathMap({ path, onChange, onStudy }) {
       <p className="facts-note">ℹ️ “After” is a suggestion: those exams share topics, so the first one makes the next one
         easier. “Requires” is a rule of the real exam. Expiry dates follow the official validity; if your certificate shows
         another date, enter it.</p>
+      <YourData />
     </section>
   )
 }
@@ -118,6 +119,63 @@ function CertCard({ c, short, onChange, onStudy }) {
           {c.passed_on && <button className="link" onClick={() => api.earnedDelete(c.id).then(onChange)}>Remove</button>}
         </div>
       )}
+    </div>
+  )
+}
+
+const DATA_LABELS = {   // [one, many]
+  answers: ['answer to a question', 'answers to questions'],
+  mock_exams: ['mock exam', 'mock exams'],
+  lab_attempts: ['lab check', 'lab checks'],
+  lab_mock_exams: ['lab mock exam', 'lab mock exams'],
+  interview_answers: ['interview answer', 'interview answers'],
+  english_words: ['English word in practice', 'English words in practice'],
+  passed_certifications: ['passed certification', 'passed certifications'],
+}
+
+/* Export / import of all progress: one SQLite file, to move to another computer or keep a backup. */
+function YourData() {
+  const [summary, setSummary] = useState(null)
+  const [msg, setMsg] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const input = useRef(null)
+  useEffect(() => { api.progressSummary().then(setSummary).catch(() => {}) }, [])
+  const pick = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!window.confirm(`Replace ALL your progress on this computer with "${file.name}"?\n\n` +
+      'Your current progress is saved first in data/backups/, so you can go back.')) return
+    setBusy(true); setMsg(null)
+    try {
+      const out = await api.progressImport(file)
+      setSummary(out.summary)
+      setMsg({ ok: true, text: `Progress imported. Your previous progress is saved in data/backups/${out.backup}. Reloading…` })
+      setTimeout(() => window.location.reload(), 2500)
+    } catch (err) {
+      setMsg({ ok: false, text: err.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="card your-data">
+      <h2>Your data</h2>
+      <p className="small">All your progress (every certification) is one file on this computer: <code>data/progress.db</code>.
+        Download a copy to keep a backup or to continue on another computer, then import it there.</p>
+      {summary && (
+        <p className="small muted">
+          {Object.entries(DATA_LABELS).filter(([k]) => summary[k]).map(([k, [one, many]]) => `${summary[k]} ${summary[k] === 1 ? one : many}`).join(' · ') || 'No progress yet.'}
+        </p>
+      )}
+      <div className="actions">
+        <a className="button" href="/api/progress/export" download>Download my progress</a>
+        <button className="secondary" disabled={busy} onClick={() => input.current?.click()}>
+          {busy ? 'Importing…' : 'Import progress…'}
+        </button>
+        <input ref={input} type="file" accept=".db,application/vnd.sqlite3,application/octet-stream" hidden onChange={pick} />
+      </div>
+      {msg && <p className={msg.ok ? 'ok small' : 'error'}>{msg.text}</p>}
     </div>
   )
 }
