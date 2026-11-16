@@ -434,7 +434,7 @@ questions:
       OpenTelemetry is a vendor-neutral standard and toolkit for traces, metrics and logs.
       Applications instrumented with OpenTelemetry can expose a Prometheus endpoint or send
       metrics with OTLP. Prometheus 3 can receive OTLP metrics when the OTLP receiver is
-      enabled.
+      enabled with the flag `--web.enable-otlp-receiver`.
     docs:
       - https://prometheus.io/docs/guides/opentelemetry/
     glossary: [opentelemetry, prometheus]

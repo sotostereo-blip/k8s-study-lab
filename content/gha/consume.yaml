@@ -214,7 +214,7 @@ questions:
         text: "No new run starts for that push, to avoid loops"
       - id: b
         text: "A new run starts, and it can start another one, without a limit"
-        why: "GitHub prevents this loop. Events caused by `GITHUB_TOKEN` do not start new workflow runs (except `workflow_dispatch` and `repository_dispatch`)."
+        why: "GitHub prevents this loop. A push made with `GITHUB_TOKEN` does not start new workflow runs."
       - id: c
         text: "The push is rejected, because `GITHUB_TOKEN` cannot write"
         why: "With `contents: write`, `GITHUB_TOKEN` can push. The push works, but it does not start `push` workflows."
@@ -224,8 +224,11 @@ questions:
     answer: [a]
     explanation: |
       Events created with the repository's `GITHUB_TOKEN` do not create new workflow
-      runs, except `workflow_dispatch` and `repository_dispatch`. If you need a push
-      to start other workflows, use a GitHub App token or a personal access token.
+      runs. The exceptions are `workflow_dispatch` and `repository_dispatch`, and
+      `pull_request` events (`opened`, `synchronize`, `reopened`) for a pull request
+      that the token created or updated; those runs wait until a user with write
+      access approves them. If you need a push to start other workflows, use a
+      GitHub App token or a personal access token.
     docs:
       - https://docs.github.com/en/actions/concepts/security/github_token
       - https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow
@@ -397,7 +400,7 @@ questions:
     question: "Which statement about how long logs and artifacts are kept is correct?"
     options:
       - id: a
-        text: "By default they are kept for 90 days, and admins can set a shorter retention period"
+        text: "By default they are kept for 90 days, and admins can change the retention period"
       - id: b
         text: "They are kept forever, unless you delete the repository"
         why: "Logs and artifacts expire after the retention period. The default is 90 days."
@@ -410,8 +413,9 @@ questions:
     answer: [a]
     explanation: |
       GitHub keeps workflow logs and artifacts for 90 days by default. Repository,
-      organization and enterprise admins can change the retention period, and a
-      workflow can set `retention-days` on an artifact upload.
+      organization and enterprise admins can change the retention period: from 1 to
+      90 days for public repositories, and from 1 to 400 days for private ones. A
+      workflow can also set `retention-days` on an artifact upload.
     docs:
       - https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
       - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
@@ -420,10 +424,10 @@ questions:
   - id: gha-use-017
     difficulty: 3
     type: single
-    question: "A workflow uses this YAML: `defaults: &shared {runs-on: ubuntu-latest, timeout-minutes: 10}` in job `a`, and `test: *shared` as job `b`. What does job `b` get?"
+    question: "In a workflow, job `a` has `env: &shared {REGION: eu-west-1, LOG_LEVEL: debug}` and job `b` has `env: *shared`. What does job `b` get?"
     options:
       - id: a
-        text: "The same `runs-on` and `timeout-minutes` values as the anchored mapping"
+        text: "The same `REGION` and `LOG_LEVEL` environment variables as job `a`"
       - id: b
         text: "An empty job, because aliases only work for strings"
         why: "Aliases can repeat any YAML node, including whole mappings."
@@ -436,8 +440,8 @@ questions:
     answer: [a]
     explanation: |
       An alias (`*shared`) repeats the content of the node marked with the anchor
-      (`&shared`). When you read a workflow, expand the aliases in your head: job `b`
-      is a copy of the mapping with `runs-on` and `timeout-minutes`.
+      (`&shared`). When you read a workflow, expand the aliases in your head: the
+      `env` of job `b` is a copy of the mapping with `REGION` and `LOG_LEVEL`.
     docs:
       - https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
     glossary: [gha-yaml-anchor]

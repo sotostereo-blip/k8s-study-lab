@@ -49,7 +49,7 @@ questions:
       `netplan try` applies it and rolls back if you lose the connection.
     docs:
       - https://netplan.readthedocs.io/en/stable/netplan-yaml/
-      - https://documentation.ubuntu.com/server/explanation/networking/configuring-networks/
+      - https://ubuntu.com/server/docs/explanation/networking/configuring-networks/
     glossary: [lx-netplan]
 
   - id: lfcs-net-003
@@ -76,7 +76,7 @@ questions:
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man1/resolvectl.1.html
       - https://manpages.ubuntu.com/manpages/noble/man5/resolv.conf.5.html
-    glossary: [coredns]
+    glossary: [lx-nsswitch, dns]
 
   - id: lfcs-net-004
     difficulty: 2
@@ -103,7 +103,7 @@ questions:
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man5/nsswitch.conf.5.html
       - https://manpages.ubuntu.com/manpages/noble/man1/getent.1.html
-    glossary: [lx-nsswitch, lx-hostname]
+    glossary: [lx-nsswitch, lx-hostname, dns]
 
   - id: lfcs-net-005
     difficulty: 1
@@ -249,11 +249,12 @@ questions:
         text: "`systemd-timesyncd`"
     answer: [d]
     explanation: |
-      Ubuntu uses `systemd-timesyncd`, a simple SNTP client. `timedatectl` shows if the clock is
-      synchronized; `timedatectl timesync-status` shows the server. If you install `chrony`
-      (a full NTP client and server), it replaces timesyncd.
+      Ubuntu 24.04 uses `systemd-timesyncd`, a simple SNTP client. `timedatectl` shows if the
+      clock is synchronized; `timedatectl timesync-status` shows the server. If you install
+      `chrony` (a full NTP client and server), it replaces timesyncd. Since Ubuntu 25.10, new
+      installs use `chrony` by default, so check which one runs on your system.
     docs:
-      - https://documentation.ubuntu.com/server/explanation/networking/about-time-synchronisation/
+      - https://ubuntu.com/server/docs/explanation/networking/about-time-synchronisation/
       - https://www.freedesktop.org/software/systemd/man/latest/timedatectl.html
     glossary: [lx-ntp]
 
@@ -357,7 +358,7 @@ questions:
       `systemctl daemon-reload`; then `systemctl restart ssh.socket` applies the new port.
       Always test with `sshd -t` first.
     docs:
-      - https://documentation.ubuntu.com/server/how-to/security/openssh-server/
+      - https://ubuntu.com/server/docs/how-to/security/openssh-server/
       - https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
     glossary: [lx-ssh, lx-socket-activation]
 
@@ -410,7 +411,7 @@ questions:
       `ufw allow 22/tcp` first, then `ufw enable` and `ufw status verbose`.
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man8/ufw.8.html
-      - https://documentation.ubuntu.com/server/how-to/security/firewalls/
+      - https://ubuntu.com/server/docs/how-to/security/firewalls/
     glossary: [lx-ufw]
 
   - id: lfcs-net-017

@@ -44,4 +44,4 @@ auto_solution: |
 docs:
   - https://manpages.ubuntu.com/manpages/noble/man1/ssh-keygen.1.html
   - https://manpages.ubuntu.com/manpages/noble/man1/ssh-copy-id.1.html
-  - https://documentation.ubuntu.com/server/how-to/security/openssh-server/
+  - https://ubuntu.com/server/docs/how-to/security/openssh-server/

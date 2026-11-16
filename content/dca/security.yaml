@@ -20,8 +20,11 @@ questions:
   explanation: |
     With `DOCKER_CONTENT_TRUST=1`, `docker pull`, `run`, `build` and `push` work only with signed
     tags (Notary). Push then signs the tag. You can also use `--disable-content-trust` per command.
+    Note: Docker is retiring DCT. The Notary v1 service at `notary.docker.io` shuts down on
+    8 December 2026; Docker recommends Sigstore/Cosign or Notation for new image signing.
   docs:
   - https://docs.docker.com/engine/security/trust/
+  - https://docs.docker.com/retired/#docker-content-trust-dct
   glossary: [content-trust, image-signing]
 
 - id: dca-sec-002
@@ -44,6 +47,8 @@ questions:
   explanation: |
     `docker trust sign` signs a tag and pushes it if needed. The first time, it creates a root key
     and a repository key. `docker trust inspect --pretty` shows the signers of a repository.
+    DCT is being retired (Notary v1 on Docker Hub shuts down on 8 December 2026); new projects
+    should sign images with Sigstore/Cosign or Notation.
   docs:
   - https://docs.docker.com/engine/security/trust/
   - https://docs.docker.com/reference/cli/docker/trust/sign/

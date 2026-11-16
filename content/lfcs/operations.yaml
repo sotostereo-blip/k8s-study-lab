@@ -305,7 +305,7 @@ questions:
       repository.
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man5/sources.list.5.html
-      - https://documentation.ubuntu.com/server/explanation/software/third-party-repository-usage/
+      - https://ubuntu.com/server/docs/explanation/software/third-party-repository-usage/
     glossary: [lx-apt]
 
   - id: lfcs-ops-013

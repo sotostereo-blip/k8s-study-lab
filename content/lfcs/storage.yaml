@@ -14,8 +14,8 @@ questions:
       - id: c
         text: "`pvcreate /dev/sdb`, then `vgcreate`, then `lvcreate`"
       - id: d
-        text: "`vgcreate /dev/sdb`, then `lvcreate`; `pvcreate` is not needed"
-        why: "Recent `vgcreate` can initialise disks itself, but the LVM layers stay the same: PV, then VG, then LV."
+        text: "`vgcreate vgdata`, then `lvcreate`, then `pvcreate /dev/sdb`"
+        why: "A volume group is made of physical volumes, so `vgcreate` needs at least one device. The PV must exist first."
     answer: [c]
     explanation: |
       LVM has three layers. A physical volume (PV) is a disk or partition: `pvcreate /dev/sdb`.
@@ -24,7 +24,7 @@ questions:
       `/dev/vgdata/lvweb` and mount it.
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man8/lvm.8.html
-      - https://documentation.ubuntu.com/server/explanation/storage/about-lvm/
+      - https://ubuntu.com/server/docs/explanation/storage/about-lvm/
     glossary: [lx-lvm]
 
   - id: lfcs-stor-002
@@ -90,13 +90,15 @@ questions:
         text: "Unmount it and run `resize2fs` with the new size"
         why: "`resize2fs` is for ext2/3/4 only. It does not understand XFS."
       - id: c
-        text: "XFS cannot shrink; back up, create a smaller one and restore"
+        text: "XFS has no normal way to shrink; back up, create a smaller one and restore"
       - id: d
         text: "Run `xfs_growfs -D` with a smaller size while it is mounted"
-        why: "`xfs_growfs` can only grow a filesystem. A smaller size is refused."
+        why: "Shrinking with `xfs_growfs` is only a very limited, experimental feature (it can remove free space at the end). It is not a safe way to make XFS smaller."
     answer: [c]
     explanation: |
-      XFS supports growing (`xfs_growfs`, online) but not shrinking. To make it smaller, back up
+      XFS supports growing (`xfs_growfs`, online). Shrinking is not supported for normal use:
+      newer versions can only remove a little free space at the end, as an experimental
+      feature. To make it smaller, back up
       the data (for example `xfsdump` or `tar`), recreate a smaller LV and filesystem, and
       restore. ext4 can shrink, but only when it is unmounted.
     docs:
@@ -199,7 +201,10 @@ questions:
     answer: [c]
     explanation: |
       Create the file, allow only root to read it, write the swap signature with `mkswap`, and
-      activate it with `swapon`. For boot, add `/swapfile none swap sw 0 0` to `/etc/fstab`.
+      activate it with `swapon`. `fallocate` works on ext4 (Ubuntu creates its own `/swap.img`
+      this way); on filesystems where `swapon` refuses the file, create it with
+      `dd if=/dev/zero of=/swapfile bs=1M count=2048`. For boot, add
+      `/swapfile none swap sw 0 0` to `/etc/fstab`.
       `swapon --show` and `free -h` show active swap.
     docs:
       - https://manpages.ubuntu.com/manpages/noble/man8/mkswap.8.html
@@ -229,7 +234,7 @@ questions:
       client needs the package `nfs-common`. On the server, exports are listed in `/etc/exports`
       and applied with `exportfs -ra`.
     docs:
-      - https://documentation.ubuntu.com/server/how-to/networking/install-nfs/
+      - https://ubuntu.com/server/docs/how-to/networking/install-nfs/
       - https://manpages.ubuntu.com/manpages/noble/man5/nfs.5.html
     glossary: [lx-nfs, lx-fstab]
 

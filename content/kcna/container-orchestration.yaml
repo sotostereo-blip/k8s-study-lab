@@ -22,7 +22,7 @@ questions:
       CNI is for Pod networking and CSI is for storage. OCI defines standards
       for image formats and runtimes, but it is not the API the kubelet calls.
     docs:
-      - https://kubernetes.io/docs/concepts/architecture/cri/
+      - https://kubernetes.io/docs/concepts/containers/cri/
     glossary: [cri, kubelet, container-runtime]
 
   - id: kcna-orch-002
@@ -47,7 +47,7 @@ questions:
       the container and restarts it according to the restart policy. Removing
       a Pod from Service endpoints is what happens when a readiness probe fails.
     docs:
-      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+      - https://kubernetes.io/docs/concepts/workloads/pods/probes/
     glossary: [probe, kubelet]
 
   - id: kcna-orch-003
@@ -514,7 +514,7 @@ questions:
       readiness probe does not restart anything; that is the job of the liveness
       probe.
     docs:
-      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+      - https://kubernetes.io/docs/concepts/workloads/pods/probes/
     glossary: [probe, endpointslice]
 
   - id: kcna-orch-021
@@ -540,7 +540,7 @@ questions:
       readiness checks are disabled. Once it succeeds, the other probes take
       over.
     docs:
-      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+      - https://kubernetes.io/docs/concepts/workloads/pods/probes/
     glossary: [probe]
 
   - id: kcna-orch-022
@@ -772,7 +772,7 @@ questions:
       The HPA compares current usage with the request. It also needs a metrics
       source, normally metrics-server, to read CPU and memory usage.
     docs:
-      - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+      - https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
     glossary: [hpa, request]
 
   - id: kcna-orch-031
@@ -1084,5 +1084,5 @@ questions:
       liveness probe makes the kubelet restart the container. The third type, the
       startup probe, delays the other checks until the app has started.
     docs:
-      - https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+      - https://kubernetes.io/docs/concepts/workloads/pods/probes/
     glossary: [probe]

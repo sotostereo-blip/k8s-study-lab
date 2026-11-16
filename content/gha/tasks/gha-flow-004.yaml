@@ -80,6 +80,6 @@ solution: |
   lab-wait artifact-pass ".head_sha==\"$(git rev-parse HEAD)\""
   gapi repos/student/artifact-pass/actions/artifacts | jq '.artifacts[] | {id, name}'
 docs:
-  - https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow
+  - https://docs.github.com/en/actions/tutorials/store-and-share-data
   - https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
   - https://docs.gitea.com/usage/actions/comparison

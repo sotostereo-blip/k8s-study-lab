@@ -8,6 +8,7 @@ Spanish but all study content must be in **simple, clear English**.
 ## Commands
 - Validate content: `python scripts/validate_content.py`
 - Exam facts age: `python scripts/check_facts.py` (`--online` also opens the official pages)
+- Docs links: `python scripts/check_links.py [--only <folder>]` (every `docs`/`url` link must answer 200)
 - Backend tests: `cd backend && pytest -q`
 - Run backend: `cd backend && uvicorn app.main:app --reload`
 - Run frontend: `cd frontend && npm run dev` (proxies `/api` to :8000)

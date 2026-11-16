@@ -127,7 +127,7 @@ questions:
       confidentiality and privacy. A Type II report checks that controls
       worked over a period of time, not just on one day.
     docs:
-      - https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2
+      - https://www.aicpa-cima.com/resources/landing/system-and-organization-controls-soc-suite-of-services
     glossary: [soc2]
 
   - id: kcsa-compliance-006

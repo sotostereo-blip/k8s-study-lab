@@ -36,15 +36,16 @@ questions:
         why: "`steps` is the key that holds the list of steps inside `runs`. The value of `using` is `composite`."
       - id: c
         text: "`node24`"
-        why: "`node24` (or `node20`) makes a JavaScript action that runs a file with Node.js."
+        why: "`node24` makes a JavaScript action that runs a file with Node.js."
       - id: d
         text: "`docker`"
         why: "`docker` makes a Docker container action that runs in a container."
     answer: [a]
     explanation: |
       The three action types are chosen with `runs.using`: `composite` for composite
-      actions, `node20`/`node24` for JavaScript actions, and `docker` for Docker
-      container actions.
+      actions, `node24` for JavaScript actions, and `docker` for Docker container
+      actions. Node 20 was removed from GitHub Actions runners in September 2026, so
+      actions that still say `node20` should move to `node24`.
     docs:
       - https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
       - https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions
@@ -398,7 +399,7 @@ questions:
       changed to point to malicious code.
     docs:
       - https://docs.github.com/en/actions/how-tos/create-and-publish-actions/using-immutable-releases-and-tags-to-manage-your-actions-releases
-      - https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases
+      - https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases
     glossary: [gha-immutable-release]
 
   - id: gha-act-017

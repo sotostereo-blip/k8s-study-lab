@@ -24,7 +24,7 @@ questions:
       control plane. Threat modeling focuses on these points because attacks
       usually cross them.
     docs:
-      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/
       - https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/
     glossary: [trust-boundary, threat-model]
 

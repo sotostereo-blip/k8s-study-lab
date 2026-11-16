@@ -383,7 +383,7 @@ questions:
       and rolling back to the previous tag gives you the previous code. A common
       practice is to tag images with a version or the Git commit SHA.
     docs:
-      - https://kubernetes.io/docs/concepts/configuration/overview/#container-images
+      - https://kubernetes.io/docs/concepts/containers/images/
     glossary: [image]
 
   - id: kcna-deliv-016
@@ -410,7 +410,7 @@ questions:
       value from a vault or cloud secret manager.
     docs:
       - https://external-secrets.io/
-      - https://github.com/bitnami-labs/sealed-secrets
+      - https://github.com/bitnami/sealed-secrets
     glossary: [secret, gitops]
 
   - id: kcna-deliv-017
@@ -437,7 +437,7 @@ questions:
       is a CNCF project that standardizes the feature flag API.
     docs:
       - https://openfeature.dev/
-    glossary: []
+    glossary: [feature-flag]
 
   - id: kcna-deliv-018
     difficulty: 2
@@ -455,7 +455,7 @@ questions:
         why: "Helm can install releases into any Namespace you choose. A chart repository lives outside the cluster and stores chart packages."
       - id: d
         text: "The Secret where Helm keeps the history of each release"
-        why: "Helm 3 does keep release history in Secrets by default, but that is release storage. A chart repository is where packaged charts are shared."
+        why: "Helm (since version 3) does keep release history in Secrets by default, but that is release storage. A chart repository is where packaged charts are shared."
     answer: [b]
     explanation: |
       You add repositories with helm repo add and search them with helm search.

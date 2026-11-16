@@ -358,7 +358,7 @@ questions:
       `update-ca-certificates`.
     docs:
       - https://docs.openssl.org/3.0/man1/openssl-req/
-      - https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store/
+      - https://ubuntu.com/server/docs/how-to/security/install-a-root-ca-certificate-in-the-trust-store/
     glossary: [lx-csr, certificate-authority, tls]
 
   - id: lfcs-ess-015

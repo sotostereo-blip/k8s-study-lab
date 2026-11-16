@@ -43,5 +43,5 @@ solution: |
   # -size +1M means "more than 1 MiB" (sizes are rounded up to whole MiB, so 500K is not +1M).
   # -mtime +30 means "modified more than 30 days ago".
 docs:
-  - https://www.gnu.org/software/findutils/manual/html_mono/find.html
+  - https://www.gnu.org/software/findutils/manual/find.html
   - https://manpages.ubuntu.com/manpages/noble/man1/find.1.html

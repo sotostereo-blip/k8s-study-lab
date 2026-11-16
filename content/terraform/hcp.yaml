@@ -23,7 +23,7 @@ questions:
       status check on the PR. Merging to the connected branch starts a normal
       run that can be applied.
     docs:
-      - https://developer.hashicorp.com/terraform/cloud-docs/run/ui
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/run/ui
     glossary: [tf-vcs-workflow, tf-speculative-plan, tf-hcp-workspace]
 
   - id: terraform-hcp-002
@@ -49,8 +49,8 @@ questions:
       variables and state. The output streams back to your terminal, so it
       feels like a local run.
     docs:
-      - https://developer.hashicorp.com/terraform/cloud-docs/run/cli
-      - https://developer.hashicorp.com/terraform/cloud-docs/run/remote-operations
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/run/cli
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/run/remote-operations
     glossary: [tf-remote-operations, tf-cloud-block]
 
   - id: terraform-hcp-003
@@ -75,7 +75,7 @@ questions:
       through the HCP Terraform API and then creates runs. It is used for
       custom pipelines that need full control of when and what to run.
     docs:
-      - https://developer.hashicorp.com/terraform/cloud-docs/run/api
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/run/api
     glossary: [tf-hcp-terraform]
 
   - id: terraform-hcp-004
@@ -101,7 +101,7 @@ questions:
       versions). Workspace variables are not used in local runs.
     docs:
       - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/settings
-      - https://developer.hashicorp.com/terraform/cloud-docs/run/remote-operations
+      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/run/remote-operations
     glossary: [tf-remote-operations, tf-hcp-workspace]
 
   - id: terraform-hcp-005
@@ -192,7 +192,7 @@ questions:
         why: "An advisory policy only shows a warning. The run continues without anyone needing to override it."
       - id: b
         text: "hard-mandatory"
-        why: "A hard-mandatory failure cannot be overridden. You must fix the code or the policy."
+        why: "A hard-mandatory failure blocks the apply until someone fixes the code or the policy. The policy level itself gives no override option."
       - id: c
         text: "soft-mandatory"
       - id: d
@@ -202,9 +202,11 @@ questions:
     explanation: |
       Sentinel has three enforcement levels. Advisory failures only warn.
       Soft-mandatory failures stop the run unless an authorized user overrides
-      them. Hard-mandatory failures always stop the run.
+      them. Hard-mandatory failures stop the run until the problem is fixed.
+      (An admin can also allow overrides for a whole policy set, but that is a
+      policy set setting, not an enforcement level.)
     docs:
-      - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/sentinel
+      - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/manage-policy-sets
       - https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement
     glossary: [tf-sentinel, tf-policy-set]
 
@@ -313,8 +315,8 @@ questions:
       a workspace variable overrides a normal variable set. A priority variable
       set overrides more specific values.
     docs:
-      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/variables
-      - https://developer.hashicorp.com/terraform/cloud-docs/workspaces/variables/managing-variables
+      - https://developer.hashicorp.com/terraform/cloud-docs/variables
+      - https://developer.hashicorp.com/terraform/cloud-docs/variables/managing-variables
     glossary: [tf-variable-set, tf-hcp-workspace]
 
   - id: terraform-hcp-013
@@ -419,7 +421,7 @@ questions:
       are logged in, and run `terraform init`. Terraform detects the existing
       local state and asks whether to migrate it to the HCP Terraform workspace.
     docs:
-      - https://developer.hashicorp.com/terraform/cli/cloud/migrating
+      - https://developer.hashicorp.com/terraform/cli/cloud/settings
       - https://developer.hashicorp.com/terraform/cloud-docs/migrate
     glossary: [tf-cloud-block, tf-hcp-terraform]
 

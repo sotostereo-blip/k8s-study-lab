@@ -45,6 +45,7 @@ questions:
     explanation: |
       A duration in brackets turns a selector into a **range vector selector**. The result has,
       for every matching series, all samples whose timestamps are inside the last 5 minutes.
+      Since Prometheus 3.0 the range is left-open: a sample exactly 5 minutes old is not included.
       Functions such as `rate()`, `increase()` and `avg_over_time()` take a range vector.
     docs:
       - https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors

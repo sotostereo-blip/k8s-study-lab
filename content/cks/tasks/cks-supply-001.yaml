@@ -53,4 +53,4 @@ auto_solution: |
   done
 docs:
   - https://kubernetes.io/docs/concepts/security/security-checklist/
-  - https://trivy.dev/latest/docs/target/container_image/
+  - https://trivy.dev/docs/latest/target/container_image/

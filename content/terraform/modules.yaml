@@ -23,7 +23,7 @@ questions:
       directly from that folder and does not download them, so local modules do not need
       a version. They are a good way to split one large configuration into parts.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
     glossary: [tf-module, tf-module-source]
 
   - id: terraform-mod-002
@@ -48,7 +48,7 @@ questions:
       `terraform-aws-modules/vpc/aws`. Private registries add a hostname in front, such as
       `app.terraform.io/<ORG>/<NAME>/<PROVIDER>` for HCP Terraform.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
       - https://developer.hashicorp.com/terraform/registry/modules/use
     glossary: [tf-module-source, tf-registry]
 
@@ -74,7 +74,7 @@ questions:
       `git::https://example.com/network.git?ref=v1.4.0`. Pinning to a tag or commit keeps
       every run on the same module code.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
     glossary: [tf-module-source]
 
   - id: terraform-mod-004
@@ -99,7 +99,7 @@ questions:
       `.terraform/modules` folder, together with providers and backend setup. Run it again
       every time you add a module or change its source or version.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
       - https://developer.hashicorp.com/terraform/language/block/module
     glossary: [tf-module, tf-registry]
 
@@ -125,7 +125,7 @@ questions:
       a subdirectory inside it. Terraform downloads the whole repository at the given ref
       and then uses only the module in `modules/vpc`.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
     glossary: [tf-module-source]
 
   # 5b - variable scope
@@ -389,7 +389,7 @@ questions:
       public Terraform Registry or a private registry such as HCP Terraform. Other source
       types have their own ways to choose a revision, or none at all.
     docs:
-      - https://developer.hashicorp.com/terraform/language/modules/sources
+      - https://developer.hashicorp.com/terraform/language/block/module#source
       - https://developer.hashicorp.com/terraform/registry/modules/use
     glossary: [tf-registry, tf-module-source, tf-version-constraint]
 

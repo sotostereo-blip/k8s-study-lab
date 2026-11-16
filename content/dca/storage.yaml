@@ -277,7 +277,7 @@ questions:
 - id: dca-stor-012
   difficulty: 1
   type: single
-  question: "Which command removes images, stopped containers, unused networks and the dangling build cache in one step?"
+  question: "Which command removes stopped containers, unused networks, dangling images and the dangling build cache in one step?"
   options:
   - id: a
     text: "`docker volume prune --all`"

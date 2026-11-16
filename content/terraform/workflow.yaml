@@ -361,7 +361,7 @@ questions:
       shows `+/-`.
     docs:
       - https://developer.hashicorp.com/terraform/cli/commands/plan
-      - https://developer.hashicorp.com/terraform/language/resources/behavior
+      - https://developer.hashicorp.com/terraform/language/resources
     glossary: [tf-plan, tf-resource]
 
   - id: terraform-flow-015

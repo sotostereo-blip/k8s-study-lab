@@ -200,7 +200,7 @@ questions:
       impact on users over time.
     follow_ups:
       - What are the four DORA metrics?
-    docs: [https://dora.dev/guides/dora-metrics-four-keys/]
+    docs: [https://dora.dev/guides/dora-metrics/]
     glossary: [slo]
   - id: iv-inc-009
     level: mid

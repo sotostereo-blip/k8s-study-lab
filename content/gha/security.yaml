@@ -84,7 +84,7 @@ questions:
     question: "Which statements about `GITHUB_TOKEN` are true? (Choose two.)"
     options:
       - id: a
-        text: "GitHub creates it for each job, and it expires when the job ends (or after 24 hours at most)"
+        text: "GitHub creates it for each job, and it expires when the job ends or reaches its maximum lifetime"
       - id: b
         text: "Its permissions are limited to the repository that contains the workflow"
       - id: c
@@ -96,7 +96,9 @@ questions:
     answer: [a, b]
     explanation: |
       At the start of each job, GitHub makes a short-lived installation access token
-      for the repository. It expires when the job finishes or after 24 hours. For
+      for the repository. It expires when the job finishes or at its maximum
+      lifetime: 6 hours on GitHub-hosted runners (the job time limit) and 24 hours
+      on self-hosted runners. For
       access to other repositories, use a GitHub App token or a fine-grained personal
       access token.
     docs:

@@ -23,7 +23,7 @@ questions:
       cloud firewall) cannot be fully fixed by good security at an inner layer.
       This is a form of defense in depth.
     docs:
-      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/
       - https://kubernetes.io/docs/concepts/security/cloud-native-security/
     glossary: [four-cs, defense-in-depth]
 
@@ -50,7 +50,7 @@ questions:
       dependency updates are Code-layer controls. This layer is the one the
       application team controls most directly.
     docs:
-      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/
     glossary: [four-cs]
 
   - id: kcsa-overview-003
@@ -183,7 +183,7 @@ questions:
       cover which stage of an attack.
     docs:
       - https://attack.mitre.org/
-      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/
     glossary: [mitre-attack, threat-model]
 
   - id: kcsa-overview-008
@@ -360,10 +360,13 @@ questions:
         why: "Signature checks need a policy engine or a dedicated admission webhook. AlwaysPullImages does not check signatures."
     answer: [b]
     explanation: |
-      Once a private image is on a node, any Pod on that node could use it with
-      `imagePullPolicy: IfNotPresent`, even without pull credentials.
-      AlwaysPullImages sets the policy to Always, so the registry checks the
-      credentials for every Pod.
+      In older clusters, once a private image was on a node, any Pod on that
+      node could use it with `imagePullPolicy: IfNotPresent`, even without pull
+      credentials. AlwaysPullImages sets the policy to Always, so the registry
+      checks the credentials for every Pod. Since v1.35 the kubelet also checks
+      pull credentials for cached images by default (a beta feature), but
+      images pulled outside the kubelet are not checked by default, so
+      AlwaysPullImages is still the strictest choice.
     docs:
       - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
       - https://kubernetes.io/docs/concepts/containers/images/
@@ -445,5 +448,5 @@ questions:
       etcd encryption are Cluster controls, and VM firewalls are Cloud
       controls.
     docs:
-      - https://kubernetes.io/docs/concepts/security/overview/
+      - https://kubernetes.io/docs/concepts/security/
     glossary: [four-cs, cve, ci-cd]

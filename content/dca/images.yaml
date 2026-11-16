@@ -108,7 +108,7 @@ questions:
     text: "Put `apt-get update` and `apt-get install` in two separate `RUN` instructions"
     why: "Separate RUN lines can reuse an old cached `apt-get update` and add a layer. Docker recommends one RUN with both."
   - id: b
-    text: "Use `ADD` with a URL instead of `COPY` for local files"
+    text: "Use `ADD` instead of `COPY` to copy local files"
     why: "ADD has no benefit for local files and can break caching. Use COPY for local files."
   - id: c
     text: "Add a `.dockerignore` file that leaves out `.git`, logs and local builds"
@@ -379,7 +379,7 @@ questions:
 - id: dca-img-016
   difficulty: 2
   type: single
-  question: "You run a private registry with `docker run -d -p 5000:5000 --name registry registry:2`. Which push works from the same host without extra settings?"
+  question: "You run a private registry with `docker run -d -p 5000:5000 --name registry registry:3`. Which push works from the same host without extra settings?"
   options:
   - id: a
     text: "`docker push 192.168.1.10:5000/app:1` from another host"
@@ -465,7 +465,7 @@ questions:
     why: "`latest` is just a normal tag that moves to whatever was pushed last."
   - id: d
     text: "By the image ID shown in `docker image ls`"
-    why: "The local image ID is not how registries address content. Pull by manifest digest."
+    why: "An image ID is a local identifier. Other hosts cannot pull by it; use `name@sha256:<digest>`."
   answer: [a]
   explanation: |
     A digest is a hash of the image manifest, so it always means the same content. Tags are
@@ -477,7 +477,7 @@ questions:
 - id: dca-img-020
   difficulty: 3
   type: single
-  question: "You deleted a manifest from a private `registry:2` with the HTTP API, but disk use did not go down. Why?"
+  question: "You deleted a manifest from a private `registry:3` with the HTTP API, but disk use did not go down. Why?"
   options:
   - id: a
     text: "The registry stores images in the client's /var/lib/docker"

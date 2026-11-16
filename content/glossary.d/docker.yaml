@@ -271,8 +271,13 @@ terms:
 - id: content-trust
   term: "Docker Content Trust"
   match: [Docker Content Trust, content trust, DCT, Notary]
-  definition: "Image signing in Docker based on Notary. With DOCKER_CONTENT_TRUST=1 the client only pulls and runs signed tags."
-  es: "Firma de imágenes en Docker basada en Notary."
+  definition: "Image signing in Docker based on Notary v1. With DOCKER_CONTENT_TRUST=1 the client only pulls and runs signed tags. Docker is retiring it (Notary v1 at notary.docker.io shuts down in December 2026) and recommends Sigstore/Cosign or Notation."
+  es: "Firma de imágenes en Docker basada en Notary v1; en retiro, reemplazada por Sigstore/Cosign o Notation."
+- id: docker-embedded-dns
+  term: "Docker embedded DNS"
+  match: [embedded DNS, embedded DNS server, 127.0.0.11]
+  definition: "The DNS server inside Docker (at 127.0.0.11 in each container) that resolves container and service names on user-defined networks."
+  es: "Servidor DNS interno de Docker que resuelve nombres de contenedores y servicios."
 - id: mke
   term: "Mirantis Kubernetes Engine"
   match: [Mirantis Kubernetes Engine, MKE, UCP, Universal Control Plane]

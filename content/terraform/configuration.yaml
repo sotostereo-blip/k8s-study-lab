@@ -520,7 +520,7 @@ questions:
     docs:
       - https://developer.hashicorp.com/terraform/language/functions/lookup
       - https://developer.hashicorp.com/terraform/language/functions
-    glossary: []
+    glossary: [tf-function]
 
   # 4f - dependencies
   - id: terraform-config-021

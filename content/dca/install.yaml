@@ -281,24 +281,25 @@ questions:
 - id: dca-inst-012
   difficulty: 2
   type: single
-  question: "What is the default storage driver for Docker Engine on current Linux distributions?"
+  question: "Which classic storage driver is the default and recommended one on current Linux distributions?"
   options:
   - id: a
     text: "`vfs`"
     why: "vfs does no copy-on-write. It is slow and meant for testing only."
   - id: b
     text: "`aufs`"
-    why: "aufs was removed too (Engine 24). It was the default only on old Ubuntu versions."
+    why: "aufs was the default only on old Ubuntu versions. It was removed in Docker Engine 24."
   - id: c
     text: "`overlay2`"
   - id: d
     text: "`devicemapper`"
-    why: "devicemapper was deprecated and removed in Docker Engine 25."
+    why: "devicemapper was deprecated long ago (Engine 18.09) and removed in Docker Engine 25."
   answer: [c]
   explanation: |
-    overlay2 is the preferred driver on all supported Linux distributions. New installs of Engine
-    29 use the containerd image store with the overlayfs snapshotter, which works the same way.
-    `docker info` shows the active driver.
+    overlay2 is the default classic storage driver on all supported Linux distributions. Since
+    Engine 29, fresh installs use the containerd image store instead, with the `overlayfs`
+    snapshotter (it uses the same OverlayFS technique). Upgraded hosts keep overlay2 until you
+    migrate. `docker info` shows what is active.
   docs:
   - https://docs.docker.com/engine/storage/drivers/select-storage-driver/
   - https://docs.docker.com/engine/storage/containerd/

@@ -169,15 +169,17 @@ questions:
         why: "promtool checks configs. It has no `--apply` option and cannot change a running server."
       - id: d
         text: "Wait one scrape interval, Prometheus reads the file again"
-        why: "Prometheus does not watch `prometheus.yml`. (It does watch file_sd target files.)"
+        why: "By default Prometheus does not watch `prometheus.yml`. Only with the optional `--config.auto-reload` flag does it check the file for changes (every 30s by default), and that is not linked to the scrape interval."
     answer: [a]
     explanation: |
       Prometheus reloads its configuration (and rule files) on `SIGHUP`, or on a POST to
       `/-/reload` when the lifecycle API is enabled with `--web.enable-lifecycle`. If the new
-      file is invalid, the reload fails and the old configuration stays active.
+      file is invalid, the reload fails and the old configuration stays active. Newer versions
+      also have an optional `--config.auto-reload` flag that reloads the file when it changes.
     docs:
       - https://prometheus.io/docs/prometheus/latest/configuration/configuration/
       - https://prometheus.io/docs/prometheus/latest/management_api/#reload
+      - https://prometheus.io/docs/prometheus/latest/command-line/prometheus/
     glossary: [prometheus]
 
   - id: pca-fund-008
@@ -314,22 +316,25 @@ questions:
     options:
       - id: a
         text: "30 days; set `retention` in the `global` section of prometheus.yml"
-        why: "Retention is not set in the global section of prometheus.yml, and 30 days is not the default."
+        why: "30 days is not the default, and retention is not part of the `global` section. It is set under `storage.tsdb.retention`."
       - id: b
-        text: "15 days; use the flag `--storage.tsdb.retention.time`"
+        text: "15 days; set `storage.tsdb.retention.time` in prometheus.yml"
       - id: c
         text: "Unlimited; data is kept until the disk is full"
-        why: "There is a default time limit. A size limit can be added with `--storage.tsdb.retention.size`."
+        why: "There is a default time limit. A size limit can be added with `storage.tsdb.retention.size`."
       - id: d
         text: "7 days; use the flag `--storage.local.retention`"
         why: "`--storage.local.*` flags were for the old Prometheus 1.x storage."
     answer: [b]
     explanation: |
-      By default Prometheus keeps 15 days of data. Change it with
-      `--storage.tsdb.retention.time` (for example `30d`) or limit the size with
-      `--storage.tsdb.retention.size`. When both are set, the first limit reached wins.
+      By default Prometheus keeps 15 days of data. In current Prometheus 3.x versions you set
+      `retention.time` (for example `30d`) and `retention.size` in the `storage.tsdb` section of
+      prometheus.yml. The flags `--storage.tsdb.retention.time` and `--storage.tsdb.retention.size`
+      still work but are deprecated. When both a time and a size limit are set, the first limit
+      reached wins.
     docs:
       - https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
+      - https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tsdb
     glossary: [retention, tsdb]
 
   - id: pca-fund-014
@@ -434,7 +439,7 @@ questions:
       keeps a WAL but has no queryable TSDB, rules or alerts. It is used to forward data to a
       central or long-term storage system with less resource use.
     docs:
-      - https://prometheus.io/docs/prometheus/latest/feature_flags/
+      - https://prometheus.io/docs/prometheus/latest/prometheus_agent/
       - https://prometheus.io/docs/prometheus/latest/command-line/prometheus/
     glossary: [agent-mode, remote-write]
 

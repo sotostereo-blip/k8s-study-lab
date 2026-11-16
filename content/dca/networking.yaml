@@ -24,7 +24,7 @@ questions:
   docs:
   - https://github.com/moby/moby/blob/master/daemon/libnetwork/docs/design.md
   - https://docs.docker.com/engine/network/
-  glossary: [cnm, ipam, network-driver]
+  glossary: [cnm, ipam, network-driver, dns]
 
 - id: dca-net-002
   difficulty: 1
@@ -73,7 +73,7 @@ questions:
     `docker network create app-net` and run the containers with `--network app-net`.
   docs:
   - https://docs.docker.com/engine/network/drivers/bridge/#differences-between-user-defined-bridges-and-the-default-bridge
-  glossary: [bridge-network, coredns]
+  glossary: [bridge-network, docker-embedded-dns, dns]
 
 - id: dca-net-004
   difficulty: 2
@@ -218,7 +218,7 @@ questions:
   docs:
   - https://docs.docker.com/engine/network/#dns-services
   - https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file
-  glossary: [coredns, daemon-json]
+  glossary: [daemon-json, docker-embedded-dns, dns]
 
 - id: dca-net-010
   difficulty: 2
@@ -345,7 +345,7 @@ questions:
   docs:
   - https://docs.docker.com/reference/cli/docker/network/inspect/
   - https://docs.docker.com/reference/cli/docker/container/logs/
-  glossary: [bridge-network, logs]
+  glossary: [bridge-network, logs, dns]
 
 - id: dca-net-015
   difficulty: 2

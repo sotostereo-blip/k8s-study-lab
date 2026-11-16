@@ -28,7 +28,7 @@ task: |
   Write it as a **JavaScript action** (no npm packages needed):
 
   - `.github/actions/word-count/action.yml` with an input `text` (required), an output
-    `count`, and `runs.using: node20` (or `node24`) with `main: index.js`;
+    `count`, and `runs.using: node24` (Node 20 is no longer available on GitHub-hosted runners) with `main: index.js`;
   - `.github/actions/word-count/index.js` reads the input from the environment variable
     `INPUT_TEXT`, counts the words, appends `count=<number>` to the file in
     `process.env.GITHUB_OUTPUT`, and logs `Counted <number> words`.

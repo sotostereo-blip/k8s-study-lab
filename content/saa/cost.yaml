@@ -215,7 +215,7 @@ questions:
   - id: saa-cost-009
     difficulty: 2
     type: single
-    question: "A company must move 400 TB of files from its data center to Amazon S3 within 3 weeks. Its internet link is 100 Mbps and is already busy. Which solution is the MOST cost-effective?"
+    question: "A company that already uses AWS Snowball Edge must move 400 TB of files from its data center to Amazon S3 within 3 weeks. Its internet link is 100 Mbps and is already busy. Which solution is the MOST cost-effective?"
     options:
       - id: a
         text: "Order AWS Snowball Edge devices, copy the data, and ship them back to AWS"
@@ -233,8 +233,9 @@ questions:
       When the network is too slow for the data size, offline transfer is cheaper and
       faster. Snowball Edge devices are shipped to you, filled locally and returned to
       AWS, which imports the data into S3. The SAA-C03 guide still lists the Snow
-      Family, but AWS now limits new Snowball orders, so check availability in real
-      projects. For ongoing online sync over a good link, DataSync is the better tool.
+      Family, but Snowball Edge is no longer available to new customers. New customers
+      can use AWS Data Transfer Terminal for physical transfers instead. For ongoing
+      online sync over a good link, DataSync is the better tool.
     docs:
       - https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html
       - https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html
@@ -364,7 +365,7 @@ questions:
       types for EC2, Auto Scaling groups, EBS volumes, Lambda functions and more.
     docs:
       - https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html
-    glossary: [aws-ec2, aws-cost-tools]
+    glossary: [aws-ec2, aws-cost-tools, aws-inspector]
 
   - id: saa-cost-015
     difficulty: 2
@@ -729,7 +730,7 @@ questions:
       fees. A VPN is cheaper to start but uses internet rates for every GB.
     docs:
       - https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html
-      - https://aws.amazon.com/directconnect/pricing/
+      - https://aws.amazon.com/directconnect/pricing/pay-as-you-go/
     glossary: [aws-direct-connect, aws-vpn, aws-data-transfer]
 
   - id: saa-cost-029

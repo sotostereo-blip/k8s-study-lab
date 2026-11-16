@@ -1,5 +1,13 @@
 # Terraform glossary (HashiCorp Terraform Associate). Shown when you click a highlighted term.
 terms:
+- id: tf-function
+  term: Terraform function
+  match:
+  - built-in function
+  - built-in functions
+  - Terraform function
+  definition: A built-in expression like lookup(), join() or cidrsubnet() that transforms values. You cannot write your own functions in HCL.
+  es: Función incorporada de Terraform que transforma valores.
 - id: tf-provider
   term: Terraform provider
   match:

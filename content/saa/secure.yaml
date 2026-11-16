@@ -283,7 +283,7 @@ questions:
   - id: saa-sec-012
     difficulty: 2
     type: multiple
-    question: "A three-tier app has web servers behind an internet-facing ALB, and a MySQL database on Amazon RDS. The database must accept connections only from the web servers. Which security group rules meet these requirements? (Select TWO.)"
+    question: "A three-tier app has web servers behind an internet-facing ALB, and a MySQL database on Amazon RDS. Users must reach the app over HTTPS through the ALB, and the database must accept connections only from the web servers. Which security group rules meet these requirements? (Select TWO.)"
     options:
       - id: a
         text: "ALB security group: allow inbound TCP 443 from 0.0.0.0/0"
@@ -356,7 +356,7 @@ questions:
       resolves to these IPs, so calls stay inside the AWS network.
     docs:
       - https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html
-    glossary: [aws-vpc-endpoint, aws-secrets-manager, aws-lambda]
+    glossary: [aws-vpc-endpoint, aws-secrets-manager, aws-lambda, dns]
 
   - id: saa-sec-015
     difficulty: 3
@@ -431,7 +431,7 @@ questions:
       injection and cross-site scripting at layer 7.
     docs:
       - https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
-    glossary: [aws-waf, aws-alb]
+    glossary: [aws-waf, aws-alb, aws-inspector]
 
   - id: saa-sec-018
     difficulty: 2
@@ -481,7 +481,7 @@ questions:
       creates findings you can send to EventBridge for automated response.
     docs:
       - https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html
-    glossary: [aws-guardduty, aws-cloudtrail, aws-flow-logs]
+    glossary: [aws-guardduty, aws-cloudtrail, aws-flow-logs, dns]
 
   - id: saa-sec-020
     difficulty: 1
@@ -506,7 +506,7 @@ questions:
       are public or not encrypted.
     docs:
       - https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html
-    glossary: [aws-macie, aws-s3]
+    glossary: [aws-macie, aws-s3, aws-inspector]
 
   - id: saa-sec-021
     difficulty: 2
@@ -531,7 +531,7 @@ questions:
       and unintended network exposure.
     docs:
       - https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html
-    glossary: [aws-ec2, aws-ecr, aws-lambda]
+    glossary: [aws-ec2, aws-ecr, aws-lambda, aws-inspector]
 
   - id: saa-sec-022
     difficulty: 2

@@ -201,6 +201,6 @@ questions:
       (`passwd: files sss` in `/etc/nsswitch.conf`) and authentication to PAM. Its configuration
       is `/etc/sssd/sssd.conf` (mode 600). Check with `getent passwd <ldap-user>` and `id`.
     docs:
-      - https://documentation.ubuntu.com/server/how-to/sssd/with-ldap/
+      - https://ubuntu.com/server/docs/how-to/sssd/with-ldap/
       - https://sssd.io/docs/introduction.html
     glossary: [lx-ldap, lx-nsswitch, lx-pam]

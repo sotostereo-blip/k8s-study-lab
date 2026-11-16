@@ -113,7 +113,7 @@ questions:
         text: "`spec.destination` (server or name, namespace)"
       - id: c
         text: "`spec.template` (Pod template)"
-        why: "Pod templates belong to workloads like Deployments. An ApplicationSet has a `template`, but for Applications."
+        why: "Pod templates belong to workloads like Deployments. An ApplicationSet has a `template`, but it is a template for Applications."
       - id: d
         text: "`spec.selector` (label selector)"
         why: "Applications do not select objects with labels. They point to a source and a destination."
@@ -422,10 +422,10 @@ questions:
     answer: [a]
     explanation: |
       Hooks are set with `argocd.argoproj.io/hook`. `PreSync` runs before the manifests are applied,
-      `Sync` runs with them, `PostSync` after a healthy sync, `SyncFail` after a failed sync, and
-      `PostDelete` after the app is deleted.
+      `Sync` runs with them, `PostSync` after a healthy sync, `SyncFail` after a failed sync,
+      `PreDelete` before the app's resources are deleted, and `PostDelete` after the app is deleted.
     docs:
-      - https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
     glossary: [argo-resource-hook, job]
 
   - id: capa-cd-018
@@ -450,7 +450,7 @@ questions:
       set, `BeforeHookCreation` is used: the hook stays after it runs (so you can read its logs) and
       is replaced at the next sync.
     docs:
-      - https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
     glossary: [argo-resource-hook]
 
   - id: capa-cd-019
@@ -741,8 +741,8 @@ questions:
         text: "An owner reference to the namespace"
         why: "Applications live in the argocd namespace. Owner references are not used for this."
       - id: d
-        text: "The label `argocd.argoproj.io/instance`"
-        why: "This label tracks which app owns a resource. It does not start a cascade delete."
+        text: "The annotation `argocd.argoproj.io/tracking-id`"
+        why: "This annotation (the default tracking method since Argo CD 3.0) tells Argo CD which app owns a resource. It does not start a cascade delete."
     answer: [a]
     explanation: |
       With the `resources-finalizer.argocd.argoproj.io` finalizer, deleting an Application also
@@ -750,6 +750,7 @@ questions:
       `argocd app delete` does a cascade delete by default.
     docs:
       - https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/
+      - https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
     glossary: [argo-application]
 
   - id: capa-cd-031

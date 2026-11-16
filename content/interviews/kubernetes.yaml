@@ -184,7 +184,7 @@ questions:
       restarts at the same time and you make the outage worse.
     follow_ups:
       - What would you use as a readiness check for a web API?
-    docs: [https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/]
+    docs: [https://kubernetes.io/docs/concepts/workloads/pods/probes/]
     glossary: [probe, kubelet]
   - id: iv-kube-008
     level: mid

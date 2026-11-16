@@ -824,11 +824,13 @@ questions:
         why: "A PDB limits voluntary evictions of Pods. It does not stop new workflows from starting."
     answer: [a]
     explanation: |
-      Argo Workflows supports synchronization: a `mutex` allows one holder at a time, and a
-      `semaphore` (with a limit stored in a ConfigMap or the database) allows N holders. You can
-      set them on the workflow or on a template.
+      Argo Workflows supports synchronization: a mutex allows one holder at a time, and a
+      semaphore (with a limit stored in a ConfigMap or the database) allows N holders. You set
+      them under `synchronization` on the workflow or on a template, as lists: `mutexes` and
+      `semaphores` (the old single `mutex` and `semaphore` fields were removed in v4.0).
     docs:
       - https://argo-workflows.readthedocs.io/en/latest/synchronization/
+      - https://argo-workflows.readthedocs.io/en/latest/deprecations/
     glossary: [argo-workflows, configmap]
 
   - id: capa-wf-034

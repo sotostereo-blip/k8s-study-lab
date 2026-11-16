@@ -39,5 +39,5 @@ solution: |
   # In real AWS you would add: aws sns subscribe --topic-arn $TOPIC --protocol email --notification-endpoint you@example.com
   # The same metric can drive an Auto Scaling policy instead of (or as well as) an e-mail.
 docs:
-  - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html
+  - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Alarms.html
   - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/US_AlarmAtThresholdEC2.html

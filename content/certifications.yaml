@@ -159,7 +159,7 @@ certifications:
       notes:
         - Version 004 covers Terraform 1.12. Version 003 was retired in January 2026.
       checked: "2026-11"
-      url: https://developer.hashicorp.com/certifications/infrastructure-automation
+      url: https://developer.hashicorp.com/certifications/terraform-associate
   - id: lfcs
     name: Linux Foundation Certified System Administrator
     short: LFCS

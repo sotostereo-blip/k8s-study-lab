@@ -23,7 +23,7 @@ questions:
       limits is vertical scaling (VPA), and adding nodes is the job of a
       cluster autoscaler.
     docs:
-      - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+      - https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
     glossary: [hpa, replica, deployment]
 
   - id: kcna-arch-002
@@ -438,7 +438,7 @@ questions:
       one, which keeps environments consistent.
     docs:
       - https://github.com/cncf/toc/blob/main/DEFINITION.md
-    glossary: []
+    glossary: [immutable-infrastructure]
 
   - id: kcna-arch-018
     difficulty: 3

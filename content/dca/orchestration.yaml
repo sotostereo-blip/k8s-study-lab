@@ -631,7 +631,7 @@ questions:
   docs:
   - https://docs.docker.com/engine/network/
   - https://docs.docker.com/engine/network/drivers/macvlan/
-  glossary: [bridge-network, macvlan]
+  glossary: [bridge-network, macvlan, dns]
 
 - id: dca-orch-026
   difficulty: 1

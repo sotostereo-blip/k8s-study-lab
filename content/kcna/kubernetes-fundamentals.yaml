@@ -109,9 +109,9 @@ questions:
     options:
       - id: a
         text: "Secret values are encrypted with AES before they are stored in etcd."
-        why: "By default Secrets are only base64-encoded in etcd. Encryption (for example with AES) happens only if you configure encryption at rest."
+        why: "By default Secrets are stored unencrypted in etcd. Encryption (for example with AES) happens only if you configure encryption at rest."
       - id: b
-        text: "Secret values are only base64-encoded in etcd unless encryption at rest is set."
+        text: "Secret values are stored unencrypted in etcd unless encryption at rest is set."
       - id: c
         text: "Secrets can only be mounted as files and never used as environment variables."
         why: "Secrets can be mounted as files in a volume and also used as environment variables."
@@ -120,8 +120,8 @@ questions:
         why: "Secrets are stored in etcd like other API objects. The kubelet keeps mounted Secrets in memory (tmpfs) on the node, not on its disk."
     answer: [b]
     explanation: |
-      Base64 is an encoding, not encryption. By default Secret data is stored
-      unencrypted in etcd. You should enable encryption at rest, restrict
+      By default Secret data is stored unencrypted in etcd. In manifests the
+      values are base64-encoded, but base64 is an encoding, not encryption. You should enable encryption at rest, restrict
       access with RBAC, and limit who can create Pods in a namespace, because
       anyone who can create a Pod can read the Secrets it mounts.
     docs:
@@ -439,8 +439,8 @@ questions:
     answer: [c]
     explanation: |
       kube-proxy watches Services and EndpointSlices and programs rules (for
-      example with iptables, IPVS or nftables) so that a Service's virtual IP
-      forwards to a backend Pod. Pod IP addresses are assigned by the CNI plugin.
+      example with iptables or nftables; the IPVS mode is deprecated since
+      v1.35) so that a Service's virtual IP forwards to a backend Pod. Pod IP addresses are assigned by the CNI plugin.
     docs:
       - https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/
     glossary: [kube-proxy, service, cni]
@@ -1596,7 +1596,7 @@ questions:
     difficulty: 2
     type: single
     question: >-
-      Which component runs on every worker node? Choose the most complete answer.
+      Which components run on every worker node? Choose the most complete answer.
     options:
       - id: a
         text: "etcd, kube-apiserver and a container runtime"

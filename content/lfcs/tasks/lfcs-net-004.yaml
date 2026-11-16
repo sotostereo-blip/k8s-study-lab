@@ -48,4 +48,4 @@ auto_solution: |
   sleep 2
 docs:
   - https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
-  - https://documentation.ubuntu.com/server/how-to/security/openssh-server/
+  - https://ubuntu.com/server/docs/how-to/security/openssh-server/

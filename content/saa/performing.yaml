@@ -332,7 +332,7 @@ questions:
       and down, and runs jobs of any length.
     docs:
       - https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html
-    glossary: [aws-ec2, aws-spot]
+    glossary: [aws-ec2, aws-spot, aws-batch]
 
   - id: saa-perf-014
     difficulty: 1
@@ -634,7 +634,7 @@ questions:
     answer: [b]
     explanation: |
       Aurora global database copies data with storage-based replication to up to
-      several secondary Regions, with typical lag under one second. Readers in
+      10 secondary Regions, with typical lag under one second. Readers in
       the secondary Region give local, low-latency reads.
     docs:
       - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html
@@ -755,7 +755,7 @@ questions:
         why: "A private endpoint can be reached only from inside a VPC. It does not cache or limit requests."
       - id: d
         text: "Increase the Lambda function timeout to 15 minutes"
-        why: "A longer timeout lets slow calls run longer. API Gateway still times out first, and the load stays the same."
+        why: "A longer timeout only lets slow calls run longer. The same number of requests still reaches the backend."
       - id: e
         text: "Turn on AWS X-Ray tracing for the stage"
         why: "X-Ray shows where time is spent. It helps find problems but does not reduce backend load."
@@ -793,7 +793,7 @@ questions:
       a different target group.
     docs:
       - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-condition-types.html
-    glossary: [aws-alb, aws-ecs]
+    glossary: [aws-alb, aws-ecs, dns]
 
   # ---------- 3.5 Data ingestion and transformation ----------
   - id: saa-perf-032
@@ -872,7 +872,7 @@ questions:
     docs:
       - https://docs.aws.amazon.com/glue/latest/dg/add-crawler.html
       - https://docs.aws.amazon.com/athena/latest/ug/what-is.html
-    glossary: [aws-glue, aws-athena, aws-s3, serverless]
+    glossary: [aws-glue, aws-athena, aws-s3, serverless, aws-emr]
 
   - id: saa-perf-035
     difficulty: 2
@@ -900,7 +900,7 @@ questions:
     docs:
       - https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html
       - https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html
-    glossary: [aws-redshift]
+    glossary: [aws-redshift, aws-emr]
 
   - id: saa-perf-036
     difficulty: 3
@@ -916,7 +916,7 @@ questions:
         text: "Amazon Macie to control who can see each column"
         why: "Macie finds sensitive data such as personal information in S3. It does not grant query permissions."
       - id: d
-        text: "Amazon QuickSight to build dashboards for business users"
+        text: "Amazon Quick Sight (formerly Amazon QuickSight) to build dashboards for business users"
       - id: e
         text: "AWS Glue DataBrew to build the dashboards"
         why: "DataBrew is a visual tool to clean and prepare data. It does not publish interactive dashboards."
@@ -924,9 +924,9 @@ questions:
     explanation: |
       Lake Formation gives central, fine-grained permissions (database, table,
       column and row level) on Glue Data Catalog tables, used by Athena, Redshift
-      Spectrum and EMR. Amazon QuickSight is a serverless BI service for
-      interactive dashboards.
+      Spectrum and EMR. Quick Sight (formerly Amazon QuickSight, now part of
+      Amazon Quick) is a serverless BI service for interactive dashboards.
     docs:
       - https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html
-      - https://docs.aws.amazon.com/quicksight/latest/user/welcome.html
-    glossary: [aws-glue, aws-athena, aws-s3]
+      - https://docs.aws.amazon.com/quick/latest/userguide/what-is.html
+    glossary: [aws-glue, aws-athena, aws-s3, aws-emr, aws-lake-formation, aws-quick]

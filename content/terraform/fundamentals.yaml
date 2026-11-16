@@ -206,7 +206,7 @@ questions:
       Terraform core asks providers to read, create, update, and delete objects.
     docs:
       - https://developer.hashicorp.com/terraform/language/providers
-      - https://developer.hashicorp.com/terraform/language/providers/configuration
+      - https://developer.hashicorp.com/terraform/language/block/provider
     glossary: [tf-provider, tf-resource]
 
   - id: terraform-fund-009
@@ -259,7 +259,7 @@ questions:
       meta-argument to `<name>.<alias>`, here `aws.west`. The value is a
       reference, not a quoted string.
     docs:
-      - https://developer.hashicorp.com/terraform/language/providers/configuration
+      - https://developer.hashicorp.com/terraform/language/block/provider
     glossary: [tf-provider-alias, tf-provider, tf-resource]
 
   - id: terraform-fund-011
@@ -285,7 +285,7 @@ questions:
       unique `alias`, otherwise Terraform fails with a duplicate provider
       configuration error.
     docs:
-      - https://developer.hashicorp.com/terraform/language/providers/configuration
+      - https://developer.hashicorp.com/terraform/language/block/provider
     glossary: [tf-provider, tf-provider-alias]
 
   - id: terraform-fund-012
@@ -311,7 +311,7 @@ questions:
       default `aws` provider becomes the parent's `aws.west` configuration.
     docs:
       - https://developer.hashicorp.com/terraform/language/modules/develop/providers
-      - https://developer.hashicorp.com/terraform/language/providers/configuration
+      - https://developer.hashicorp.com/terraform/language/block/provider
     glossary: [tf-provider-alias, tf-module, tf-provider]
 
   - id: terraform-fund-013
@@ -415,7 +415,7 @@ questions:
       the output. Use a remote backend with encryption and access control, and
       never commit state files to Git.
     docs:
-      - https://developer.hashicorp.com/terraform/language/state/sensitive-data
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
     glossary: [tf-state, tf-backend]
 
   - id: terraform-fund-017

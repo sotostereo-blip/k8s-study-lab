@@ -141,7 +141,7 @@ questions:
         why: "Use base units (bytes, not kilobytes). `_count` is used by histograms and summaries; counters end in `_total`."
       - id: d
         text: "`myapp.processed.bytes`"
-        why: "Dots are not used in classic Prometheus names. Use underscores."
+        why: "Since Prometheus 3.0, names may use any UTF-8 character, but the docs recommend only letters, digits, `_` and `:` for the best compatibility. Use underscores."
     answer: [b]
     explanation: |
       A good name has an application prefix, uses snake_case, contains the **base unit**
@@ -390,7 +390,7 @@ questions:
         why: "Both kinds of histograms count observations in the client and calculate quantiles on the server."
       - id: b
         text: "They need no client library changes at all"
-        why: "The client library must support them, and they are sent with protobuf (or new text formats)."
+        why: "The client library must support them. Prometheus scrapes them with the protobuf format, and `scrape_native_histograms` must be enabled."
       - id: c
         text: "They return exact quantiles with no estimation error"
         why: "Quantiles are still estimated from buckets, only with higher resolution."
@@ -400,7 +400,8 @@ questions:
     explanation: |
       Classic histograms need hand-chosen buckets, and each bucket is a separate series. Native
       histograms use automatic exponential buckets and store the whole histogram as one complex
-      sample per scrape. That gives better resolution at a lower cost.
+      sample per scrape. That gives better resolution at a lower cost. They are a stable feature
+      since Prometheus 3.8; you turn on scraping them with `scrape_native_histograms: true`.
     docs:
       - https://prometheus.io/docs/specs/native_histograms/
       - https://prometheus.io/docs/concepts/metric_types/#histogram

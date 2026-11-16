@@ -966,3 +966,46 @@ terms:
   - LocalStack
   definition: A free tool that emulates many AWS APIs on your own computer, for learning and testing without a real AWS account or costs.
   es: Herramienta que emula las APIs de AWS en tu ordenador, sin coste.
+- id: aws-service-quotas
+  term: Service Quotas
+  match:
+  - Service Quotas
+  - service quota
+  - service quotas
+  definition: The limits on how many resources or API calls an account can use. Calls over a limit are throttled; clients retry with exponential backoff.
+  es: Límites de recursos y llamadas a la API de una cuenta; al superarlos hay throttling.
+- id: aws-batch
+  term: AWS Batch
+  match:
+  - AWS Batch
+  definition: A managed service that runs batch jobs on EC2, Spot or Fargate and scales the compute for you.
+  es: Servicio gestionado que ejecuta trabajos por lotes y escala el cómputo.
+- id: aws-inspector
+  term: Amazon Inspector
+  match:
+  - Amazon Inspector
+  - Inspector
+  definition: A service that scans EC2 instances, container images and Lambda functions for software vulnerabilities and network exposure.
+  es: Servicio que busca vulnerabilidades en instancias, imágenes y funciones.
+- id: aws-emr
+  term: Amazon EMR
+  match:
+  - Amazon EMR
+  - EMR
+  definition: A managed big data platform that runs Apache Spark, Hadoop and similar tools on clusters.
+  es: Plataforma gestionada de big data (Spark, Hadoop).
+- id: aws-lake-formation
+  term: AWS Lake Formation
+  match:
+  - Lake Formation
+  - AWS Lake Formation
+  definition: A service to build a data lake on S3 and control who can read which tables, columns and rows.
+  es: Servicio para crear un data lake en S3 y controlar el acceso a los datos.
+- id: aws-quick
+  term: Amazon Quick Sight
+  match:
+  - Quick Sight
+  - QuickSight
+  - Amazon Quick
+  definition: The business intelligence service of AWS (formerly Amazon QuickSight) for dashboards and reports, now part of Amazon Quick.
+  es: Servicio de inteligencia de negocio de AWS para paneles e informes.

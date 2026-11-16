@@ -97,7 +97,7 @@ questions:
       within a 5-minute deduplication interval. Using the account ID as the message group ID keeps
       order per account while different accounts can still be processed in parallel.
     docs:
-      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues.html
+      - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html
     glossary: [aws-sqs, aws-decoupling]
 
   - id: saa-res-005
@@ -122,7 +122,7 @@ questions:
       Each queue stores its copy until its own system processes it, so each system works at its
       own speed and can catch up after a short outage.
     docs:
-      - https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html
+      - https://docs.aws.amazon.com/sns/latest/dg/welcome.html
     glossary: [aws-sns, aws-sqs, aws-decoupling]
 
   - id: saa-res-006
@@ -194,8 +194,9 @@ questions:
     answer: [d]
     explanation: |
       For asynchronous invocations, Lambda retries failed events (two retries by default) and then
-      can send the event to an on-failure destination. Destinations include the invocation record
-      with error details, which a classic dead-letter queue does not.
+      can send the event to an on-failure destination. The destination gets an invocation record with
+      the request, the response and the error. A classic dead-letter queue gets only the event, with a
+      short error message in its attributes.
     docs:
       - https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html
     glossary: [aws-lambda, aws-sqs, aws-dlq]
@@ -223,7 +224,7 @@ questions:
       other AZs keep serving traffic if one AZ fails.
     docs:
       - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html
-    glossary: [aws-ecs, aws-fargate, aws-az]
+    glossary: [aws-ecs, aws-fargate, aws-az, aws-batch]
 
   - id: saa-res-010
     difficulty: 1
@@ -297,7 +298,7 @@ questions:
       DB endpoint DNS name points to the new primary.
     docs:
       - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html
-    glossary: [aws-rds, aws-multi-az]
+    glossary: [aws-rds, aws-multi-az, dns]
 
   - id: saa-res-013
     difficulty: 1
@@ -386,7 +387,7 @@ questions:
         why: "A GSI is an extra index of the same table in the same Region. It does not copy data to other Regions."
       - id: c
         text: "Turn on point-in-time recovery and restore to Europe when needed"
-        why: "PITR restores into the same Region, and a restore takes time. It does not give low-latency writes in Europe."
+        why: "PITR can restore a new table, even in another Region, but a restore takes time. It does not give low-latency reads and writes in both Regions all the time."
       - id: d
         text: "Convert the table to a DynamoDB global table with replicas in both Regions"
     answer: [d]
@@ -667,7 +668,7 @@ questions:
       With a mount target in each AZ, instances in all AZs can share the same files, and the
       file system stays available if one AZ fails.
     docs:
-      - https://docs.aws.amazon.com/efs/latest/ug/availability-durability.html
+      - https://docs.aws.amazon.com/efs/latest/ug/disaster-recovery-resiliency.html
     glossary: [aws-efs, aws-az]
 
   - id: saa-res-028
@@ -719,7 +720,7 @@ questions:
     docs:
       - https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html
       - https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html
-    glossary: [aws-api-gateway]
+    glossary: [aws-ec2, aws-region, aws-service-quotas]
 
   - id: saa-res-030
     difficulty: 3
@@ -908,7 +909,7 @@ questions:
       record, to know when the primary has failed.
     docs:
       - https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-configuring.html
-    glossary: [aws-route53, aws-alb, aws-s3]
+    glossary: [aws-route53, aws-alb, aws-s3, dns]
 
   - id: saa-res-037
     difficulty: 2

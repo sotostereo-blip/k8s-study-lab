@@ -55,4 +55,4 @@ auto_solution: |
   ssh -n server2 'ufw allow 22/tcp && ufw allow 2222/tcp && ufw allow 8080/tcp && ufw default deny incoming && ufw --force enable'
 docs:
   - https://manpages.ubuntu.com/manpages/noble/man8/ufw.8.html
-  - https://documentation.ubuntu.com/server/how-to/security/firewalls/
+  - https://ubuntu.com/server/docs/how-to/security/firewalls/

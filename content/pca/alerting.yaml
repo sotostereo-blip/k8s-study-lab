@@ -405,7 +405,7 @@ questions:
       `up{job="$job"}`.
     docs:
       - https://grafana.com/docs/grafana/latest/datasources/prometheus/
-      - https://grafana.com/docs/grafana/latest/dashboards/variables/
+      - https://grafana.com/docs/grafana/latest/visualizations/dashboards/variables/
     glossary: [grafana, dashboard]
 
   - id: pca-alert-017

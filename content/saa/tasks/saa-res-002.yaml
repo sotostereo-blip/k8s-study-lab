@@ -55,4 +55,4 @@ solution: |
   aws sqs receive-message --queue-url "$URL" --visibility-timeout 0
 docs:
   - https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html
-  - https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html
+  - https://docs.aws.amazon.com/sns/latest/dg/welcome.html

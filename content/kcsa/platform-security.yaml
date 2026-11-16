@@ -222,7 +222,7 @@ questions:
         why: "The latest tag changes the default pull policy to Always only when no policy is set, and it brings other risks. It is not a reliable control."
       - id: b
         text: "Set `imagePullPolicy: IfNotPresent` on every Pod."
-        why: "IfNotPresent uses the cached image without contacting the registry, which is exactly the problem."
+        why: "IfNotPresent lets the kubelet use the cached image. Setting it on every Pod adds no protection; it is the setting that creates the risk."
       - id: c
         text: "Enable the NamespaceLifecycle admission controller."
         why: "NamespaceLifecycle stops objects from being created in Namespaces that are being deleted. It has nothing to do with images."
@@ -233,9 +233,12 @@ questions:
       AlwaysPullImages sets every container's pull policy to Always. The
       kubelet then contacts the registry for each new Pod, and the registry
       checks the credentials, so a Pod cannot reuse a cached private image it
-      has no right to pull.
+      has no right to pull. Since v1.35 the kubelet also checks credentials for
+      cached images by default (beta), but not for images that were pulled
+      outside the kubelet, so AlwaysPullImages is still the strictest control.
     docs:
       - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
+      - https://kubernetes.io/docs/concepts/containers/images/
     glossary: [admission-controller, image, registry, multi-tenancy]
 
   - id: kcsa-platform-010

@@ -76,7 +76,7 @@ questions:
       text and is not shared, so teams usually move to a remote backend.
     docs:
       - https://developer.hashicorp.com/terraform/language/backend/local
-      - https://developer.hashicorp.com/terraform/language/state/sensitive-data
+      - https://developer.hashicorp.com/terraform/language/manage-sensitive-data
     glossary: [tf-local-backend, tf-state-locking, tf-backend]
 
   - id: terraform-state-004
@@ -351,7 +351,7 @@ questions:
         text: "A `moved` block with only a `from` address"
         why: "A `moved` block always needs both `from` and `to`. It renames objects; it does not stop managing them."
       - id: b
-        text: "A `removed` block with `destroy = false`"
+        text: "A `removed` block with `lifecycle { destroy = false }`"
       - id: c
         text: "A `lifecycle { ignore_changes = all }` block"
         why: "`ignore_changes` keeps the resource in your configuration and state. Terraform would still own it and could still destroy it."
