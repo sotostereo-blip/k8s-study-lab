@@ -1,0 +1,25 @@
+# HashiCorp Certified: Vault Associate (003) - tests Vault 1.19.
+# Objectives from https://developer.hashicorp.com/certifications/vault-associate
+# (9 objectives, 39 sub-objectives). HashiCorp does NOT publish weights, the number of
+# questions or the passing score: weights below follow the number of sub-objectives.
+id: vault
+name: HashiCorp Certified Vault Associate (003)
+format: multiple-choice
+exam_minutes: 60
+exam_questions: 57
+passing_score: 70
+facts_note: >-
+  Official: 1 hour, multiple choice, multiple answer and true/false questions, Vault 1.19,
+  USD 70.50 plus local taxes, valid for 2 years. Not published by HashiCorp: number of
+  questions, passing score and weights. 57 questions and 70% are commonly reported values;
+  domain weights here follow the number of official sub-objectives.
+domains:
+  - { id: auth, name: "Authentication methods", weight: 15 }
+  - { id: policies, name: "Vault policies", weight: 13 }
+  - { id: tokens, name: "Vault tokens", weight: 15 }
+  - { id: leases, name: "Vault leases", weight: 7 }
+  - { id: secrets, name: "Secrets engines", weight: 20 }
+  - { id: eaas, name: "Encryption as a service", weight: 5 }
+  - { id: architecture, name: "Vault architecture fundamentals", weight: 7 }
+  - { id: deployment, name: "Vault deployment architecture", weight: 13 }
+  - { id: access, name: "Access management architecture", weight: 5 }

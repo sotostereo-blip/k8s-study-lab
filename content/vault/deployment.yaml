@@ -1,0 +1,206 @@
+domain: deployment
+questions:
+  - id: vault-deployment-001
+    difficulty: 1
+    type: single
+    question: "You plan a new self-managed production Vault cluster and want built-in high availability with no outside storage system. Which storage backend does HashiCorp recommend?"
+    options:
+      - id: a
+        text: "Integrated Storage (Raft)"
+      - id: b
+        text: "The in-memory storage backend"
+        why: "In-memory storage loses all data when Vault stops. It is only for development and tests."
+      - id: c
+        text: "The filesystem storage backend"
+        why: "Filesystem storage writes to one local disk and does not support high availability."
+      - id: d
+        text: "A KV v2 secrets engine on another Vault"
+        why: "A secrets engine is not a storage backend. Vault cannot store its own data in another Vault like this."
+    answer: [a]
+    explanation: |
+      Integrated Storage keeps a copy of the data on every Vault node and uses
+      Raft to agree on changes. It supports HA without Consul or any other
+      service, so there is less to operate. Consul is also a supported option.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/configuration/storage/raft
+      - https://developer.hashicorp.com/vault/docs/internals/integrated-storage
+    glossary: [vault-integrated-storage, raft, vault-storage-backend]
+
+  - id: vault-deployment-002
+    difficulty: 2
+    type: single
+    question: "A Vault cluster with Integrated Storage has 5 nodes. How many nodes can fail while the cluster still has quorum and keeps working?"
+    options:
+      - id: a
+        text: "1"
+        why: "1 failure is fine, but a 5-node cluster can lose one more node and still have a majority."
+      - id: b
+        text: "2"
+      - id: c
+        text: "3"
+        why: "With 3 nodes down, only 2 of 5 remain. That is not a majority, so the cluster loses quorum."
+      - id: d
+        text: "4"
+        why: "A single node out of 5 can never form a majority on its own."
+    answer: [b]
+    explanation: |
+      Raft needs a majority (quorum) of (N/2)+1 nodes. With 5 nodes, quorum is
+      3, so 2 nodes can fail. This is why HashiCorp suggests 3 or 5 nodes: 3
+      nodes survive 1 failure, 5 nodes survive 2.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/internals/integrated-storage
+    glossary: [raft, quorum, vault-integrated-storage]
+
+  - id: vault-deployment-003
+    difficulty: 1
+    type: single
+    question: "You run `vault operator init` with no options. How are the unseal keys created?"
+    options:
+      - id: a
+        text: "1 unseal key that one admin keeps"
+        why: "One key would give one person full control. The default splits the key into several shares."
+      - id: b
+        text: "3 key shares, and all 3 are needed"
+        why: "These are not the default numbers. Vault creates more shares than the threshold."
+      - id: c
+        text: "5 key shares, and any 3 can unseal"
+      - id: d
+        text: "10 key shares, and any 5 can unseal"
+        why: "You can choose these numbers with flags, but they are not the defaults."
+    answer: [c]
+    explanation: |
+      By default, Vault uses Shamir's Secret Sharing to split the unseal key
+      into 5 shares with a threshold of 3. You can change this with
+      `-key-shares` and `-key-threshold`. Give each share to a different person,
+      so no one can unseal Vault alone.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/operator/init
+      - https://developer.hashicorp.com/vault/docs/concepts/seal
+    glossary: [vault-shamir, vault-seal]
+
+  - id: vault-deployment-004
+    difficulty: 2
+    type: single
+    question: "The key threshold is 3. Two key holders already ran `vault operator unseal` on a node. What does `vault status` show, and what is still needed?"
+    options:
+      - id: a
+        text: "Sealed true, unseal progress 2/3, one more key is needed"
+      - id: b
+        text: "Sealed false, because more than half of the keys were entered"
+        why: "Vault needs the full threshold. 2 of 3 keys are not enough to rebuild the key."
+      - id: c
+        text: "Sealed true, progress 0/3, because keys must be entered at once"
+        why: "Vault remembers the shares that were already entered, so the key holders can do it one after another."
+      - id: d
+        text: "Sealed false, but only for the two key holders"
+        why: "Unsealing is not per user. Vault is either sealed or unsealed for everyone."
+    answer: [a]
+    explanation: |
+      Each `vault operator unseal` adds one key share. Vault shows the progress
+      (for example `Unseal Progress 2/3`) and stays sealed until the threshold
+      is reached. Then it rebuilds the key, decrypts the root key and unseals.
+      Each node of a cluster must be unsealed.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/operator/unseal
+      - https://developer.hashicorp.com/vault/docs/concepts/seal
+    glossary: [vault-shamir, vault-seal, vault-root-key]
+
+  - id: vault-deployment-005
+    difficulty: 3
+    type: single
+    question: "A company runs Vault Enterprise in Europe and wants a second cluster in Asia that serves local apps with low latency. Which replication type fits?"
+    options:
+      - id: a
+        text: "Disaster recovery replication"
+        why: "A DR secondary does not serve client requests until it is promoted. It cannot help local apps day to day."
+      - id: b
+        text: "Performance replication"
+      - id: c
+        text: "Raft snapshots copied every night"
+        why: "Snapshots are backups. A restored copy would be a separate cluster, not kept in sync."
+      - id: d
+        text: "A second Raft node in Asia in the same cluster"
+        why: "Standby nodes in the same cluster forward requests to the active node, so far nodes do not reduce latency and can slow down the cluster."
+    answer: [b]
+    explanation: |
+      Performance replication copies configuration, policies and secrets to
+      secondary clusters, which answer client requests locally. Each
+      performance secondary keeps its own tokens and leases. DR replication is
+      for a hot standby copy that takes over after a disaster.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/enterprise/replication
+    glossary: [vault-performance-replication, vault-dr-replication]
+
+  - id: vault-deployment-006
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements about disaster recovery (DR) replication are true? (Select 2)"
+    options:
+      - id: a
+        text: "A DR secondary also replicates tokens and leases"
+      - id: b
+        text: "A DR secondary answers client reads all the time"
+        why: "That is a performance secondary. A DR secondary only takes requests after promotion."
+      - id: c
+        text: "You promote a DR secondary when the primary is lost"
+      - id: d
+        text: "DR replication is included in Vault Community Edition"
+        why: "Replication is a Vault Enterprise feature. Community Edition does not include it."
+    answer: [a, c]
+    explanation: |
+      DR replication keeps a full copy of the primary, including tokens and
+      leases, so apps can keep their tokens after a failover. The DR secondary
+      does not serve clients until an operator promotes it to primary.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/enterprise/replication
+      - https://developer.hashicorp.com/vault/docs/enterprise/replication/disaster-recovery
+    glossary: [vault-dr-replication, vault-performance-replication, vault-token, vault-lease]
+
+  - id: vault-deployment-007
+    difficulty: 2
+    type: single
+    question: "A small team wants Vault without managing servers, storage, unsealing or upgrades. They still want to control their own policies and secrets engines. What fits best?"
+    options:
+      - id: a
+        text: "HCP Vault Dedicated"
+      - id: b
+        text: "A Vault dev server on a cloud VM"
+        why: "A dev server keeps data in memory and starts with a root token. It is never for production."
+      - id: c
+        text: "Self-managed Vault with Integrated Storage"
+        why: "With self-managed Vault, the team must run the servers, unsealing and upgrades itself."
+      - id: d
+        text: "Vault Agent on every app server"
+        why: "Vault Agent is a client helper. It still needs a Vault cluster that someone runs."
+    answer: [a]
+    explanation: |
+      HCP Vault Dedicated is a Vault Enterprise cluster that HashiCorp runs on
+      the HashiCorp Cloud Platform. HashiCorp handles the infrastructure,
+      storage, unsealing, upgrades and backups. You still configure auth
+      methods, policies and secrets engines, usually in the `admin` namespace
+      (`VAULT_NAMESPACE=admin`).
+    docs:
+      - https://developer.hashicorp.com/vault/docs/about-vault/what-is-vault
+      - https://developer.hashicorp.com/vault/docs/get-vault
+    glossary: [vault-hcp-dedicated, vault-dev-server, vault-env]
+
+  - id: vault-deployment-008
+    difficulty: 2
+    type: single
+    question: "True or false: in a self-managed Vault cluster, standby nodes answer read requests themselves, even without Vault Enterprise."
+    options:
+      - id: a
+        text: "True"
+        why: "In Community Edition, standby nodes forward or redirect requests to the active node. Only Enterprise performance standbys can serve reads."
+      - id: b
+        text: "False"
+    answer: [b]
+    explanation: |
+      A Vault HA cluster has one active node. Standby nodes forward client
+      requests to it, and one of them becomes active if the active node fails.
+      Vault Enterprise adds performance standby nodes, which can serve some
+      read requests locally.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/ha
+      - https://developer.hashicorp.com/vault/docs/enterprise/performance-standby
+    glossary: [vault-integrated-storage]

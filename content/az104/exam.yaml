@@ -1,0 +1,42 @@
+# Microsoft Azure Administrator (AZ-104).
+# Facts from the official pages (checked 2026-11):
+# https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/
+# https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104
+# https://learn.microsoft.com/en-us/credentials/support/exam-duration-exam-experience
+id: az104
+name: Microsoft Azure Administrator (AZ-104)
+format: multiple-choice
+exam_minutes: 100
+exam_questions: 50
+passing_score: 70
+facts_note: >-
+  Official (Microsoft Learn): you have 100 minutes to answer (120 minutes of seat time for
+  associate exams without labs). Microsoft says its exams usually have 40-60 questions; the exact
+  number for AZ-104 is not published, so 50 is used here. Question types can include multiple
+  choice, case studies and other interactive items. The result is a SCALED score from 1 to 1,000
+  and you need 700 or more to pass. It is not a simple percentage, so 70% of right answers here is
+  only an approximation. The price depends on the country (USD 165 in the United States). The
+  certification expires after 12 months; you renew it for free with an online assessment on
+  Microsoft Learn. Domain weights are official ranges (in the notes); the weight used here is the
+  midpoint of each range, scaled so the total is 100.
+domains:
+  - id: identity-governance
+    name: "Manage Azure identities and governance"
+    weight: 24
+    notes: "Official weight 20-25%."
+  - id: storage
+    name: "Implement and manage storage"
+    weight: 19
+    notes: "Official weight 15-20%."
+  - id: compute
+    name: "Deploy and manage Azure compute resources"
+    weight: 24
+    notes: "Official weight 20-25%."
+  - id: networking
+    name: "Implement and manage virtual networking"
+    weight: 19
+    notes: "Official weight 15-20%."
+  - id: monitoring
+    name: "Monitor and maintain Azure resources"
+    weight: 14
+    notes: "Official weight 10-15%."

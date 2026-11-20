@@ -120,6 +120,7 @@ sh scripts/build_labs.sh single-node linux   # or only some (names: ls labs/envs
 | `gitea` | GitHub Actions GH-200 |
 | `prometheus` | Prometheus PCA |
 | `terraform` | Terraform Associate |
+| `vault` | Vault Associate |
 | `aws` | AWS SAA-C03 |
 
 ## 6. (Optional) Smoke-test one lab

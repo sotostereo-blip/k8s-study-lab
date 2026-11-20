@@ -1,0 +1,335 @@
+domain: networking
+questions:
+  - id: az104-net-001
+    difficulty: 1
+    type: single
+    question: "VMs in vnet-weu (West Europe, 10.1.0.0/16) must talk to VMs in vnet-eus (East US, 10.2.0.0/16) over private IP addresses. You want no gateways and the lowest latency. What should you configure?"
+    options:
+      - id: a
+        text: "Global virtual network peering between vnet-weu and vnet-eus"
+      - id: b
+        text: "A service endpoint on both VNets"
+        why: "Service endpoints connect a subnet to Azure PaaS services. They do not connect two VNets."
+      - id: c
+        text: "Public IP addresses on all VMs and NSG rules for the internet"
+        why: "Traffic would leave the private network, and the VMs would be exposed to the internet."
+      - id: d
+        text: "One VNet that covers both regions"
+        why: "A VNet exists in only one region. You need two VNets and a connection between them."
+    answer: [a]
+    explanation: |
+      Virtual network peering connects two VNets through the Microsoft backbone. Peering
+      between regions is called global VNet peering. The address spaces must not overlap,
+      and you need a peering link on both sides.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview
+    glossary: [azure-vnet-peering, azure-vnet]
+
+  - id: az104-net-002
+    difficulty: 2
+    type: single
+    question: "vnet-hub is peered with vnet-a and with vnet-b. There are no gateways, firewalls or route tables. VMs in vnet-a cannot reach VMs in vnet-b. What is the simplest fix?"
+    options:
+      - id: a
+        text: "Create a peering between vnet-a and vnet-b"
+      - id: b
+        text: "Enable Allow forwarded traffic on the existing peerings only"
+        why: "Forwarded traffic needs a device (such as a firewall in the hub) that forwards packets. On its own, this setting adds no route."
+      - id: c
+        text: "Change all three VNets to the same address space"
+        why: "Peered VNets must not have overlapping address spaces. This would break the peerings."
+      - id: d
+        text: "Add a CanNotDelete lock on vnet-hub"
+        why: "A lock does not change routing."
+    answer: [a]
+    explanation: |
+      VNet peering is not transitive. vnet-a learns the routes of vnet-hub, but not the
+      routes that vnet-hub learned from vnet-b. Peer vnet-a and vnet-b directly, or send
+      traffic through a network virtual appliance or gateway in the hub.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview
+    glossary: [azure-vnet-peering]
+
+  - id: az104-net-003
+    difficulty: 2
+    type: single
+    question: "An NSG has two inbound rules: priority 100 denies TCP 3389 from Any, and priority 200 allows TCP 3389 from the office IP 203.0.113.10. RDP from the office fails. What should you do?"
+    options:
+      - id: a
+        text: "Give the allow rule a priority below 100, such as 90"
+      - id: b
+        text: "Change the allow rule to priority 4000"
+        why: "A higher number means lower priority. The deny rule at 100 would still be checked first."
+      - id: c
+        text: "Add an outbound rule that allows TCP 3389"
+        why: "NSGs are stateful. Return traffic of an allowed inbound connection is allowed automatically; the problem is the inbound deny."
+      - id: d
+        text: "Delete the default rule AllowVnetInBound"
+        why: "Default rules cannot be deleted, and this rule is not the reason the office traffic is blocked."
+    answer: [a]
+    explanation: |
+      NSG rules are processed in priority order, lowest number first. When traffic matches a
+      rule, processing stops. Here the deny at 100 matches before the allow at 200, so the
+      allow rule needs a lower number.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview
+    glossary: [azure-nsg]
+
+  - id: az104-net-004
+    difficulty: 2
+    type: single
+    question: "A VM runs a web server. The NSG on its subnet allows inbound TCP 80 from the internet. A second NSG on the VM network interface has only the default rules. Users on the internet cannot open the website. Why?"
+    options:
+      - id: a
+        text: "Inbound traffic must be allowed by both NSGs, and the NIC NSG denies it with DenyAllInBound"
+      - id: b
+        text: "When a subnet NSG exists, Azure ignores the NIC NSG, so the problem is elsewhere"
+        why: "Azure checks both NSGs. For inbound traffic, the subnet NSG is checked first and then the NIC NSG."
+      - id: c
+        text: "The default rule AllowInternetInBound blocks port 80"
+        why: "There is no default rule called AllowInternetInBound. The default inbound rules are AllowVnetInBound, AllowAzureLoadBalancerInBound and DenyAllInBound."
+      - id: d
+        text: "NSGs cannot filter port 80"
+        why: "NSGs can filter any TCP or UDP port."
+    answer: [a]
+    explanation: |
+      For inbound traffic, Azure processes the subnet NSG and then the NIC NSG. Both must
+      allow the traffic. The NIC NSG has only default rules, so internet traffic hits
+      DenyAllInBound. Use Effective security rules on the NIC to see the combined result.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/network-security-group-how-it-works
+      - https://learn.microsoft.com/en-us/azure/network-watcher/effective-security-rules-overview
+    glossary: [azure-nsg]
+
+  - id: az104-net-005
+    difficulty: 2
+    type: single
+    question: "Web VMs and database VMs share one subnet. Only the web VMs may connect to the database VMs on TCP 1433. VMs are added and removed often, and you do not want to update IP addresses in rules. What should you use?"
+    options:
+      - id: a
+        text: "Application security groups used as source and destination"
+      - id: b
+        text: "Azure tags on the VMs, used in the NSG rules"
+        why: "NSG rules cannot use tags on VMs. They use IP addresses, service tags or ASGs."
+      - id: c
+        text: "A user-defined route for TCP 1433"
+        why: "Routes decide where traffic goes. They do not allow or deny ports."
+      - id: d
+        text: "A separate VNet for each VM"
+        why: "This adds a lot of work and still needs rules. ASGs solve it inside one subnet."
+    answer: [a]
+    explanation: |
+      An ASG groups VM network interfaces by role. The NSG rule says: allow source asg-web
+      to destination asg-db on TCP 1433. When you add a new VM's NIC to an ASG, the rule
+      applies to it without any IP change.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/application-security-groups
+    glossary: [azure-asg, azure-nsg]
+
+  - id: az104-net-006
+    difficulty: 1
+    type: single
+    question: "Administrators must connect with RDP and SSH to VMs that have no public IP address. They want to use only a web browser and the Azure portal, over TLS. What should you deploy?"
+    options:
+      - id: a
+        text: "Azure Bastion in a subnet named AzureBastionSubnet"
+      - id: b
+        text: "A public load balancer with an inbound NAT rule for port 3389"
+        why: "This exposes RDP to the internet, which is the risk the team wants to avoid."
+      - id: c
+        text: "A private DNS zone"
+        why: "A private DNS zone resolves names. It does not give a remote desktop connection."
+      - id: d
+        text: "A service endpoint for Microsoft.Compute"
+        why: "Service endpoints are for PaaS services such as Storage or SQL. There is no service endpoint for VM remote access."
+    answer: [a]
+    explanation: |
+      Azure Bastion is a managed service that gives RDP and SSH to VMs through the portal
+      over TLS (port 443). The VMs need no public IP. Bastion must be in a subnet called
+      AzureBastionSubnet, size /26 or larger.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/bastion/bastion-overview
+      - https://learn.microsoft.com/en-us/azure/bastion/configuration-settings
+    glossary: [azure-bastion, azure-public-ip]
+
+  - id: az104-net-007
+    difficulty: 2
+    type: single
+    question: "A storage account must be reached through a private IP address from a VNet, and also from the on-premises network over a site-to-site VPN. Public network access must be disabled. What should you configure?"
+    options:
+      - id: a
+        text: "A private endpoint for the storage account in the VNet, with a private DNS zone"
+      - id: b
+        text: "A service endpoint for Microsoft.Storage on the subnet"
+        why: "With a service endpoint, the account keeps its public IP, and on-premises traffic over the VPN cannot use it."
+      - id: c
+        text: "A SAS token with an IP range"
+        why: "A SAS limits what a token can do, but traffic still uses the public endpoint."
+      - id: d
+        text: "Change the redundancy to ZRS"
+        why: "Redundancy is about data copies, not network access."
+    answer: [a]
+    explanation: |
+      A private endpoint is a network interface with a private IP in your VNet that connects
+      to one resource through Azure Private Link. Peered VNets and on-premises networks
+      connected by VPN or ExpressRoute can reach it. Use a private DNS zone such as
+      privatelink.blob.core.windows.net so the name points to the private IP.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-overview
+      - https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+    glossary: [azure-private-endpoint, azure-service-endpoint, azure-dns]
+
+  - id: az104-net-008
+    difficulty: 2
+    type: single
+    question: "VMs in vnet-app must find each other by names such as vm1.corp.internal. The DNS records must be created and removed automatically when VMs are created or deleted. What should you do?"
+    options:
+      - id: a
+        text: "A private DNS zone corp.internal linked to vnet-app with auto registration"
+      - id: b
+        text: "A public DNS zone corp.internal in Azure DNS"
+        why: "A public zone answers on the internet and does not register VM names automatically."
+      - id: c
+        text: "The names in the hosts file of every VM"
+        why: "This is manual work and does not update when VMs change."
+      - id: d
+        text: "An application security group called corp.internal"
+        why: "ASGs are for NSG rules. They have nothing to do with name resolution."
+    answer: [a]
+    explanation: |
+      Private DNS zones answer only inside the VNets that are linked to them. When a
+      virtual network link has auto registration enabled, Azure creates A records for the
+      VMs in that VNet and removes them when the VMs are deleted.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/dns/private-dns-overview
+      - https://learn.microsoft.com/en-us/azure/dns/private-dns-autoregistration
+    glossary: [azure-dns, dns]
+
+  - id: az104-net-009
+    difficulty: 2
+    type: single
+    question: "You bought the domain fabrikam.com from an external registrar. You created the public DNS zone fabrikam.com in Azure DNS. What must you do so the internet uses Azure DNS for the domain?"
+    options:
+      - id: a
+        text: "At the registrar, use the four Azure DNS name servers"
+      - id: b
+        text: "Create an A record for fabrikam.com in a private DNS zone"
+        why: "Private zones are not visible on the internet. Delegation is done at the registrar."
+      - id: c
+        text: "Create a CNAME record at the zone apex"
+        why: "A CNAME is not allowed at the zone apex, and it does not delegate the domain."
+      - id: d
+        text: "Link the public zone to a VNet"
+        why: "Only private DNS zones are linked to VNets. Public zones are delegated with NS records."
+    answer: [a]
+    explanation: |
+      Delegation tells the parent zone (.com) which name servers answer for your domain.
+      Azure DNS gives each zone four name servers. You enter them at the registrar, which
+      updates the NS records in the parent zone.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/dns/dns-delegate-domain-azure-dns
+    glossary: [azure-dns, dns]
+
+  - id: az104-net-010
+    difficulty: 1
+    type: single
+    question: "A website must send requests for /images/* to one group of VMs and requests for /video/* to another group. It must also end TLS at the front end. Which Azure service should you use?"
+    options:
+      - id: a
+        text: "Azure Application Gateway with path-based routing"
+      - id: b
+        text: "Azure Load Balancer (Standard SKU)"
+        why: "Azure Load Balancer works at layer 4 (TCP/UDP). It cannot read URL paths or end TLS."
+      - id: c
+        text: "A private DNS zone with two A records"
+        why: "DNS returns IP addresses for names. It cannot route by URL path."
+      - id: d
+        text: "Virtual network peering"
+        why: "Peering connects VNets. It does not balance web traffic."
+    answer: [a]
+    explanation: |
+      Application Gateway is a layer 7 load balancer for HTTP and HTTPS. URL path-based
+      routing sends each path to a different backend pool, and it can terminate TLS and
+      add a Web Application Firewall.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/application-gateway/url-route-overview
+      - https://learn.microsoft.com/en-us/azure/application-gateway/overview
+    glossary: [azure-app-gateway, azure-load-balancer]
+
+  - id: az104-net-011
+    difficulty: 2
+    type: single
+    question: "An internal load balancer sends traffic to two VMs. The app listens on TCP 8080, but the health probe checks TCP 80. Both backend instances show as unhealthy and no traffic reaches them. What should you do?"
+    options:
+      - id: a
+        text: "Change the health probe to check TCP 8080 (or an HTTP path on 8080)"
+      - id: b
+        text: "Change the load balancer from internal to public"
+        why: "The type of front end does not fix a probe that checks the wrong port."
+      - id: c
+        text: "Add the VMs to an availability set"
+        why: "Availability sets help with uptime but do not change probe results."
+      - id: d
+        text: "Remove the NSG rule that allows the AzureLoadBalancer service tag"
+        why: "Probes come from the AzureLoadBalancer service tag. Blocking it would make every instance unhealthy."
+    answer: [a]
+    explanation: |
+      Azure Load Balancer only sends new flows to instances whose health probe succeeds.
+      The probe must check a port or path where the app really answers. Also make sure NSGs
+      allow traffic from the AzureLoadBalancer service tag.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-custom-probe-overview
+      - https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-overview
+    glossary: [azure-load-balancer, azure-nsg]
+
+  - id: az104-net-012
+    difficulty: 3
+    type: multiple
+    question: "All traffic from snet-app to the internet must go through a firewall VM (a network virtual appliance) at 10.0.2.4 in another subnet. Which TWO actions are required?"
+    options:
+      - id: a
+        text: "Create a route table with 0.0.0.0/0, next hop type Virtual appliance, next hop 10.0.2.4, and associate it to snet-app"
+      - id: b
+        text: "Enable IP forwarding on the network interface of the firewall VM"
+      - id: c
+        text: "Create a VNet peering between snet-app and the firewall subnet"
+        why: "Peering is between VNets, not subnets. Subnets in the same VNet can already reach each other."
+      - id: d
+        text: "Associate the route table to the firewall subnet only"
+        why: "The route must be on the subnet where the traffic starts (snet-app). On the firewall subnet it could even create a loop."
+    answer: [a, b]
+    explanation: |
+      A user-defined route overrides the Azure system route 0.0.0.0/0 to the internet.
+      Because the firewall VM receives packets that are not addressed to it, its NIC needs
+      IP forwarding enabled in Azure (and forwarding inside the OS). Use Network Watcher
+      next hop to check the route.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview
+      - https://learn.microsoft.com/en-us/azure/network-watcher/next-hop-overview
+    glossary: [azure-udr, azure-vnet]
+
+  - id: az104-net-013
+    difficulty: 2
+    type: single
+    question: "You create a subnet with the range 10.0.1.0/28. How many IP addresses can you assign to VMs in this subnet?"
+    options:
+      - id: a
+        text: "16"
+        why: "A /28 has 16 addresses, but Azure reserves 5 of them in every subnet."
+      - id: b
+        text: "14"
+        why: "14 is the usual answer on physical networks (minus network and broadcast). Azure reserves 3 more."
+      - id: c
+        text: "11"
+      - id: d
+        text: "8"
+        why: "Only 5 addresses are reserved, so more than 8 are free."
+    answer: [c]
+    explanation: |
+      Azure reserves 5 addresses in each subnet: the network address, the first three
+      addresses (default gateway and Azure DNS) and the broadcast address. A /28 has 16
+      addresses, so 11 are usable.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-subnet
+    glossary: [azure-vnet]

@@ -1,0 +1,30 @@
+id: vault-architecture-001
+title: Unseal Vault with Shamir key shares
+domain: architecture
+difficulty: 1
+minutes: 5
+environment: vault
+setup: |
+  jq -r '.unseal_keys_b64[1:][]' /etc/lab/init.json > /root/unseal-keys.txt
+  labvault operator seal >/dev/null
+task: |
+  Vault was **sealed** (as after a restart). Until it is unsealed, it can not decrypt its data
+  and answers almost every request with an error.
+
+  1. Check the seal status: how many key shares exist and how many are needed (the threshold)?
+  2. **Unseal** Vault. Two of the three unseal keys are in `/root/unseal-keys.txt`
+     (one per line).
+checks:
+  - name: Vault is unsealed
+    run: vault status -format=json | jq -e '.sealed == false' >/dev/null
+solution: |
+  vault status                       # Sealed true, Total Shares 3, Threshold 2
+  vault operator unseal              # paste the first key
+  vault operator unseal              # paste the second key: Sealed false
+  # or: while read -r k; do vault operator unseal "$k"; done < /root/unseal-keys.txt
+  # Each key share is only a part of the key that decrypts the root key (Shamir's secret sharing).
+auto_solution: |
+  while read -r k; do vault operator unseal "$k" >/dev/null; done < /root/unseal-keys.txt
+docs:
+  - https://developer.hashicorp.com/vault/docs/concepts/seal
+  - https://developer.hashicorp.com/vault/docs/commands/operator/unseal

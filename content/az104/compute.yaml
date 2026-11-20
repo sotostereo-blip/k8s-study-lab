@@ -1,0 +1,414 @@
+domain: compute
+questions:
+  - id: az104-cmp-001
+    difficulty: 1
+    type: single
+    question: "A web app runs on two Azure VMs. The business wants the highest VM uptime SLA that Microsoft offers, and the VMs must keep running if one datacenter in the region fails. How should you deploy the VMs?"
+    options:
+      - id: a
+        text: "Place both VMs in the same availability set"
+        why: "An availability set spreads VMs over racks in one datacenter. If that datacenter fails, both VMs stop. Its SLA (99.95%) is also lower."
+      - id: b
+        text: "Place the VMs in two different availability zones"
+      - id: c
+        text: "Use one large VM with Premium SSD disks"
+        why: "A single VM is still a single point of failure, and its SLA is lower than two VMs across zones."
+      - id: d
+        text: "Place both VMs in the same zone with Standard HDD disks"
+        why: "Both VMs would share one zone, so a zone failure stops the app. HDD disks also give a lower single-VM SLA."
+    answer: [b]
+    explanation: |
+      Availability zones are separate datacenters inside a region. Two or more VMs spread
+      across two or more zones get the highest VM SLA (99.99%) and survive the loss of one
+      zone. Put a zone-redundant load balancer in front of them.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/reliability/availability-zones-overview
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/availability
+    glossary: [azure-availability-zone, azure-availability-set, lx-vm]
+
+  - id: az104-cmp-002
+    difficulty: 2
+    type: single
+    question: "Three VMs are in an availability set with 2 fault domains and 5 update domains. What does placing the VMs in different update domains protect against?"
+    options:
+      - id: a
+        text: "A power failure of one rack in the datacenter"
+        why: "That is the job of fault domains, which use separate power and network hardware."
+      - id: b
+        text: "All VMs restarting at the same time during planned Azure maintenance"
+      - id: c
+        text: "The loss of the whole Azure region"
+        why: "An availability set is inside one datacenter. To survive a region loss you need another region, for example with Site Recovery."
+      - id: d
+        text: "A bad update that you install inside the guest operating system"
+        why: "Update domains are about Azure host maintenance. Azure does not control updates you install inside the VM."
+    answer: [b]
+    explanation: |
+      During planned maintenance, Azure reboots only one update domain at a time. Fault
+      domains are groups of hardware that share power and network, so VMs in different
+      fault domains survive a rack failure. An availability set uses both.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/availability-set-overview
+    glossary: [azure-availability-set]
+
+  - id: az104-cmp-003
+    difficulty: 2
+    type: single
+    question: "A Virtual Machine Scale Set runs a web shop. It must add VMs when average CPU is above 70% for 10 minutes and remove VMs when it is below 30%. It must never have fewer than 2 or more than 10 VMs. What should you configure?"
+    options:
+      - id: a
+        text: "Autoscale with a scale-out rule, a scale-in rule and instance limits of minimum 2 and maximum 10"
+      - id: b
+        text: "An availability set with 10 fault domains"
+        why: "Availability sets have at most 3 fault domains and do not add or remove VMs."
+      - id: c
+        text: "A metric alert that emails the team so they can change the instance count by hand"
+        why: "This is manual work. Autoscale changes the instance count automatically."
+      - id: d
+        text: "A larger VM size for all instances"
+        why: "A bigger size (scale up) does not add or remove VMs based on load."
+    answer: [a]
+    explanation: |
+      Autoscale settings for a scale set use metric rules to scale out and scale in, plus
+      minimum, maximum and default instance counts. Always add a scale-in rule with a
+      scale-out rule, so the set can shrink when the load goes down.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-autoscale-overview
+      - https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/overview
+    glossary: [azure-vmss]
+
+  - id: az104-cmp-004
+    difficulty: 2
+    type: single
+    question: "You want to resize a running VM to a new size, but that size is not in the list for the VM. The size is available in the region. What should you do?"
+    options:
+      - id: a
+        text: "Stop (deallocate) the VM, then choose the new size"
+      - id: b
+        text: "Delete the OS disk and create the VM again"
+        why: "Deleting the OS disk loses the operating system and data. It is not needed to resize."
+      - id: c
+        text: "Move the VM to a new resource group"
+        why: "A resource group is only a logical container. It has nothing to do with the hardware that hosts the VM."
+      - id: d
+        text: "Add a CanNotDelete lock and try again"
+        why: "Locks do not change which sizes are available."
+    answer: [a]
+    explanation: |
+      A running VM can only be resized to sizes that the current hardware cluster supports.
+      When you deallocate the VM, Azure can place it on any cluster in the region, so all
+      sizes there become available. The VM restarts as part of the resize.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/resize-vm
+    glossary: [lx-vm]
+
+  - id: az104-cmp-005
+    difficulty: 1
+    type: single
+    question: "You must add a new empty 128 GB data disk to the VM vm-app1 in the resource group rg-app by using the Azure CLI. Which command should you run?"
+    options:
+      - id: a
+        text: "az vm disk attach --resource-group rg-app --vm-name vm-app1 --name data1 --new --size-gb 128"
+      - id: b
+        text: "az vm resize --resource-group rg-app --name vm-app1 --size 128"
+        why: "az vm resize changes the VM size (CPU and memory), not the disks."
+      - id: c
+        text: "az storage share create --name data1 --quota 128"
+        why: "This creates an Azure file share, not a managed disk for a VM."
+      - id: d
+        text: "az vm extension set --resource-group rg-app --vm-name vm-app1 --name data1"
+        why: "VM extensions install software or agents. They do not create disks."
+    answer: [a]
+    explanation: |
+      `az vm disk attach` with `--new` creates a managed disk and attaches it as a data disk.
+      After that, you must initialize, partition and format the disk inside the operating
+      system before you can use it.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/linux/add-disk
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/managed-disks-overview
+    glossary: [azure-managed-disk, lx-vm]
+
+  - id: az104-cmp-006
+    difficulty: 2
+    type: single
+    question: "You must enable Azure Disk Encryption on a Windows VM in East US. What must you have before you enable it?"
+    options:
+      - id: a
+        text: "A key vault in the same region and subscription as the VM, enabled for disk encryption"
+      - id: b
+        text: "A Recovery Services vault in a different region"
+        why: "A Recovery Services vault stores backups. Azure Disk Encryption stores its keys in Key Vault."
+      - id: c
+        text: "A storage account with GRS redundancy"
+        why: "Azure Disk Encryption does not store keys in a storage account."
+      - id: d
+        text: "An application security group on the VM network interface"
+        why: "ASGs group VMs for NSG rules. They are not related to disk encryption."
+    answer: [a]
+    explanation: |
+      Azure Disk Encryption uses BitLocker (Windows) or DM-Crypt (Linux) inside the VM. It
+      saves the disk encryption keys and secrets in Azure Key Vault. The key vault must be
+      in the same region and subscription as the VM and must allow access for disk
+      encryption.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/virtual-machines/windows/disk-encryption-overview
+      - https://learn.microsoft.com/en-us/azure/key-vault/general/overview
+    glossary: [azure-disk-encryption, azure-key-vault]
+
+  - id: az104-cmp-007
+    difficulty: 2
+    type: single
+    question: "A company wants to move several VMs with their disks and network resources from West US to West Europe. The team wants a guided tool that checks dependencies and moves the resources. What should they use?"
+    options:
+      - id: a
+        text: "Move the VMs to a resource group that is in West Europe"
+        why: "Moving to another resource group never changes the region of a resource."
+      - id: b
+        text: "Azure Resource Mover"
+      - id: c
+        text: "Change the region in the VM settings and restart it"
+        why: "A VM has no setting to change its region. The region is fixed when it is created."
+      - id: d
+        text: "AzCopy"
+        why: "AzCopy copies storage data. It cannot move VMs and their network configuration."
+    answer: [b]
+    explanation: |
+      Azure Resource Mover moves resources such as VMs, disks, NICs, VNets and NSGs between
+      regions. It finds dependencies, prepares the target, starts the move, and lets you
+      commit or discard it. To move between resource groups or subscriptions, you use a
+      normal move instead.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/resource-mover/overview
+    glossary: [azure-region, lx-vm]
+
+  - id: az104-cmp-008
+    difficulty: 2
+    type: single
+    question: "You deploy the same ARM template to a test and a production resource group. The VM size and the number of instances must be different in each environment, and the template file must stay the same. What should you do?"
+    options:
+      - id: a
+        text: "Add parameters and use one parameters file per environment"
+      - id: b
+        text: "Copy the template and edit the values in each copy"
+        why: "This creates two templates that can drift apart. Parameters let one template work everywhere."
+      - id: c
+        text: "Use template outputs to set the VM size and count"
+        why: "Outputs return values after a deployment. They cannot set input values."
+      - id: d
+        text: "Deploy the same template in complete mode each time"
+        why: "Deployment mode decides what happens to resources not in the template. It does not change values."
+    answer: [a]
+    explanation: |
+      Parameters make a template reusable. You pass different values per environment, for
+      example with `az deployment group create --resource-group rg-prod --template-file
+      main.json --parameters @prod.parameters.json`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/parameters
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-cli
+    glossary: [azure-arm-template]
+
+  - id: az104-cmp-009
+    difficulty: 3
+    type: single
+    question: "The resource group rg-data has a storage account and a VM. An administrator deploys a template that only defines the VM, using --mode Complete. After the deployment, the storage account is gone. Why?"
+    options:
+      - id: a
+        text: "Complete mode deletes resources in the resource group that are not in the template"
+      - id: b
+        text: "Incremental mode always deletes storage accounts"
+        why: "Incremental is the default mode and never deletes resources that are not in the template."
+      - id: c
+        text: "The template ran a what-if operation that removed the account"
+        why: "What-if only shows the changes that a deployment would make. It never changes resources."
+      - id: d
+        text: "VM deployments always replace the storage in the same resource group"
+        why: "VMs do not affect other resources unless the template or deployment mode says so."
+    answer: [a]
+    explanation: |
+      In complete mode, Resource Manager deletes resources in the resource group that are
+      not in the template. In incremental mode (the default), they are left unchanged. Run
+      `az deployment group what-if` first to see what would be deleted.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deployment-modes
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if
+    glossary: [azure-arm-template, azure-resource-group]
+
+  - id: az104-cmp-010
+    difficulty: 1
+    type: single
+    question: "Your team has an existing ARM template, main.json, and wants to keep working with it in Bicep. Which command converts it?"
+    options:
+      - id: a
+        text: "az bicep decompile --file main.json"
+      - id: b
+        text: "az bicep build --file main.json"
+        why: "az bicep build does the opposite: it compiles a Bicep file into an ARM template JSON file."
+      - id: c
+        text: "az group export --name main.json"
+        why: "az group export exports the resources of a resource group as a template. It does not convert an existing file."
+      - id: d
+        text: "az deployment group create --template-file main.json --mode Bicep"
+        why: "There is no Bicep deployment mode. Modes are Incremental and Complete."
+    answer: [a]
+    explanation: |
+      `az bicep decompile` converts ARM template JSON into a Bicep file. The result may need
+      small fixes, but it is a good start. `az bicep build` goes the other way.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/decompile
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview
+    glossary: [azure-bicep, azure-arm-template]
+
+  - id: az104-cmp-011
+    difficulty: 2
+    type: single
+    question: "A Bicep file contains: param location string = resourceGroup().location. The file creates a storage account with location: location. You deploy it to rg-weu (West Europe) and do not pass any parameter. Where is the storage account created?"
+    options:
+      - id: a
+        text: "In West Europe, the location of the resource group"
+      - id: b
+        text: "In East US, the default region of Azure"
+        why: "Azure has no global default region. The default value here comes from the resource group."
+      - id: c
+        text: "The deployment fails because the parameter has no value"
+        why: "The parameter has a default value, so it is optional."
+      - id: d
+        text: "In the region of the computer that runs the deployment"
+        why: "Bicep does not read the location of your computer. The default expression reads the resource group."
+    answer: [a]
+    explanation: |
+      A Bicep parameter can have a default value. `resourceGroup().location` returns the
+      region of the target resource group, so if you pass no value, the resource uses the
+      same region as rg-weu. You can still pass another value with --parameters.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/parameters
+    glossary: [azure-bicep, azure-resource-group]
+
+  - id: az104-cmp-012
+    difficulty: 2
+    type: multiple
+    question: "A web app runs on an App Service plan in the Basic tier. The team wants to start using two features. Which TWO features require you to scale up the plan to at least the Standard tier?"
+    options:
+      - id: a
+        text: "Deployment slots"
+      - id: b
+        text: "Autoscale based on CPU rules"
+      - id: c
+        text: "A custom domain name such as www.contoso.com"
+        why: "Custom domains already work in the Basic tier (and in Shared)."
+      - id: d
+        text: "Manual scale out to 3 instances"
+        why: "Basic supports manual scale out up to 3 instances. Autoscale is what needs Standard."
+    answer: [a, b]
+    explanation: |
+      The App Service plan tier decides the features. Standard and higher add deployment
+      slots and rule-based autoscale. Scale up means choosing a higher tier or size; scale
+      out means more instances of the plan.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans
+      - https://learn.microsoft.com/en-us/azure/app-service/manage-scale-up
+      - https://learn.microsoft.com/en-us/azure/app-service/deploy-staging-slots
+    glossary: [azure-app-service, azure-deployment-slot]
+
+  - id: az104-cmp-013
+    difficulty: 2
+    type: single
+    question: "You want to map www.contoso.com to the App Service app contoso-web (contoso-web.azurewebsites.net). The domain is hosted in Azure DNS. Which DNS records should you create?"
+    options:
+      - id: a
+        text: "CNAME www to contoso-web.azurewebsites.net, plus TXT asuid.www"
+      - id: b
+        text: "MX record www pointing to contoso-web.azurewebsites.net"
+        why: "MX records are for mail servers. They are not used to send web traffic to an app."
+      - id: c
+        text: "PTR record for the outbound IP address of the app"
+        why: "PTR records are for reverse lookups from IP to name. App Service does not use them to verify a domain."
+      - id: d
+        text: "NS record www pointing to contoso-web.azurewebsites.net"
+        why: "NS records delegate a zone to name servers. An app is not a name server."
+    answer: [a]
+    explanation: |
+      For a subdomain like www, App Service uses a CNAME record to the default host name and
+      a TXT record named asuid.<subdomain> with the custom domain verification ID. After
+      that, add the domain in the app and bind a TLS certificate.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-custom-domain
+      - https://learn.microsoft.com/en-us/azure/dns/dns-overview
+    glossary: [azure-app-service, azure-dns, dns]
+
+  - id: az104-cmp-014
+    difficulty: 1
+    type: single
+    question: "A data team needs to run one container image for about 20 minutes each night. They do not want to manage VMs or a cluster, and they want to pay only while the container runs. Which service is the simplest choice?"
+    options:
+      - id: a
+        text: "Azure Container Instances"
+      - id: b
+        text: "A Virtual Machine Scale Set with Docker installed"
+        why: "You would have to manage the VMs and the operating system yourself."
+      - id: c
+        text: "An App Service plan in the Premium tier"
+        why: "An App Service plan is billed all the time, even when no job runs, and it is made for web apps."
+      - id: d
+        text: "Azure Container Registry"
+        why: "A container registry stores images. It does not run them."
+    answer: [a]
+    explanation: |
+      Azure Container Instances runs containers on demand without servers to manage, and
+      you pay by the second for CPU and memory. Set the restart policy to Never or OnFailure
+      for run-once jobs. For example: `az container create -g rg-jobs -n nightly --image
+      myacr.azurecr.io/etl:1.0 --restart-policy Never`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/container-instances/container-instances-overview
+      - https://learn.microsoft.com/en-us/azure/container-instances/container-instances-restart-policy
+    glossary: [azure-aci]
+
+  - id: az104-cmp-015
+    difficulty: 2
+    type: single
+    question: "A containerized API gets no traffic at night and many requests during the day. It must scale on the number of HTTP requests, scale to zero when idle, and need no cluster management. Which service should you use?"
+    options:
+      - id: a
+        text: "Azure Container Apps"
+      - id: b
+        text: "Azure Container Instances"
+        why: "Container Instances run a fixed number of containers. They do not autoscale on HTTP traffic."
+      - id: c
+        text: "An availability set with two VMs"
+        why: "VMs in an availability set do not scale automatically and never scale to zero."
+      - id: d
+        text: "Azure Container Registry with geo-replication"
+        why: "A registry stores and replicates images. It does not run or scale containers."
+    answer: [a]
+    explanation: |
+      Azure Container Apps is a serverless container platform. Scale rules can use HTTP
+      requests, events or CPU, and the minimum replica count can be 0, so you pay little
+      when the app is idle.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/container-apps/scale-app
+      - https://learn.microsoft.com/en-us/azure/container-apps/overview
+    glossary: [azure-container-apps]
+
+  - id: az104-cmp-016
+    difficulty: 2
+    type: single
+    question: "Teams in East US and Southeast Asia pull images from one Azure container registry. You want each region to pull from a nearby copy of the registry. What should you do?"
+    options:
+      - id: a
+        text: "Upgrade the registry to the Premium tier and enable geo-replication"
+      - id: b
+        text: "Change the storage account of the registry to RA-GRS"
+        why: "You do not manage the storage of a registry. Copies in other regions come from geo-replication."
+      - id: c
+        text: "Create a VNet peering between the two regions"
+        why: "Peering connects networks. It does not create a copy of the registry."
+      - id: d
+        text: "Use the Basic tier and enable the admin user"
+        why: "The admin user is only a shared login. Basic does not support geo-replication."
+    answer: [a]
+    explanation: |
+      Geo-replication is a Premium feature of Azure Container Registry. One registry name
+      serves many regions, and each region pulls images from its local replica.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus
+      - https://learn.microsoft.com/en-us/azure/container-registry/container-registry-intro
+    glossary: [azure-acr]

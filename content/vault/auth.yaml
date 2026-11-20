@@ -1,0 +1,239 @@
+domain: auth
+questions:
+  - id: vault-auth-001
+    difficulty: 1
+    type: single
+    question: "What is the main job of an auth method in Vault?"
+    options:
+      - id: a
+        text: "To store secrets in an encrypted form on disk"
+        why: "Storing secrets is the job of secrets engines and the storage backend, not of auth methods."
+      - id: b
+        text: "To check who a client is and give it a token"
+      - id: c
+        text: "To decide which paths a token can read or write"
+        why: "That is the job of policies. The auth method only attaches policies to the token it creates."
+      - id: d
+        text: "To unseal Vault after the server restarts"
+        why: "Unsealing uses unseal keys or auto unseal. It has nothing to do with client login."
+    answer: [b]
+    explanation: |
+      Auth methods do authentication: they check an identity against something
+      (a password, a cloud identity, a Kubernetes service account, a JWT) and, on
+      success, return a Vault token. The token carries policies, and the policies
+      do the authorization.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/auth
+      - https://developer.hashicorp.com/vault/docs/auth
+    glossary: [vault-auth-method, vault-token, authentication, authorization]
+
+  - id: vault-auth-002
+    difficulty: 2
+    type: single
+    question: "A batch job runs on a virtual machine outside any cloud and outside Kubernetes. A CI pipeline delivers its credentials. Which auth method is designed for this kind of machine login?"
+    options:
+      - id: a
+        text: "userpass"
+        why: "userpass is meant for people who type a username and password. It is not a good fit for automated apps."
+      - id: b
+        text: "GitHub"
+        why: "The GitHub auth method logs in people with a GitHub personal access token. It is a human login method."
+      - id: c
+        text: "AppRole"
+      - id: d
+        text: "OIDC"
+        why: "OIDC is mainly used for people who log in through a browser with an identity provider such as Okta or Entra ID."
+    answer: [c]
+    explanation: |
+      AppRole is built for machines and apps. The app logs in with a RoleID and a
+      SecretID, and you can deliver the SecretID through a trusted system such as
+      the CI pipeline. On cloud platforms or Kubernetes, the platform's own auth
+      method (AWS, Azure, GCP, Kubernetes) is often even better because there is
+      no secret to deliver.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/auth/approle
+    glossary: [vault-approle, vault-auth-method, vault-userpass, oidc]
+
+  - id: vault-auth-003
+    difficulty: 1
+    type: multiple
+    question: "Which TWO auth methods are mainly used by people (humans), not by machines? (Select 2)"
+    options:
+      - id: a
+        text: "LDAP"
+      - id: b
+        text: "Kubernetes"
+        why: "The Kubernetes auth method lets Pods log in with their service account token. It is a machine method."
+      - id: c
+        text: "AppRole"
+        why: "AppRole is designed for apps and automation, which use a RoleID and a SecretID."
+      - id: d
+        text: "userpass"
+    answer: [a, d]
+    explanation: |
+      Human auth methods check people against a directory or a password: LDAP,
+      userpass, OIDC, GitHub, Okta. Machine (system) auth methods trust a
+      platform identity or a machine credential: AppRole, Kubernetes, AWS, Azure,
+      TLS certificates, JWT.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/auth
+      - https://developer.hashicorp.com/vault/docs/auth/ldap
+    glossary: [vault-auth-method, lx-ldap, vault-userpass, vault-approle]
+
+  - id: vault-auth-004
+    difficulty: 2
+    type: single
+    question: "Alice logs in to Vault with LDAP on Monday and with GitHub on Tuesday. Vault should treat both logins as the same person, with the same identity policies. Which feature makes this possible?"
+    options:
+      - id: a
+        text: "One entity with two entity aliases"
+      - id: b
+        text: "Two orphan tokens with the same name"
+        why: "Orphan tokens are only tokens without a parent. They do not link accounts from different auth methods."
+      - id: c
+        text: "A token role shared by both auth methods"
+        why: "Token roles set options for tokens created at auth/token/create. They do not join identities."
+      - id: d
+        text: "A KV secret that stores Alice's accounts"
+        why: "Vault does not read KV data to decide who you are. The identity secrets engine does this job."
+    answer: [a]
+    explanation: |
+      The identity store has entities (one person or system) and aliases (one
+      account in one auth method). Each alias links an auth method account to the
+      entity. Policies attached to the entity, or to groups it belongs to, apply
+      to tokens from every login of that entity.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/identity
+      - https://developer.hashicorp.com/vault/docs/secrets/identity
+    glossary: [vault-entity, lx-ldap, vault-policy]
+
+  - id: vault-auth-005
+    difficulty: 2
+    type: single
+    question: "Your company manages teams in LDAP. You want members of the LDAP group `dba` to get the Vault policy `db-admin` automatically, without adding each person by hand. What should you create?"
+    options:
+      - id: a
+        text: "An internal group that lists every DBA entity"
+        why: "An internal group needs members added in Vault by hand. It does not follow LDAP group changes."
+      - id: b
+        text: "A separate userpass account for each DBA"
+        why: "This creates new passwords to manage and does not use the LDAP groups at all."
+      - id: c
+        text: "An external group with a group alias for `dba`"
+      - id: d
+        text: "A periodic token for the whole DBA team"
+        why: "A shared token removes personal accountability and does not map LDAP groups to policies."
+    answer: [c]
+    explanation: |
+      External groups get their members from an outside identity provider. You
+      create an external group with the policy `db-admin` and a group alias that
+      points to the LDAP group `dba` on the LDAP auth mount. When a member logs
+      in, Vault adds the group policies to the token.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/identity
+    glossary: [vault-identity-group, lx-ldap, vault-policy]
+
+  - id: vault-auth-006
+    difficulty: 1
+    type: single
+    question: "The userpass auth method is enabled at the default path. Which CLI command logs in the user `alice`?"
+    options:
+      - id: a
+        text: "`vault auth enable -user=alice userpass`"
+        why: "`vault auth enable` turns on an auth method. It does not log anyone in."
+      - id: b
+        text: "`vault login -method=userpass username=alice`"
+      - id: c
+        text: "`vault token create -user=alice`"
+        why: "`vault token create` needs an existing token and does not check a username or password."
+      - id: d
+        text: "`vault write auth/token/login user=alice`"
+        why: "There is no such login path for userpass. Userpass logins go to auth/userpass/login/<username>."
+    answer: [b]
+    explanation: |
+      `vault login -method=userpass username=alice` asks for the password, sends
+      it to `auth/userpass/login/alice`, and stores the returned token with the
+      token helper (by default in `~/.vault-token`). Use `-path=` when the method
+      is mounted at a different path.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/login
+      - https://developer.hashicorp.com/vault/docs/auth/userpass
+    glossary: [vault-userpass, vault-token]
+
+  - id: vault-auth-007
+    difficulty: 2
+    type: single
+    question: |
+      An app logs in with the HTTP API:
+
+      `curl --request POST --data @creds.json $VAULT_ADDR/v1/auth/approle/login`
+
+      Where is the new Vault token in the JSON response?
+    options:
+      - id: a
+        text: "In `.data.token`"
+        why: "`.data` holds the response of normal secret reads. Login responses put the token in the `auth` block."
+      - id: b
+        text: "In the `X-Vault-Token` response header"
+        why: "`X-Vault-Token` is the request header clients use to send a token. Vault does not return the new token there."
+      - id: c
+        text: "In `.auth.client_token`"
+      - id: d
+        text: "In `.wrap_info.token`"
+        why: "`wrap_info` appears only when you ask for response wrapping. It holds a wrapping token, not the login token."
+    answer: [c]
+    explanation: |
+      Login responses have an `auth` block with `client_token`, `accessor`,
+      `policies` and `lease_duration`. The app then sends the token in the
+      `X-Vault-Token` header on later requests.
+    docs:
+      - https://developer.hashicorp.com/vault/api-docs/auth/approle
+      - https://developer.hashicorp.com/vault/docs/auth/approle
+    glossary: [vault-approle, vault-token, vault-env]
+
+  - id: vault-auth-008
+    difficulty: 2
+    type: single
+    question: "You must enable a second userpass auth method for contractors, separate from the one at `userpass/`. Which command does this?"
+    options:
+      - id: a
+        text: "`vault auth enable -path=contractors userpass`"
+      - id: b
+        text: "`vault auth enable userpass/contractors`"
+        why: "The argument is the auth method type, not a path. Use `-path` to choose a different mount path."
+      - id: c
+        text: "`vault secrets enable -path=contractors userpass`"
+        why: "`vault secrets enable` mounts secrets engines. userpass is an auth method, so it needs `vault auth enable`."
+      - id: d
+        text: "`vault write sys/auth/userpass path=contractors`"
+        why: "This writes the wrong path: the mount path goes in the URL (sys/auth/contractors) with type=userpass."
+    answer: [a]
+    explanation: |
+      Each auth method is mounted at a path under `auth/`. By default the path is
+      the type name. With `-path=contractors`, the new method lives at
+      `auth/contractors/`, and users log in with `vault login -method=userpass
+      -path=contractors username=...`. The API call is a POST to
+      `sys/auth/contractors` with `type=userpass`.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/auth/enable
+    glossary: [vault-userpass, vault-auth-method, vault-mount-path]
+
+  - id: vault-auth-009
+    difficulty: 1
+    type: single
+    question: "True or false: you can disable the token auth method if all your users log in with LDAP."
+    options:
+      - id: a
+        text: "True"
+        why: "The token auth method is built in and always on. Every other auth method returns tokens, so Vault needs it."
+      - id: b
+        text: "False"
+    answer: [b]
+    explanation: |
+      The token auth method is mounted at `auth/token/` and cannot be disabled.
+      All other auth methods return tokens, and tokens are how every request is
+      authenticated. You can still create and manage tokens directly with
+      `vault token create`.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/auth/token
+    glossary: [vault-auth-method, vault-token, lx-ldap]

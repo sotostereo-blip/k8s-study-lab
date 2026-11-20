@@ -1,0 +1,335 @@
+domain: access
+questions:
+  - id: ace-sec-001
+    difficulty: 1
+    type: single
+    question: "A contractor must only upload and read objects in Cloud Storage buckets of one project. Today the contractor has the Editor role on the project. What should you do to follow least privilege?"
+    options:
+      - id: a
+        text: "Replace Editor with the predefined role Storage Object User on the project"
+      - id: b
+        text: "Keep Editor and add an organization policy that blocks Compute Engine"
+        why: "Editor still gives write access to almost every other service. Organization policies limit resource configuration, not a person's permissions."
+      - id: c
+        text: "Replace Editor with Owner and ask the contractor to be careful"
+        why: "Owner gives even more access, including IAM changes."
+      - id: d
+        text: "Replace Editor with Viewer"
+        why: "Viewer is read-only, so the contractor could not upload objects."
+    answer: [a]
+    explanation: |
+      Basic roles (Owner, Editor, Viewer) include thousands of permissions in all services.
+      Predefined roles are made for one service and task. Storage Object User lets a principal
+      create, read, update and delete objects, but not change bucket settings or IAM.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/roles-overview
+    glossary: [gcp-basic-role, gcp-predefined-role, least-privilege, gcp-cloud-iam]
+
+  - id: ace-sec-002
+    difficulty: 2
+    type: single
+    question: "A team needs a role with exactly 6 permissions: no predefined role matches without giving extra permissions. The role must be usable in every project of the organization. What should you do?"
+    options:
+      - id: a
+        text: "Create a custom role at the organization level with the 6 permissions"
+      - id: b
+        text: "Create a custom role at the folder level"
+        why: "Custom roles can be created only in an organization or in a project, not in a folder."
+      - id: c
+        text: "Create the same custom role in each project by hand"
+        why: "This works but you must create and update it in every project. An organization-level role is defined once."
+      - id: d
+        text: "Use the Editor role and remove the extra permissions"
+        why: "You cannot remove permissions from a basic or predefined role. Only custom roles can be edited."
+    answer: [a]
+    explanation: |
+      Custom roles contain the permissions you choose. A custom role created at the
+      organization level can be granted on the organization, its folders and its projects.
+      Some permissions are not supported in custom roles, and you must maintain the role yourself.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/creating-custom-roles
+    glossary: [gcp-custom-role, gcp-organization, gcp-folder]
+
+  - id: ace-sec-003
+    difficulty: 2
+    type: single
+    question: "A user has the Storage Admin role on folder \"Data\". An admin removes the user's Storage Admin role in project \"analytics\", which is inside the folder. Can the user still manage buckets in the project?"
+    options:
+      - id: a
+        text: "Yes. The project still inherits the role from the folder, and allow policies are a union"
+      - id: b
+        text: "No. The project-level removal overrides the folder grant"
+        why: "Allow policies only add access. A child cannot remove access granted on a parent."
+      - id: c
+        text: "No. Roles on folders do not apply to projects"
+        why: "Roles granted on folders are inherited by all projects and resources inside them."
+      - id: d
+        text: "Only for buckets created before the change"
+        why: "Inheritance applies to all resources in the project, old and new."
+    answer: [a]
+    explanation: |
+      The effective allow policy of a resource is the union of its own policy and all parent
+      policies. You cannot take away inherited access on a child. To block it, remove the grant
+      on the folder or use an IAM deny policy.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/resource-hierarchy-access-control
+      - https://docs.cloud.google.com/iam/docs/deny-overview
+    glossary: [gcp-cloud-iam, gcp-folder, gcp-project, gcp-resource-hierarchy]
+
+  - id: ace-sec-004
+    difficulty: 1
+    type: single
+    question: "An app on a Compute Engine VM must write files to one Cloud Storage bucket. What is the recommended way to give the app access?"
+    options:
+      - id: a
+        text: "Attach a user-managed service account to the VM and grant it a Storage role on that bucket"
+      - id: b
+        text: "Download a service account key and save it on the VM disk"
+        why: "Keys are long-lived secrets that can leak. An attached service account gets short-lived tokens automatically."
+      - id: c
+        text: "Use the developer's own Google account credentials on the VM"
+        why: "Apps should not use a person's credentials. Access would stop when the person leaves."
+      - id: d
+        text: "Use the Compute Engine default service account with the Editor role"
+        why: "The default service account often has the Editor role, which is far more than the app needs."
+    answer: [a]
+    explanation: |
+      Create a dedicated service account, give it only the role it needs (for example Storage
+      Object Creator on the bucket) and attach it to the VM. The app gets tokens from the
+      metadata server, with no keys to manage.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/best-practices-service-accounts
+      - https://docs.cloud.google.com/iam/docs/service-account-overview
+    glossary: [gcp-service-account, gcp-sa-key, least-privilege]
+
+  - id: ace-sec-005
+    difficulty: 2
+    type: single
+    question: "An engineer must sometimes run gcloud commands as the service account deployer@app-prod.iam.gserviceaccount.com to test its permissions. Security does not allow service account keys. What should you do?"
+    options:
+      - id: a
+        text: "Grant Token Creator on the service account and impersonate it"
+      - id: b
+        text: "Grant the engineer the same roles as the service account"
+        why: "This tests the engineer's account, not the service account. It also gives the engineer permanent extra access."
+      - id: c
+        text: "Create a key for the service account and delete it after the test"
+        why: "Security does not allow keys at all, and a key can leak during the time it exists."
+      - id: d
+        text: "Grant the engineer Service Account Admin on the project"
+        why: "Service Account Admin manages service accounts (create, delete). It does not let you act as one."
+    answer: [a]
+    explanation: |
+      Service account impersonation gives short-lived credentials. With Token Creator on the
+      service account, the engineer can run gcloud ... --impersonate-service-account=EMAIL, or
+      set auth/impersonate_service_account in the gcloud configuration. Actions are logged
+      with both identities.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/service-account-impersonation
+    glossary: [gcp-sa-impersonation, gcp-service-account, gcp-gcloud]
+
+  - id: ace-sec-006
+    difficulty: 2
+    type: single
+    question: "A developer creates a VM and wants to attach the service account backend-sa to it, but gets a permission error. The developer already has Compute Instance Admin on the project. Which role is missing?"
+    options:
+      - id: a
+        text: "Service Account User on backend-sa"
+      - id: b
+        text: "Storage Admin on the whole project"
+        why: "Storage roles are for Cloud Storage. They are not needed to attach a service account to a VM."
+      - id: c
+        text: "Billing Account Administrator role"
+        why: "Billing roles manage payments, not service accounts."
+      - id: d
+        text: "Organization Policy Administrator"
+        why: "This role manages organization policies. It is not needed to attach a service account."
+    answer: [a]
+    explanation: |
+      Attaching a service account to a resource lets that resource act as the account. So the
+      person also needs iam.serviceAccounts.actAs, which comes with Service Account User on that
+      service account (or on the project).
+    docs:
+      - https://docs.cloud.google.com/iam/docs/service-account-overview
+      - https://docs.cloud.google.com/iam/docs/best-practices-service-accounts
+    glossary: [gcp-service-account, gcp-cloud-iam]
+
+  - id: ace-sec-007
+    difficulty: 3
+    type: single
+    question: "Pods in a GKE cluster must read messages from a Pub/Sub subscription. Each app should have its own permissions, and no service account keys may be stored in Kubernetes Secrets. What should you use?"
+    options:
+      - id: a
+        text: "Workload Identity Federation for GKE with a role per app identity"
+      - id: b
+        text: "Give the node service account the Pub/Sub Subscriber role"
+        why: "All Pods on those nodes would share the same permissions. Each app would not have its own identity."
+      - id: c
+        text: "Store a JSON key in a Kubernetes Secret and mount it"
+        why: "This is exactly what the rule forbids. Keys are long-lived and can leak."
+      - id: d
+        text: "Enable OS Login on all the nodes of the cluster"
+        why: "OS Login controls SSH to VMs. It does not give Pods access to Google Cloud APIs."
+    answer: [a]
+    explanation: |
+      With Workload Identity Federation for GKE, a Kubernetes ServiceAccount can be used as an
+      IAM principal (or linked to an IAM service account). Pods using it get short-lived
+      credentials from the GKE metadata server, with permissions only for that app.
+    docs:
+      - https://docs.cloud.google.com/kubernetes-engine/docs/how-to/workload-identity
+    glossary: [gcp-workload-identity, gcp-gke, gcp-pubsub, gcp-service-account]
+
+  - id: ace-sec-008
+    difficulty: 2
+    type: single
+    question: "A GitHub Actions pipeline must deploy to Cloud Run. Today it uses a service account JSON key stored as a GitHub secret. Security wants to remove the key. What should you configure?"
+    options:
+      - id: a
+        text: "Workload Identity Federation with a workload identity pool that trusts GitHub's OIDC tokens"
+      - id: b
+        text: "Workforce Identity Federation for the GitHub organization"
+        why: "Workforce Identity Federation is for people who sign in, not for automated workloads like pipelines."
+      - id: c
+        text: "Rotate the JSON key every 90 days"
+        why: "Rotation lowers the risk but there is still a key. Security wants no key at all."
+      - id: d
+        text: "Make the Cloud Run service public"
+        why: "This allows anyone to call the service. It does not give the pipeline permission to deploy."
+    answer: [a]
+    explanation: |
+      Workload Identity Federation lets an external workload exchange its own token (here a
+      GitHub OIDC token) for short-lived Google Cloud credentials. You create a pool and a
+      provider, and allow the GitHub repository to impersonate a service account or grant roles
+      directly.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/workload-identity-federation
+    glossary: [gcp-workload-identity, gcp-sa-key, gcp-cloud-run]
+
+  - id: ace-sec-009
+    difficulty: 1
+    type: single
+    question: "Which gcloud command gives the group dev-team@example.com the role roles/logging.viewer on the project my-app?"
+    options:
+      - id: a
+        text: "gcloud projects add-iam-policy-binding my-app --member=group:dev-team@example.com --role=roles/logging.viewer"
+      - id: b
+        text: "gcloud iam roles create logging.viewer --project=my-app --member=dev-team@example.com"
+        why: "roles create makes a new custom role. It does not grant a role to anyone."
+      - id: c
+        text: "gcloud projects set-iam-policy my-app roles/logging.viewer group:dev-team@example.com"
+        why: "set-iam-policy replaces the whole policy from a file. Used wrongly it can remove all other bindings."
+      - id: d
+        text: "gcloud groups add dev-team@example.com --role=roles/logging.viewer"
+        why: "There is no such command. Roles are granted on resources with add-iam-policy-binding."
+    answer: [a]
+    explanation: |
+      add-iam-policy-binding adds one binding (member + role) to the existing allow policy
+      without changing the others. Members use prefixes such as user:, group:,
+      serviceAccount: and domain:. Granting roles to groups is easier to manage than to users.
+    docs:
+      - https://docs.cloud.google.com/sdk/gcloud/reference/projects/add-iam-policy-binding
+      - https://docs.cloud.google.com/iam/docs/granting-changing-revoking-access
+    glossary: [gcp-cloud-iam, gcp-gcloud, gcp-cloud-identity]
+
+  - id: ace-sec-010
+    difficulty: 2
+    type: multiple
+    question: "Your team reviews service account security. Which TWO practices does Google recommend? (Choose two.)"
+    options:
+      - id: a
+        text: "Create a separate service account for each app, with only the roles that app needs"
+      - id: b
+        text: "Prefer attached service accounts, impersonation or Workload Identity Federation over service account keys"
+      - id: c
+        text: "Share one service account with the Owner role among all apps to keep things simple"
+        why: "One powerful shared account makes every app a risk for all the others, and logs cannot tell apps apart."
+      - id: d
+        text: "Give developers JSON keys so they can test locally as the production service account"
+        why: "Keys on laptops leak easily. Developers can use impersonation with short-lived credentials instead."
+      - id: e
+        text: "Grant the Editor role to Google-managed service agents to avoid errors"
+        why: "Service agents get the roles they need automatically. Adding Editor gives them far more access than needed."
+    answer: [a, b]
+    explanation: |
+      Google recommends single-purpose service accounts with least privilege, and avoiding
+      long-lived keys. Use attached service accounts for Google Cloud resources, impersonation
+      for people, and Workload Identity Federation for workloads outside Google Cloud.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/best-practices-service-accounts
+    glossary: [gcp-service-account, gcp-sa-key, least-privilege, gcp-service-agent]
+
+  - id: ace-sec-011
+    difficulty: 3
+    type: single
+    question: "A batch job running outside Google Cloud needs an access token for a service account that is valid for only 15 minutes. The job's identity already has Token Creator on that service account. Which approach fits?"
+    options:
+      - id: a
+        text: "Call generateAccessToken with a 900-second lifetime"
+      - id: b
+        text: "Create a service account key with a 15-minute expiration"
+        why: "User-managed keys do not expire after minutes by default, and a key is a long-lived secret to protect."
+      - id: c
+        text: "Use a Cloud Storage signed URL for the job"
+        why: "A signed URL gives access to one Cloud Storage object. It is not an access token for APIs."
+      - id: d
+        text: "Grant the job the Owner role for 15 minutes"
+        why: "Owner is far too much, and the job still needs a way to authenticate."
+    answer: [a]
+    explanation: |
+      The Service Account Credentials API creates short-lived credentials (OAuth 2.0 access
+      tokens, ID tokens, signed JWTs) for a service account. The caller needs Service Account
+      Token Creator on it. You can set the lifetime, up to 1 hour by default.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/create-short-lived-credentials-direct
+    glossary: [gcp-sa-impersonation, gcp-service-account]
+
+  - id: ace-sec-012
+    difficulty: 2
+    type: single
+    question: "When you enabled the Cloud Run API, a new service account appeared in the IAM page with a name like service-PROJECT_NUMBER@serverless-robot-prod.iam.gserviceaccount.com. A teammate wants to delete it because nobody created it. What should you tell the teammate?"
+    options:
+      - id: a
+        text: "It is a Google-managed service agent for Cloud Run; keep it and its role"
+      - id: b
+        text: "It is an attacker's account and must be deleted right away"
+        why: "Service agents are created by Google when you enable an API. They are expected and needed."
+      - id: c
+        text: "It is the Compute Engine default service account and can be renamed"
+        why: "The default compute service account ends in -compute@developer.gserviceaccount.com. Service agents cannot be renamed."
+      - id: d
+        text: "It is a user-managed account and needs a JSON key to work"
+        why: "Google manages service agents and their credentials. You never create keys for them."
+    answer: [a]
+    explanation: |
+      Service agents (Google-managed service accounts) let Google Cloud services access your
+      resources for you, for example to pull images for Cloud Run. Google creates them and grants
+      them a service agent role. Removing that role can break the service.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/service-agents
+    glossary: [gcp-service-agent, gcp-cloud-run]
+
+  - id: ace-sec-013
+    difficulty: 1
+    type: single
+    question: "Ten new data analysts join the company every month. They all need the same three BigQuery roles in one project. What is the easiest way to manage their access?"
+    options:
+      - id: a
+        text: "Grant the roles to a Google group and add new analysts to it"
+      - id: b
+        text: "Grant the three roles to each analyst's account one by one"
+        why: "This works, but every join and leave needs IAM changes, and it is easy to forget one role."
+      - id: c
+        text: "Create one shared user account for all analysts"
+        why: "Shared accounts break accountability: logs cannot show which person did what."
+      - id: d
+        text: "Give each new analyst a service account key"
+        why: "Service accounts are for apps, not people, and keys are a security risk."
+    answer: [a]
+    explanation: |
+      Google recommends granting roles to groups, not to individual users. Then onboarding and
+      offboarding only change group membership in Cloud Identity or Google Workspace, and the IAM
+      policy stays small and clear.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/granting-changing-revoking-access
+      - https://docs.cloud.google.com/identity/docs/overview
+    glossary: [gcp-cloud-identity, gcp-cloud-iam, gcp-bigquery]

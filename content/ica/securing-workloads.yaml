@@ -1,0 +1,334 @@
+domain: securing-workloads
+questions:
+  - id: ica-sec-001
+    difficulty: 1
+    type: single
+    question: Which Istio resource sets the mTLS mode (STRICT, PERMISSIVE or DISABLE) for traffic that workloads receive?
+    options:
+      - id: a
+        text: "RequestAuthentication"
+        why: "RequestAuthentication validates end-user JWTs. It does not set the mTLS mode between workloads."
+      - id: b
+        text: "AuthorizationPolicy"
+        why: "AuthorizationPolicy decides which requests are allowed. It uses identities from mTLS but does not turn mTLS on or off."
+      - id: c
+        text: "PeerAuthentication"
+      - id: d
+        text: "DestinationRule"
+        why: "A DestinationRule can set the TLS mode that a client uses, but the mode that a workload accepts is set by PeerAuthentication."
+    answer: [c]
+    explanation: |
+      PeerAuthentication defines how a workload accepts traffic from peers:
+      STRICT (only mTLS), PERMISSIVE (mTLS and plain text) or DISABLE. It can apply
+      to the whole mesh, a namespace, or selected workloads.
+    docs:
+      - https://istio.io/latest/docs/reference/config/security/peer_authentication/
+    glossary: [peerauthentication, mtls]
+
+  - id: ica-sec-002
+    difficulty: 1
+    type: single
+    question: You installed Istio and did not create any PeerAuthentication. Which mTLS mode do workloads with sidecars use for incoming traffic?
+    options:
+      - id: a
+        text: "STRICT: only mTLS traffic is accepted"
+        why: "STRICT is not the default. You must create a PeerAuthentication to require it."
+      - id: b
+        text: "DISABLE: only plain text is accepted"
+        why: "Istio does not disable mTLS by default. Sidecars use mTLS between themselves automatically."
+      - id: c
+        text: "UNSET: no traffic is accepted until you choose a mode"
+        why: "UNSET means the setting is inherited from the parent. Workloads still accept traffic."
+      - id: d
+        text: "PERMISSIVE: both mTLS and plain text are accepted"
+    answer: [d]
+    explanation: |
+      The default is PERMISSIVE, so you can add workloads to the mesh step by step.
+      Clients with a sidecar use mTLS automatically (auto mTLS), and clients
+      without a sidecar can still send plain text.
+    docs:
+      - https://istio.io/latest/docs/concepts/security/
+      - https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/
+    glossary: [peerauthentication, mtls]
+
+  - id: ica-sec-003
+    difficulty: 2
+    type: single
+    question: You want to require mTLS for every workload in the whole mesh with one resource. Where do you create a PeerAuthentication with mode STRICT and no selector?
+    options:
+      - id: a
+        text: "In the root namespace, istio-system by default"
+      - id: b
+        text: "In the default namespace"
+        why: "A policy in the default namespace only applies to workloads in that namespace."
+      - id: c
+        text: "In every namespace that has the istio-injection label"
+        why: "This works but needs many resources. One policy in the root namespace covers the whole mesh."
+      - id: d
+        text: "In the namespace of the ingress gateway, with a selector for the gateway"
+        why: "With a selector the policy only applies to the selected workload, here only the gateway."
+    answer: [a]
+    explanation: |
+      A PeerAuthentication without a selector in the root namespace (the Istio
+      config namespace, `istio-system` by default) is a mesh-wide policy. The docs
+      name it `default`. Namespace and workload policies can override it.
+    docs:
+      - https://istio.io/latest/docs/tasks/security/authentication/authn-policy/
+    glossary: [peerauthentication, root-namespace, mtls]
+
+  - id: ica-sec-004
+    difficulty: 2
+    type: single
+    question: The namespace orders has a PeerAuthentication with mode STRICT. A Pod without a sidecar in the namespace legacy calls a service in orders. What happens?
+    options:
+      - id: a
+        text: "The call works, because Istio upgrades it to mTLS"
+        why: "Without a proxy on the client side nobody can start mTLS. The client sends plain text."
+      - id: b
+        text: "The connection is rejected, because orders only accepts mTLS"
+      - id: c
+        text: "The call works, but it is logged as a warning"
+        why: "That describes a dry-run or audit policy. STRICT really rejects plain text."
+      - id: d
+        text: "The call works only if the Pod uses HTTPS on port 443"
+        why: "Application TLS is not Istio mTLS. The server proxy expects an Istio certificate from the client."
+    answer: [b]
+    explanation: |
+      STRICT accepts only mTLS. A client without a sidecar (or ztunnel in ambient
+      mode) sends plain text, so the server proxy closes the connection. Use
+      PERMISSIVE while you move clients into the mesh.
+    docs:
+      - https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/
+    glossary: [peerauthentication, mtls, envoy]
+
+  - id: ica-sec-005
+    difficulty: 2
+    type: single
+    question: You applied a RequestAuthentication for the workload api. No AuthorizationPolicy exists. What happens to a request that has no JWT at all?
+    options:
+      - id: a
+        text: "It is rejected with HTTP 401"
+        why: "Only requests with an invalid token are rejected. RequestAuthentication alone does not require a token."
+      - id: b
+        text: "It is rejected with HTTP 403"
+        why: "403 comes from an AuthorizationPolicy. Here there is none."
+      - id: c
+        text: "It is accepted, but it has no authenticated request identity"
+      - id: d
+        text: "It is sent to the issuer to get a new token"
+        why: "Istio does not get tokens for clients. It only validates tokens that requests already carry."
+    answer: [c]
+    explanation: |
+      RequestAuthentication checks JWTs when they are present: an invalid token
+      gets 401. A request with no token is still accepted. To require a token, add
+      an AuthorizationPolicy, for example ALLOW with `requestPrincipals: ["*"]`.
+    docs:
+      - https://istio.io/latest/docs/reference/config/security/request_authentication/
+      - https://istio.io/latest/docs/tasks/security/authorization/authz-jwt/
+    glossary: [requestauthentication, jwt, authorizationpolicy]
+
+  - id: ica-sec-006
+    difficulty: 2
+    type: single
+    question: Requests to the workload api must have a valid JWT. A RequestAuthentication is already in place. Which AuthorizationPolicy rule completes the setup?
+    options:
+      - id: a
+        text: "action: ALLOW, rules: from.source.principals: [\"*\"]"
+        why: "principals are mTLS peer identities (service accounts), not JWT identities. This does not check the token."
+      - id: b
+        text: "action: DENY, rules: from.source.requestPrincipals: [\"*\"]"
+        why: "This denies every request that has a valid token, which is the opposite of the goal."
+      - id: c
+        text: "action: AUDIT, rules: to.operation.methods: [\"GET\"]"
+        why: "AUDIT only marks requests for logging. It never allows or denies them."
+      - id: d
+        text: "action: ALLOW, rules: from.source.requestPrincipals: [\"*\"]"
+    answer: [d]
+    explanation: |
+      A request principal (`<issuer>/<subject>`) is set only when a valid JWT is
+      present. An ALLOW rule with `requestPrincipals: ["*"]` allows only requests
+      with a valid token; other requests get 403.
+    docs:
+      - https://istio.io/latest/docs/tasks/security/authorization/authz-jwt/
+    glossary: [authorizationpolicy, requestauthentication, jwt]
+
+  - id: ica-sec-007
+    difficulty: 3
+    type: single
+    question: A workload has a CUSTOM, a DENY and an ALLOW AuthorizationPolicy. In which order does Istio evaluate them?
+    options:
+      - id: a
+        text: "CUSTOM, then DENY, then ALLOW"
+      - id: b
+        text: "ALLOW, then DENY, then CUSTOM"
+        why: "ALLOW is checked last. A DENY match must win over an ALLOW match."
+      - id: c
+        text: "DENY, then ALLOW, then CUSTOM"
+        why: "CUSTOM is checked first, before DENY."
+      - id: d
+        text: "By creation time, oldest first"
+        why: "Creation time does not matter. The order depends only on the action."
+    answer: [a]
+    explanation: |
+      Istio checks CUSTOM policies first, then DENY, then ALLOW. If a CUSTOM or
+      DENY policy denies the request, it is denied. If ALLOW policies exist, the
+      request must match one of them; if none exist, it is allowed.
+    docs:
+      - https://istio.io/latest/docs/concepts/security/
+      - https://istio.io/latest/docs/reference/config/security/authorization-policy/
+    glossary: [authorizationpolicy, authorization]
+
+  - id: ica-sec-008
+    difficulty: 2
+    type: single
+    question: "What does this policy do: an AuthorizationPolicy named allow-nothing in the namespace shop with spec: {}?"
+    options:
+      - id: a
+        text: "It allows all requests to workloads in shop"
+        why: "An empty spec means ALLOW with no rules, and no rule can match, so nothing is allowed."
+      - id: b
+        text: "It denies all requests to workloads in shop"
+      - id: c
+        text: "It has no effect, because it has no rules"
+        why: "An ALLOW policy with no rules still exists, and it changes the default to deny."
+      - id: d
+        text: "It only logs requests"
+        why: "Logging policies use the AUDIT action. This one uses the default action, ALLOW."
+    answer: [b]
+    explanation: |
+      The default action is ALLOW. A policy with no rules matches nothing, so no
+      request is allowed and all requests to the namespace are denied. This is a
+      common start for a "deny by default" setup; then you add ALLOW policies.
+    docs:
+      - https://istio.io/latest/docs/reference/config/security/authorization-policy/
+      - https://istio.io/latest/docs/ops/configuration/security/security-policy-examples/
+    glossary: [authorizationpolicy, default-deny]
+
+  - id: ica-sec-009
+    difficulty: 2
+    type: single
+    question: Only Pods that run with the service account frontend in the namespace web may call the backend workload. Which source field do you use in the AuthorizationPolicy rule?
+    options:
+      - id: a
+        text: "requestPrincipals: [\"cluster.local/ns/web/sa/frontend\"]"
+        why: "requestPrincipals come from JWTs (issuer/subject). Service account identities come from mTLS."
+      - id: b
+        text: "ipBlocks: [\"web/frontend\"]"
+        why: "ipBlocks takes IP ranges in CIDR form, not service accounts."
+      - id: c
+        text: "principals: [\"cluster.local/ns/web/sa/frontend\"]"
+      - id: d
+        text: "when: key: request.headers[sa], values: [\"frontend\"]"
+        why: "A header can be set by any client, so it does not prove an identity. Istio uses the mTLS certificate."
+    answer: [c]
+    explanation: |
+      With mTLS each workload has an identity based on its namespace and service
+      account (SPIFFE style). In AuthorizationPolicy it is written as
+      `<trust domain>/ns/<namespace>/sa/<service account>` in `from.source.principals`.
+      This needs mTLS between the workloads.
+    docs:
+      - https://istio.io/latest/docs/reference/config/security/authorization-policy/
+      - https://istio.io/latest/docs/tasks/security/authorization/authz-http/
+    glossary: [authorizationpolicy, spiffe, service-account, mtls]
+
+  - id: ica-sec-010
+    difficulty: 3
+    type: single
+    question: You want an external authorization service (for example OPA) to decide about requests to the workload api. What do you configure?
+    options:
+      - id: a
+        text: "A RequestAuthentication that points to the OPA service"
+        why: "RequestAuthentication only validates JWTs with an issuer and keys. It cannot call an external authorizer."
+      - id: b
+        text: "An AuthorizationPolicy with action AUDIT"
+        why: "AUDIT only marks requests for audit logging. It does not call an external service."
+      - id: c
+        text: "A ServiceEntry for OPA and nothing else"
+        why: "A ServiceEntry only makes the host known. The proxy still needs a CUSTOM policy to call it."
+      - id: d
+        text: "An extension provider in meshConfig and an AuthorizationPolicy with action CUSTOM"
+    answer: [d]
+    explanation: |
+      First define the authorizer in `meshConfig.extensionProviders`. Then create
+      an AuthorizationPolicy with `action: CUSTOM`, `provider.name` set to that
+      provider, and rules that select which requests are checked.
+    docs:
+      - https://istio.io/latest/docs/tasks/security/authorization/authz-custom/
+    glossary: [authorizationpolicy, tf-opa]
+
+  - id: ica-sec-011
+    difficulty: 3
+    type: single
+    question: An Istio Gateway terminates HTTPS with tls.mode SIMPLE and credentialName shop-cert. The ingress gateway runs in istio-system. Where must the TLS Secret shop-cert be?
+    options:
+      - id: a
+        text: "In the same namespace as the ingress gateway Pods (istio-system)"
+      - id: b
+        text: "In the namespace of the application Pods"
+        why: "The gateway Pod reads the certificate, not the application. A Secret in the app namespace is not found."
+      - id: c
+        text: "In any namespace; Istio searches all of them"
+        why: "Istio does not search every namespace for a credentialName. This would also be a security risk."
+      - id: d
+        text: "Mounted as a file in every sidecar"
+        why: "With credentialName the gateway gets the certificate through SDS from a Secret. No file mount is needed."
+    answer: [a]
+    explanation: |
+      For an Istio Gateway, `credentialName` refers to a Kubernetes TLS Secret in
+      the namespace where the gateway workload runs. Create it, for example, with
+      `kubectl create -n istio-system secret tls shop-cert --key=... --cert=...`.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/ingress/secure-ingress/
+    glossary: [istio-gateway, ingress-gateway, tls, secret]
+
+  - id: ica-sec-012
+    difficulty: 2
+    type: single
+    question: The ingress gateway must not decrypt HTTPS traffic for one host. It must route it by SNI and send the encrypted traffic to the backend. Which tls.mode do you set on the Gateway server?
+    options:
+      - id: a
+        text: "SIMPLE"
+        why: "SIMPLE terminates TLS at the gateway, so the gateway decrypts the traffic."
+      - id: b
+        text: "PASSTHROUGH"
+      - id: c
+        text: "MUTUAL"
+        why: "MUTUAL also terminates TLS at the gateway and also asks the client for a certificate."
+      - id: d
+        text: "ISTIO_MUTUAL"
+        why: "ISTIO_MUTUAL is for mTLS with Istio certificates inside the mesh, for example between gateways."
+    answer: [b]
+    explanation: |
+      With `tls.mode: PASSTHROUGH` the gateway reads only the SNI name and forwards
+      the encrypted stream. The backend terminates TLS. Route it with a `tls`
+      section (match on `sniHosts`) in the VirtualService.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-sni-passthrough/
+      - https://istio.io/latest/docs/reference/config/networking/gateway/
+    glossary: [istio-gateway, tls, ingress-gateway]
+
+  - id: ica-sec-013
+    difficulty: 3
+    type: single
+    question: In ambient mode, you create an AuthorizationPolicy that allows only GET requests on the path /status to a service. The namespace has no waypoint. What is the problem?
+    options:
+      - id: a
+        text: "AuthorizationPolicy is not supported in ambient mode, so the policy is ignored"
+        why: "Ambient mode supports AuthorizationPolicy. ztunnel enforces L4 rules, and waypoints enforce L7 rules."
+      - id: b
+        text: "In ambient mode, every policy must use the action CUSTOM with an external authorizer"
+        why: "The action is not the problem. L7 attributes need an L7 proxy, whatever the action."
+      - id: c
+        text: "ztunnel works at L4; HTTP methods and paths need a waypoint proxy"
+      - id: d
+        text: "You must restart the Pods so that they get a sidecar that can read HTTP data"
+        why: "Ambient Pods have no sidecars. The L7 proxy in ambient mode is the waypoint."
+    answer: [c]
+    explanation: |
+      ztunnel only sees L4 data (identities, IPs, ports). Rules on HTTP methods or
+      paths need a waypoint: deploy one (for example `istioctl waypoint apply
+      --enroll-namespace`) and attach the policy to it with `targetRefs`.
+    docs:
+      - https://istio.io/latest/docs/ambient/usage/l7-features/
+      - https://istio.io/latest/docs/ambient/usage/waypoint/
+    glossary: [ztunnel, waypoint-proxy, authorizationpolicy, ambient-mode]

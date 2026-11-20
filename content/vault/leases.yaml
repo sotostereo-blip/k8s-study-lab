@@ -1,0 +1,131 @@
+domain: leases
+questions:
+  - id: vault-leases-001
+    difficulty: 1
+    type: single
+    question: |
+      `vault read database/creds/readonly` returns a username, a password and this line:
+
+      `lease_id  database/creds/readonly/2f6a614c-4aa2-7b19-24b9-ad944a8d4de6`
+
+      What can you do with the lease ID?
+    options:
+      - id: a
+        text: "Log in to Vault as the database user"
+        why: "A lease ID is not a credential for Vault. You log in with an auth method, which gives you a token."
+      - id: b
+        text: "Renew or revoke this one set of credentials"
+      - id: c
+        text: "Decrypt the password with the Transit engine"
+        why: "The password is already plain text in the response. The lease ID has nothing to do with Transit."
+      - id: d
+        text: "Read the same password again later"
+        why: "The lease ID only identifies the lease. Vault does not return the secret again from it."
+    answer: [b]
+    explanation: |
+      Every dynamic secret has a lease with an ID, a duration and a renewable
+      flag. The lease ID starts with the path that created it. You use it with
+      `vault lease renew`, `vault lease revoke` and `vault lease lookup` to
+      manage exactly these credentials.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/lease
+    glossary: [vault-lease, vault-dynamic-secret]
+
+  - id: vault-leases-002
+    difficulty: 2
+    type: single
+    question: "An app still needs its database credentials, which expire in 10 minutes. Which command asks Vault for 1 more hour on that lease?"
+    options:
+      - id: a
+        text: "`vault lease renew -increment=1h <lease_id>`"
+      - id: b
+        text: "`vault token renew -increment=1h <lease_id>`"
+        why: "`vault token renew` renews tokens, not the leases of secrets."
+      - id: c
+        text: "`vault read -ttl=1h database/creds/readonly`"
+        why: "This would create new credentials (a new lease), not extend the existing ones."
+      - id: d
+        text: "`vault lease lookup -increment=1h <lease_id>`"
+        why: "`vault lease lookup` only shows information about a lease. It does not change it."
+    answer: [a]
+    explanation: |
+      `vault lease renew` extends a renewable lease. `-increment` is a request:
+      Vault (and the secrets engine) may give less time, and never more than the
+      max TTL of the lease. After the max TTL, the app must get new credentials.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/lease/renew
+      - https://developer.hashicorp.com/vault/docs/concepts/lease
+    glossary: [vault-lease]
+
+  - id: vault-leases-003
+    difficulty: 2
+    type: single
+    question: "You think the role `aws/creds/deploy` was used by an attacker. You must remove all AWS credentials created from that role at once. Which command does this?"
+    options:
+      - id: a
+        text: "`vault secrets disable aws/creds/deploy`"
+        why: "You can only disable a whole mount (aws/), and that deletes the engine and all its configuration."
+      - id: b
+        text: "`vault lease revoke aws/creds/deploy`"
+        why: "Without -prefix, the argument must be one full lease ID, not a path."
+      - id: c
+        text: "`vault lease revoke -prefix aws/creds/deploy`"
+      - id: d
+        text: "`vault token revoke -prefix aws/creds/deploy`"
+        why: "Token revocation does not take a secret path. It revokes tokens and the leases they own."
+    answer: [c]
+    explanation: |
+      `vault lease revoke -prefix <path>` revokes every lease whose ID starts
+      with that path, and the secrets engine deletes the matching IAM users or
+      keys. Prefix revocation needs sudo on `sys/leases/revoke-prefix`. This is
+      a key benefit of dynamic secrets during an incident.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/lease/revoke
+      - https://developer.hashicorp.com/vault/docs/concepts/lease
+    glossary: [vault-lease, vault-dynamic-secret, lx-sudo]
+
+  - id: vault-leases-004
+    difficulty: 2
+    type: single
+    question: "An app got database credentials with its token. Later, an admin revokes that token. What happens to the lease of the database credentials?"
+    options:
+      - id: a
+        text: "Nothing, leases do not depend on tokens"
+        why: "Leases are linked to the token that created them, so they are affected by its revocation."
+      - id: b
+        text: "The lease is revoked and the credentials are deleted"
+      - id: c
+        text: "The lease moves to the parent token"
+        why: "Vault does not move leases to other tokens. They are revoked with their token."
+      - id: d
+        text: "The lease stays until its TTL ends"
+        why: "Vault does not wait for the TTL. Revoking the token revokes its leases right away."
+    answer: [b]
+    explanation: |
+      Each lease belongs to the token that created it. When a token is revoked
+      (or expires), Vault also revokes all the leases it created, and the
+      secrets engine removes the credentials. This keeps secrets from living
+      longer than the identity that asked for them.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/lease
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+    glossary: [vault-lease, vault-token, vault-dynamic-secret]
+
+  - id: vault-leases-005
+    difficulty: 1
+    type: single
+    question: "True or false: when a lease reaches its max TTL, the app can still renew it once more for a short time."
+    options:
+      - id: a
+        text: "True"
+        why: "The max TTL is a hard limit. After it, Vault revokes the lease and the app must request new credentials."
+      - id: b
+        text: "False"
+    answer: [b]
+    explanation: |
+      Renewals extend a lease only up to its max TTL. At the max TTL, Vault
+      revokes the lease. Apps (or Vault Agent) should watch the lease and get
+      fresh credentials before that time.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/lease
+    glossary: [vault-lease, vault-agent]

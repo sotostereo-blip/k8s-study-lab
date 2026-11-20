@@ -1,0 +1,45 @@
+id: vault-leases-001
+title: Renew one lease and revoke the rest
+domain: leases
+difficulty: 3
+minutes: 8
+environment: vault
+setup: |
+  labvault secrets enable -path=pgsql database >/dev/null
+  labvault write pgsql/config/shop plugin_name=postgresql-database-plugin connection_url='postgresql://{{username}}:{{password}}@postgres:5432/shop?sslmode=disable' username=postgres password=lab-root-pw allowed_roles='*' >/dev/null
+  labvault write pgsql/roles/report db_name=shop default_ttl=10m max_ttl=2h creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';" >/dev/null
+  labvault read -format=json pgsql/creds/report | jq -r .lease_id > /root/keep.lease
+  for i in 1 2 3; do labvault read -format=json pgsql/creds/report | jq -r .lease_id >> /etc/lab/old.leases; done
+task: |
+  A database secrets engine is mounted at `pgsql/`. Its role `report` has created **4** sets of
+  credentials, each with a lease of 10 minutes.
+
+  1. The lease in `/root/keep.lease` belongs to a long report: **renew** it so that it lasts
+     **1 hour** from now.
+  2. A security incident: **revoke every other lease** of `pgsql/creds/report` (the 3 other
+     database users must be deleted). Keep the lease in `/root/keep.lease`.
+
+  Hint: you can list the lease ids with `vault list sys/leases/lookup/pgsql/creds/report`.
+checks:
+  - name: The lease in /root/keep.lease is still valid and has about 1h left
+    run: |
+      ttl=$(labvault lease lookup -format=json "$(cat /root/keep.lease)" | jq -r .data.ttl)
+      [ "$ttl" -gt 2400 ]
+  - name: The 3 other leases are revoked
+    run: |
+      while read -r l; do ! labvault lease lookup "$l" >/dev/null 2>&1 || exit 1; done < /etc/lab/old.leases
+solution: |
+  vault lease renew -increment=1h "$(cat /root/keep.lease)"
+  vault list sys/leases/lookup/pgsql/creds/report        # lease ids (the last part only)
+  # revoke the other three one by one:
+  vault lease revoke pgsql/creds/report/<id>
+  # (vault lease revoke -prefix pgsql/creds/report would revoke ALL of them, also the one to keep)
+auto_solution: |
+  vault lease renew -increment=1h "$(cat /root/keep.lease)"
+  keep=$(cat /root/keep.lease)
+  for id in $(vault list -format=json sys/leases/lookup/pgsql/creds/report | jq -r '.[]'); do
+    [ "pgsql/creds/report/$id" = "$keep" ] || vault lease revoke "pgsql/creds/report/$id"
+  done
+docs:
+  - https://developer.hashicorp.com/vault/docs/concepts/lease
+  - https://developer.hashicorp.com/vault/docs/commands/lease/revoke

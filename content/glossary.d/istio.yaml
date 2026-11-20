@@ -1,0 +1,225 @@
+# Istio service mesh glossary (ICA - Istio Certified Associate).
+# Generic terms already in glossary.yaml: service-mesh, sidecar, mtls, canary, gateway-api, httproute,
+# gatewayclass, helm, prometheus, metrics. TLS, authentication, authorization and CA are in security.yaml.
+terms:
+- id: istio
+  term: Istio
+  match: [Istio]
+  definition: An open source service mesh. It adds traffic control, mTLS security and telemetry to services without changes to the application code.
+  es: Service mesh de código abierto; añade control de tráfico, seguridad mTLS y telemetría sin cambiar el código.
+- id: envoy
+  term: Envoy proxy
+  match: [Envoy, Envoy proxy, sidecar proxy, sidecar proxies, istio-proxy]
+  definition: The high-performance L7 proxy that Istio uses in sidecars, gateways and waypoints. In sidecar mode the container is called istio-proxy.
+  es: Proxy L7 que Istio usa en sidecars, gateways y waypoints; en modo sidecar el contenedor se llama istio-proxy.
+- id: envoy-admin
+  term: Envoy admin interface
+  match: [Envoy admin, admin interface, config_dump]
+  definition: A local HTTP interface of Envoy (port 15000 inside the Pod) that shows its live configuration (config_dump), statistics and log levels.
+  es: Interfaz HTTP local de Envoy (puerto 15000) que muestra su configuración real, estadísticas y niveles de log.
+- id: istiod
+  term: istiod
+  match: [istiod]
+  definition: "The Istio control plane in one binary: it turns Istio resources into proxy configuration (xDS), works as the certificate authority and runs the injection webhook."
+  es: "Plano de control de Istio: convierte los recursos en configuración de proxies (xDS), actúa como CA y ejecuta el webhook de inyección."
+- id: istioctl
+  term: istioctl
+  match: [istioctl]
+  definition: The Istio command line tool. It installs and upgrades Istio and helps you debug the mesh (analyze, proxy-status, proxy-config).
+  es: Herramienta de línea de comandos de Istio para instalar, actualizar y depurar el mesh.
+- id: xds
+  term: xDS
+  match: [xDS]
+  definition: The set of Envoy discovery APIs (listeners, routes, clusters, endpoints, secrets) that istiod uses to push configuration to the proxies.
+  es: APIs de descubrimiento de Envoy con las que istiod envía la configuración a los proxies.
+- id: istio-gateway
+  term: Gateway (Istio)
+  match: [Gateway, Gateways]
+  certs: [ica]
+  definition: "A resource that configures a proxy at the edge of the mesh: which ports, protocols, hosts and TLS settings it accepts. Istio supports its own Gateway (networking.istio.io) and the Kubernetes Gateway API Gateway."
+  es: "Recurso que configura un proxy en el borde del mesh: puertos, protocolos, hosts y TLS."
+- id: ingress-gateway
+  term: Ingress gateway
+  match: [ingress gateway, ingress gateways, istio-ingressgateway]
+  definition: An Envoy proxy Deployment at the edge of the mesh that receives traffic from outside the cluster.
+  es: Proxy Envoy en el borde del mesh que recibe el tráfico que llega desde fuera del clúster.
+- id: egress-gateway
+  term: Egress gateway
+  match: [egress gateway, egress gateways, istio-egressgateway]
+  definition: An Envoy proxy Deployment that all traffic leaving the mesh can pass through, so you can control and monitor it in one place.
+  es: Proxy Envoy por el que pasa el tráfico que sale del mesh, para controlarlo en un solo punto.
+- id: virtualservice
+  term: VirtualService
+  match: [VirtualService, VirtualServices]
+  definition: An Istio resource with routing rules for a host, for example match a path or header, split traffic by weight, set timeouts, retries, faults or mirroring.
+  es: Recurso de Istio con reglas de enrutamiento (rutas, pesos, timeouts, reintentos, fallos, espejo).
+- id: destinationrule
+  term: DestinationRule
+  match: [DestinationRule, DestinationRules]
+  definition: An Istio resource with policies applied after routing to a service, such as subsets, load balancing, connection pools, outlier detection and client TLS.
+  es: Recurso de Istio con políticas para el destino (subsets, balanceo, pool de conexiones, outlier detection, TLS).
+- id: istio-subset
+  term: Subset
+  match: [subset, subsets]
+  certs: [ica]
+  definition: A named group of a service's Pods, chosen by labels in a DestinationRule (for example version v1 and v2). VirtualService routes can point to a subset.
+  es: Grupo con nombre de Pods de un servicio, elegido por etiquetas en una DestinationRule.
+- id: serviceentry
+  term: ServiceEntry
+  match: [ServiceEntry, ServiceEntries]
+  definition: An Istio resource that adds an entry to the mesh service registry, usually for an external service such as an API on the internet.
+  es: Recurso de Istio que añade un servicio (normalmente externo) al registro de servicios del mesh.
+- id: workloadentry
+  term: WorkloadEntry
+  match: [WorkloadEntry, WorkloadEntries]
+  definition: An Istio resource that describes a single non-Kubernetes workload, such as a virtual machine, so it can join the mesh.
+  es: Recurso de Istio que describe una carga fuera de Kubernetes (por ejemplo una VM) para unirla al mesh.
+- id: outbound-traffic-policy
+  term: Outbound traffic policy
+  match: [outboundTrafficPolicy, REGISTRY_ONLY, ALLOW_ANY]
+  definition: "A mesh setting for traffic to unknown external hosts: ALLOW_ANY (default) lets it pass, REGISTRY_ONLY blocks hosts that are not in the service registry."
+  es: "Ajuste del mesh para tráfico a hosts externos desconocidos: ALLOW_ANY lo deja pasar, REGISTRY_ONLY lo bloquea."
+- id: traffic-shifting
+  term: Traffic shifting
+  match: [traffic shifting, weighted routing]
+  definition: Moving traffic step by step from one version of a service to another by changing route weights (for example 90/10, then 50/50).
+  es: Mover el tráfico poco a poco de una versión a otra cambiando los pesos de las rutas.
+- id: istio-timeout
+  term: Timeout (Istio)
+  match: [timeout, timeouts]
+  certs: [ica]
+  definition: The longest time the proxy waits for a response before it returns an error (HTTP 504). Set per route in a VirtualService.
+  es: Tiempo máximo que el proxy espera una respuesta antes de devolver error.
+- id: istio-retry
+  term: Retry (Istio)
+  match: [retry policy, retry policies]
+  certs: [ica]
+  definition: Sending a failed request again. A VirtualService sets the number of attempts, the timeout per attempt and the retry conditions.
+  es: Reenviar una petición fallida; la VirtualService define intentos, timeout por intento y condiciones.
+- id: fault-injection
+  term: Fault injection
+  match: [fault injection]
+  definition: Adding delays or error responses on purpose to test how an application handles failures.
+  es: Añadir retrasos o errores a propósito para probar cómo la aplicación maneja los fallos.
+- id: circuit-breaking
+  term: Circuit breaking
+  match: [circuit breaking, circuit breaker, circuit breakers]
+  definition: Limiting connections and pending requests to a service so that an overloaded service fails fast instead of making the whole system slow.
+  es: Limitar conexiones y peticiones pendientes para que un servicio sobrecargado falle rápido.
+- id: outlier-detection
+  term: Outlier detection
+  match: [outlier detection]
+  definition: Watching each endpoint for errors and removing (ejecting) bad endpoints from the load balancing pool for some time.
+  es: Vigilar cada endpoint y sacar temporalmente del balanceo a los que fallan.
+- id: traffic-mirroring
+  term: Traffic mirroring
+  match: [mirroring, traffic mirroring, shadowing]
+  definition: Sending a copy of live traffic to another service. The responses from the copy are ignored, so users are not affected.
+  es: Enviar una copia del tráfico real a otro servicio; sus respuestas se ignoran.
+- id: locality-failover
+  term: Locality failover
+  match: [failover, locality failover]
+  certs: [ica]
+  definition: Sending traffic to endpoints in another region or zone when the local endpoints are unhealthy. In Istio it needs outlier detection.
+  es: Enviar el tráfico a otra región o zona cuando los endpoints locales fallan.
+- id: peerauthentication
+  term: PeerAuthentication
+  match: [PeerAuthentication]
+  definition: "An Istio resource that sets the mTLS mode for traffic that a workload receives: STRICT (mTLS only), PERMISSIVE (mTLS and plain text) or DISABLE."
+  es: "Recurso de Istio que define el modo mTLS que acepta una carga: STRICT, PERMISSIVE o DISABLE."
+- id: requestauthentication
+  term: RequestAuthentication
+  match: [RequestAuthentication]
+  definition: An Istio resource that tells the proxy how to validate JWTs (issuer and keys). Invalid tokens are rejected; requests without a token are not.
+  es: Recurso de Istio que valida tokens JWT; rechaza tokens inválidos pero no peticiones sin token.
+- id: authorizationpolicy
+  term: AuthorizationPolicy
+  match: [AuthorizationPolicy, AuthorizationPolicies]
+  definition: "An Istio resource for access control on workloads, with an action (ALLOW, DENY, CUSTOM, AUDIT) and rules with from, to and when."
+  es: "Recurso de Istio para control de acceso con acción (ALLOW, DENY, CUSTOM, AUDIT) y reglas from, to y when."
+- id: jwt
+  term: JWT
+  match: [JWT, JWTs, JSON Web Token, JSON Web Tokens]
+  definition: A signed token that carries claims about a user or client (issuer, subject, audience). Often sent in the Authorization header as a Bearer token.
+  es: Token firmado con información (claims) sobre un usuario o cliente.
+- id: spiffe
+  term: SPIFFE identity
+  match: [SPIFFE, SPIFFE ID]
+  definition: "A standard workload identity. In Istio it looks like spiffe://cluster.local/ns/<namespace>/sa/<service account> and is stored in the mTLS certificate."
+  es: "Identidad estándar de una carga; en Istio se basa en el namespace y la ServiceAccount."
+- id: root-namespace
+  term: Root namespace
+  match: [root namespace]
+  definition: The Istio config namespace (istio-system by default). Some policies placed there, like PeerAuthentication, apply to the whole mesh.
+  es: Namespace de configuración de Istio (istio-system); políticas puestas ahí aplican a todo el mesh.
+- id: sidecar-injection
+  term: Sidecar injection
+  match: [sidecar injection, istio-injection, automatic injection]
+  definition: Adding the istio-proxy container to a Pod when the Pod is created. Istio does it with a mutating admission webhook for labeled namespaces.
+  es: Añadir el contenedor istio-proxy a un Pod al crearlo, mediante un webhook de admisión.
+- id: ambient-mode
+  term: Ambient mode
+  match: [ambient mode, ambient mesh]
+  definition: An Istio data plane mode without sidecars. A per-node ztunnel gives L4 security (mTLS) and optional waypoint proxies add L7 features.
+  es: Modo de Istio sin sidecars; ztunnel por nodo da mTLS (L4) y los waypoints añaden funciones L7.
+- id: ztunnel
+  term: ztunnel
+  match: [ztunnel, zero-trust tunnel]
+  definition: The per-node L4 proxy of Istio ambient mode, run as a DaemonSet. It gives mTLS, L4 authorization and telemetry to the Pods on its node.
+  es: Proxy L4 por nodo del modo ambient (DaemonSet); da mTLS, autorización L4 y telemetría.
+- id: waypoint-proxy
+  term: Waypoint proxy
+  match: [waypoint, waypoints, waypoint proxy, waypoint proxies]
+  definition: An optional Envoy-based proxy in ambient mode that adds L7 features (HTTP routing, L7 authorization, retries) for a namespace, service or workload.
+  es: Proxy Envoy opcional del modo ambient que añade funciones L7.
+- id: hbone
+  term: HBONE
+  match: [HBONE]
+  definition: HTTP-Based Overlay Network Environment. The mTLS tunnel (HTTP CONNECT over port 15008) that ambient proxies use to carry traffic.
+  es: Túnel mTLS (HTTP CONNECT por el puerto 15008) que usan los proxies del modo ambient.
+- id: istio-cni
+  term: Istio CNI node agent
+  match: [istio-cni, Istio CNI]
+  definition: A DaemonSet that sets up traffic redirection for mesh Pods on each node. It is required in ambient mode and optional in sidecar mode.
+  es: DaemonSet que configura la redirección del tráfico de los Pods; obligatorio en modo ambient.
+- id: installation-profile
+  term: Installation profile
+  match: [installation profile, installation profiles, configuration profile, configuration profiles]
+  definition: A built-in set of install settings for istioctl or Helm, such as default, demo, minimal, ambient or empty.
+  es: Conjunto predefinido de ajustes de instalación (default, demo, minimal, ambient, empty).
+- id: istiooperator
+  term: IstioOperator
+  match: [IstioOperator]
+  definition: The API used in istioctl install files (-f) to customize components, values and meshConfig.
+  es: API que usa istioctl install -f para personalizar componentes, valores y meshConfig.
+- id: istio-revision
+  term: Revision (Istio)
+  match: [revision, revisions, istio.io/rev]
+  certs: [ica]
+  definition: A name for one Istio control plane, so several versions can run side by side. Namespaces choose one with the istio.io/rev label.
+  es: Nombre de un plano de control de Istio para tener varias versiones a la vez.
+- id: revision-tag
+  term: Revision tag
+  match: [revision tag, revision tags]
+  definition: A stable alias (like prod-stable) that points to a revision. Moving the tag moves all namespaces that use it, without relabeling them.
+  es: Alias estable que apunta a una revisión; al moverlo, cambian todos los namespaces que lo usan.
+- id: canary-upgrade
+  term: Canary upgrade (Istio)
+  match: [canary upgrade, canary upgrades]
+  definition: Installing a new Istio control plane revision next to the old one and moving workloads to it step by step.
+  es: Instalar una nueva revisión del plano de control junto a la antigua y mover las cargas poco a poco.
+- id: in-place-upgrade
+  term: In-place upgrade
+  match: [in-place upgrade, in-place upgrades]
+  definition: Replacing the running Istio control plane with the new version (istioctl upgrade). Workloads get the new proxy after a restart.
+  es: Reemplazar el plano de control de Istio por la nueva versión; las cargas cambian al reiniciarse.
+- id: kiali
+  term: Kiali
+  match: [Kiali]
+  definition: A console for Istio that shows the service graph, traffic health and configuration problems, using data from Prometheus.
+  es: Consola de Istio que muestra el grafo de servicios, la salud del tráfico y errores de configuración.
+- id: response-flags
+  term: Response flags (Envoy)
+  match: [response flag, response flags]
+  definition: Short codes in Envoy access logs that explain a failure, for example UH (no healthy upstream), UO (circuit breaker overflow) or NR (no route).
+  es: Códigos cortos en los logs de acceso de Envoy que explican un fallo (UH, UO, NR...).

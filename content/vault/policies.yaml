@@ -1,0 +1,215 @@
+domain: policies
+questions:
+  - id: vault-policies-001
+    difficulty: 1
+    type: single
+    question: "A new token has only the `default` policy. What happens when it tries to read a path that no policy mentions?"
+    options:
+      - id: a
+        text: "Vault allows the read because nothing denies it"
+        why: "Vault is deny by default. A request is allowed only when a policy grants the capability on that path."
+      - id: b
+        text: "Vault asks the auth method if the read is allowed"
+        why: "Auth methods only run at login. After that, Vault checks the token's policies on every request."
+      - id: c
+        text: "Vault returns a permission denied error"
+      - id: d
+        text: "Vault allows the read but writes a warning in the audit log"
+        why: "Vault never allows a request just to log it. Requests with no matching policy are refused."
+    answer: [c]
+    explanation: |
+      Vault policies are deny by default: an empty policy grants nothing. If no
+      policy of the token gives the needed capability on the path, Vault answers
+      403 permission denied. This supports least privilege.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy, vault-default-policy, vault-token]
+
+  - id: vault-policies-002
+    difficulty: 2
+    type: single
+    question: "An app must read the KV v2 secret written with `vault kv put secret/app/db password=s3cr3t`. Which policy rule allows the read?"
+    options:
+      - id: a
+        text: 'path "secret/app/db" { capabilities = ["read"] }'
+        why: "KV v2 stores secret data under the data/ prefix in the API. A rule on secret/app/db does not match the real path."
+      - id: b
+        text: 'path "secret/metadata/app/db" { capabilities = ["read"] }'
+        why: "The metadata/ path holds versions and settings, not the secret values themselves."
+      - id: c
+        text: 'path "secret/data/app/db" { capabilities = ["list"] }'
+        why: "The path is right, but list only shows key names. Reading the value needs the read capability."
+      - id: d
+        text: 'path "secret/data/app/db" { capabilities = ["read"] }'
+    answer: [d]
+    explanation: |
+      The `vault kv` commands hide the KV v2 API prefixes, but policies see the
+      real API paths. Secret values are at `secret/data/<path>`, while listing
+      keys and reading versions use `secret/metadata/<path>`. So policies for KV
+      v2 must include `data/` (and `metadata/` for list).
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/kv/kv-v2
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy, vault-kv]
+
+  - id: vault-policies-003
+    difficulty: 2
+    type: single
+    question: |
+      A policy has this rule:
+
+      ```hcl
+      path "secret/data/+/config" {
+        capabilities = ["read"]
+      }
+      ```
+
+      Which path does it match?
+    options:
+      - id: a
+        text: "`secret/data/web/config`"
+      - id: b
+        text: "`secret/data/web/prod/config`"
+        why: "`+` matches exactly one path segment. Here two segments (web/prod) sit between data/ and config."
+      - id: c
+        text: "`secret/data/config`"
+        why: "`+` needs one segment to be present. With no segment between data/ and config, the rule does not match."
+      - id: d
+        text: "`secret/data/web/config/extra`"
+        why: "The rule ends with config and has no `*`, so longer paths after config do not match."
+    answer: [a]
+    explanation: |
+      In policy paths, `+` is a wildcard for exactly one segment, and `*` is a
+      glob that may only appear at the end and matches any remaining characters.
+      `secret/data/+/config` matches `secret/data/web/config` and
+      `secret/data/api/config`, but not paths with more or fewer segments.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy]
+
+  - id: vault-policies-004
+    difficulty: 1
+    type: multiple
+    question: "Which TWO are real capabilities in a Vault policy? (Select 2)"
+    options:
+      - id: a
+        text: "`sudo`"
+      - id: b
+        text: "`write`"
+        why: "There is no write capability. Writing uses create (new data) and update (existing data)."
+      - id: c
+        text: "`execute`"
+        why: "Vault has no execute capability. Actions such as encrypt are done with update on the path."
+      - id: d
+        text: "`deny`"
+    answer: [a, d]
+    explanation: |
+      The capabilities are create, read, update, patch, delete, list, sudo and
+      deny (plus subscribe for events). `sudo` gives access to root-protected
+      paths, and `deny` blocks a path and wins over any other capability.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy, lx-sudo]
+
+  - id: vault-policies-005
+    difficulty: 2
+    type: single
+    question: "A token has two policies. Policy A gives `read` on `secret/data/hr/*`. Policy B gives `deny` on `secret/data/hr/salaries`. What happens when the token reads `secret/data/hr/salaries`?"
+    options:
+      - id: a
+        text: "The read works, because policy A was attached first"
+        why: "The order of policies does not matter. Vault combines all of them, and deny always wins."
+      - id: b
+        text: "The read is denied, because deny wins"
+      - id: c
+        text: "The read works, because allow rules win over deny"
+        why: "It is the opposite: an explicit deny overrides every other capability."
+      - id: d
+        text: "Vault returns an error that the policies conflict"
+        why: "Vault does not report conflicts. It evaluates the rules and the deny takes priority."
+    answer: [b]
+    explanation: |
+      `deny` takes precedence over all other capabilities, in any policy. This
+      lets you give broad access with a glob and then block one sensitive path.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy, vault-token]
+
+  - id: vault-policies-006
+    difficulty: 3
+    type: single
+    question: "Developers must be able to see the names of the secrets under `secret/team-a/` in the UI and read their values, but not change them. The engine is KV v2. Which set of rules fits best?"
+    options:
+      - id: a
+        text: "list on secret/metadata/team-a/* and read on secret/data/team-a/*"
+      - id: b
+        text: "read and list on secret/team-a/* only"
+        why: "KV v2 policies need the data/ and metadata/ prefixes. A rule on secret/team-a/* matches neither."
+      - id: c
+        text: "update on secret/data/team-a/* and list on secret/data/team-a/*"
+        why: "update lets developers change secrets, which is not allowed. Listing in KV v2 also uses metadata/."
+      - id: d
+        text: "sudo on secret/metadata/team-a/* only"
+        why: "sudo is for root-protected paths. It does not grant read or list on KV data."
+    answer: [a]
+    explanation: |
+      In KV v2, listing key names is a LIST on `secret/metadata/...`, and reading
+      values is a GET on `secret/data/...`. Least privilege for read-only users
+      is `list` on the metadata path and `read` on the data path, with no
+      create, update or delete.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/kv/kv-v2
+      - https://developer.hashicorp.com/vault/docs/concepts/policies
+    glossary: [vault-policy, vault-kv]
+
+  - id: vault-policies-007
+    difficulty: 1
+    type: single
+    question: "You wrote the rules for a new policy in the file `web-read.hcl`. Which command creates the policy `web-read` in Vault?"
+    options:
+      - id: a
+        text: "`vault policy create web-read web-read.hcl`"
+        why: "There is no create subcommand. `vault policy write` creates the policy or replaces it."
+      - id: b
+        text: "`vault write sys/policy web-read.hcl`"
+        why: "The policy name must be part of the path (for example sys/policies/acl/web-read), and the file is not passed like this."
+      - id: c
+        text: "`vault policy write web-read web-read.hcl`"
+      - id: d
+        text: "`vault policy apply -f web-read.hcl`"
+        why: "This looks like kubectl. The vault CLI has no policy apply command."
+    answer: [c]
+    explanation: |
+      `vault policy write <name> <file>` uploads the rules and creates or updates
+      the policy. Related commands: `vault policy list`, `vault policy read
+      <name>`, `vault policy delete <name>` and `vault policy fmt <file>`. In the
+      UI, policies are under Policies > ACL Policies.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/policy/write
+    glossary: [vault-policy]
+
+  - id: vault-policies-008
+    difficulty: 2
+    type: single
+    question: "You are not sure if your token can delete `secret/data/app/old`. Which command shows the capabilities your current token has on that path?"
+    options:
+      - id: a
+        text: "`vault token lookup secret/data/app/old`"
+        why: "`vault token lookup` shows the properties of a token, such as its policies and TTL, not the capabilities on a path."
+      - id: b
+        text: "`vault token capabilities secret/data/app/old`"
+      - id: c
+        text: "`vault policy read secret/data/app/old`"
+        why: "`vault policy read` takes a policy name, not a path, and shows the rules of that one policy."
+      - id: d
+        text: "`vault kv metadata get secret/app/old`"
+        why: "This shows the versions of the secret. It says nothing about what your token is allowed to do."
+    answer: [b]
+    explanation: |
+      `vault token capabilities <path>` returns the combined capabilities of
+      your token on a path, for example `read, list`. You can also pass another
+      token or an accessor to check a different token. It is a quick way to test
+      a new policy.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/token/capabilities
+    glossary: [vault-policy, vault-token]

@@ -1,0 +1,106 @@
+domain: access
+questions:
+  - id: vault-access-001
+    difficulty: 1
+    type: single
+    question: "A legacy app can only read its database password from a file. It knows nothing about Vault. Which tool can log in to Vault for the app and write the secret into a file?"
+    options:
+      - id: a
+        text: "Vault Agent with auto-auth and a template"
+      - id: b
+        text: "The Transit secrets engine"
+        why: "Transit encrypts and decrypts data sent to it. It does not log in for apps or write files."
+      - id: c
+        text: "A response wrapping token"
+        why: "A wrapping token still has to be unwrapped by something that talks to Vault, and it works only once."
+      - id: d
+        text: "The cubbyhole secrets engine"
+        why: "Cubbyhole is storage inside Vault. It cannot write files on the app's server."
+    answer: [a]
+    explanation: |
+      Vault Agent runs next to the app. Auto-auth logs in with an auth method
+      (for example AppRole, AWS or Kubernetes) and keeps the token renewed.
+      Templates render secrets into files, and the agent updates the files when
+      the secrets change. The app only reads a file.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent
+      - https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template
+    glossary: [vault-agent, vault-auth-method, vault-approle]
+
+  - id: vault-access-002
+    difficulty: 2
+    type: single
+    question: "In the Vault Agent configuration, what does an auto-auth `sink` do?"
+    options:
+      - id: a
+        text: "It writes the token that the agent got to a place, such as a file"
+      - id: b
+        text: "It sends the audit log of the agent to Vault"
+        why: "Vault Agent does not send audit logs. Audit devices are configured on the Vault server."
+      - id: c
+        text: "It chooses which Vault server the agent talks to"
+        why: "The server address is set in the vault stanza (or VAULT_ADDR), not in a sink."
+      - id: d
+        text: "It stores the unseal keys for automatic unsealing"
+        why: "Vault Agent never handles unseal keys. Auto unseal is a server feature."
+    answer: [a]
+    explanation: |
+      Auto-auth has a `method` (how to log in) and one or more `sink` blocks.
+      A file sink writes the token to a path so that other processes can use
+      it. The token can also be wrapped or encrypted in the sink.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/agent-and-proxy/autoauth
+    glossary: [vault-agent, vault-token]
+
+  - id: vault-access-003
+    difficulty: 2
+    type: single
+    question: "A Kubernetes team wants Vault secrets as normal Kubernetes Secrets that Pods use with `envFrom`, without a sidecar in each Pod. Which tool fits?"
+    options:
+      - id: a
+        text: "Vault Agent Injector"
+        why: "The injector adds a Vault Agent sidecar or init container to each Pod and writes files, not Kubernetes Secrets."
+      - id: b
+        text: "Vault Secrets Operator"
+      - id: c
+        text: "The Kubernetes secrets engine"
+        why: "This engine creates Kubernetes service account tokens. It does not sync Vault secrets into Secrets."
+      - id: d
+        text: "Response wrapping in a ConfigMap"
+        why: "ConfigMaps are not for secrets, and a wrapping token can be used only once."
+    answer: [b]
+    explanation: |
+      The Vault Secrets Operator watches custom resources such as
+      `VaultStaticSecret`, `VaultDynamicSecret` and `VaultPKISecret`. It reads
+      the secrets from Vault and writes them into Kubernetes Secrets, keeps them
+      up to date, and can restart Deployments when a secret changes.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso
+      - https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/sources/vault
+    glossary: [vault-vso, vault-agent-injector, secret, sidecar, crd]
+
+  - id: vault-access-004
+    difficulty: 3
+    type: multiple
+    question: "Which TWO custom resources do you usually create so that the Vault Secrets Operator can sync one KV v2 secret? (Select 2)"
+    options:
+      - id: a
+        text: "A `VaultAuth` that says how the operator logs in to Vault"
+      - id: b
+        text: "A `VaultStaticSecret` that names the mount, path and destination Secret"
+      - id: c
+        text: "A `VaultSeal` that unseals Vault from inside the cluster"
+        why: "There is no such resource. The operator is a Vault client and does not unseal servers."
+      - id: d
+        text: "A `VaultPolicy` that writes ACL policies into Vault"
+        why: "VSO does not manage Vault policies. You write policies in Vault with the CLI, API, UI or Terraform."
+    answer: [a, b]
+    explanation: |
+      A `VaultConnection` (or the default one) says where Vault is. A
+      `VaultAuth` says how to authenticate, usually with the Kubernetes auth
+      method and a role. A `VaultStaticSecret` points to the KV mount and path
+      and names the Kubernetes Secret to create.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/sources/vault
+      - https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/api-reference
+    glossary: [vault-vso, crd, vault-kv, vault-policy]

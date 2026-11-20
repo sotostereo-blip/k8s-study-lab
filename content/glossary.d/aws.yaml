@@ -645,6 +645,7 @@ terms:
   es: Índice de DynamoDB con otra clave para consultar por otros atributos.
 - id: aws-ttl
   term: Time to Live (TTL)
+  certs: [saa]
   match:
   - TTL
   - Time to Live

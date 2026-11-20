@@ -1,0 +1,336 @@
+domain: storage
+questions:
+  - id: az104-sto-001
+    difficulty: 1
+    type: single
+    question: "A storage account holds app data that must stay available if one datacenter (zone) in the region fails. The data must stay in one region, and cost must be as low as possible. Which redundancy option should you choose?"
+    options:
+      - id: a
+        text: "Locally redundant storage (LRS)"
+        why: "LRS keeps three copies in one datacenter. If that datacenter fails, the data is not available."
+      - id: b
+        text: "Zone-redundant storage (ZRS)"
+      - id: c
+        text: "Geo-redundant storage (GRS)"
+        why: "GRS copies data to a second region, which breaks the one-region rule and costs more. In the primary region it uses LRS, so a zone failure can still stop access."
+      - id: d
+        text: "Read-access geo-zone-redundant storage (RA-GZRS)"
+        why: "RA-GZRS protects against zone and region failures, but it copies data to another region and is the most expensive option."
+    answer: [b]
+    explanation: |
+      ZRS writes three copies of the data across three availability zones in the primary
+      region. The data stays readable and writable if one zone fails. It is cheaper than
+      the geo-redundant options and keeps the data in one region.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy
+    glossary: [azure-storage-redundancy, azure-availability-zone, azure-storage-account]
+
+  - id: az104-sto-002
+    difficulty: 2
+    type: single
+    question: "A critical app must survive a zone failure in the primary region. If the whole primary region goes down, the app must still read its data from the secondary region without waiting for a failover. Which redundancy should the storage account use?"
+    options:
+      - id: a
+        text: "GRS"
+        why: "GRS has no read access to the secondary region until a failover, and it uses LRS in the primary region."
+      - id: b
+        text: "ZRS"
+        why: "ZRS protects against a zone failure but keeps no copy in another region."
+      - id: c
+        text: "RA-GZRS"
+      - id: d
+        text: "RA-GRS"
+        why: "RA-GRS gives read access to the secondary region, but in the primary region it uses LRS, so one zone failure can stop the app."
+    answer: [c]
+    explanation: |
+      GZRS uses ZRS in the primary region and copies the data asynchronously to the paired
+      secondary region. The RA- version adds a read-only secondary endpoint
+      (account-secondary.blob.core.windows.net) that the app can use at any time.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-disaster-recovery-guidance
+    glossary: [azure-storage-redundancy, azure-region]
+
+  - id: az104-sto-003
+    difficulty: 1
+    type: single
+    question: "A company must keep scanned contracts for 7 years. After the first 6 months they are almost never read, and when someone needs one, waiting several hours is fine. Which access tier gives the lowest storage cost after 6 months?"
+    options:
+      - id: a
+        text: "Hot tier"
+        why: "Hot has the highest storage cost. It is made for data that is read often."
+      - id: b
+        text: "Cool tier"
+        why: "Cool is cheaper than Hot, but its storage cost is higher than Cold and Archive."
+      - id: c
+        text: "Cold tier"
+        why: "Cold is online and cheaper than Cool, but Archive is cheaper still for data that can wait hours."
+      - id: d
+        text: "Archive tier"
+    answer: [d]
+    explanation: |
+      Archive has the lowest storage cost. Archived blobs are offline: you must rehydrate
+      them to an online tier (Hot, Cool or Cold) before you read them, which can take up
+      to 15 hours with standard priority. Archive has a 180-day early deletion period.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/archive-rehydrate-overview
+    glossary: [azure-access-tier]
+
+  - id: az104-sto-004
+    difficulty: 2
+    type: single
+    question: "Log blobs in a container must move to the Cool tier 30 days after they were last changed and must be deleted after 365 days. You want no scripts and no manual work. What should you use?"
+    options:
+      - id: a
+        text: "A lifecycle management policy on the storage account"
+      - id: b
+        text: "Object replication to a second storage account in the Cool tier"
+        why: "Object replication copies blobs to another account. It does not change tiers or delete old blobs in the source."
+      - id: c
+        text: "A scheduled AzCopy job on a VM"
+        why: "This needs a script and a VM to run it. The built-in policy does the work without extra resources."
+      - id: d
+        text: "A time-based immutability policy of 365 days"
+        why: "Immutability blocks changes and deletes for a period. It does the opposite of deleting the blobs."
+    answer: [a]
+    explanation: |
+      Lifecycle management rules run once a day and can move block blobs to cooler tiers
+      or delete them based on days since creation, last modification or last access. One
+      rule can tier to Cool after 30 days and delete after 365 days.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview
+    glossary: [azure-blob-lifecycle, azure-access-tier]
+
+  - id: az104-sto-005
+    difficulty: 2
+    type: single
+    question: "A partner needs read access to the container reports for 7 days. You must not share the account keys, and you must be able to cancel the partner's access early without regenerating any key. What should you do?"
+    options:
+      - id: a
+        text: "A stored access policy plus a service SAS that uses it"
+      - id: b
+        text: "Give the partner key1 and regenerate it after 7 days"
+        why: "This shares the account key, which gives full access to the whole account. It breaks the rule."
+      - id: c
+        text: "Create an account SAS with an expiry date in 7 days"
+        why: "An ad hoc account SAS cannot be canceled early except by regenerating the key that signed it."
+      - id: d
+        text: "Set the container access level to Blob (anonymous read)"
+        why: "Anyone on the internet could then read the blobs, and there is no expiry."
+    answer: [a]
+    explanation: |
+      A stored access policy on a container holds the permissions and expiry for service
+      SAS tokens that reference it. If you change or delete the policy, all SAS tokens that
+      use it stop working at once, and the account keys stay the same.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview
+      - https://learn.microsoft.com/en-us/rest/api/storageservices/define-stored-access-policy
+    glossary: [azure-sas, azure-stored-access-policy, azure-access-key]
+
+  - id: az104-sto-006
+    difficulty: 2
+    type: single
+    question: "Several apps connect to a storage account with key1. Security policy says the keys must be rotated now, without downtime. In what order should you do the work?"
+    options:
+      - id: a
+        text: "Regenerate key1, then update the apps to use the new key1"
+        why: "The apps fail between the regeneration and the update, because the old key1 stops working at once."
+      - id: b
+        text: "Move apps to key2, regenerate key1, and later do the reverse"
+      - id: c
+        text: "Regenerate key1 and key2 at the same time, then update the apps"
+        why: "Both old keys stop working at once, so every app is down until it is updated."
+      - id: d
+        text: "Delete the storage account and create a new one with new keys"
+        why: "This deletes all the data. Keys can be regenerated without a new account."
+    answer: [b]
+    explanation: |
+      A storage account has two keys so you can rotate them with no downtime. Move the apps
+      to the second key, regenerate the first, and repeat the other way next time. Storing
+      the keys in Azure Key Vault makes this easier.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage
+    glossary: [azure-access-key, azure-storage-account]
+
+  - id: az104-sto-007
+    difficulty: 2
+    type: single
+    question: "A storage account must accept requests only from VMs in the subnet snet-app of the VNet vnet-prod. Requests from the internet must be blocked. The account may keep its public endpoint. What should you configure?"
+    options:
+      - id: a
+        text: "A Microsoft.Storage service endpoint and a VNet network rule"
+      - id: b
+        text: "Change the redundancy of the storage account to ZRS"
+        why: "Redundancy decides where copies of data are stored. It does not limit who can connect."
+      - id: c
+        text: "Add a CanNotDelete lock to the storage account"
+        why: "A lock protects the account from deletion. It does not filter network traffic."
+      - id: d
+        text: "Create a user delegation SAS for the VMs"
+        why: "A SAS controls what a token can do, not where requests come from. Internet requests would not be blocked."
+    answer: [a]
+    explanation: |
+      The storage firewall can allow selected virtual networks. A service endpoint on the
+      subnet lets traffic reach Azure Storage over the Azure backbone with the subnet
+      identity, and the network rule allows that subnet. Other public traffic is denied.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security
+      - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview
+    glossary: [azure-storage-firewall, azure-service-endpoint, azure-vnet]
+
+  - id: az104-sto-008
+    difficulty: 1
+    type: single
+    question: "You must upload a local folder with 500 GB of files and subfolders to a blob container from the command line. If the network drops, the job should continue where it stopped. Which tool should you use?"
+    options:
+      - id: a
+        text: "AzCopy with azcopy copy --recursive"
+      - id: b
+        text: "Azure Site Recovery replication"
+        why: "Site Recovery replicates whole VMs for disaster recovery. It does not copy folders to blob storage."
+      - id: c
+        text: "Azure Resource Mover in the portal"
+        why: "Resource Mover moves Azure resources between regions. It does not upload files from a local computer."
+      - id: d
+        text: "Object replication between accounts"
+        why: "Object replication copies blobs between two storage accounts. It cannot read a local folder."
+    answer: [a]
+    explanation: |
+      AzCopy is a command-line tool for copying data to and from Azure Storage. It uses
+      Microsoft Entra ID or a SAS for authorization, copies folders with --recursive (for example `azcopy copy "C:\data"
+      "https://acct.blob.core.windows.net/backup?<SAS>" --recursive`), and
+      keeps a job plan so you can resume a stopped job with `azcopy jobs resume`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs-copy
+    glossary: [azure-azcopy, azure-sas]
+
+  - id: az104-sto-009
+    difficulty: 2
+    type: single
+    question: "Last year an administrator deleted a whole Azure file share by mistake and the data was lost. You want to be able to recover a deleted file share for 14 days. What should you enable?"
+    options:
+      - id: a
+        text: "Soft delete for file shares, 14 days"
+      - id: b
+        text: "Blob versioning"
+        why: "Blob versioning keeps earlier versions of blobs. It does not protect Azure file shares."
+      - id: c
+        text: "A lifecycle management rule"
+        why: "Lifecycle management moves or deletes blobs. It does not recover deleted file shares."
+      - id: d
+        text: "The Archive tier"
+        why: "Access tiers are for blobs and only change the cost. They do not keep deleted data."
+    answer: [a]
+    explanation: |
+      Soft delete for Azure Files keeps a deleted file share in a soft-deleted state for
+      the retention period (1 to 365 days). During that time you can undelete the share
+      with all its data and snapshots. Share snapshots help you restore single files.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/files/storage-files-prevent-file-share-deletion
+      - https://learn.microsoft.com/en-us/azure/storage/files/storage-snapshots-files
+    glossary: [azure-files, azure-blob-data-protection]
+
+  - id: az104-sto-010
+    difficulty: 2
+    type: single
+    question: "Users sign in to domain-joined Windows PCs with their on-premises Active Directory accounts. They must open an Azure file share with these accounts and no storage key. You have enabled AD DS authentication on the storage account. What else must you do so users can read and write files?"
+    options:
+      - id: a
+        text: "Assign Storage File Data SMB Share Contributor to them"
+      - id: b
+        text: "Assign the Reader role on the storage account"
+        why: "Reader is a control plane role. It does not give access to the files inside the share."
+      - id: c
+        text: "Create a SAS token for each user"
+        why: "SAS tokens do not work for SMB access to file shares, and the goal is identity-based access."
+      - id: d
+        text: "Change the share to the Archive tier"
+        why: "Azure Files has no Archive tier, and tiers never give permissions."
+    answer: [a]
+    explanation: |
+      Identity-based access to Azure Files has two layers: share-level permissions with
+      Azure RBAC roles (such as Storage File Data SMB Share Contributor), and Windows ACLs
+      on folders and files. Users need a share-level role before the ACLs are checked.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/files/storage-files-active-directory-overview
+    glossary: [azure-files, azure-rbac]
+
+  - id: az104-sto-011
+    difficulty: 2
+    type: single
+    question: "An app sometimes overwrites blobs with wrong data. You must be able to restore the older content of a blob after it is overwritten. What should you enable?"
+    options:
+      - id: a
+        text: "Blob versioning"
+      - id: b
+        text: "Container soft delete"
+        why: "Container soft delete only recovers a deleted container. It does not keep older contents of a blob that was overwritten."
+      - id: c
+        text: "The Cool access tier"
+        why: "The tier only changes cost and access price. It does not keep older data."
+      - id: d
+        text: "A stored access policy"
+        why: "A stored access policy controls SAS tokens. It does not keep older versions of data."
+    answer: [a]
+    explanation: |
+      With blob versioning, every write creates a new version, and the previous version is
+      kept. You can read or promote an older version to restore the content. Blob soft
+      delete also helps for deleted blobs, and Microsoft recommends using both.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/versioning-overview
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview
+    glossary: [azure-blob-data-protection]
+
+  - id: az104-sto-012
+    difficulty: 3
+    type: multiple
+    question: "You want to set up object replication from a container in storage account A to a container in storage account B. Which TWO settings are required?"
+    options:
+      - id: a
+        text: "Blob versioning enabled on both storage accounts"
+      - id: b
+        text: "Change feed enabled on the source account A"
+      - id: c
+        text: "Both accounts in the same Azure region"
+        why: "Object replication works between accounts in the same region or in different regions."
+      - id: d
+        text: "Hierarchical namespace (Data Lake Storage) enabled on both accounts"
+        why: "Object replication is not supported on accounts with hierarchical namespace enabled."
+    answer: [a, b]
+    explanation: |
+      Object replication copies block blobs asynchronously between two accounts. It needs
+      blob versioning on the source and destination accounts and change feed on the
+      source account. The rules are kept in a replication policy on both accounts.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/blobs/object-replication-overview
+    glossary: [azure-object-replication, azure-blob-data-protection]
+
+  - id: az104-sto-013
+    difficulty: 3
+    type: single
+    question: "A general-purpose v2 storage account uses LRS. A new rule says the data must also be copied to the paired region. You want the least effort and no data copy by hand. What should you do?"
+    options:
+      - id: a
+        text: "Change the account redundancy setting from LRS to GRS"
+      - id: b
+        text: "Create a new account with GRS and copy all data with AzCopy"
+        why: "This works but is much more effort. Azure can change LRS to GRS on the same account."
+      - id: c
+        text: "Enable object replication to an account in the same region"
+        why: "That copies blobs to another account but not to the paired region, and it needs extra setup."
+      - id: d
+        text: "Add a ReadOnly lock to the account"
+        why: "A lock blocks changes. It does not create copies in another region."
+    answer: [a]
+    explanation: |
+      You can change a storage account between LRS, GRS and RA-GRS in the portal (Redundancy
+      setting) or with Azure CLI or PowerShell, for example
+      `az storage account update -n acct1 -g rg1 --sku Standard_GRS`. Azure then copies the data to the secondary
+      region in the background. Changes that add zone redundancy (to ZRS or GZRS) use a
+      conversion instead.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/storage/common/redundancy-migration
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy
+    glossary: [azure-storage-redundancy, azure-storage-account, azure-region]

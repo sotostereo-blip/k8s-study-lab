@@ -1,0 +1,693 @@
+# Microsoft Azure glossary (Microsoft Azure Administrator, AZ-104). Shown when you click a highlighted term.
+# Reuses lx-vm (virtual machine), dns and encryption-at-rest from other glossary files.
+# Common words with a special meaning in Azure ("subscription", "budget") set certs: [az104].
+terms:
+- id: azure-tenant
+  term: Microsoft Entra tenant
+  match:
+  - Entra tenant
+  - Microsoft Entra tenant
+  - directory tenant
+  certs: [az104]
+  definition: One dedicated instance of Microsoft Entra ID for an organization. It holds the users, groups and apps, and every Azure subscription trusts exactly one tenant.
+  es: Instancia dedicada de Microsoft Entra ID de una organización; cada suscripción confía en un solo inquilino.
+- id: azure-entra-id
+  term: Microsoft Entra ID
+  match:
+  - Microsoft Entra ID
+  - Entra ID
+  - Microsoft Entra
+  - Azure AD
+  - Azure Active Directory
+  definition: The Microsoft cloud identity service (formerly Azure Active Directory). It stores users, groups and app identities and signs them in.
+  es: Servicio de identidad en la nube de Microsoft (antes Azure AD); guarda usuarios, grupos e identidades de apps.
+- id: azure-entra-group
+  term: Microsoft Entra group
+  match:
+  - Entra group
+  - Entra groups
+  - dynamic group
+  - dynamic groups
+  - dynamic membership
+  - dynamic membership rule
+  - Microsoft 365 group
+  - Microsoft 365 groups
+  - assigned membership
+  definition: A collection of users or devices in Microsoft Entra ID. Members can be added by hand (assigned) or automatically by a rule on user or device properties (dynamic).
+  es: Conjunto de usuarios o dispositivos en Entra ID; miembros asignados a mano o por una regla (dinámico).
+- id: azure-guest-user
+  term: Guest user (B2B collaboration)
+  match:
+  - guest user
+  - guest users
+  - B2B collaboration
+  - external user
+  - external users
+  - guest account
+  - guest accounts
+  definition: A person from another organization invited into your Entra tenant. They sign in with their own account and you give them access to your apps and Azure resources.
+  es: Persona de otra organización invitada al inquilino; entra con su propia cuenta.
+- id: azure-sspr
+  term: Self-service password reset (SSPR)
+  match:
+  - SSPR
+  - self-service password reset
+  definition: A Microsoft Entra feature that lets users reset or unlock their own password after they prove who they are with methods such as a phone code or the Authenticator app.
+  es: Restablecimiento de contraseña por el propio usuario tras verificar su identidad.
+- id: azure-license
+  term: License (Microsoft Entra)
+  match:
+  - license
+  - licenses
+  - group-based licensing
+  certs: [az104]
+  definition: The right to use a paid Microsoft service, such as Entra ID P1. Licenses can be assigned to users one by one or to a group (group-based licensing). A user needs a usage location first.
+  es: Derecho de uso de un servicio de pago; se asigna a usuarios o a grupos.
+- id: azure-subscription
+  term: Azure subscription
+  match:
+  - Azure subscription
+  - Azure subscriptions
+  - subscription
+  - subscriptions
+  certs: [az104]
+  definition: A billing and management boundary for Azure resources. Every resource lives in one subscription, and each subscription trusts one Entra tenant.
+  es: Límite de facturación y gestión de recursos de Azure; confía en un inquilino de Entra.
+- id: azure-resource-group
+  term: Resource group
+  match:
+  - resource group
+  - resource groups
+  definition: A logical container for Azure resources that share a life cycle. You can apply roles, policies, locks and tags to it, and deleting it deletes everything inside.
+  es: Contenedor lógico de recursos de Azure; borrarlo borra todo lo que contiene.
+- id: azure-management-group
+  term: Management group
+  match:
+  - management group
+  - management groups
+  - root management group
+  - tenant root group
+  definition: A container above subscriptions. Roles and Azure Policy assigned to a management group are inherited by every subscription and resource below it. The hierarchy can be six levels deep under the root.
+  es: Contenedor por encima de las suscripciones; roles y políticas se heredan hacia abajo.
+- id: azure-resource-manager
+  term: Azure Resource Manager (ARM)
+  match:
+  - Azure Resource Manager
+  - resource provider
+  - resource providers
+  definition: The deployment and management service of Azure. Every request from the portal, Azure CLI, PowerShell or a template goes through it, and it applies RBAC, policies and locks.
+  es: Servicio de despliegue y gestión de Azure por el que pasan todas las peticiones.
+- id: azure-rbac
+  term: Azure role-based access control (Azure RBAC)
+  match:
+  - Azure RBAC
+  - Azure role-based access control
+  - role assignment
+  - role assignments
+  - role definition
+  - role definitions
+  definition: The Azure authorization system. A role assignment connects a security principal (user, group, service principal or managed identity) to a role definition at a scope (management group, subscription, resource group or resource).
+  es: Sistema de autorización de Azure; una asignación une identidad, rol y ámbito.
+- id: azure-builtin-roles
+  term: Azure built-in roles
+  match:
+  - Contributor role
+  - Reader role
+  - User Access Administrator
+  - Role Based Access Control Administrator
+  - built-in role
+  - built-in roles
+  definition: Roles that Azure provides. Owner can do everything and grant access; Contributor can manage resources but not grant access; Reader can only view; User Access Administrator can only manage access.
+  es: Roles predefinidos de Azure (Owner, Contributor, Reader, User Access Administrator).
+- id: azure-custom-role
+  term: Azure custom role
+  match:
+  - Azure custom role
+  - Azure custom roles
+  - AssignableScopes
+  - NotActions
+  definition: A role you create when no built-in role fits. It lists allowed Actions, excluded NotActions and the AssignableScopes where it can be used.
+  es: Rol propio con Actions, NotActions y ámbitos asignables.
+- id: azure-policy
+  term: Azure Policy
+  match:
+  - Azure Policy
+  - policy definition
+  - policy definitions
+  - policy assignment
+  - policy assignments
+  - policy initiative
+  - policy initiatives
+  - initiative definition
+  - compliance state
+  - remediation task
+  - remediation tasks
+  definition: An Azure service that checks resources against rules (policy definitions) and can deny, audit, append or fix them. Several definitions grouped together form an initiative.
+  es: Servicio que evalúa recursos contra reglas y puede denegar, auditar o corregir.
+- id: azure-policy-effect
+  term: Azure Policy effect
+  match:
+  - policy effect
+  - policy effects
+  - deployIfNotExists
+  - auditIfNotExists
+  - modify effect
+  - deny effect
+  - audit effect
+  definition: What Azure Policy does when a resource matches a rule. Deny blocks the request, Audit only reports, Modify changes properties such as tags, and DeployIfNotExists deploys a related resource.
+  es: Acción de la política al encontrar un recurso (Deny, Audit, Modify, DeployIfNotExists).
+- id: azure-resource-lock
+  term: Resource lock
+  match:
+  - resource lock
+  - resource locks
+  - CanNotDelete
+  - ReadOnly lock
+  - delete lock
+  - read-only lock
+  definition: A setting that protects a subscription, resource group or resource from changes. CanNotDelete (Delete) blocks deletion; ReadOnly blocks deletion and changes. Locks apply to everyone, even Owners.
+  es: Bloqueo que impide borrar (CanNotDelete) o modificar (ReadOnly) un recurso, incluso a Owners.
+- id: azure-tag
+  term: Azure tag
+  match:
+  - Azure tag
+  - Azure tags
+  - resource tag
+  - resource tags
+  - tag inheritance
+  definition: A name and value pair on a resource, resource group or subscription (for example CostCenter=1234). Tags are not inherited by default; Azure Policy can add or copy them.
+  es: Par nombre/valor en un recurso; no se heredan por defecto.
+- id: azure-cost-management
+  term: Microsoft Cost Management
+  match:
+  - Cost Management
+  - Microsoft Cost Management
+  - cost analysis
+  - Azure budget
+  - Azure budgets
+  - cost alert
+  - cost alerts
+  certs: [az104]
+  definition: The Azure tool to see, analyze and control spending. Budgets send alerts at thresholds of actual or forecasted cost; they do not stop resources by themselves.
+  es: Herramienta de Azure para ver y controlar gastos; los presupuestos avisan, no detienen recursos.
+- id: azure-advisor
+  term: Azure Advisor
+  match:
+  - Azure Advisor
+  - Advisor recommendation
+  - Advisor recommendations
+  definition: A free service that gives recommendations for cost, security, reliability, operational excellence and performance, such as resizing or shutting down underused VMs.
+  es: Servicio gratuito con recomendaciones de coste, seguridad, fiabilidad y rendimiento.
+- id: azure-region
+  term: Azure region
+  match:
+  - Azure region
+  - Azure regions
+  - region pair
+  - paired region
+  - paired regions
+  - secondary region
+  - primary region
+  certs: [az104]
+  definition: A set of datacenters in one geographic area. Many regions have a paired region in the same geography that geo-redundant storage uses as its secondary.
+  es: Conjunto de centros de datos en una zona geográfica; muchas tienen una región emparejada.
+- id: azure-availability-zone
+  term: Availability zone (Azure)
+  match:
+  - zonal deployment
+  - zone-redundant
+  - zone redundant
+  certs: [az104]
+  definition: Physically separate groups of datacenters inside one Azure region, with their own power, cooling and network. Zonal resources are pinned to one zone; zone-redundant resources spread across zones.
+  es: Grupos de centros de datos separados dentro de una región; zonal = una zona, zone-redundant = varias.
+- id: azure-storage-account
+  term: Storage account
+  match:
+  - storage account
+  - storage accounts
+  - general-purpose v2
+  - GPv2
+  definition: An Azure resource with a unique name that holds blobs, files, queues and tables. Redundancy, default access tier, network rules and encryption are set on it.
+  es: Recurso con nombre único que contiene blobs, archivos, colas y tablas.
+- id: azure-storage-redundancy
+  term: Azure Storage redundancy
+  match:
+  - LRS
+  - ZRS
+  - GRS
+  - GZRS
+  - RA-GRS
+  - RA-GZRS
+  - locally redundant storage
+  - zone-redundant storage
+  - geo-redundant storage
+  - geo-zone-redundant storage
+  definition: How many copies of storage data Azure keeps and where. LRS keeps 3 copies in one datacenter, ZRS 3 copies across zones, GRS and GZRS also copy to the paired region, and RA- adds read access to the secondary.
+  es: Cuántas copias guarda Azure y dónde (LRS, ZRS, GRS, GZRS, RA-).
+- id: azure-access-tier
+  term: Blob access tier
+  match:
+  - access tier
+  - access tiers
+  - Hot tier
+  - Cool tier
+  - Cold tier
+  - Archive tier
+  - rehydrate
+  - rehydration
+  - early deletion
+  definition: How a blob is billed. Hot has the highest storage cost and lowest access cost; Cool (30 days), Cold (90 days) and Archive (180 days) are cheaper to store, cost more to read, and charge for early deletion. Archive blobs are offline and must be rehydrated.
+  es: Nivel de acceso de un blob (Hot, Cool, Cold, Archive); Archive está offline.
+- id: azure-sas
+  term: Shared access signature (SAS)
+  match:
+  - SAS
+  - SAS token
+  - SAS tokens
+  - shared access signature
+  - shared access signatures
+  - user delegation SAS
+  - service SAS
+  - account SAS
+  definition: A signed URL token that gives limited access to storage (which resource, which permissions, start and expiry time, IP range). A user delegation SAS is signed with Entra credentials instead of the account key.
+  es: Token firmado con acceso limitado a almacenamiento (permisos, caducidad, IP).
+- id: azure-stored-access-policy
+  term: Stored access policy
+  match:
+  - stored access policy
+  - stored access policies
+  definition: A policy saved on a container, file share, queue or table that sets permissions and times for service SAS tokens. Changing or deleting it revokes every SAS that uses it.
+  es: Política guardada en un contenedor; cambiarla revoca los SAS que la usan.
+- id: azure-access-key
+  term: Storage account access key
+  match:
+  - access key
+  - access keys
+  - account key
+  - account keys
+  - key1
+  - key2
+  certs: [az104]
+  definition: One of two secret keys that give full access to a storage account. Rotate one key at a time; regenerating a key breaks every SAS signed with it.
+  es: Una de las dos claves secretas con acceso total a la cuenta de almacenamiento.
+- id: azure-blob-lifecycle
+  term: Blob lifecycle management
+  match:
+  - lifecycle management
+  - lifecycle management policy
+  - lifecycle management rule
+  - lifecycle management rules
+  definition: Rules on a storage account that move blobs to cooler tiers or delete them based on age (days since creation, modification or last access).
+  es: Reglas que mueven blobs a niveles más fríos o los borran según su antigüedad.
+- id: azure-blob-data-protection
+  term: Blob soft delete and versioning
+  match:
+  - blob versioning
+  - blob soft delete
+  - container soft delete
+  - point-in-time restore
+  definition: Features that protect blob data. Soft delete keeps deleted blobs or containers for a retention period; versioning keeps earlier versions when a blob is changed.
+  es: Funciones que conservan blobs borrados o versiones anteriores.
+- id: azure-object-replication
+  term: Object replication
+  match:
+  - object replication
+  definition: Asynchronous copy of block blobs from a container in one storage account to a container in another account. It needs blob versioning and change feed.
+  es: Copia asíncrona de blobs entre contenedores de dos cuentas.
+- id: azure-azcopy
+  term: AzCopy and Storage Explorer
+  match:
+  - AzCopy
+  - Storage Explorer
+  - Azure Storage Explorer
+  definition: AzCopy is a command-line tool to copy and sync data to and from Azure Storage. Storage Explorer is a free desktop app to browse and manage storage data.
+  es: AzCopy copia datos por línea de comandos; Storage Explorer es una app de escritorio.
+- id: azure-files
+  term: Azure Files
+  match:
+  - Azure Files
+  - file share
+  - file shares
+  - Azure file share
+  - Azure file shares
+  - share snapshot
+  - share snapshots
+  - Azure File Sync
+  definition: Fully managed file shares in the cloud, reachable with SMB or NFS. Windows, Linux and macOS can mount them, and share snapshots keep read-only copies.
+  es: Recursos compartidos de archivos administrados, accesibles por SMB o NFS.
+- id: azure-storage-firewall
+  term: Azure Storage firewall
+  match:
+  - storage firewall
+  - network rules
+  - trusted Microsoft services
+  definition: Network rules on a storage account that allow access only from selected virtual networks, subnets or public IP ranges. Other requests get 403 even with a valid key.
+  es: Reglas de red que limitan el acceso a una cuenta de almacenamiento.
+- id: azure-arm-template
+  term: ARM template
+  match:
+  - ARM template
+  - ARM templates
+  - Azure Resource Manager template
+  - Azure Resource Manager templates
+  - parameters file
+  - incremental mode
+  - complete mode
+  definition: A JSON file that declares Azure resources to deploy. It has parameters, variables, resources and outputs. Incremental mode (default) leaves extra resources; complete mode deletes them.
+  es: Archivo JSON que declara los recursos de Azure a desplegar.
+- id: azure-bicep
+  term: Bicep
+  match:
+  - Bicep
+  - Bicep file
+  - Bicep files
+  - .bicep
+  definition: A simpler language for Azure infrastructure as code. A Bicep file compiles to an ARM template, and an ARM template can be decompiled into Bicep.
+  es: Lenguaje más simple para infraestructura como código en Azure; compila a plantilla ARM.
+- id: azure-availability-set
+  term: Availability set
+  match:
+  - availability set
+  - availability sets
+  - fault domain
+  - fault domains
+  - update domain
+  - update domains
+  definition: A group of VMs in one datacenter spread over fault domains (separate racks for power and network) and update domains (rebooted at different times during maintenance).
+  es: Grupo de VMs repartidas en dominios de error y de actualización.
+- id: azure-vmss
+  term: Virtual Machine Scale Sets
+  match:
+  - Virtual Machine Scale Sets
+  - Virtual Machine Scale Set
+  - scale set
+  - scale sets
+  - VMSS
+  - autoscale
+  - autoscale rule
+  - autoscale rules
+  definition: A group of identical, load-balanced VMs that can grow or shrink automatically with autoscale rules or a schedule.
+  es: Grupo de VMs idénticas que crece o se reduce automáticamente.
+- id: azure-managed-disk
+  term: Managed disk
+  match:
+  - managed disk
+  - managed disks
+  - Premium SSD
+  - Standard SSD
+  - Standard HDD
+  - Ultra Disk
+  - data disk
+  - data disks
+  - OS disk
+  definition: A block storage volume for Azure VMs that Azure manages for you. Types are Ultra Disk, Premium SSD v2, Premium SSD, Standard SSD and Standard HDD.
+  es: Disco administrado por Azure para VMs (Ultra, Premium SSD, Standard SSD, Standard HDD).
+- id: azure-disk-encryption
+  term: Azure Disk Encryption
+  match:
+  - Azure Disk Encryption
+  - ADE
+  - encryption at host
+  - BitLocker
+  - DM-Crypt
+  definition: Encryption of VM disks inside the guest OS, with BitLocker (Windows) or DM-Crypt (Linux). The keys and secrets are stored in Azure Key Vault.
+  es: Cifrado de discos dentro del sistema operativo invitado con claves en Key Vault.
+- id: azure-key-vault
+  term: Azure Key Vault
+  match:
+  - Key Vault
+  - Azure Key Vault
+  definition: A service that stores secrets, keys and certificates safely and controls who can use them.
+  es: Servicio para guardar secretos, claves y certificados de forma segura.
+- id: azure-managed-identity
+  term: Managed identity
+  match:
+  - managed identity
+  - managed identities
+  - system-assigned
+  - user-assigned
+  definition: An identity in Microsoft Entra ID that Azure creates and manages for a resource, such as a VM or App Service, so the code can get tokens without storing secrets.
+  es: Identidad de Entra que Azure crea para un recurso; evita guardar secretos.
+- id: azure-app-service
+  term: Azure App Service
+  match:
+  - App Service
+  - Azure App Service
+  - App Service plan
+  - App Service plans
+  - web app
+  - web apps
+  - scale up
+  - scale out
+  definition: A managed platform to host web apps and APIs. An App Service plan defines the region, VM size and number of instances; scale up changes the size, scale out adds instances.
+  es: Plataforma administrada para apps web; el plan define tamaño e instancias.
+- id: azure-deployment-slot
+  term: Deployment slot
+  match:
+  - deployment slot
+  - deployment slots
+  - staging slot
+  - slot swap
+  certs: [az104]
+  definition: A live copy of an App Service app with its own host name. You deploy to a staging slot, test it, then swap it with production with no downtime. Needs Standard tier or higher.
+  es: Copia viva de una app con su propio nombre; se intercambia con producción sin cortes.
+- id: azure-aci
+  term: Azure Container Instances (ACI)
+  match:
+  - Azure Container Instances
+  - Container Instances
+  - ACI
+  - container group
+  - container groups
+  definition: The simplest way to run containers in Azure without managing servers. A container group is a set of containers that share a host, network and storage.
+  es: Forma más simple de ejecutar contenedores en Azure sin gestionar servidores.
+- id: azure-container-apps
+  term: Azure Container Apps
+  match:
+  - Azure Container Apps
+  - Container Apps
+  - container app
+  - scale rule
+  - scale rules
+  definition: A serverless platform for containerized apps and microservices. It scales by HTTP traffic, events or CPU, can scale to zero, and supports revisions.
+  es: Plataforma serverless para apps en contenedores; escala por tráfico o eventos, hasta cero.
+- id: azure-acr
+  term: Azure Container Registry (ACR)
+  match:
+  - Azure Container Registry
+  - ACR
+  - container registry
+  - container registries
+  definition: A private registry for container images in Azure, with Basic, Standard and Premium tiers. Premium adds geo-replication and private endpoints.
+  es: Registro privado de imágenes de contenedor en Azure.
+- id: azure-vnet
+  term: Azure Virtual Network (VNet)
+  match:
+  - VNet
+  - VNets
+  - virtual network
+  - virtual networks
+  - Azure Virtual Network
+  - Azure subnet
+  - Azure subnets
+  - address space
+  certs: [az104]
+  definition: A private network in one Azure region. It has an address space split into subnets. Azure reserves 5 IP addresses in each subnet.
+  es: Red privada en una región de Azure, dividida en subredes.
+- id: azure-vnet-peering
+  term: Virtual network peering
+  match:
+  - VNet peering
+  - virtual network peering
+  - global peering
+  - global VNet peering
+  - gateway transit
+  definition: A connection between two VNets over the Microsoft backbone, in the same or different regions. It is not transitive, and address spaces must not overlap.
+  es: Conexión entre dos VNets por la red de Microsoft; no es transitiva.
+- id: azure-nsg
+  term: Network security group (NSG)
+  match:
+  - NSG
+  - NSGs
+  - network security group
+  - network security groups
+  - security rule
+  - security rules
+  - effective security rules
+  definition: A set of allow and deny rules for inbound and outbound traffic, attached to a subnet or a network interface. Rules are checked by priority, lowest number first.
+  es: Reglas de permitir/denegar tráfico en subred o interfaz; gana la prioridad más baja.
+- id: azure-asg
+  term: Application security group (ASG)
+  match:
+  - ASG
+  - ASGs
+  - application security group
+  - application security groups
+  definition: A label for a group of VM network interfaces, used as source or destination in NSG rules instead of IP addresses.
+  es: Etiqueta para agrupar interfaces de VMs y usarla en reglas de NSG.
+- id: azure-udr
+  term: User-defined route (UDR)
+  match:
+  - user-defined route
+  - user-defined routes
+  - UDR
+  - UDRs
+  - next hop
+  - next hop type
+  - virtual appliance
+  definition: A custom route in a route table associated to a subnet. It overrides Azure system routes, for example to send traffic through a firewall (next hop type virtual appliance).
+  es: Ruta personalizada en una tabla de rutas que reemplaza las rutas del sistema.
+- id: azure-public-ip
+  term: Public IP address (Azure)
+  match:
+  - public IP address
+  - public IP addresses
+  - Standard SKU public IP
+  - static public IP
+  certs: [az104]
+  definition: An Azure resource that gives a public address to a VM interface, load balancer, gateway or Bastion. Standard SKU public IPs are static, secure by default and can be zone-redundant.
+  es: Recurso que da una dirección pública; el SKU Standard es estático y seguro por defecto.
+- id: azure-dns
+  term: Azure DNS
+  match:
+  - Azure DNS
+  - DNS zone
+  - DNS zones
+  - private DNS zone
+  - private DNS zones
+  - virtual network link
+  - auto registration
+  - autoregistration
+  definition: A hosting service for DNS domains in Azure. Public DNS zones answer on the internet; private DNS zones answer only inside linked VNets and can register VM names automatically.
+  es: Servicio para alojar zonas DNS públicas y privadas en Azure.
+- id: azure-load-balancer
+  term: Azure Load Balancer
+  match:
+  - Azure Load Balancer
+  - internal load balancer
+  - public load balancer
+  - health probe
+  - health probes
+  - backend pool
+  - backend pools
+  - load-balancing rule
+  - load-balancing rules
+  - inbound NAT rule
+  definition: A layer 4 (TCP/UDP) load balancer. Public load balancers have a public front-end IP; internal load balancers have a private one. Health probes decide which backend instances get traffic.
+  es: Balanceador de capa 4 (TCP/UDP), público o interno, con sondeos de estado.
+- id: azure-app-gateway
+  term: Azure Application Gateway
+  match:
+  - Application Gateway
+  - Azure Application Gateway
+  - path-based routing
+  - Web Application Firewall
+  definition: A layer 7 (HTTP/HTTPS) load balancer with URL path-based routing, host-based routing, TLS termination and an optional Web Application Firewall.
+  es: Balanceador de capa 7 (HTTP) con enrutamiento por ruta, TLS y WAF opcional.
+- id: azure-bastion
+  term: Azure Bastion
+  match:
+  - Azure Bastion
+  - Bastion
+  - AzureBastionSubnet
+  definition: A managed service for RDP and SSH to VMs through the Azure portal or native client over TLS, so the VMs need no public IP. It is deployed in a subnet named AzureBastionSubnet.
+  es: Servicio administrado de RDP/SSH a VMs sin IP pública.
+- id: azure-service-endpoint
+  term: Service endpoint
+  match:
+  - service endpoint
+  - service endpoints
+  definition: A subnet setting that sends traffic to an Azure PaaS service over the Azure backbone and lets the service allow that subnet. The service still uses its public IP.
+  es: Ajuste de subred que lleva el tráfico a un servicio PaaS por la red de Azure; sigue con IP pública.
+- id: azure-private-endpoint
+  term: Private endpoint
+  match:
+  - private endpoint
+  - private endpoints
+  - Private Link
+  - Azure Private Link
+  definition: A network interface with a private IP from your VNet that connects to one PaaS resource through Azure Private Link. It needs DNS (often a private DNS zone) so the name points to the private IP.
+  es: Interfaz con IP privada de tu VNet conectada a un recurso PaaS.
+- id: azure-monitor
+  term: Azure Monitor
+  match:
+  - Azure Monitor
+  - Monitor metrics
+  - platform metrics
+  - Activity log
+  - Azure Monitor Agent
+  - data collection rule
+  - data collection rules
+  - VM insights
+  - Insights
+  definition: The Azure platform for metrics, logs and alerts. Platform metrics are collected automatically; logs need diagnostic settings or the Azure Monitor Agent with data collection rules.
+  es: Plataforma de Azure para métricas, registros y alertas.
+- id: azure-diagnostic-setting
+  term: Diagnostic setting
+  match:
+  - diagnostic setting
+  - diagnostic settings
+  - resource logs
+  definition: A setting on a resource or subscription that sends resource logs, metrics or the activity log to a Log Analytics workspace, a storage account or Event Hubs.
+  es: Ajuste que envía registros y métricas a Log Analytics, almacenamiento o Event Hubs.
+- id: azure-log-analytics
+  term: Log Analytics workspace
+  match:
+  - Log Analytics workspace
+  - Log Analytics workspaces
+  - KQL
+  - Kusto Query Language
+  - workspace
+  certs: [az104]
+  definition: The data store for Azure Monitor Logs. You query it with Kusto Query Language (KQL), for example `Heartbeat | summarize max(TimeGenerated) by Computer`.
+  es: Almacén de Azure Monitor Logs; se consulta con KQL.
+- id: azure-alerts
+  term: Azure Monitor alerts
+  match:
+  - alert rule
+  - alert rules
+  - action group
+  - action groups
+  - alert processing rule
+  - alert processing rules
+  - metric alert
+  - metric alerts
+  - log search alert
+  - activity log alert
+  definition: An alert rule checks a signal (metric, log query, activity log) and fires an alert. An action group says who is notified and what runs; alert processing rules can suppress or add actions, for example during maintenance.
+  es: Regla que vigila una señal; el grupo de acciones avisa; las reglas de procesamiento suprimen o añaden acciones.
+- id: azure-network-watcher
+  term: Azure Network Watcher
+  match:
+  - Network Watcher
+  - IP flow verify
+  - Connection Monitor
+  - connection troubleshoot
+  - VNet flow logs
+  - packet capture
+  definition: A set of tools to monitor and diagnose Azure networks, such as IP flow verify (is a packet allowed?), next hop (where does it go?), connection troubleshoot and Connection Monitor.
+  es: Herramientas para monitorizar y diagnosticar redes de Azure.
+- id: azure-backup
+  term: Azure Backup
+  match:
+  - Azure Backup
+  - Recovery Services vault
+  - Recovery Services vaults
+  - backup policy
+  - backup policies
+  - recovery point
+  - recovery points
+  - File Recovery
+  definition: The Azure service that backs up VMs, file shares, databases and blobs to a vault and restores them. A backup policy sets the schedule and retention.
+  es: Servicio que hace copias de seguridad en un almacén y las restaura.
+- id: azure-site-recovery
+  term: Azure Site Recovery
+  match:
+  - Azure Site Recovery
+  - Site Recovery
+  - test failover
+  - recovery plan
+  - recovery plans
+  - failback
+  definition: A disaster recovery service that replicates VMs to another region and lets you fail over and fail back. A test failover checks the plan without stopping replication.
+  es: Servicio de recuperación ante desastres que replica VMs a otra región.

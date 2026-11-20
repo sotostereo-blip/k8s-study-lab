@@ -1,0 +1,259 @@
+domain: monitoring
+questions:
+  - id: az104-mon-001
+    difficulty: 1
+    type: single
+    question: "In Azure Monitor you can see CPU and network metrics of a Linux VM, but not the memory used by processes or the system log of the guest operating system. What should you do to collect this data?"
+    options:
+      - id: a
+        text: "Install the Azure Monitor Agent with a data collection rule"
+      - id: b
+        text: "Resize the VM to a larger size with more memory"
+        why: "The VM size does not change what monitoring data is collected."
+      - id: c
+        text: "Enable soft delete on the VM disks"
+        why: "Soft delete is a storage data protection feature. It does not collect guest data."
+      - id: d
+        text: "Create a CanNotDelete lock on the VM"
+        why: "A lock protects the VM from deletion. It does not collect monitoring data."
+    answer: [a]
+    explanation: |
+      Platform metrics (such as Percentage CPU) come from the Azure host and need no agent.
+      Data from inside the guest OS (performance counters, Syslog, Windows events) needs the
+      Azure Monitor Agent and a data collection rule that says what to collect and where to
+      send it. VM insights uses the same agent.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/agents/azure-monitor-agent-overview
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/vm/monitor-vm
+    glossary: [azure-monitor, azure-log-analytics, lx-vm]
+
+  - id: az104-mon-002
+    difficulty: 2
+    type: single
+    question: "The security team wants every read, write and delete request made to the blobs of a storage account to be stored in a Log Analytics workspace so they can query it. What should you configure on the storage account?"
+    options:
+      - id: a
+        text: "A diagnostic setting on the blob service to the workspace"
+      - id: b
+        text: "A lifecycle management policy on the account"
+        why: "Lifecycle rules move or delete blobs. They do not record requests."
+      - id: c
+        text: "An activity log alert for the storage account"
+        why: "The activity log records control plane operations, such as changing settings. It does not record blob reads and writes."
+      - id: d
+        text: "A stored access policy"
+        why: "A stored access policy controls SAS tokens. It does not send logs anywhere."
+    answer: [a]
+    explanation: |
+      Resource logs are not collected until you create a diagnostic setting. For storage,
+      you create it on each service (blob, file, queue, table) and choose the log categories
+      (StorageRead, StorageWrite, StorageDelete) and the destination, such as a Log Analytics workspace.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/data-collection/diagnostic-settings
+      - https://learn.microsoft.com/en-us/azure/storage/common/storage-insights-overview
+    glossary: [azure-diagnostic-setting, azure-log-analytics, azure-storage-account]
+
+  - id: az104-mon-003
+    difficulty: 2
+    type: single
+    question: "VMs send heartbeats to a Log Analytics workspace. You need a list of computers that have not sent a heartbeat in the last 15 minutes. Which KQL query should you use?"
+    options:
+      - id: a
+        text: "Heartbeat | summarize LastSeen = max(TimeGenerated) by Computer | where LastSeen < ago(15m)"
+      - id: b
+        text: "SELECT Computer FROM Heartbeat WHERE TimeGenerated < NOW() - 15"
+        why: "This is SQL, not KQL. Log Analytics queries start with a table name and use the pipe character."
+      - id: c
+        text: "Heartbeat | where TimeGenerated > ago(15m) | project Computer"
+        why: "This lists computers that DID send a heartbeat in the last 15 minutes, the opposite of what you need."
+      - id: d
+        text: "Heartbeat | take 15"
+        why: "take returns 15 random rows. It does not check time or group by computer."
+    answer: [a]
+    explanation: |
+      KQL passes data from one operator to the next with a pipe. summarize with max()
+      finds the latest heartbeat of each computer, and where with ago(15m) keeps only the
+      computers whose last heartbeat is older than 15 minutes.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/logs/get-started-queries
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-query-overview
+    glossary: [azure-log-analytics]
+
+  - id: az104-mon-004
+    difficulty: 2
+    type: single
+    question: "When the average CPU of vm-db1 is above 90% for 5 minutes, the operations team must get an email and an SMS. Other alert rules later must reuse the same contact list. What should you create?"
+    options:
+      - id: a
+        text: "A metric alert rule on vm-db1 and an action group with the email and SMS receivers"
+      - id: b
+        text: "A budget with an email alert"
+        why: "Budgets watch cost, not CPU."
+      - id: c
+        text: "A diagnostic setting that sends metrics to a storage account"
+        why: "This only stores data. It never notifies anyone."
+      - id: d
+        text: "An alert processing rule without an alert rule"
+        why: "Alert processing rules change what happens to fired alerts. They need alert rules to create the alerts."
+    answer: [a]
+    explanation: |
+      An alert rule watches a signal, such as the Percentage CPU metric, and fires when the
+      condition is true. An action group holds the notifications (email, SMS, push, voice)
+      and actions, and many alert rules can use the same action group.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-overview
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/action-groups
+    glossary: [azure-alerts, azure-monitor]
+
+  - id: az104-mon-005
+    difficulty: 2
+    type: single
+    question: "Every Saturday from 22:00 to 02:00 the team patches all VMs in rg-prod. During this window they do not want notifications from any alert rule on these VMs, but the alert rules must stay enabled. What should you configure?"
+    options:
+      - id: a
+        text: "An alert processing rule on rg-prod with a weekly schedule that suppresses notifications"
+      - id: b
+        text: "Delete the action groups every Saturday and create them again on Sunday"
+        why: "This is manual work, and other alert rules that use the action groups would lose notifications too."
+      - id: c
+        text: "A ReadOnly lock on rg-prod during the window"
+        why: "A lock does not affect alerts, and it would also block the patching work."
+      - id: d
+        text: "Change the alert rules to check every 24 hours"
+        why: "This weakens monitoring all week and still might notify during the window."
+    answer: [a]
+    explanation: |
+      Alert processing rules apply to fired alerts at a scope (subscription, resource group
+      or resource). They can suppress action groups or add action groups, on a schedule
+      such as a weekly maintenance window. The alert rules keep running.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-processing-rules
+    glossary: [azure-alerts]
+
+  - id: az104-mon-006
+    difficulty: 2
+    type: single
+    question: "vm-web1 cannot open a connection to vm-db1 on TCP 1433. You think an NSG rule blocks it and you want to know exactly which rule. Which Network Watcher tool should you use first?"
+    options:
+      - id: a
+        text: "IP flow verify"
+      - id: b
+        text: "Next hop"
+        why: "Next hop shows where a packet is routed, not whether an NSG allows it."
+      - id: c
+        text: "Azure Advisor"
+        why: "Advisor gives recommendations, not a check of one packet against NSG rules."
+      - id: d
+        text: "VNet flow logs"
+        why: "Flow logs record traffic over time. IP flow verify answers at once and names the rule."
+    answer: [a]
+    explanation: |
+      IP flow verify tests a 5-tuple (protocol, source and destination IP and port) for a
+      VM network interface and tells you if the traffic is allowed or denied, and by which
+      NSG rule. Connection troubleshoot and Connection Monitor test full connections.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/network-watcher/ip-flow-verify-overview
+      - https://learn.microsoft.com/en-us/azure/network-watcher/network-watcher-overview
+    glossary: [azure-network-watcher, azure-nsg]
+
+  - id: az104-mon-007
+    difficulty: 1
+    type: single
+    question: "Ten Azure VMs must be backed up every night and each backup kept for 30 days. What should you create?"
+    options:
+      - id: a
+        text: "A Recovery Services vault with a daily 30-day backup policy"
+      - id: b
+        text: "A storage account with GRS and a lifecycle rule"
+        why: "Storage redundancy and lifecycle rules do not create VM backups."
+      - id: c
+        text: "Azure Site Recovery replication to another region"
+        why: "Site Recovery is for disaster recovery (failover), not for keeping daily restore points for 30 days."
+      - id: d
+        text: "A snapshot of each VM disk made by hand every night"
+        why: "This is manual and does not manage retention for you."
+    answer: [a]
+    explanation: |
+      Azure Backup protects Azure VMs in a Recovery Services vault. A backup policy sets the
+      schedule and retention. You can enable it with `az backup protection enable-for-vm
+      --resource-group rg --vault-name vault1 --vm vm1 --policy-name DailyPolicy`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/backup/backup-azure-vms-introduction
+      - https://learn.microsoft.com/en-us/azure/backup/backup-azure-recovery-services-vault-overview
+    glossary: [azure-backup]
+
+  - id: az104-mon-008
+    difficulty: 2
+    type: single
+    question: "A user deleted one folder on a VM that is backed up with Azure Backup. You must get back only that folder, not the whole VM. What should you do?"
+    options:
+      - id: a
+        text: "Use File Recovery from a recovery point and copy the folder"
+      - id: b
+        text: "Restore the whole VM to replace the existing one"
+        why: "This replaces all data on the VM and takes longer. You only need one folder."
+      - id: c
+        text: "Start a test failover with Site Recovery"
+        why: "Site Recovery is for disaster recovery of the whole VM, not for single files from a backup."
+      - id: d
+        text: "Change the access tier of the VM disk to Hot"
+        why: "Managed disks have no access tiers, and tiers do not restore data."
+    answer: [a]
+    explanation: |
+      Azure Backup File Recovery mounts the disks of a recovery point as local drives
+      through a script. You copy the files you need and then unmount the disks. The VM keeps
+      running during the restore.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/backup/backup-azure-restore-files-from-vm
+    glossary: [azure-backup]
+
+  - id: az104-mon-009
+    difficulty: 3
+    type: single
+    question: "VMs in West Europe replicate to North Europe with Azure Site Recovery. You must check that the disaster recovery plan works. Production must not stop, and replication must continue. What should you do?"
+    options:
+      - id: a
+        text: "Run a test failover to an isolated VNet in North Europe, then clean it up"
+      - id: b
+        text: "Run a planned failover to North Europe"
+        why: "A planned failover moves production to the secondary region. It stops the source VMs."
+      - id: c
+        text: "Restore the VMs from Azure Backup in West Europe"
+        why: "This tests backups, not the Site Recovery plan in the secondary region."
+      - id: d
+        text: "Disable replication and enable it again"
+        why: "This stops protection and starts a new full replication. It tests nothing."
+    answer: [a]
+    explanation: |
+      A test failover (a disaster recovery drill) creates VMs in the target region from
+      replicated data, in a network you choose, while replication continues. Use an
+      isolated VNet so the test VMs do not affect production. Afterwards, clean up the test.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/site-recovery/azure-to-azure-tutorial-dr-drill
+      - https://learn.microsoft.com/en-us/azure/site-recovery/site-recovery-overview
+    glossary: [azure-site-recovery, azure-region]
+
+  - id: az104-mon-010
+    difficulty: 3
+    type: multiple
+    question: "You plan backups for several workloads. Which TWO workloads are protected in an Azure Backup vault (not a Recovery Services vault)?"
+    options:
+      - id: a
+        text: "Azure Blobs"
+      - id: b
+        text: "Azure Managed Disks"
+      - id: c
+        text: "Azure VMs"
+        why: "Azure VM backup uses a Recovery Services vault."
+      - id: d
+        text: "Azure Files"
+        why: "Azure file share backup is configured in a Recovery Services vault."
+    answer: [a, b]
+    explanation: |
+      Azure Backup has two vault types. A Backup vault holds newer workloads such as Azure
+      Blobs, Azure Managed Disks and Azure Database for PostgreSQL. A Recovery Services vault
+      holds Azure VMs, Azure Files, SQL Server and SAP HANA in VMs, and on-premises data.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/backup/backup-vault-overview
+      - https://learn.microsoft.com/en-us/azure/backup/backup-azure-recovery-services-vault-overview
+    glossary: [azure-backup]

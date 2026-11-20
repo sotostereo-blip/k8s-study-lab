@@ -47,7 +47,10 @@
 - [x] Argo Events labs (JetStream EventBus, webhook EventSource, Sensor that submits a Workflow)
 - [x] GH-200 OIDC lab (workflow permissions + IAM trust policy tested with example tokens; Gitea cannot issue OIDC tokens)
 - [x] Grafana labs: data source provisioning, dashboards with the HTTP API and as code with a variable
-- [ ] Later: Ansible (RHCE), HashiCorp Vault Associate
+- [x] HashiCorp Vault Associate (003): 64 questions + 12 labs on a real Vault 1.19 server (Shamir seal, PostgreSQL)
+- [x] Istio ICA: 53 concept questions (labs later)
+- [x] Azure AZ-104: 70 questions; Google Cloud ACE: 65 questions (no local labs: real clouds cannot be emulated well)
+- [ ] Later: Istio labs, eJPT and OSCP-style pentesting tracks, Ansible (RHCE)
 - [x] Real exam facts per certification (questions, time, cost, prerequisites, validity)
 - [x] Study plan by exam date (work for today, phases, pace) and readiness score (`backend/app/plan.py`)
 - [x] Certification path map (KCNA → CKA → CKS, Kubestronaut) with expiry reminders

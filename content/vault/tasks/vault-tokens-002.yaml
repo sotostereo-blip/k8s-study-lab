@@ -1,0 +1,31 @@
+id: vault-tokens-002
+title: Revoke a token when you only know its accessor
+domain: tokens
+difficulty: 2
+minutes: 5
+environment: vault
+setup: |
+  labvault token create -policy=default -ttl=24h -display-name=leaked-laptop -format=json \
+    | jq -r .auth.accessor > /root/leaked.accessor
+  labvault token create -policy=default -ttl=24h -display-name=keep-me -format=json \
+    | jq -r .auth.accessor > /etc/lab/keep.accessor
+task: |
+  A laptop with a Vault token was lost. Nobody has the token itself, but the audit team found
+  its **accessor**: it is in `/root/leaked.accessor`.
+
+  1. Look at the token's details using only the accessor.
+  2. **Revoke** that token. Do not revoke any other token.
+checks:
+  - name: The token with the accessor in /root/leaked.accessor is revoked
+    run: '! labvault token lookup -accessor "$(cat /root/leaked.accessor)" >/dev/null 2>&1'
+  - name: Other tokens (keep-me) still work
+    run: labvault token lookup -accessor "$(cat /etc/lab/keep.accessor)" >/dev/null
+    guard: true
+solution: |
+  vault token lookup -accessor "$(cat /root/leaked.accessor)"   # display name, policies, TTL
+  vault token revoke -accessor "$(cat /root/leaked.accessor)"
+  # An accessor can look up, renew and revoke a token, but it can not be used to log in or
+  # read secrets. Vault lists accessors (not tokens) with: vault list auth/token/accessors
+docs:
+  - https://developer.hashicorp.com/vault/docs/concepts/tokens
+  - https://developer.hashicorp.com/vault/docs/commands/token/revoke

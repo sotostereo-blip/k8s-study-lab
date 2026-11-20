@@ -1,0 +1,5 @@
+#!/bin/bash
+# Exit 0 when Vault is initialized and unsealed, the root token works and PostgreSQL answers.
+[ -s /etc/lab/root-token ] || exit 1
+labvault token lookup >/dev/null 2>&1 || exit 1
+pg_isready -q

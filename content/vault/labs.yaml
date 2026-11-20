@@ -1,0 +1,22 @@
+# Hands-on Vault labs. The real exam is multiple choice, but these tasks build the skills behind
+# it with real vault commands against a Vault 1.19 server (the version the exam tests).
+id: vault
+name: HashiCorp Certified Vault Associate (003)
+exam_minutes: 60
+passing_score: 70
+intro: "a Vault 1.19 server and PostgreSQL in Docker"
+domains:
+  - { id: auth, name: "Authentication methods", weight: 15 }
+  - { id: policies, name: "Vault policies", weight: 15 }
+  - { id: tokens, name: "Vault tokens", weight: 15 }
+  - { id: leases, name: "Vault leases", weight: 10 }
+  - { id: secrets, name: "Secrets engines", weight: 25 }
+  - { id: eaas, name: "Encryption as a service", weight: 10 }
+  - { id: architecture, name: "Vault architecture fundamentals", weight: 10 }
+environments:
+  vault:
+    name: "Vault 1.19 server (Shamir seal, file storage) + PostgreSQL 17"
+    nodes: 0
+    label: "Vault"
+    tools: "`vault` CLI logged in as root, `psql` for PostgreSQL"
+mock: false   # the real exam is multiple choice; use Exam mode for timed practice

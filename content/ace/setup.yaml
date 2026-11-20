@@ -1,0 +1,334 @@
+domain: setup
+questions:
+  - id: ace-env-001
+    difficulty: 1
+    type: single
+    question: "A company is starting with Google Cloud. It has three departments (Sales, Finance, Engineering), and each department has a test and a production environment. The security team wants to give the Finance auditors read access to all Finance projects with ONE role grant. How should the resources be organized?"
+    options:
+      - id: a
+        text: "Create one project per department and use labels for test and production"
+        why: "Labels help with billing reports and filters, but IAM roles are not granted through labels. Test and production in one project also mixes their permissions."
+      - id: b
+        text: "Create a folder per department under the organization, with the department's projects inside it"
+      - id: c
+        text: "Create one billing account per department and link its projects to it"
+        why: "A billing account decides who pays. It is not part of the resource hierarchy, so it cannot pass IAM roles down to projects."
+      - id: d
+        text: "Put all projects directly under the organization and grant the role on the organization"
+        why: "A role on the organization is inherited by every project, so the auditors would also read Sales and Engineering."
+    answer: [b]
+    explanation: |
+      The resource hierarchy is organization > folders > projects > resources. Roles granted
+      on a folder are inherited by every project inside it. A "Finance" folder with the Finance
+      projects lets you grant the auditors one role, on the folder, and nothing else.
+    docs:
+      - https://docs.cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy
+      - https://docs.cloud.google.com/resource-manager/docs/creating-managing-folders
+    glossary: [gcp-resource-hierarchy, gcp-folder, gcp-project, gcp-organization]
+
+  - id: ace-env-002
+    difficulty: 2
+    type: single
+    question: "A company must keep all its data inside the European Union. Developers create their own projects and sometimes choose a US region by mistake. What is the BEST way to stop new resources from being created outside the EU in every project?"
+    options:
+      - id: a
+        text: "Set an organization policy with the resource locations constraint on the organization node"
+      - id: b
+        text: "Remove the Editor role from all developers and give them the Viewer role"
+        why: "Viewer cannot create anything, so developers could not work at all. IAM controls WHO can act, not WHERE resources go."
+      - id: c
+        text: "Create a budget alert that emails the security team when a US resource costs money"
+        why: "Budgets only send alerts about cost. They do not block resources, and the data would already be in the US."
+      - id: d
+        text: "Use a Cloud Monitoring alerting policy on the number of VMs in US regions"
+        why: "An alert reacts after the resource exists. The requirement is to prevent it from being created."
+    answer: [a]
+    explanation: |
+      Organization policies limit how resources can be configured. The resource locations
+      constraint (gcp.resourceLocations) lists the allowed locations. Set on the organization
+      node, it is inherited by all folders and projects, including new ones.
+    docs:
+      - https://docs.cloud.google.com/organization-policy/overview
+    glossary: [gcp-org-policy, gcp-organization, gcp-zone]
+
+  - id: ace-env-003
+    difficulty: 1
+    type: single
+    question: "A developer runs a gcloud command to create a Pub/Sub topic in a brand-new project and gets an error that says the API has not been used in the project or is disabled. What should the developer do first?"
+    options:
+      - id: a
+        text: "Ask for the Owner role on the organization"
+        why: "The error is about a disabled API, not missing permissions. Owner on the organization is also far too much access."
+      - id: b
+        text: "Run gcloud services enable pubsub.googleapis.com in the project"
+      - id: c
+        text: "Create a new billing account for the project"
+        why: "A project needs a linked billing account for paid services, but the error message says the API is disabled. Enabling the API is the fix."
+      - id: d
+        text: "Change the default region with gcloud config set compute/region"
+        why: "Pub/Sub topics do not depend on the default Compute Engine region, and the region does not enable APIs."
+    answer: [b]
+    explanation: |
+      Most Google Cloud APIs are disabled in a new project. You enable them per project in the
+      console (APIs & Services) or with gcloud services enable SERVICE_NAME. The person needs
+      the serviceusage.services.enable permission, for example from the Service Usage Admin role.
+    docs:
+      - https://docs.cloud.google.com/service-usage/docs/enable-disable
+    glossary: [gcp-project, gcp-gcloud, gcp-pubsub]
+
+  - id: ace-env-004
+    difficulty: 2
+    type: single
+    question: "A team plans to start 200 VMs with 8 vCPUs each in us-central1 for a one-week data job. The project is new. What should the team check BEFORE the job starts?"
+    options:
+      - id: a
+        text: "The regional CPU quota of the project, and request an increase if it is too low"
+      - id: b
+        text: "The size of the default VPC network, because it only allows 100 VMs"
+        why: "VPC networks do not limit VMs to 100. The limit you hit first with many vCPUs is the project's regional CPU quota."
+      - id: c
+        text: "The billing budget, because a budget stops VMs when it is reached"
+        why: "Budgets only send alerts; they never stop resources. They also do not decide how many VMs you can create."
+      - id: d
+        text: "The organization policy for allowed machine types"
+        why: "There is no default organization policy that limits machine types. The usual blocker for 1,600 vCPUs is quota."
+    answer: [a]
+    explanation: |
+      Quotas limit how much of a resource a project can use, for example vCPUs per region.
+      200 VMs x 8 vCPUs = 1,600 vCPUs, which is much more than the default for a new project.
+      View the quota on the Quotas page (or with Cloud Quotas) and request an increase early,
+      because approval can take time.
+    docs:
+      - https://docs.cloud.google.com/docs/quotas/view-manage
+    glossary: [gcp-quota, gcp-zone, gcp-compute-engine]
+
+  - id: ace-env-005
+    difficulty: 1
+    type: single
+    question: "A startup creates a second Google Cloud project for testing. The finance team wants to receive ONE monthly invoice for both projects. What should you do?"
+    options:
+      - id: a
+        text: "Link the test project to the same Cloud Billing account as the first project"
+      - id: b
+        text: "Create a new billing account for the test project and merge the invoices by hand"
+        why: "A second billing account creates a second invoice. That is the opposite of what finance wants."
+      - id: c
+        text: "Move the test project into the first project as a sub-project"
+        why: "Projects cannot be nested inside projects. Folders group projects; billing accounts group costs."
+      - id: d
+        text: "Export billing data to BigQuery and send the query results as the invoice"
+        why: "A billing export helps analysis, but it does not change who is invoiced."
+    answer: [a]
+    explanation: |
+      One Cloud Billing account can pay for many projects, and each project is linked to at
+      most one billing account. Linking both projects to the same account gives one invoice.
+      To change the link you need Billing Account User on the billing account and Project
+      Billing Manager (or Owner) on the project.
+    docs:
+      - https://docs.cloud.google.com/billing/docs/how-to/modify-project
+    glossary: [gcp-billing-account, gcp-project]
+
+  - id: ace-env-006
+    difficulty: 2
+    type: single
+    question: "A manager wants an email when a project's monthly cost reaches 50%, 90% and 100% of USD 2,000. The manager also asks that nothing should stop running automatically. What should you create?"
+    options:
+      - id: a
+        text: "A Cloud Monitoring uptime check with a threshold of USD 2,000"
+        why: "Uptime checks test if a URL or host answers. They do not watch costs."
+      - id: b
+        text: "A budget of USD 2,000 for the project with threshold rules at 50%, 90% and 100%"
+      - id: c
+        text: "A quota limit of USD 2,000 on the project"
+        why: "Quotas limit resource amounts (like vCPUs), not money. A limit would also block work, which the manager does not want."
+      - id: d
+        text: "An organization policy that denies new resources when the cost is above USD 2,000"
+        why: "Organization policies control resource configuration, not spending, and they would stop work."
+    answer: [b]
+    explanation: |
+      A Cloud Billing budget tracks actual (and forecasted) cost and sends emails to billing
+      admins or chosen recipients at each threshold. A budget never stops resources by itself;
+      to cap spending you would need extra automation with Pub/Sub notifications.
+    docs:
+      - https://docs.cloud.google.com/billing/docs/how-to/budgets
+    glossary: [gcp-budget, gcp-billing-account]
+
+  - id: ace-env-007
+    difficulty: 2
+    type: single
+    question: "The finance team wants to analyze daily Google Cloud costs per project and per label with SQL, and keep years of detailed history. What should you set up?"
+    options:
+      - id: a
+        text: "Cloud Billing export to a BigQuery dataset"
+      - id: b
+        text: "A log sink that sends all audit logs to Cloud Storage"
+        why: "Audit logs record who did what. They do not contain cost data."
+      - id: c
+        text: "A budget with alerts for each project"
+        why: "Budgets send alerts at thresholds; they do not give detailed cost rows you can query with SQL."
+      - id: d
+        text: "A weekly CSV download from the Reports page saved in Cloud Storage"
+        why: "A manual download is not automatic and is not as detailed. The BigQuery export is made for this."
+    answer: [a]
+    explanation: |
+      The Cloud Billing export to BigQuery sends detailed usage cost data (with project, service,
+      SKU and labels) to a dataset automatically during the day. Enable it early: it only contains
+      data from the time you turn it on.
+    docs:
+      - https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery
+    glossary: [gcp-billing-export, gcp-bigquery, gcp-billing-account]
+
+  - id: ace-env-008
+    difficulty: 3
+    type: single
+    question: "A budget sends emails, but the team wants to automatically disable billing on a sandbox project when its cost reaches 100% of the budget. Which design works?"
+    options:
+      - id: a
+        text: "Set the budget action to Stop all resources"
+        why: "Budgets have no built-in stop action. They only send notifications."
+      - id: b
+        text: "Connect the budget to a Pub/Sub topic and trigger a Cloud Run function that removes the billing account from the project"
+      - id: c
+        text: "Lower the project's CPU quota to zero when the email arrives"
+        why: "This is a manual step and only affects CPUs; storage and other services would still cost money."
+      - id: d
+        text: "Create an organization policy that blocks the project when the budget is reached"
+        why: "Organization policies do not react to costs."
+    answer: [b]
+    explanation: |
+      Budgets can publish programmatic notifications to a Pub/Sub topic. A function subscribed
+      to the topic can read the cost and, at 100%, unlink the billing account. Be careful:
+      disabling billing stops paid services and can delete some resources, so do this only for
+      sandbox projects.
+    docs:
+      - https://docs.cloud.google.com/billing/docs/how-to/budgets-programmatic-notifications
+    glossary: [gcp-budget, gcp-pubsub, gcp-cloud-run-functions]
+
+  - id: ace-env-009
+    difficulty: 2
+    type: single
+    question: "Your company uses Okta for employee sign-in. It wants employees to use the Google Cloud console with their Okta accounts, and it does NOT want to copy users into Cloud Identity. What should you configure?"
+    options:
+      - id: a
+        text: "Workload Identity Federation with an Okta workload identity pool"
+        why: "Workload Identity Federation is for workloads (apps, CI pipelines), not for people signing in to the console."
+      - id: b
+        text: "One service account per employee with a JSON key"
+        why: "Service accounts are for applications. Sharing keys with people is a security risk and gives no single sign-on."
+      - id: c
+        text: "Workforce Identity Federation with a workforce pool that trusts Okta"
+      - id: d
+        text: "Google groups for each Okta group, filled by hand"
+        why: "Google groups are part of Cloud Identity, which means copying users. The company wants to avoid that."
+    answer: [c]
+    explanation: |
+      Workforce Identity Federation lets a workforce (employees, partners) sign in with an
+      external identity provider using OIDC or SAML. You create a workforce pool and a provider,
+      then grant IAM roles to the pool's identities. No user sync is needed.
+    docs:
+      - https://docs.cloud.google.com/iam/docs/workforce-identity-federation
+    glossary: [gcp-workforce-identity, gcp-cloud-identity]
+
+  - id: ace-env-010
+    difficulty: 2
+    type: single
+    question: "A security lead asks: \"Show me every Compute Engine VM with an external IP address in all 80 projects of our organization.\" Which tool gives this answer fastest?"
+    options:
+      - id: a
+        text: "Open each project in the console and read the VM instances page"
+        why: "This works but is slow and easy to get wrong with 80 projects."
+      - id: b
+        text: "Cloud Asset Inventory, searching all resources at the organization scope"
+      - id: c
+        text: "The Cloud Billing reports page, grouped by SKU"
+        why: "Billing reports show costs. They do not list resources with their IP settings."
+      - id: d
+        text: "Cloud Trace, filtered by external traffic"
+        why: "Cloud Trace collects request latency data from applications. It does not list resources."
+    answer: [b]
+    explanation: |
+      Cloud Asset Inventory keeps metadata about resources and IAM policies for the whole
+      organization. You can search all resources (for example with gcloud asset search-all-resources
+      --scope=organizations/ORG_ID) and filter by type and properties, and see their change history.
+    docs:
+      - https://docs.cloud.google.com/asset-inventory/docs/asset-inventory-overview
+    glossary: [gcp-asset-inventory, gcp-organization, gcp-compute-engine]
+
+  - id: ace-env-011
+    difficulty: 1
+    type: multiple
+    question: "A team must deploy a GPU workload in one specific zone. Before they deploy, what TWO things should they check? (Choose two.)"
+    options:
+      - id: a
+        text: "That the GPU model is offered in that zone"
+      - id: b
+        text: "That the project has enough GPU quota in that region"
+      - id: c
+        text: "That the project is in the same folder as the network team"
+        why: "Folder location affects inherited policies and roles, not the products a zone offers."
+      - id: d
+        text: "That the billing account is in the same country as the zone"
+        why: "A billing account is not tied to a region. It can pay for resources anywhere."
+      - id: e
+        text: "That the zone has a Cloud Storage bucket"
+        why: "VMs do not need a bucket in the same zone. Buckets are regional or multi-regional, not zonal."
+    answer: [a, b]
+    explanation: |
+      Not every product or machine type is available in every region or zone. GPU models
+      especially differ per zone. GPUs also have their own quotas per region, which are often
+      zero or low in new projects, so check the quota and request an increase.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/regions-zones
+      - https://docs.cloud.google.com/compute/docs/gpus
+    glossary: [gcp-zone, gcp-quota, gcp-gpu-tpu]
+
+  - id: ace-env-012
+    difficulty: 2
+    type: single
+    question: "A new project will host an internal web app. The network team wants full control of which subnets exist and of their IP ranges, so the ranges never overlap with the on-premises network. How should you create the VPC network?"
+    options:
+      - id: a
+        text: "Use the default network that comes with the project"
+        why: "The default network is auto mode: it creates a subnet in every region with fixed ranges, which may overlap with on-premises ranges."
+      - id: b
+        text: "Create an auto mode VPC network and delete the subnets you do not need"
+        why: "Auto mode subnets use a predefined 10.128.0.0/9 block. You do not choose the ranges, so overlap is still possible."
+      - id: c
+        text: "Create a custom mode VPC network and add only the subnets you need, with chosen ranges"
+      - id: d
+        text: "Create one VPC network per region, each with a /8 range"
+        why: "VPC networks are global, so one network per region is not needed. Very large ranges also make overlaps more likely."
+    answer: [c]
+    explanation: |
+      In a custom mode VPC network no subnets are created automatically. You create regional
+      subnets with the IP ranges you choose. Google recommends custom mode for production and for
+      networks that connect to on-premises.
+    docs:
+      - https://docs.cloud.google.com/vpc/docs/vpc
+      - https://docs.cloud.google.com/vpc/docs/create-modify-vpc-networks
+    glossary: [gcp-vpc, gcp-project]
+
+  - id: ace-env-013
+    difficulty: 1
+    type: single
+    question: "An engineer works every day with two projects: dev-app in europe-west1 and prod-app in us-east1. She is tired of adding --project and --region to every gcloud command. What should she set up?"
+    options:
+      - id: a
+        text: "One named gcloud configuration per project, then switch between them"
+      - id: b
+        text: "Two Google accounts, one for each of the two projects"
+        why: "One account can work in many projects. A second account adds password and access work and does not set default regions."
+      - id: c
+        text: "An organization policy that sets a default region"
+        why: "Organization policies limit allowed configurations; they do not set defaults for the gcloud CLI."
+      - id: d
+        text: "Move both environments into one single project"
+        why: "Mixing dev and prod in one project removes the separation between them, only to save typing."
+    answer: [a]
+    explanation: |
+      A gcloud configuration is a named set of properties such as account, project,
+      compute/region and compute/zone. Create one with gcloud config configurations create,
+      set its properties with gcloud config set, and switch with activate.
+    docs:
+      - https://docs.cloud.google.com/sdk/docs/configurations
+    glossary: [gcp-gcloud, gcp-project, gcp-zone]

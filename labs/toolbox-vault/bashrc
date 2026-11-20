@@ -1,0 +1,9 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+complete -C /usr/local/bin/vault vault
+export EDITOR=vim
+PS1='\[\e[33m\]vault-lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Vault lab ready: Vault 1.19 server at $VAULT_ADDR (http://vault:8200), initialized and unsealed.
+You are logged in with the root token (~/.vault-token). Try: vault status
+PostgreSQL 17 is at postgres:5432 (database shop, user postgres, password lab-root-pw): psql
+MSG

@@ -1,0 +1,41 @@
+id: vault-auth-002
+title: An AppRole for a CI pipeline
+domain: auth
+difficulty: 2
+minutes: 8
+environment: vault
+setup: |
+  printf 'path "secret/data/ci/*" {\n  capabilities = ["read"]\n}\n' | labvault policy write ci-read - >/dev/null
+task: |
+  A CI pipeline (a machine, not a person) must log in to Vault.
+
+  1. Enable the **approle** auth method at its default path.
+  2. Create the role `deploy` with the policy `ci-read`, a token TTL of **20 minutes** and a
+     maximum token TTL of **1 hour**.
+  3. Save the role's **RoleID** in `/root/deploy.role-id` and a new **SecretID** in
+     `/root/deploy.secret-id` (only the value, one line each).
+  4. Test a login with both values: `vault write auth/approle/login role_id=… secret_id=…`
+checks:
+  - name: approle is enabled and the role deploy has the policy ci-read
+    run: labvault read -format=json auth/approle/role/deploy | jq -e '.data.token_policies | index("ci-read") != null' >/dev/null
+  - name: The role gives tokens a TTL of 20m and a max TTL of 1h
+    run: labvault read -format=json auth/approle/role/deploy | jq -e '.data.token_ttl == 1200 and .data.token_max_ttl == 3600' >/dev/null
+  - name: The RoleID and SecretID in /root log in and get the policy ci-read
+    run: |
+      out=$(vault write -format=json auth/approle/login role_id="$(cat /root/deploy.role-id)" secret_id="$(cat /root/deploy.secret-id)" 2>&1)
+      echo "$out" | jq -e '.auth.policies | index("ci-read") != null' >/dev/null
+solution: |
+  vault auth enable approle
+  vault write auth/approle/role/deploy token_policies=ci-read token_ttl=20m token_max_ttl=1h
+  vault read -field=role_id auth/approle/role/deploy/role-id > /root/deploy.role-id
+  vault write -f -field=secret_id auth/approle/role/deploy/secret-id > /root/deploy.secret-id
+  vault write auth/approle/login role_id="$(cat /root/deploy.role-id)" secret_id="$(cat /root/deploy.secret-id)"
+  # The RoleID is like a user name; the SecretID is like a password and should be delivered
+  # to the pipeline in a safe way (for example with response wrapping).
+auto_solution: |
+  vault auth enable approle
+  vault write auth/approle/role/deploy token_policies=ci-read token_ttl=20m token_max_ttl=1h
+  vault read -field=role_id auth/approle/role/deploy/role-id > /root/deploy.role-id
+  vault write -f -field=secret_id auth/approle/role/deploy/secret-id > /root/deploy.secret-id
+docs:
+  - https://developer.hashicorp.com/vault/docs/auth/approle

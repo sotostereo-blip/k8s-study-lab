@@ -16,6 +16,7 @@ labs/
 ├── toolbox-prometheus/, prometheus-apps/   # promtool, amtool; demo apps and an alert webhook (PCA)
 ├── argocd-k3s/, argocd-toolbox/, argocd-git/  # k3s with Argo images preloaded, argocd/argo CLIs, Git server (CAPA)
 ├── toolbox-aws/          # AWS CLI for LocalStack (AWS SAA)
+├── toolbox-vault/        # vault CLI 1.19, psql; initializes and unseals the Vault server at start (Vault)
 └── envs/
     ├── single-node/      # k3s v1.37: controlplane only            (CKA, CKAD)
     ├── two-node/         # k3s v1.37: controlplane + node01        (CKA scheduling, drain, taints)
@@ -25,6 +26,7 @@ labs/
     ├── argocd/           # k3s v1.37 + Argo CD, Rollouts, Workflows + a Git server (CAPA)
     ├── terraform/        # LocalStack (free AWS emulator) + terraform (Terraform labs)
     ├── aws/              # LocalStack with 13 AWS services + AWS CLI (AWS SAA)
+    ├── vault/            # Vault 1.19 server (Shamir, file storage) + PostgreSQL 17 (Vault Associate)
     ├── linux/            # two Ubuntu servers with systemd and SSH (LFCS)
     ├── docker/           # Docker Engine 29 (dind) + local registry (DCA)
     ├── gitea/            # Gitea with Actions + a runner (GH-200)

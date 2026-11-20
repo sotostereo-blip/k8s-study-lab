@@ -1,0 +1,461 @@
+domain: traffic-management
+questions:
+  - id: ica-traf-001
+    difficulty: 1
+    type: single
+    question: You want requests with the path /api to go to version v2 of a service and all other requests to v1. Which Istio resource holds these routing rules?
+    options:
+      - id: a
+        text: "DestinationRule"
+        why: "A DestinationRule defines subsets and policies like load balancing. It does not decide which request goes where."
+      - id: b
+        text: "ServiceEntry"
+        why: "A ServiceEntry adds a service (often an external one) to the mesh registry. It has no match rules for paths."
+      - id: c
+        text: "VirtualService"
+      - id: d
+        text: "PeerAuthentication"
+        why: "PeerAuthentication sets the mTLS mode. It has nothing to do with routing."
+    answer: [c]
+    explanation: |
+      A VirtualService has ordered `http` routes. Each route can `match` on the
+      URI, headers or other request data and send the request to a `destination`
+      (a host and optional subset).
+    docs:
+      - https://istio.io/latest/docs/reference/config/networking/virtual-service/
+      - https://istio.io/latest/docs/concepts/traffic-management/
+    glossary: [virtualservice, istio-subset]
+
+  - id: ica-traf-002
+    difficulty: 1
+    type: single
+    question: Which Istio resource defines the subsets v1 and v2 of the reviews service, using the Pod label version?
+    options:
+      - id: a
+        text: "VirtualService"
+        why: "A VirtualService can send traffic to a subset by name, but the subset itself is defined somewhere else."
+      - id: b
+        text: "Gateway"
+        why: "A Gateway configures a proxy at the edge of the mesh (ports, hosts, TLS). It does not group Pods."
+      - id: c
+        text: "WorkloadEntry"
+        why: "A WorkloadEntry describes one non-Kubernetes workload, like a VM. It does not define subsets."
+      - id: d
+        text: "DestinationRule"
+    answer: [d]
+    explanation: |
+      A DestinationRule for host `reviews` lists `subsets`, each with a name and
+      `labels` (for example `version: v1`). It can also set a traffic policy
+      (load balancing, connection pool, outlier detection, TLS) for the whole host
+      or for one subset.
+    docs:
+      - https://istio.io/latest/docs/reference/config/networking/destination-rule/
+    glossary: [destinationrule, istio-subset, label]
+
+  - id: ica-traf-003
+    difficulty: 2
+    type: single
+    question: You want to send 10% of the traffic for the reviews service to v2 and 90% to v1, no matter how many Pods each version has. What do you configure?
+    options:
+      - id: a
+        text: "A DestinationRule with subsets v1 and v2, and a VirtualService route with weights 90 and 10"
+      - id: b
+        text: "Scale v2 to 1 replica and v1 to 9 replicas behind the same Service"
+        why: "Replica counts only give an approximate split, and it changes when you scale. Istio can split traffic exactly by weight."
+      - id: c
+        text: "A ServiceEntry for reviews with two endpoints, one with weight 90 and one with 10"
+        why: "ServiceEntry endpoints describe where a service runs. Traffic splitting between versions is done with route weights in a VirtualService."
+      - id: d
+        text: "An AuthorizationPolicy that allows only 10% of the requests to reach the v2 Pods"
+        why: "AuthorizationPolicy allows or denies requests. It cannot split traffic by percentage."
+    answer: [a]
+    explanation: |
+      Traffic shifting uses a VirtualService with two destinations in one route,
+      each with a `weight` (90 and 10), and a DestinationRule that defines the
+      subsets v1 and v2. The split does not depend on the number of Pods.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/traffic-shifting/
+    glossary: [traffic-shifting, virtualservice, destinationrule, istio-subset]
+
+  - id: ica-traf-004
+    difficulty: 2
+    type: single
+    question: You applied a VirtualService that sends traffic to the subsets v1 and v2 of ratings. Now all requests to ratings fail with HTTP 503. What is the most likely cause?
+    options:
+      - id: a
+        text: "The VirtualService needs a Gateway to work inside the mesh"
+        why: "Inside the mesh a VirtualService works without a Gateway (the default gateway is mesh). A Gateway is only for edge traffic."
+      - id: b
+        text: "There is no DestinationRule that defines the subsets v1 and v2"
+      - id: c
+        text: "PeerAuthentication is in PERMISSIVE mode"
+        why: "PERMISSIVE accepts both mTLS and plain text, so it does not block traffic."
+      - id: d
+        text: "The weights in the route are not set"
+        why: "With only one destination per route no weight is needed. Missing weights do not cause every request to fail."
+    answer: [b]
+    explanation: |
+      A route to a subset that no DestinationRule defines points to an Envoy
+      cluster that does not exist, so the proxy answers 503. Create the
+      DestinationRule with the subsets first, then the VirtualService.
+      `istioctl analyze` also reports a reference to an unknown subset.
+    docs:
+      - https://istio.io/latest/docs/ops/common-problems/network-issues/
+      - https://istio.io/latest/docs/ops/best-practices/traffic-management/
+    glossary: [destinationrule, istio-subset, virtualservice]
+
+  - id: ica-traf-005
+    difficulty: 3
+    type: single
+    question: "A VirtualService for reviews has two http routes. Route 1 has no match and sends traffic to v1. Route 2 matches the header end-user: tester and sends traffic to v2. Where do requests from tester go?"
+    options:
+      - id: a
+        text: "To v2, because a header match is more specific"
+        why: "Istio does not pick the most specific route. It uses the first route in the list that matches."
+      - id: b
+        text: "Half to v1 and half to v2"
+        why: "Istio splits traffic only when one route has several weighted destinations. Here only one route is used."
+      - id: c
+        text: "To v1, because routes are checked in order and route 1 matches everything"
+      - id: d
+        text: "The VirtualService is rejected, so the request fails"
+        why: "This VirtualService is valid. istioctl analyze may warn about a route that is never used, but the API server accepts it."
+    answer: [c]
+    explanation: |
+      HTTP routes in a VirtualService are evaluated in order, and the first match
+      wins. A route with no `match` matches all requests, so put specific routes
+      (like the header match) first and the default route last.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/request-routing/
+      - https://istio.io/latest/docs/concepts/traffic-management/
+    glossary: [virtualservice]
+
+  - id: ica-traf-006
+    difficulty: 1
+    type: single
+    question: Calls to the ratings service must fail if there is no response after 2 seconds. Where do you set this request timeout?
+    options:
+      - id: a
+        text: "connectTimeout: 2s in the connection pool of a DestinationRule"
+        why: "connectTimeout only limits the time to open a TCP connection. It does not limit how long the whole request takes."
+      - id: b
+        text: "A readiness probe with timeoutSeconds: 2"
+        why: "Probe timeouts are used by the kubelet for health checks. They do not change timeouts for requests between services."
+      - id: c
+        text: "interval: 2s in the outlier detection of a DestinationRule"
+        why: "This is how often outlier detection checks endpoints. It is not a request timeout."
+      - id: d
+        text: "timeout: 2s in an http route of a VirtualService"
+    answer: [d]
+    explanation: |
+      Request timeouts are set per route in a VirtualService with the `timeout`
+      field. When the time is over, the proxy returns HTTP 504 to the caller.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/request-timeouts/
+    glossary: [istio-timeout, virtualservice]
+
+  - id: ica-traf-007
+    difficulty: 2
+    type: multiple
+    question: Which fields can you set in the retries block of a VirtualService http route? (Choose two.)
+    options:
+      - id: a
+        text: "attempts"
+      - id: b
+        text: "perTryTimeout"
+      - id: c
+        text: "consecutive5xxErrors"
+        why: "consecutive5xxErrors belongs to outlierDetection in a DestinationRule. It decides when to eject an endpoint."
+      - id: d
+        text: "maxConnections"
+        why: "maxConnections belongs to the TCP connection pool in a DestinationRule. It is used for circuit breaking."
+    answer: [a, b]
+    explanation: |
+      The `retries` block has `attempts` (how many retries), `perTryTimeout`
+      (timeout for each try) and `retryOn` (which failures to retry, such as
+      `5xx` or `connect-failure`).
+    docs:
+      - https://istio.io/latest/docs/reference/config/networking/virtual-service/
+    glossary: [istio-retry, virtualservice]
+
+  - id: ica-traf-008
+    difficulty: 2
+    type: single
+    question: To test your application, you want to add a 7-second delay to requests to ratings, but only for requests from the user tester. Where do you configure this?
+    options:
+      - id: a
+        text: "In a VirtualService http route with a header match and fault.delay"
+      - id: b
+        text: "In a DestinationRule with outlierDetection"
+        why: "Outlier detection removes failing endpoints. It does not add delays."
+      - id: c
+        text: "In a ServiceEntry with a resolution delay"
+        why: "ServiceEntry has no delay setting. Fault injection is part of VirtualService routes."
+      - id: d
+        text: "In the Deployment, with a sleep command in the container"
+        why: "This would delay every request, not only those from one user, and it changes the application."
+    answer: [a]
+    explanation: |
+      Fault injection is configured in VirtualService http routes with `fault`.
+      `fault.delay.fixedDelay: 7s` with `percentage.value: 100` delays the matched
+      requests. A `match` on the header limits it to one user.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/fault-injection/
+    glossary: [fault-injection, virtualservice]
+
+  - id: ica-traf-009
+    difficulty: 2
+    type: single
+    question: Which fault block in a VirtualService route returns HTTP 503 for about 10% of requests?
+    options:
+      - id: a
+        text: "fault: { delay: { fixedDelay: 503s, percentage: { value: 10 } } }"
+        why: "A delay only makes requests slower. It cannot return an HTTP status code."
+      - id: b
+        text: "fault: { abort: { httpStatus: 503, percentage: { value: 10 } } }"
+      - id: c
+        text: "retries: { attempts: 503, retryOn: 10 }"
+        why: "retries is not fault injection. attempts is a number of retries and retryOn lists conditions, not percentages."
+      - id: d
+        text: "fault: { abort: { grpcStatus: 10, percentage: { value: 503 } } }"
+        why: "The values are swapped. percentage must be between 0 and 100, and an HTTP code goes in httpStatus."
+    answer: [b]
+    explanation: |
+      `fault.abort` ends requests early with an error. `httpStatus` sets the code
+      and `percentage.value` sets the share of requests (here 10%).
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/fault-injection/
+      - https://istio.io/latest/docs/reference/config/networking/virtual-service/
+    glossary: [fault-injection, virtualservice]
+
+  - id: ica-traf-010
+    difficulty: 2
+    type: single
+    question: You want the proxy to allow at most 1 connection and 1 pending request to the httpbin service, and to fail fast when there are more. Where do you set this?
+    options:
+      - id: a
+        text: "In the retries block of a VirtualService for httpbin"
+        why: "Retries send failed requests again. They do not limit the number of connections."
+      - id: b
+        text: "In the resources.limits of the httpbin container"
+        why: "Container limits set CPU and memory. They do not limit connections in the proxy."
+      - id: c
+        text: "In the trafficPolicy.connectionPool of a DestinationRule for httpbin"
+      - id: d
+        text: "In an AuthorizationPolicy with action DENY"
+        why: "AuthorizationPolicy decides who may call a service. It does not count connections."
+    answer: [c]
+    explanation: |
+      Circuit breaking uses `connectionPool` in a DestinationRule, for example
+      `tcp.maxConnections: 1` and `http.http1MaxPendingRequests: 1`. Extra requests
+      get HTTP 503 at once, with the response flag UO (upstream overflow).
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/circuit-breaking/
+    glossary: [circuit-breaking, destinationrule]
+
+  - id: ica-traf-011
+    difficulty: 2
+    type: single
+    question: "A DestinationRule has outlierDetection with consecutive5xxErrors: 3 and baseEjectionTime: 30s. What happens when one Pod of the service returns three 5xx errors in a row?"
+    options:
+      - id: a
+        text: "Kubernetes restarts the Pod"
+        why: "Restarting containers is the job of the kubelet with liveness probes. Outlier detection only changes where the proxy sends traffic."
+      - id: b
+        text: "The client gets HTTP 403 for 30 seconds"
+        why: "Outlier detection does not block the client. It only stops sending requests to the bad endpoint."
+      - id: c
+        text: "The proxy retries the request three more times"
+        why: "Retries are set in a VirtualService. Outlier detection does not retry requests."
+      - id: d
+        text: "The Pod is removed from the load balancing pool for a time"
+    answer: [d]
+    explanation: |
+      Outlier detection watches each endpoint. When an endpoint reaches the error
+      limit it is ejected from the pool for at least `baseEjectionTime`, and the
+      time grows if it fails again. `maxEjectionPercent` limits how many endpoints
+      can be ejected.
+    docs:
+      - https://istio.io/latest/docs/reference/config/networking/destination-rule/
+      - https://istio.io/latest/docs/tasks/traffic-management/circuit-breaking/
+    glossary: [outlier-detection, destinationrule]
+
+  - id: ica-traf-012
+    difficulty: 2
+    type: single
+    question: A VirtualService sends traffic to httpbin v1 and mirrors it to httpbin v2. What happens to the responses from v2?
+    options:
+      - id: a
+        text: "They are thrown away; the client only sees the v1 responses"
+      - id: b
+        text: "They are sent to the client instead of the v1 responses"
+        why: "The client always gets the response of the main destination (v1). The mirror never answers the client."
+      - id: c
+        text: "The proxy compares them with v1 and returns the faster one"
+        why: "Istio does not compare responses. Mirroring is fire and forget."
+      - id: d
+        text: "They are stored in Prometheus for later replay"
+        why: "Prometheus stores metrics, not responses. You can see metrics of v2, but the responses are discarded."
+    answer: [a]
+    explanation: |
+      With `mirror` (and optional `mirrorPercentage`) the proxy sends a copy of
+      each request to another destination. Responses from the mirror are ignored,
+      so you can test a new version with real traffic without affecting users.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/mirroring/
+    glossary: [traffic-mirroring, virtualservice]
+
+  - id: ica-traf-013
+    difficulty: 1
+    type: single
+    question: The mesh uses outboundTrafficPolicy REGISTRY_ONLY. Pods cannot reach the external API api.example.com. Which resource do you create to allow it?
+    options:
+      - id: a
+        text: "A WorkloadEntry for api.example.com"
+        why: "A WorkloadEntry describes a workload that joins the mesh, like a VM. An external API is added with a ServiceEntry."
+      - id: b
+        text: "A ServiceEntry for api.example.com"
+      - id: c
+        text: "A Kubernetes Ingress for api.example.com"
+        why: "Ingress is for traffic coming into the cluster, not for traffic going out."
+      - id: d
+        text: "A PeerAuthentication in DISABLE mode"
+        why: "PeerAuthentication controls incoming mTLS. It does not add hosts to the registry."
+    answer: [b]
+    explanation: |
+      With REGISTRY_ONLY the proxy only lets traffic go to hosts in the service
+      registry. A ServiceEntry adds `api.example.com` to the registry (usually with
+      `location: MESH_EXTERNAL` and `resolution: DNS`). The default policy,
+      ALLOW_ANY, would let unknown hosts pass.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/
+      - https://istio.io/latest/docs/reference/config/networking/service-entry/
+    glossary: [serviceentry, outbound-traffic-policy]
+
+  - id: ica-traf-014
+    difficulty: 3
+    type: single
+    question: You configured locality failover in a DestinationRule, but traffic does not move to another zone when the local Pods fail. What is missing?
+    options:
+      - id: a
+        text: "A retries block with attempts set to 0"
+        why: "Retries have nothing to do with failover between zones, and 0 attempts turns retries off."
+      - id: b
+        text: "A PeerAuthentication in STRICT mode"
+        why: "mTLS mode does not decide where traffic goes."
+      - id: c
+        text: "outlierDetection in the same DestinationRule"
+      - id: d
+        text: "A ServiceEntry for each zone"
+        why: "Kubernetes services are already in the registry. Zones come from node labels, not ServiceEntries."
+    answer: [c]
+    explanation: |
+      Locality load balancing needs outlier detection to know which endpoints are
+      unhealthy. Without `outlierDetection`, Envoy never marks local endpoints as
+      bad, so it never fails over to other localities.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/locality-load-balancing/failover/
+    glossary: [locality-failover, outlier-detection, destinationrule]
+
+  - id: ica-traf-015
+    difficulty: 3
+    type: single
+    question: You created an Istio Gateway named web-gw for host shop.example.com and a VirtualService for the same host. Requests through the ingress gateway get HTTP 404. What is the most likely problem?
+    options:
+      - id: a
+        text: "There is no DestinationRule for the service"
+        why: "A DestinationRule is optional. Without it Istio uses default policies, so it does not cause a 404."
+      - id: b
+        text: "PeerAuthentication is in PERMISSIVE mode"
+        why: "PERMISSIVE accepts all traffic. It does not cause 404 errors."
+      - id: c
+        text: "The Gateway must be in the same namespace as every Pod"
+        why: "A VirtualService can reference a Gateway in another namespace as <namespace>/<name>. The Pods can be anywhere."
+      - id: d
+        text: "The VirtualService does not list web-gw in its gateways field"
+    answer: [d]
+    explanation: |
+      A VirtualService without `gateways` applies only to sidecars in the mesh. To
+      route traffic that arrives at a Gateway, add `gateways: [web-gw]` (or
+      `<namespace>/web-gw`). Otherwise the ingress gateway has no route and answers 404.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-control/
+      - https://istio.io/latest/docs/reference/config/networking/virtual-service/
+    glossary: [istio-gateway, virtualservice, ingress-gateway]
+
+  - id: ica-traf-016
+    difficulty: 2
+    type: single
+    question: You create a Kubernetes Gateway API Gateway with gatewayClassName istio. What does Istio do?
+    options:
+      - id: a
+        text: "It creates a gateway Deployment and Service for this Gateway automatically"
+      - id: b
+        text: "Nothing, because Istio only supports its own Gateway resource"
+        why: "Istio supports the Kubernetes Gateway API as well as its own Gateway resource."
+      - id: c
+        text: "It adds a sidecar to every Pod in the namespace"
+        why: "A Gateway does not change sidecar injection. Injection is controlled by namespace labels."
+      - id: d
+        text: "It converts the Gateway into a Kubernetes Ingress"
+        why: "Istio does not create Ingress objects. It programs an Envoy proxy for the Gateway."
+    answer: [a]
+    explanation: |
+      With the Gateway API, Istio deploys a gateway for you: when you create a
+      Gateway with `gatewayClassName: istio`, it creates a Deployment and a Service
+      for it. Routes are then attached with HTTPRoute objects.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/
+    glossary: [gateway-api, gatewayclass, httproute, istio-gateway]
+
+  - id: ica-traf-017
+    difficulty: 2
+    type: single
+    question: With the Kubernetes Gateway API, how do you send 80% of traffic to the Service reviews-v1 and 20% to the Service reviews-v2?
+    options:
+      - id: a
+        text: "An HTTPRoute that points to DestinationRule subsets v1 and v2"
+        why: "HTTPRoute backendRefs point to Services, not to Istio subsets. With the Gateway API you use one Service per version."
+      - id: b
+        text: "An HTTPRoute rule with two backendRefs, weight 80 and weight 20"
+      - id: c
+        text: "A GatewayClass with the field split: 80/20"
+        why: "GatewayClass only names the controller. It has no traffic split field."
+      - id: d
+        text: "Two Gateways, one with 8 listeners and one with 2"
+        why: "The number of listeners does not split traffic. Weights are set on the backendRefs of a route."
+    answer: [b]
+    explanation: |
+      In the Gateway API, a rule of an HTTPRoute can have several `backendRefs`,
+      each with a `weight`. Each version usually has its own Service.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/traffic-shifting/
+      - https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/
+    glossary: [httproute, gateway-api, traffic-shifting]
+
+  - id: ica-traf-018
+    difficulty: 3
+    type: multiple
+    question: You want all traffic from the mesh to the external host api.example.com to leave through the egress gateway. Which resources are part of this setup? (Choose three.)
+    options:
+      - id: a
+        text: "A RequestAuthentication for api.example.com"
+        why: "RequestAuthentication validates JWTs on incoming requests. It does not route traffic to an egress gateway."
+      - id: b
+        text: "A ServiceEntry for api.example.com"
+      - id: c
+        text: "A Gateway for api.example.com bound to the egress gateway"
+      - id: d
+        text: "A VirtualService that routes from the sidecars to the egress gateway and from the egress gateway to the external host"
+      - id: e
+        text: "A WorkloadEntry for the egress gateway"
+        why: "The egress gateway is a normal Kubernetes Deployment in the mesh, so it needs no WorkloadEntry."
+    answer: [b, c, d]
+    explanation: |
+      The egress gateway task uses a ServiceEntry (so the host is known), a
+      Gateway on the egress gateway for the host, a VirtualService with two routes
+      (mesh to egress gateway, egress gateway to the external host), and a
+      DestinationRule for the egress gateway.
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/egress/egress-gateway/
+    glossary: [egress-gateway, serviceentry, istio-gateway, virtualservice]

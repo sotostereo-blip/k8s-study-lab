@@ -1,0 +1,56 @@
+id: vault-policies-001
+title: Write a read-only policy for one app
+domain: policies
+difficulty: 2
+minutes: 7
+environment: vault
+setup: |
+  labvault secrets enable -path=shop -version=2 kv >/dev/null
+  until labvault kv put shop/payments/api key=pay-123 >/dev/null 2>&1; do sleep 1; done
+  labvault kv put shop/payments/webhook secret=hook-456 >/dev/null
+  labvault kv put shop/admin/root password=do-not-read >/dev/null
+task: |
+  A KV version 2 engine is mounted at `shop/`. Create a policy called **`payments-read`** that:
+
+  - allows **read** of every secret under `shop/payments/` (for example `shop/payments/api`),
+  - allows **list** of the secret names under `shop/payments/`,
+  - gives **no** access to anything else (for example `shop/admin/root`).
+
+  Remember that KV version 2 uses different API paths for data and for metadata.
+checks:
+  - name: The policy payments-read exists
+    run: labvault policy read payments-read >/dev/null
+  - name: A token with payments-read can read shop/payments/api
+    run: |
+      t=$(labvault token create -policy=payments-read -ttl=5m -field=token)
+      VAULT_TOKEN=$t vault kv get -field=key shop/payments/api | grep -qx pay-123
+  - name: A token with payments-read can list shop/payments/
+    run: |
+      t=$(labvault token create -policy=payments-read -ttl=5m -field=token)
+      out=$(VAULT_TOKEN=$t vault kv list -format=json shop/payments 2>&1)
+      echo "$out" | jq -e 'index("webhook") != null' >/dev/null
+  - name: A token with payments-read can not read shop/admin/root or write to shop/payments/
+    run: |
+      t=$(labvault token create -policy=payments-read -ttl=5m -field=token)
+      ! VAULT_TOKEN=$t vault kv get shop/admin/root >/dev/null 2>&1 \
+        && ! VAULT_TOKEN=$t vault kv put shop/payments/api key=x >/dev/null 2>&1
+solution: |
+  cat > payments-read.hcl <<'HCL'
+  # KV v2: secret values are under <mount>/data/, names and versions under <mount>/metadata/
+  path "shop/data/payments/*" {
+    capabilities = ["read"]
+  }
+  path "shop/metadata/payments/*" {
+    capabilities = ["list"]
+  }
+  HCL
+  vault policy write payments-read payments-read.hcl
+  # test it:
+  vault token create -policy=payments-read -ttl=10m
+  vault token capabilities <token> shop/data/payments/api
+auto_solution: |
+  printf 'path "shop/data/payments/*" {\n  capabilities = ["read"]\n}\npath "shop/metadata/payments/*" {\n  capabilities = ["list"]\n}\n' > /root/payments-read.hcl
+  vault policy write payments-read /root/payments-read.hcl
+docs:
+  - https://developer.hashicorp.com/vault/docs/concepts/policies
+  - https://developer.hashicorp.com/vault/docs/secrets/kv/kv-v2

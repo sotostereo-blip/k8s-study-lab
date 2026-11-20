@@ -1,0 +1,239 @@
+domain: tokens
+questions:
+  - id: vault-tokens-001
+    difficulty: 2
+    type: single
+    question: "A system makes thousands of short Vault requests per minute, and each worker needs a token for about 2 minutes. Storing every token is putting load on the cluster. Which token type is the best fit?"
+    options:
+      - id: a
+        text: "Batch tokens"
+      - id: b
+        text: "Periodic service tokens"
+        why: "Periodic tokens are for long-running services that renew forever. They are still stored by Vault."
+      - id: c
+        text: "Root tokens"
+        why: "Root tokens can do anything and never expire. Using them for workers breaks least privilege."
+      - id: d
+        text: "Orphan service tokens"
+        why: "An orphan service token has no parent, but it is still a full service token that Vault stores."
+    answer: [a]
+    explanation: |
+      Batch tokens are encrypted blobs that Vault does not write to storage, so
+      creating them is very cheap. They have a fixed TTL, cannot be renewed,
+      have no accessor and cannot create child tokens. That is fine for short,
+      high-volume work.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+    glossary: [vault-batch-token, vault-service-token, vault-periodic-token]
+
+  - id: vault-tokens-002
+    difficulty: 2
+    type: multiple
+    question: "Which TWO statements about batch tokens are true? (Select 2)"
+    options:
+      - id: a
+        text: "They cannot be renewed"
+      - id: b
+        text: "They have a token accessor"
+        why: "Batch tokens are not stored, so they have no accessor. Only service tokens have accessors."
+      - id: c
+        text: "They cannot create child tokens"
+      - id: d
+        text: "They can be root tokens"
+        why: "Root tokens are always service tokens. A batch token cannot carry the root policy."
+    answer: [a, c]
+    explanation: |
+      Service tokens (prefix `hvs.`) are full featured: renewable, with
+      accessors, child tokens and cubbyhole. Batch tokens (prefix `hvb.`) give up
+      those features to be light: no renewal, no accessor, no child tokens, and
+      no root batch tokens.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+    glossary: [vault-batch-token, vault-token-accessor, vault-root-token]
+
+  - id: vault-tokens-003
+    difficulty: 1
+    type: single
+    question: "You used the initial root token to set up auth methods and policies. What is the recommended next step?"
+    options:
+      - id: a
+        text: "Save it in a KV secret so admins can use it every day"
+        why: "Daily use of a root token is risky. It can do anything, and storing it widely makes a leak more likely."
+      - id: b
+        text: "Revoke it, and create a new root token only when needed"
+      - id: c
+        text: "Renew it every month so that it does not expire"
+        why: "Root tokens have no TTL, so there is nothing to renew. The real risk is keeping it at all."
+      - id: d
+        text: "Change its policy from root to default"
+        why: "You cannot change the policies of an existing token. You revoke it and use normal tokens instead."
+    answer: [b]
+    explanation: |
+      HashiCorp recommends using root tokens only for the first setup or in an
+      emergency, then revoking them (`vault token revoke <token>`). When a root
+      token is needed again, operators create one with `vault operator
+      generate-root` and a quorum of unseal or recovery keys.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+      - https://developer.hashicorp.com/vault/docs/commands/operator/generate-root
+    glossary: [vault-root-token, vault-shamir, vault-recovery-key]
+
+  - id: vault-tokens-004
+    difficulty: 2
+    type: multiple
+    question: "Which TWO ways can create a root token? (Select 2)"
+    options:
+      - id: a
+        text: "Running `vault operator init` on a new cluster"
+      - id: b
+        text: "Logging in with userpass as a user named root"
+        why: "A user called root gets only the policies set on that user. The name has no special power."
+      - id: c
+        text: "Running `vault operator generate-root` with a quorum of key holders"
+      - id: d
+        text: "Running `vault token renew` on an admin token"
+        why: "Renewing a token only extends its TTL. It never adds the root policy."
+    answer: [a, c]
+    explanation: |
+      There are three ways: the initial root token from `vault operator init`,
+      `vault operator generate-root` with a threshold of unseal (or recovery)
+      key holders, and an existing root token that creates another one. No auth
+      method returns a root token.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+      - https://developer.hashicorp.com/vault/docs/commands/operator/generate-root
+    glossary: [vault-root-token, vault-shamir]
+
+  - id: vault-tokens-005
+    difficulty: 2
+    type: single
+    question: "A CI system must be able to revoke the tokens it gives to build jobs, but it must never be able to use those tokens to read secrets. What should the CI system keep?"
+    options:
+      - id: a
+        text: "A copy of each token"
+        why: "With a copy of the token, the CI system could also use it to read secrets, which is not allowed."
+      - id: b
+        text: "The response wrapping token of each login"
+        why: "A wrapping token can be unwrapped once to get the real token, and it does not help with revoking later."
+      - id: c
+        text: "The token accessor of each token"
+      - id: d
+        text: "The lease ID of the secrets each job reads"
+        why: "Lease IDs revoke secrets, not tokens. The token would stay valid."
+    answer: [c]
+    explanation: |
+      Every service token has an accessor. With the accessor you can look up the
+      token's properties, renew it and revoke it (`vault token revoke -accessor
+      <accessor>`), but you cannot log in with it or read secrets. Vault also
+      shows accessors in audit logs.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+      - https://developer.hashicorp.com/vault/docs/commands/token/revoke
+    glossary: [vault-token-accessor, vault-token]
+
+  - id: vault-tokens-006
+    difficulty: 2
+    type: single
+    question: "A token was created with a TTL of 1 hour and a max TTL of 4 hours. After 3 hours and 30 minutes the app asks to renew it for 1 more hour. What happens?"
+    options:
+      - id: a
+        text: "The token gets 1 more hour and now lives 4 hours 30 minutes"
+        why: "A renewal can never push a token past its max TTL."
+      - id: b
+        text: "The renewal is limited, so the token still expires at 4 hours"
+      - id: c
+        text: "Vault resets the max TTL, so the token can live 4 more hours"
+        why: "Renewal does not reset the max TTL. Only a periodic token can live without a max TTL."
+      - id: d
+        text: "The token is revoked at once because it is too old"
+        why: "The token is still valid. Vault just gives it less time than requested."
+    answer: [b]
+    explanation: |
+      The TTL is how long a token lives from now. Renewing adds time, but never
+      beyond the max TTL (from the mount, the system default of 768h, or an
+      explicit max TTL). Near the max TTL, Vault caps the new TTL and the token
+      expires on time. Then the app must log in again.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+      - https://developer.hashicorp.com/vault/docs/commands/token/renew
+    glossary: [vault-token, vault-lease]
+
+  - id: vault-tokens-007
+    difficulty: 2
+    type: single
+    question: "An admin token (token A) created token B, and token B created token C. Token C was not created as an orphan. What happens when token A is revoked?"
+    options:
+      - id: a
+        text: "Only token A is revoked"
+        why: "Service tokens form a tree. Revoking a parent also revokes all its children."
+      - id: b
+        text: "Tokens A and B are revoked, but C stays valid"
+        why: "Revocation follows the whole tree, so the grandchild C is revoked too."
+      - id: c
+        text: "Tokens A, B and C are all revoked"
+      - id: d
+        text: "Token A is revoked only after B and C expire"
+        why: "Revocation is immediate. Vault does not wait for the child tokens."
+    answer: [c]
+    explanation: |
+      Each service token has a parent, unless it is an orphan. When a parent is
+      revoked, Vault revokes all its child tokens, and the leases they created.
+      Orphan tokens are the way to stop this, for example for a long-lived
+      service that must not die with an admin's token.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+    glossary: [vault-orphan-token, vault-token, vault-lease]
+
+  - id: vault-tokens-008
+    difficulty: 2
+    type: single
+    question: "You need a token with the `monitoring` policy that keeps working even after your own token is revoked. Which command creates it?"
+    options:
+      - id: a
+        text: "`vault token create -policy=monitoring -orphan`"
+      - id: b
+        text: "`vault token create -policy=monitoring -type=batch`"
+        why: "A batch token still has a parent unless it is an orphan, and it cannot be renewed."
+      - id: c
+        text: "`vault token create -policy=monitoring -use-limit=0`"
+        why: "`-use-limit` limits how many times the token can be used. It does not change the parent."
+      - id: d
+        text: "`vault token create -policy=monitoring -no-default-policy`"
+        why: "This only removes the default policy. The new token is still a child of your token."
+    answer: [a]
+    explanation: |
+      `-orphan` creates a token without a parent, so revoking the creator does
+      not revoke it. This needs root or sudo on `auth/token/create`. Other ways
+      to get orphan tokens are the `auth/token/create-orphan` endpoint, token
+      roles with `orphan=true`, and most auth method logins.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/token/create
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+    glossary: [vault-orphan-token, vault-policy, vault-default-policy]
+
+  - id: vault-tokens-009
+    difficulty: 3
+    type: single
+    question: "A long-running service cannot log in again easily. It must keep one token forever, as long as it renews the token at least once every 24 hours. Which token fits?"
+    options:
+      - id: a
+        text: "A batch token with `-ttl=24h`"
+        why: "Batch tokens cannot be renewed, so the service would lose access after 24 hours."
+      - id: b
+        text: "A service token with `-explicit-max-ttl=24h`"
+        why: "An explicit max TTL is a hard limit. The token dies after 24 hours even if it is renewed."
+      - id: c
+        text: "A service token with `-use-limit=24`"
+        why: "A use limit counts requests, not time. The token stops after 24 uses."
+      - id: d
+        text: "A periodic token with `-period=24h`"
+    answer: [d]
+    explanation: |
+      A periodic token has no max TTL. Each renewal resets its TTL to the
+      period, so it can live forever if the service renews it before each
+      period ends. It still expires if the service stops renewing it, which
+      limits the damage of a lost token.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/tokens
+      - https://developer.hashicorp.com/vault/docs/commands/token/create
+    glossary: [vault-periodic-token, vault-batch-token]

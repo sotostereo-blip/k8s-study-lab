@@ -1,0 +1,485 @@
+domain: operate
+questions:
+  - id: ace-ops-001
+    difficulty: 1
+    type: single
+    question: "A VM has no external IP address. An admin must open an SSH session to it from a laptop without opening port 22 to the internet. What is the recommended way?"
+    options:
+      - id: a
+        text: "Use IAP TCP forwarding with gcloud compute ssh --tunnel-through-iap"
+      - id: b
+        text: "Add an ephemeral external IP and a firewall rule for 0.0.0.0/0 on port 22"
+        why: "This opens SSH to the whole internet, which is exactly what the admin wants to avoid."
+      - id: c
+        text: "Configure Cloud NAT so the laptop can reach the VM"
+        why: "Cloud NAT only handles outbound connections from the VM. It never allows inbound SSH."
+      - id: d
+        text: "Copy the SSH key into a Cloud Storage bucket the VM can read"
+        why: "Where the key is stored does not create a network path to the VM."
+    answer: [a]
+    explanation: |
+      Identity-Aware Proxy TCP forwarding wraps SSH in HTTPS and checks IAM
+      (roles/iap.tunnelResourceAccessor). You allow ingress on port 22 only from the IAP range
+      35.235.240.0/20. The VM needs no external IP.
+    docs:
+      - https://docs.cloud.google.com/iap/docs/using-tcp-forwarding
+    glossary: [gcp-iap, gcp-firewall-rule, gcp-compute-engine]
+
+  - id: ace-ops-002
+    difficulty: 1
+    type: single
+    question: "You want to see the name, zone and status of all VMs in the current project from the command line. Which command should you run?"
+    options:
+      - id: a
+        text: "gcloud compute instances list"
+      - id: b
+        text: "gcloud compute instances describe --all"
+        why: "describe shows the details of ONE instance that you name. It has no --all flag."
+      - id: c
+        text: "kubectl get nodes"
+        why: "kubectl shows nodes of a Kubernetes cluster, not all Compute Engine VMs of the project."
+      - id: d
+        text: "gcloud projects list --filter=instances"
+        why: "This lists projects, not VMs."
+    answer: [a]
+    explanation: |
+      gcloud compute instances list shows every VM in the project with its zone, machine type,
+      IP addresses and status. Add --filter (for example --filter="status=RUNNING") or --zones to
+      narrow the list.
+    docs:
+      - https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/list
+    glossary: [gcp-gcloud, gcp-compute-engine]
+
+  - id: ace-ops-003
+    difficulty: 2
+    type: single
+    question: "A team wants a backup of a VM's data disk every night at 2:00 and wants backups older than 14 days to be deleted automatically. What should you do?"
+    options:
+      - id: a
+        text: "Create a snapshot schedule with a 14-day retention policy and attach it to the disk"
+      - id: b
+        text: "Create a custom image of the disk every night by hand"
+        why: "Images are for creating new VMs, and a manual nightly task is easy to forget. Nothing deletes old images either."
+      - id: c
+        text: "Turn on Object Versioning on the disk"
+        why: "Object Versioning is a Cloud Storage feature for objects, not for Persistent Disks."
+      - id: d
+        text: "Use a regional Persistent Disk instead of backups"
+        why: "A regional disk protects against zone failure but copies mistakes too. It is not a backup with history."
+    answer: [a]
+    explanation: |
+      A snapshot schedule (a resource policy) creates snapshots at a set time and deletes them
+      after the retention period. Snapshots are incremental, so each one stores only the changed
+      blocks.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/disks/scheduled-snapshots
+    glossary: [gcp-snapshot, gcp-persistent-disk]
+
+  - id: ace-ops-004
+    difficulty: 2
+    type: single
+    question: "A GKE Standard cluster runs on e2-standard-4 nodes. A new ML service needs nodes with GPUs, but the other workloads should stay on the current nodes. What should you do?"
+    options:
+      - id: a
+        text: "Add a new node pool with GPU nodes and schedule the ML Pods onto it"
+      - id: b
+        text: "Change the machine type of the existing node pool to a GPU machine"
+        why: "This would move all workloads to expensive GPU nodes. A separate node pool keeps them apart."
+      - id: c
+        text: "Create a second cluster for every new workload"
+        why: "A new cluster adds cost and management work. Node pools exist for mixed hardware in one cluster."
+      - id: d
+        text: "Enable Horizontal Pod Autoscaler on the ML Deployment"
+        why: "HPA changes the number of Pods. It does not add GPU hardware."
+    answer: [a]
+    explanation: |
+      A node pool is a group of nodes with the same configuration. You can add a GPU node pool
+      (gcloud container node-pools create ... --accelerator) and use node selectors, taints and
+      tolerations so only ML Pods run there. The pool can also autoscale.
+    docs:
+      - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-pools
+      - https://docs.cloud.google.com/kubernetes-engine/docs/how-to/node-pools
+    glossary: [gcp-node-pool, gcp-gke, gcp-gpu-tpu]
+
+  - id: ace-ops-005
+    difficulty: 2
+    type: single
+    question: "Pods in a GKE cluster fail with ImagePullBackOff when they pull an image from Artifact Registry in the same project. The cluster nodes use a custom service account with no roles. What is the most likely fix with least privilege?"
+    options:
+      - id: a
+        text: "Grant the node service account roles/artifactregistry.reader on the repository"
+      - id: b
+        text: "Grant the node service account the Owner role on the project"
+        why: "Owner works but gives full control of the project, which breaks least privilege."
+      - id: c
+        text: "Make the Artifact Registry repository public to allUsers"
+        why: "This exposes the company's images to the whole internet."
+      - id: d
+        text: "Increase the node pool size so more nodes try to pull"
+        why: "More nodes with the same missing permission will fail in the same way."
+    answer: [a]
+    explanation: |
+      Nodes pull images with their service account. If it is a custom account, give it the
+      Artifact Registry Reader role on the repository (or project). Then the kubelet can pull.
+    docs:
+      - https://docs.cloud.google.com/artifact-registry/docs/integrate-gke
+    glossary: [gcp-artifact-registry, gcp-service-account, gcp-gke, least-privilege]
+
+  - id: ace-ops-006
+    difficulty: 2
+    type: single
+    question: "On a GKE Autopilot cluster, a Deployment has no CPU or memory requests. The team sees that its Pods get default resources and wants each Pod to get 1 vCPU and 2 GiB. What should they change?"
+    options:
+      - id: a
+        text: "Set resources.requests for CPU and memory in the Pod template of the Deployment"
+      - id: b
+        text: "Change the machine type of the Autopilot node pool"
+        why: "In Autopilot, Google manages the nodes. You do not edit node pools or machine types directly."
+      - id: c
+        text: "Add more nodes with gcloud container clusters resize"
+        why: "Autopilot adds nodes for you based on Pod requests. Resizing by hand is not how Autopilot works."
+      - id: d
+        text: "Set a budget on the cluster's project"
+        why: "Budgets send cost alerts. They do not change Pod resources."
+    answer: [a]
+    explanation: |
+      Autopilot provisions capacity from Pod resource requests and bills mainly for them. If you
+      do not set requests, Autopilot applies defaults. Set requests in the Pod spec to get the
+      resources you need.
+    docs:
+      - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests
+    glossary: [gcp-gke-autopilot, gcp-gke]
+
+  - id: ace-ops-007
+    difficulty: 2
+    type: single
+    question: "You deploy version 2 of a Cloud Run service. You want only 10% of users to get version 2 at first, and the rest to stay on version 1. What should you do?"
+    options:
+      - id: a
+        text: "Deploy with --no-traffic, then run gcloud run services update-traffic with 10% to the new revision"
+      - id: b
+        text: "Create a second Cloud Run service and a DNS record with 10% weight"
+        why: "Cloud DNS has weighted routing, but Cloud Run already splits traffic between revisions of one service, which is simpler and works with one URL."
+      - id: c
+        text: "Set max instances of the new revision to 10% of the old one"
+        why: "Max instances limits scaling; it does not decide which users reach which revision."
+      - id: d
+        text: "Deploy normally; Cloud Run always sends 10% to new revisions first"
+        why: "By default a new deploy sends 100% of traffic to the new revision when it is ready."
+    answer: [a]
+    explanation: |
+      Each Cloud Run deploy creates a new revision. With --no-traffic the new revision gets no
+      requests. Then gcloud run services update-traffic SERVICE --to-revisions=REV2=10 moves 10%.
+      Increase it step by step, or roll back by sending 100% to the old revision.
+    docs:
+      - https://docs.cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration
+    glossary: [gcp-cloud-run]
+
+  - id: ace-ops-008
+    difficulty: 2
+    type: single
+    question: "A Cloud Run service is slow for the first user after a quiet period, because a new container instance must start. The team accepts a small extra cost to avoid this. What should they configure?"
+    options:
+      - id: a
+        text: "A minimum number of instances greater than zero"
+      - id: b
+        text: "A lower maximum number of instances"
+        why: "Max instances caps how far the service scales out. It does not keep instances warm."
+      - id: c
+        text: "A larger Cloud SQL instance"
+        why: "The delay comes from starting the container, not from the database."
+      - id: d
+        text: "A regional managed instance group"
+        why: "MIGs manage Compute Engine VMs. They do not control Cloud Run instances."
+    answer: [a]
+    explanation: |
+      Cloud Run scales to zero by default, so the first request after idle time has a cold
+      start. Setting minimum instances (for example --min-instances=1) keeps instances ready.
+      You pay for those idle instances.
+    docs:
+      - https://docs.cloud.google.com/run/docs/configuring/min-instances
+      - https://docs.cloud.google.com/run/docs/about-instance-autoscaling
+    glossary: [gcp-cloud-run]
+
+  - id: ace-ops-009
+    difficulty: 2
+    type: single
+    question: "Objects in a bucket are read often for 30 days, then rarely. After 365 days they must be deleted. You want this to happen with no scripts. What should you configure on the bucket?"
+    options:
+      - id: a
+        text: "Lifecycle rules: Coldline at age 30, Delete at age 365"
+      - id: b
+        text: "Object Versioning with a 365-day retention"
+        why: "Versioning keeps old copies when objects change. It does not move objects to cheaper classes."
+      - id: c
+        text: "A Cloud Run job that runs gcloud storage rm every night"
+        why: "This is a script to write and maintain. Lifecycle rules do it with no code."
+      - id: d
+        text: "A signed URL that expires after 365 days"
+        why: "A signed URL limits access time for a link. The object itself stays in the bucket."
+    answer: [a]
+    explanation: |
+      Lifecycle rules have an action (SetStorageClass or Delete) and conditions such as age.
+      Cloud Storage applies them automatically. Remember minimum storage durations: Coldline
+      objects are charged for at least 90 days.
+    docs:
+      - https://docs.cloud.google.com/storage/docs/lifecycle
+    glossary: [gcp-object-lifecycle, gcp-storage-class, gcp-cloud-storage]
+
+  - id: ace-ops-010
+    difficulty: 1
+    type: single
+    question: "You must upload a local folder called reports to the bucket gs://acme-reports, including all subfolders. Google recommends gcloud storage instead of the older gsutil tool. Which command is correct?"
+    options:
+      - id: a
+        text: "gcloud storage cp --recursive reports gs://acme-reports"
+      - id: b
+        text: "gcloud storage buckets create reports gs://acme-reports"
+        why: "buckets create makes a new bucket. It does not upload files."
+      - id: c
+        text: "gcloud compute scp reports gs://acme-reports"
+        why: "gcloud compute scp copies files to and from VMs over SSH, not to buckets."
+      - id: d
+        text: "gcloud storage ls -r reports gs://acme-reports"
+        why: "ls lists objects. It does not copy anything."
+    answer: [a]
+    explanation: |
+      gcloud storage cp copies files to and from Cloud Storage; --recursive (-r) includes
+      folders. gcloud storage rsync is another option when you want to sync only changes.
+    docs:
+      - https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp
+      - https://docs.cloud.google.com/storage/docs/discover-object-storage-gcloud
+    glossary: [gcp-gcloud-storage, gcp-cloud-storage]
+
+  - id: ace-ops-011
+    difficulty: 2
+    type: single
+    question: "A customer without a Google account must download one private invoice PDF from Cloud Storage during the next 2 hours. The bucket must stay private. What should you give the customer?"
+    options:
+      - id: a
+        text: "A signed URL for the object that expires in 2 hours"
+      - id: b
+        text: "The Storage Object Viewer role for allUsers on the bucket"
+        why: "This makes every object in the bucket public to everyone, forever."
+      - id: c
+        text: "A service account key with read access"
+        why: "A key file is long-lived and gives access to much more than one file. It is a big security risk."
+      - id: d
+        text: "The Viewer role on the project for the customer's email"
+        why: "The customer has no Google account, and Viewer would show much more than one file."
+    answer: [a]
+    explanation: |
+      A signed URL contains a signature with limited time. Anyone with the URL can do the
+      allowed action (here, read one object) until it expires. Example:
+      gcloud storage sign-url gs://bucket/invoice.pdf --duration=2h with a service account.
+    docs:
+      - https://docs.cloud.google.com/storage/docs/access-control/signed-urls
+    glossary: [gcp-signed-url, gcp-cloud-storage]
+
+  - id: ace-ops-012
+    difficulty: 2
+    type: single
+    question: "A Cloud SQL for MySQL instance must survive a zone failure with automatic failover, and the team must be able to restore the database to any minute of the last 7 days. Which configuration meets both needs?"
+    options:
+      - id: a
+        text: "HA (regional) instance plus point-in-time recovery"
+      - id: b
+        text: "A read replica in the same zone and on-demand backups"
+        why: "A read replica in the same zone fails with the zone, and replicas do not fail over automatically. On-demand backups do not give minute-level restore."
+      - id: c
+        text: "A larger machine type and Object Versioning"
+        why: "Machine size does not protect against zone failure. Object Versioning is for Cloud Storage, not Cloud SQL."
+      - id: d
+        text: "Daily disk snapshots of the Cloud SQL VM"
+        why: "You do not manage the VM behind Cloud SQL. You use its own backup and HA features."
+    answer: [a]
+    explanation: |
+      A Cloud SQL HA (regional) instance has a standby in another zone and fails over
+      automatically. Automated backups plus point-in-time recovery (binary logs) let you restore
+      to a specific moment within the retention window.
+    docs:
+      - https://docs.cloud.google.com/sql/docs/mysql/high-availability
+      - https://docs.cloud.google.com/sql/docs/mysql/backup-recovery/backups
+    glossary: [gcp-cloud-sql, gcp-zone]
+
+  - id: ace-ops-013
+    difficulty: 2
+    type: single
+    question: "Before a data analyst runs a large BigQuery query with on-demand pricing, the manager wants to know how many bytes it will read, without running it or paying for it. What should the analyst do?"
+    options:
+      - id: a
+        text: "Run the query with the dry run option (bq query --dry_run)"
+      - id: b
+        text: "Run the query with LIMIT 10"
+        why: "LIMIT does not reduce the bytes scanned in most cases; BigQuery still reads the full columns."
+      - id: c
+        text: "Look at the Cloud Monitoring CPU metric of the BigQuery VM"
+        why: "BigQuery is serverless; there is no VM to monitor."
+      - id: d
+        text: "Export the table to Cloud Storage and check the file size"
+        why: "This takes time and storage, and the query may read only some columns, so the size would be wrong."
+    answer: [a]
+    explanation: |
+      A dry run validates the query and returns the estimated bytes processed, with no charge.
+      With on-demand pricing the cost depends on bytes read, so this helps estimate cost. Select
+      only the columns you need and use partitioned tables to read less.
+    docs:
+      - https://docs.cloud.google.com/bigquery/docs/best-practices-costs
+    glossary: [gcp-bigquery]
+
+  - id: ace-ops-014
+    difficulty: 2
+    type: single
+    question: "A subnet with range 10.10.0.0/24 has no free IP addresses left. The VMs must stay in this subnet and keep their addresses. What should you do?"
+    options:
+      - id: a
+        text: "Expand the primary range to 10.10.0.0/22 with expand-ip-range"
+      - id: b
+        text: "Shrink the range to /26 and then expand it again"
+        why: "You cannot shrink a subnet's primary range in Google Cloud. Only expanding is allowed."
+      - id: c
+        text: "Delete the subnet and create it again with a /22"
+        why: "You cannot delete a subnet that has VMs, and recreating would change their setup."
+      - id: d
+        text: "Create a second VPC network and peer it"
+        why: "The VMs must stay in the same subnet; a new network does not add addresses to it."
+    answer: [a]
+    explanation: |
+      You can expand a subnet's primary IPv4 range without downtime as long as the new range
+      does not overlap other subnets or peered ranges. Command: gcloud compute networks subnets
+      expand-ip-range SUBNET --region=REGION --prefix-length=22. Expanding cannot be undone.
+    docs:
+      - https://docs.cloud.google.com/vpc/docs/create-modify-vpc-networks#expand-subnet
+    glossary: [gcp-vpc]
+
+  - id: ace-ops-015
+    difficulty: 3
+    type: single
+    question: "A VPC has two ingress firewall rules for the same VMs: rule A denies TCP 22 from all sources with priority 1000, rule B allows TCP 22 from 203.0.113.0/24 with priority 900. What happens to SSH from 203.0.113.5?"
+    options:
+      - id: a
+        text: "It is allowed, because rule B has a lower priority number, which means higher priority"
+      - id: b
+        text: "It is denied, because deny rules always win"
+        why: "In VPC firewall rules a deny only wins when both rules have the SAME priority. Here B has a higher priority."
+      - id: c
+        text: "It is denied, because rule A has a larger number, which means higher priority"
+        why: "In Google Cloud the lowest number is the highest priority (0 is highest, 65535 lowest)."
+      - id: d
+        text: "It depends on which rule was created first"
+        why: "Creation order does not matter. Priority decides."
+    answer: [a]
+    explanation: |
+      VPC firewall rules are checked by priority: a lower number wins. Rule B (900) applies
+      before rule A (1000), so SSH from 203.0.113.0/24 is allowed and other sources are denied.
+      If two rules have the same priority, deny wins.
+    docs:
+      - https://docs.cloud.google.com/firewall/docs/firewalls
+    glossary: [gcp-firewall-rule]
+
+  - id: ace-ops-016
+    difficulty: 2
+    type: single
+    question: "The security team must keep all Cloud Audit Logs of the whole organization for 5 years and analyze them with SQL. What should you configure?"
+    options:
+      - id: a
+        text: "An aggregated organization sink that sends audit logs to BigQuery"
+      - id: b
+        text: "A separate log sink in each project that sends logs to Pub/Sub"
+        why: "Per-project sinks miss new projects unless you add them every time, and Pub/Sub is for streaming, not 5-year storage with SQL."
+      - id: c
+        text: "Change the _Default log bucket of one project to 5 years"
+        why: "This keeps only that project's logs. The other projects of the organization are not included."
+      - id: d
+        text: "Install the Ops Agent on every VM of the organization"
+        why: "The Ops Agent collects VM system and app logs. Audit logs are written by Google Cloud, not by agents."
+    answer: [a]
+    explanation: |
+      An aggregated sink at the organization or folder level, with includeChildren, routes
+      matching logs from all child projects (also future ones) to one destination. BigQuery
+      lets you query the logs with SQL and keep them as long as you need.
+    docs:
+      - https://docs.cloud.google.com/logging/docs/routing/overview
+      - https://docs.cloud.google.com/logging/docs/export/configure_export_v2
+    glossary: [gcp-log-sink, gcp-audit-logs, gcp-bigquery]
+
+  - id: ace-ops-017
+    difficulty: 2
+    type: multiple
+    question: "An app on Compute Engine writes \"PAYMENT_FAILED\" to its log file. The team wants an email when this line appears more than 5 times in 10 minutes. Which TWO steps are needed? (Choose two.)"
+    options:
+      - id: a
+        text: "Install the Ops Agent so the app's log file is sent to Cloud Logging"
+      - id: b
+        text: "Create a log-based metric that counts entries with PAYMENT_FAILED, and an alerting policy on it with an email notification channel"
+      - id: c
+        text: "Create a budget with a threshold of 5"
+        why: "Budgets track money, not log lines."
+      - id: d
+        text: "Enable Data Access audit logs for Compute Engine"
+        why: "Audit logs record API calls to Google Cloud. They do not contain the app's own log lines."
+      - id: e
+        text: "Create an uptime check on the VM's IP address"
+        why: "An uptime check tests if the app answers. It cannot count a text in the logs."
+    answer: [a, b]
+    explanation: |
+      Logs from files on a VM reach Cloud Logging only with an agent (the Ops Agent). A
+      log-based metric turns matching log entries into a counter metric. A Cloud Monitoring
+      alerting policy watches the metric and sends a notification when the condition is met.
+    docs:
+      - https://docs.cloud.google.com/stackdriver/docs/solutions/agents/ops-agent
+      - https://docs.cloud.google.com/logging/docs/logs-based-metrics
+      - https://docs.cloud.google.com/monitoring/alerts
+    glossary: [gcp-ops-agent, gcp-log-based-metric, gcp-cloud-monitoring]
+
+  - id: ace-ops-018
+    difficulty: 2
+    type: single
+    question: "An auditor asks who READ objects in a sensitive Cloud Storage bucket last week. In Logs Explorer you only find logs of bucket creation and IAM changes. Why?"
+    options:
+      - id: a
+        text: "Data Access audit logs for Cloud Storage were not enabled"
+      - id: b
+        text: "Admin Activity audit logs are deleted after 24 hours"
+        why: "Admin Activity logs are kept for 400 days in the _Required bucket, and they only record admin actions, not reads."
+      - id: c
+        text: "Logs Explorer cannot show logs older than one day"
+        why: "Logs Explorer shows everything kept in log buckets, which is 30 days for _Default by default."
+      - id: d
+        text: "The bucket uses the Archive storage class"
+        why: "The storage class does not change which audit logs are written."
+    answer: [a]
+    explanation: |
+      Admin Activity audit logs (create, delete, IAM changes) are always on. Data Access audit
+      logs (reading data or metadata) are off by default for most services, including Cloud
+      Storage, because they can be very large. Enable them in the IAM audit configuration before
+      you need them.
+    docs:
+      - https://docs.cloud.google.com/logging/docs/audit
+    glossary: [gcp-audit-logs, gcp-cloud-logging, gcp-cloud-storage]
+
+  - id: ace-ops-019
+    difficulty: 2
+    type: single
+    question: "VMs in the VPC network corp-net must resolve db.internal.example.com to 10.20.0.5. This name must NOT be visible on the internet. What should you create in Cloud DNS?"
+    options:
+      - id: a
+        text: "A private managed zone for internal.example.com, visible to corp-net, with an A record for db"
+      - id: b
+        text: "A public managed zone with an A record that points to 10.20.0.5"
+        why: "A public zone answers anyone on the internet, so the name and internal address would be visible."
+      - id: c
+        text: "A static external IP address for the database"
+        why: "The database should stay internal. An external IP also does not create a DNS name."
+      - id: d
+        text: "A Cloud NAT gateway with a DNS name"
+        why: "Cloud NAT handles outbound traffic. It does not answer DNS queries."
+    answer: [a]
+    explanation: |
+      A Cloud DNS private zone answers only for the VPC networks you authorize. VMs in corp-net
+      use the metadata server resolver and get the private records. Nobody on the internet can
+      query the zone.
+    docs:
+      - https://docs.cloud.google.com/dns/docs/zones
+      - https://docs.cloud.google.com/dns/docs/overview
+    glossary: [gcp-cloud-dns, gcp-vpc, dns]

@@ -136,6 +136,33 @@ certifications:
         - Counts toward Kubestronaut (pass KCNA, KCSA, CKA, CKAD and CKS).
       checked: "2026-11"
       url: https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/
+  - id: ica
+    name: Istio Certified Associate
+    short: ICA
+    area: Kubernetes
+    after: [cka]   # suggested study order (not required)
+    exam: ica
+    description: Concepts for the hands-on Istio exam. Install, route, secure and debug a service mesh.
+    official:
+      provider: Linux Foundation / CNCF
+      format: Performance-based. You solve tasks on the command line (kubectl, istioctl) on real clusters, online with a proctor
+      questions: 15-20 tasks (official, ICA Important Instructions)
+      minutes: 120
+      passing: 68% (official, Linux Foundation ICA FAQ)
+      cost: USD 250
+      includes:
+        - One free retake
+        - 12 months to schedule the exam after you buy it
+      prerequisites: None
+      valid: 2 years (certifications earned before April 1, 2024 were valid for 3 years)
+      valid_years: 2
+      renewal: Pass the same exam again before your certification expires.
+      notes:
+        - The exam environment runs Istio v1.31 (ICA Important Instructions).
+        - You can open the Istio documentation, the Istio blog and the Kubernetes documentation during the exam.
+        - "Domains: Installation, Upgrades, and Configuration 20%, Traffic Management 35%, Securing Workloads 25%, Troubleshooting 20%."
+      checked: "2026-11"
+      url: https://training.linuxfoundation.org/certification/istio-certified-associate-ica/
   - id: terraform
     name: HashiCorp Certified Terraform Associate (004)
     short: Terraform
@@ -160,6 +187,31 @@ certifications:
         - Version 004 covers Terraform 1.12. Version 003 was retired in January 2026.
       checked: "2026-11"
       url: https://developer.hashicorp.com/certifications/terraform-associate
+  - id: vault
+    name: HashiCorp Certified Vault Associate (003)
+    short: Vault
+    area: Security and secrets
+    exam: vault
+    track: vault
+    after: [terraform]
+    description: Multiple choice exam on Vault 1.19, plus hands-on labs on a real Vault server (auth methods, policies, tokens, leases, secrets engines, transit).
+    official:
+      provider: HashiCorp
+      format: Multiple choice, multiple answer and true/false, online with a proctor
+      questions: About 57 questions (reported by candidates; HashiCorp does not publish the number)
+      minutes: 60
+      passing: Not published (candidates report about 70%)
+      cost: USD 70.50, plus local taxes
+      includes:
+        - No free retake. If you fail, you pay again.
+      prerequisites: None (HashiCorp recommends basic terminal skills and some experience with Vault)
+      valid: 2 years
+      valid_years: 2
+      renewal: Pass the current Vault Associate exam again before your certification expires.
+      notes:
+        - Version 003 covers Vault 1.19.
+      checked: "2026-11"
+      url: https://developer.hashicorp.com/certifications/vault-associate
   - id: lfcs
     name: Linux Foundation Certified System Administrator
     short: LFCS
@@ -307,6 +359,56 @@ certifications:
         - Non-native English speakers can ask for 30 extra minutes (ESL +30) before booking.
       checked: "2026-11"
       url: https://aws.amazon.com/certification/certified-solutions-architect-associate/
+  - id: az104
+    name: Microsoft Azure Administrator (AZ-104)
+    short: AZ-104
+    area: Cloud
+    exam: az104
+    description: Multiple choice scenario questions on Microsoft Entra ID, governance, storage, compute, virtual networking, monitoring and backup in Azure.
+    official:
+      provider: Microsoft (Pearson VUE)
+      format: Multiple choice and other question types (case studies, interactive items), online with a proctor or at a test center
+      questions: Usually 40-60 questions (Microsoft does not publish the exact number for AZ-104)
+      minutes: 100
+      passing: 700 out of 1000 (official scaled score)
+      cost: USD 165
+      includes:
+        - No free retake. You can retake after 24 hours, then wait 14 days between later attempts (up to 5 per year), and pay each time.
+      prerequisites: None (Microsoft says you should know PowerShell, Azure CLI, the Azure portal, ARM templates or Bicep, and Microsoft Entra ID)
+      valid: 1 year
+      valid_years: 1
+      renewal: Pass a free online renewal assessment on Microsoft Learn in the 6 months before your certification expires.
+      notes:
+        - The price depends on the country or region where you take the exam (USD 165 in the United States).
+        - 100 minutes to answer; plan 120 minutes of seat time for instructions and the survey.
+        - If the exam is not in your language you can ask for 30 extra minutes.
+        - Offered in English, Spanish and eight more languages.
+      checked: "2026-11"
+      url: https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/
+  - id: ace
+    name: Google Cloud Associate Cloud Engineer
+    short: ACE
+    area: Cloud
+    exam: ace
+    description: Multiple choice scenario questions about setting up, deploying, running and securing solutions on Google Cloud.
+    official:
+      provider: Google Cloud
+      format: Multiple choice and multiple select, online with a remote proctor or at a test center
+      questions: 50-60 questions (the exact number and how many are unscored are not published)
+      minutes: 120
+      passing: Not published (you only get pass or fail)
+      cost: USD 125
+      includes:
+        - No free retake. Waiting periods apply between attempts (see the certification FAQ).
+      prerequisites: None (Google recommends 6+ months of hands-on experience with Google Cloud)
+      valid: 3 years
+      valid_years: 3
+      renewal: Take the standard exam again, take the shorter renewal exam (1 hour, 20 questions, USD 75), or complete the designated courses or skill badges in Google Skills during the last year.
+      notes:
+        - "Languages: English, Japanese, Spanish, Portuguese."
+        - Price is plus tax where applicable.
+      checked: "2026-11"
+      url: https://cloud.google.com/learn/certification/cloud-engineer
   - id: interview
     name: DevOps and Cloud Engineer job interviews (in English)
     short: Interviews

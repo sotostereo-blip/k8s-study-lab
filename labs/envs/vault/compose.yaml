@@ -1,0 +1,21 @@
+# Vault lab: a real Vault 1.19 server (file storage, not dev mode: it starts sealed and is
+# initialized with 3 Shamir key shares) + PostgreSQL for dynamic database secrets + a terminal.
+services:
+  vault:
+    image: hashicorp/vault:1.19.5
+    command: ["server"]
+    environment:
+      VAULT_LOCAL_CONFIG: >-
+        {"storage": {"file": {"path": "/vault/file"}},
+         "listener": [{"tcp": {"address": "0.0.0.0:8200", "tls_disable": true}}],
+         "api_addr": "http://vault:8200", "ui": true, "disable_mlock": true}
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: lab-root-pw
+      POSTGRES_DB: shop
+  toolbox:
+    build: ../../toolbox-vault
+    image: k8s-study-lab/toolbox-vault:1
+    depends_on: [vault, postgres]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]

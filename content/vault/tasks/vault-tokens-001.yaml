@@ -1,0 +1,36 @@
+id: vault-tokens-001
+title: Create an orphan token with a TTL
+domain: tokens
+difficulty: 2
+minutes: 6
+environment: vault
+setup: |
+  printf 'path "secret/data/reports/*" {\n  capabilities = ["read"]\n}\n' | labvault policy write reports - >/dev/null
+task: |
+  A nightly report job needs its own token. It must keep working even if the token that
+  created it is revoked.
+
+  Create a token that:
+  - has the policy `reports` (and **not** the `root` policy),
+  - is an **orphan** token (it has no parent),
+  - has a TTL of **2 hours**,
+  - has the display name `nightly-report`.
+
+  Save **only the token** in `/root/report.token`.
+checks:
+  - name: /root/report.token is a valid token with the policy reports and without root
+    run: |
+      [ -s /root/report.token ] && labvault token lookup -format=json "$(cat /root/report.token)" | jq -e '(.data.policies | index("reports") != null) and (.data.policies | index("root") == null)' >/dev/null
+  - name: The token is an orphan
+    run: |
+      [ -s /root/report.token ] && labvault token lookup -format=json "$(cat /root/report.token)" | jq -e '.data.orphan == true' >/dev/null
+  - name: Its creation TTL is 2h and the display name contains nightly-report
+    run: |
+      [ -s /root/report.token ] && labvault token lookup -format=json "$(cat /root/report.token)" | jq -e '.data.creation_ttl == 7200 and (.data.display_name | contains("nightly-report"))' >/dev/null
+solution: |
+  vault token create -orphan -policy=reports -ttl=2h -display-name=nightly-report -field=token > /root/report.token
+  vault token lookup "$(cat /root/report.token)"
+  # Without -orphan the new token is a child of your token: revoking the parent revokes it too.
+docs:
+  - https://developer.hashicorp.com/vault/docs/concepts/tokens
+  - https://developer.hashicorp.com/vault/docs/commands/token/create

@@ -1,0 +1,135 @@
+domain: architecture
+questions:
+  - id: vault-architecture-001
+    difficulty: 2
+    type: single
+    question: "How does Vault protect the data it writes to its storage backend?"
+    options:
+      - id: a
+        text: "It trusts the storage backend to encrypt the data at rest"
+        why: "Vault does not trust storage. It encrypts everything itself, before the data leaves Vault."
+      - id: b
+        text: "It encrypts data in the barrier with keys from the keyring"
+      - id: c
+        text: "It encrypts only KV secrets and leaves the rest as plain text"
+        why: "All data written to storage goes through the barrier: secrets, policies, tokens and configuration."
+      - id: d
+        text: "It sends every value to a cloud KMS to be encrypted"
+        why: "A KMS may protect the root key with auto unseal, but Vault encrypts the data itself with its keyring."
+    answer: [b]
+    explanation: |
+      Everything between Vault and its storage passes the cryptographic barrier
+      and is encrypted with AES-256-GCM using the keys in the keyring. The root
+      key encrypts the keyring, and the seal (Shamir or auto unseal) protects
+      the root key. So the storage backend only ever sees encrypted data.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/internals/architecture
+      - https://developer.hashicorp.com/vault/docs/internals/security
+    glossary: [vault-barrier, vault-root-key, vault-storage-backend, vault-seal]
+
+  - id: vault-architecture-002
+    difficulty: 1
+    type: single
+    question: "A Vault server that uses the Shamir seal was restarted. `vault status` shows `Sealed true`. What does this mean?"
+    options:
+      - id: a
+        text: "Vault deleted its data and must be initialized again"
+        why: "A restart never deletes data. The data is still in storage, only encrypted."
+      - id: b
+        text: "Vault works, but only the root token can use it"
+        why: "A sealed Vault cannot serve any secret requests, even with a root token."
+      - id: c
+        text: "Vault cannot decrypt its data until it is unsealed"
+      - id: d
+        text: "Vault is in read-only mode until a new leader is elected"
+        why: "Leader election is part of high availability. Sealed means Vault cannot decrypt anything at all."
+    answer: [c]
+    explanation: |
+      A Vault server always starts sealed. It knows where its storage is, but it
+      cannot decrypt the data. With the Shamir seal, key holders must run
+      `vault operator unseal` until the threshold is reached. Only `vault
+      status` and unseal actions work while it is sealed.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/seal
+      - https://developer.hashicorp.com/vault/docs/commands/status
+    glossary: [vault-seal, vault-shamir]
+
+  - id: vault-architecture-003
+    difficulty: 1
+    type: single
+    question: "In a new terminal, you want the vault CLI to talk to the server at `https://vault.example.com:8200`. What should you set?"
+    options:
+      - id: a
+        text: "`export VAULT_ADDR=https://vault.example.com:8200`"
+      - id: b
+        text: "`export VAULT_TOKEN=https://vault.example.com:8200`"
+        why: "VAULT_TOKEN holds the token that the CLI sends, not the server address."
+      - id: c
+        text: "`export VAULT_HOST=vault.example.com`"
+        why: "The CLI does not read VAULT_HOST. The address variable is VAULT_ADDR, with scheme and port."
+      - id: d
+        text: "`export VAULT_NAMESPACE=vault.example.com`"
+        why: "VAULT_NAMESPACE chooses a Vault Enterprise namespace, not the server address."
+    answer: [a]
+    explanation: |
+      `VAULT_ADDR` sets the server address (the default is
+      `https://127.0.0.1:8200`). Other common variables: `VAULT_TOKEN` (token to
+      use), `VAULT_NAMESPACE`, `VAULT_CACERT` (CA file to check the server
+      certificate) and `VAULT_SKIP_VERIFY` (skip TLS checks, only for tests).
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands
+    glossary: [vault-env, lx-environment-variable, tls]
+
+  - id: vault-architecture-004
+    difficulty: 2
+    type: single
+    question: "A Vault cluster uses auto unseal with a cloud KMS. What happens when one Vault node restarts?"
+    options:
+      - id: a
+        text: "Three people must type their unseal keys again"
+        why: "That is the Shamir seal. With auto unseal, Vault asks the KMS to decrypt the root key by itself."
+      - id: b
+        text: "The node unseals itself by asking the KMS"
+      - id: c
+        text: "The node stays sealed until the recovery keys are entered"
+        why: "Recovery keys cannot unseal Vault. They are only used for actions such as generating a root token."
+      - id: d
+        text: "The node starts unsealed because no seal is used"
+        why: "Auto unseal is still a seal. If the KMS is not reachable, the node stays sealed."
+    answer: [b]
+    explanation: |
+      With auto unseal, the root key is protected by a trusted service (AWS
+      KMS, Azure Key Vault, GCP Cloud KMS, an HSM, or another Vault's Transit
+      engine). At start, Vault asks that service to decrypt the root key, so no
+      person is needed. Initialization creates recovery keys instead of unseal
+      keys.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/concepts/seal
+      - https://developer.hashicorp.com/vault/docs/configuration/seal/awskms
+    glossary: [vault-auto-unseal, vault-recovery-key, kms, vault-root-key]
+
+  - id: vault-architecture-005
+    difficulty: 2
+    type: single
+    question: "You must stop all access to Vault at once because of a security incident. Which command does this, and needs sudo (or root) to run?"
+    options:
+      - id: a
+        text: "`vault operator seal`"
+      - id: b
+        text: "`vault operator rotate`"
+        why: "This adds a new encryption key to the keyring. Vault keeps serving requests."
+      - id: c
+        text: "`vault token revoke -self`"
+        why: "This only revokes your own token. Other clients keep working."
+      - id: d
+        text: "`vault operator rekey`"
+        why: "Rekey creates new unseal key shares. It does not stop access."
+    answer: [a]
+    explanation: |
+      `vault operator seal` seals the server: Vault throws away the root key in
+      memory and refuses all requests until it is unsealed again. It is a
+      break-glass action for incidents. In an HA cluster you seal each node.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/commands/operator/seal
+      - https://developer.hashicorp.com/vault/docs/concepts/seal
+    glossary: [vault-seal, vault-root-key, lx-sudo]

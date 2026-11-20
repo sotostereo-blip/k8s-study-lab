@@ -70,6 +70,7 @@ terms:
   es: Fuente de datos; lee información existente sin crear ni gestionar el objeto.
 - id: tf-backend
   term: Backend
+  certs: [terraform, interview]
   match:
   - backend
   - backends

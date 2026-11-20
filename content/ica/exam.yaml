@@ -1,0 +1,39 @@
+# ICA - Istio Certified Associate (Linux Foundation / CNCF).
+# Domains and weights from the official page and the curriculum PDF (checked 2026-11):
+#   https://training.linuxfoundation.org/certification/istio-certified-associate-ica/
+#   https://github.com/cncf/curriculum/blob/master/ICA_Curriculum.pdf
+# (The ica/README.md in that repository still shows the old 2023 domains; the PDF and the
+# official page agree on the domains below.)
+# Exam facts: https://docs.linuxfoundation.org/tc-docs/certification/important-instructions-ica
+# and https://docs.linuxfoundation.org/tc-docs/certification/frequently-asked-questions-ica
+id: ica
+name: Istio Certified Associate (ICA)
+format: >-
+  The real ICA exam is hands-on (performance-based): 15-20 tasks that you solve on the command
+  line (kubectl, istioctl) in 2 hours. There are no multiple-choice questions in the real exam.
+  This multiple-choice bank is only for learning the concepts, the Istio resources, the commands
+  and the English words; practise the real skills on a cluster with Istio installed.
+exam_minutes: 120
+exam_questions: 40
+passing_score: 68
+facts_note: >-
+  Official (Linux Foundation): online, proctored, performance-based, 2 hours, 15-20 tasks,
+  passing score 68%, one free retake, certification valid 2 years, domain weights as below.
+  The exam environment runs Istio v1.31 (ICA Important Instructions, checked 2026-11); the
+  Istio docs at istio.io/latest describe the newest release (1.32), so check the version notes
+  when a feature changed. During the exam you may open the Istio docs, the Istio blog and the
+  Kubernetes docs. The number of questions (40) for a timed practice session here is our
+  choice; the real exam has no questions.
+domains:
+  - id: installation
+    name: "Installation, Upgrades, and Configuration"
+    weight: 20
+  - id: traffic-management
+    name: "Traffic Management"
+    weight: 35
+  - id: securing-workloads
+    name: "Securing Workloads"
+    weight: 25
+  - id: troubleshooting
+    name: "Troubleshooting"
+    weight: 20

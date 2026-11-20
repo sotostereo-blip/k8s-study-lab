@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Study environment for Cloud Engineer / DevOps certifications: KCNA, KCSA, CKA, CKAD, CKS,
-HashiCorp Terraform Associate, LFCS, Docker DCA, GitHub Actions GH-200, Argo CAPA, Prometheus PCA,
-AWS SAA-C03, plus DevOps job interview practice in English. Owner studies in
+HashiCorp Terraform Associate, HashiCorp Vault Associate, Istio ICA, LFCS, Docker DCA, GitHub Actions GH-200, Argo CAPA, Prometheus PCA,
+AWS SAA-C03, Azure AZ-104, Google Cloud ACE, plus DevOps job interview practice in English. Owner studies in
 Spanish but all study content must be in **simple, clear English**.
 
 ## Commands

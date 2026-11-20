@@ -1,0 +1,3 @@
+#!/bin/bash
+# The vault CLI with the root token, whatever token the student is using (for setups and checks).
+VAULT_TOKEN=$(cat /etc/lab/root-token) exec vault "$@"

@@ -1,0 +1,25 @@
+# Google Cloud Associate Cloud Engineer (ACE).
+# Facts from the official page https://cloud.google.com/learn/certification/cloud-engineer
+# and the official exam guide
+# https://services.google.com/fh/files/misc/associate_cloud_engineer_exam_guide_english.pdf
+# (checked 2026-11).
+id: ace
+name: Google Cloud Associate Cloud Engineer
+format: multiple-choice
+exam_minutes: 120
+exam_questions: 50
+passing_score: 70
+facts_note: >-
+  Official (Google Cloud certification page): 2 hours, 50-60 multiple choice and multiple select
+  questions, USD 125 (plus tax where applicable), valid 3 years, no prerequisites, 6+ months of
+  hands-on Google Cloud experience recommended. Languages: English, Japanese, Spanish, Portuguese.
+  Online with a remote proctor or at a test center. Section weights are the official "~N%" values
+  from the exam guide. NOT published by Google: the passing score (the result is only pass or fail),
+  the exact number of questions in your exam and how many are unscored. The mock exam here uses 50
+  questions and 70% only as an approximation. Renewal: the standard exam again, a 1-hour renewal
+  exam (20 questions, USD 75) or designated courses and skill badges in Google Skills.
+domains:
+  - { id: setup, name: "Setting up a cloud solution environment", weight: 20 }
+  - { id: plan, name: "Planning and implementing a cloud solution", weight: 30 }
+  - { id: operate, name: "Ensuring the successful operation of a cloud solution", weight: 30 }
+  - { id: access, name: "Configuring access and security", weight: 20 }

@@ -1,0 +1,515 @@
+domain: plan
+questions:
+  - id: ace-plan-001
+    difficulty: 1
+    type: single
+    question: "A team has a stateless web API packaged as a container. Traffic is very low at night and has short peaks during the day. The team does not want to manage servers or clusters, and wants to pay nothing when there is no traffic. Which service fits BEST?"
+    options:
+      - id: a
+        text: "Compute Engine with a managed instance group"
+        why: "A MIG still runs VMs you manage, and it usually keeps at least one VM running, so you pay at night too."
+      - id: b
+        text: "GKE Standard cluster with cluster autoscaler"
+        why: "In Standard mode you manage node pools and pay for nodes even with little traffic."
+      - id: c
+        text: "Cloud Run"
+      - id: d
+        text: "A single large Compute Engine VM with a startup script"
+        why: "One VM runs (and costs money) all the time and does not scale automatically with peaks."
+    answer: [c]
+    explanation: |
+      Cloud Run runs containers without servers to manage. It scales out with requests and can
+      scale to zero instances when idle, so you do not pay for idle time (unless you set
+      minimum instances).
+    docs:
+      - https://docs.cloud.google.com/run/docs/overview/what-is-cloud-run
+    glossary: [gcp-cloud-run, gcp-mig, gcp-gke-autopilot]
+
+  - id: ace-plan-002
+    difficulty: 1
+    type: single
+    question: "A company runs a nightly batch job that renders videos. The job can restart if a VM disappears, and the company wants the LOWEST compute cost. Which VM option should it use?"
+    options:
+      - id: a
+        text: "Spot VMs"
+      - id: b
+        text: "Standard VMs with a 3-year committed use discount"
+        why: "Commitments lower the price for steady, always-on use. A nightly job does not use the VMs all day, so you pay for unused time."
+      - id: c
+        text: "Sole-tenant nodes"
+        why: "Sole-tenant nodes give you dedicated physical servers for compliance or licensing. They cost more, not less."
+      - id: d
+        text: "Standard VMs with a larger machine type to finish faster"
+        why: "Bigger standard VMs still cost the full price. Spot VMs give a much larger discount for interruptible work."
+    answer: [a]
+    explanation: |
+      Spot VMs use spare Compute Engine capacity and cost much less than standard VMs. Compute
+      Engine can preempt them at any time, so they fit fault-tolerant batch jobs that can retry.
+      Spot VMs have no maximum run time (the older preemptible VMs stopped after 24 hours).
+    docs:
+      - https://docs.cloud.google.com/compute/docs/instances/spot
+    glossary: [gcp-spot-vm, gcp-compute-engine]
+
+  - id: ace-plan-003
+    difficulty: 2
+    type: single
+    question: "A legacy app needs 6 vCPUs and 40 GB of memory. The nearest predefined machine type has 8 vCPUs and 32 GB, and the next one has 16 vCPUs and 64 GB. You want to avoid paying for unused resources. What should you do?"
+    options:
+      - id: a
+        text: "Use the 16 vCPU / 64 GB predefined type"
+        why: "It works, but you pay for 10 vCPUs and 24 GB that the app does not need."
+      - id: b
+        text: "Create the VM with a custom machine type of 6 vCPUs and 40 GB"
+      - id: c
+        text: "Use the 8 vCPU / 32 GB type and add swap space on the disk"
+        why: "Swap on disk is far slower than memory and the app would perform badly. It still does not give 40 GB of real memory."
+      - id: d
+        text: "Use two 4 vCPU VMs behind a load balancer"
+        why: "A legacy app that needs 40 GB on one host cannot simply be split across two smaller VMs."
+    answer: [b]
+    explanation: |
+      Custom machine types let you choose the number of vCPUs and the amount of memory (within
+      the limits of the machine family, for example N2 or N4). You pay only for what you choose.
+      Example: gcloud compute instances create app-1 --custom-cpu=6 --custom-memory=40GB.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/instances/creating-instance-with-custom-machine-type
+      - https://docs.cloud.google.com/compute/docs/machine-resource
+    glossary: [gcp-machine-type, gcp-compute-engine]
+
+  - id: ace-plan-004
+    difficulty: 2
+    type: single
+    question: "You need a web tier on Compute Engine that adds VMs when CPU use is high, removes them when it is low, replaces VMs that stop answering, and survives the loss of one zone. Which setup should you create?"
+    options:
+      - id: a
+        text: "An instance template and a regional managed instance group with autoscaling and an autohealing health check"
+      - id: b
+        text: "Three VMs in different zones and a cron job that starts more VMs when CPU is high"
+        why: "You would have to build scaling and repair yourself. MIGs already do this, and a cron job reacts slowly."
+      - id: c
+        text: "An unmanaged instance group in one zone with autoscaling"
+        why: "Unmanaged instance groups do not support autoscaling or autohealing, and one zone does not survive a zone failure."
+      - id: d
+        text: "A zonal managed instance group with a snapshot schedule"
+        why: "A zonal MIG lives in one zone, so it does not survive a zone outage. Snapshots are backups, not scaling."
+    answer: [a]
+    explanation: |
+      A managed instance group creates identical VMs from an instance template. A regional MIG
+      spreads VMs across several zones of a region. The autoscaler changes the number of VMs
+      based on CPU or other signals, and autohealing recreates VMs that fail the health check.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/instance-groups
+      - https://docs.cloud.google.com/compute/docs/autoscaler
+      - https://docs.cloud.google.com/compute/docs/instance-groups/autohealing-instances-in-migs
+    glossary: [gcp-mig, gcp-instance-template, gcp-autoscaler, gcp-zone]
+
+  - id: ace-plan-005
+    difficulty: 2
+    type: single
+    question: "A database runs on one Compute Engine VM. If the zone fails, the team wants to start a new VM in another zone of the same region with the latest data and lose almost nothing. Which disk should hold the data?"
+    options:
+      - id: a
+        text: "A Local SSD"
+        why: "Local SSD is physically attached to the host. Its data is lost when the VM stops or the host fails."
+      - id: b
+        text: "A zonal Persistent Disk with a daily snapshot"
+        why: "A daily snapshot can lose up to one day of data. The team wants almost no data loss."
+      - id: c
+        text: "A regional Persistent Disk"
+      - id: d
+        text: "A Cloud Storage bucket mounted as the database disk"
+        why: "Object storage is not a block device for a database. Performance and consistency would be poor."
+    answer: [c]
+    explanation: |
+      A regional Persistent Disk replicates data synchronously between two zones of the same
+      region. If one zone fails, you can attach the disk to a VM in the other zone (force-attach)
+      and keep the latest data.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/disks/regional-persistent-disk
+      - https://docs.cloud.google.com/compute/docs/disks
+    glossary: [gcp-persistent-disk, gcp-zone]
+
+  - id: ace-plan-006
+    difficulty: 1
+    type: single
+    question: "A security team does not want SSH keys stored in project or instance metadata. They want to control who can SSH to Linux VMs with IAM roles and remove access when a person leaves the company. What should you enable?"
+    options:
+      - id: a
+        text: "OS Login"
+      - id: b
+        text: "Shielded VM"
+        why: "Shielded VM protects the boot process against rootkits. It does not manage SSH access."
+      - id: c
+        text: "A firewall rule that allows port 22 only from the office"
+        why: "This limits where connections come from, but keys in metadata would still decide who can log in."
+      - id: d
+        text: "Uniform bucket-level access"
+        why: "This is a Cloud Storage setting for buckets, not for VMs."
+    answer: [a]
+    explanation: |
+      With OS Login (metadata enable-oslogin=TRUE), Linux accounts are linked to Google
+      identities. People need roles/compute.osLogin (or osAdminLogin for sudo). When an account
+      is removed or the role is revoked, SSH access stops.
+    docs:
+      - https://docs.cloud.google.com/compute/docs/oslogin
+    glossary: [gcp-os-login, gcp-compute-engine, gcp-cloud-iam]
+
+  - id: ace-plan-007
+    difficulty: 1
+    type: single
+    question: "A small team wants to run several Kubernetes Deployments on GKE. They do not want to choose machine types, upgrade nodes or manage node pools, and they want to pay for the CPU and memory their Pods request. Which option should they choose?"
+    options:
+      - id: a
+        text: "A GKE Standard zonal cluster with one node pool"
+        why: "In Standard mode the team chooses machine types, manages node pools and pays for whole nodes."
+      - id: b
+        text: "A GKE Autopilot cluster"
+      - id: c
+        text: "Cloud Run functions"
+        why: "Functions run single pieces of code. They do not run Kubernetes Deployments."
+      - id: d
+        text: "Kubernetes installed by hand on Compute Engine VMs"
+        why: "The team would manage everything, including the control plane. This is the most work."
+    answer: [b]
+    explanation: |
+      In Autopilot mode Google manages the nodes: provisioning, scaling, upgrades and security
+      settings. You deploy normal Kubernetes objects and pay mainly for the resources your Pods
+      request.
+    docs:
+      - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview
+      - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/choose-cluster-mode
+    glossary: [gcp-gke-autopilot, gcp-gke, gcp-node-pool]
+
+  - id: ace-plan-008
+    difficulty: 1
+    type: single
+    question: "You just created a GKE cluster named shop in us-central1. In Cloud Shell, kubectl get nodes fails because kubectl has no cluster configured. Which command fixes this?"
+    options:
+      - id: a
+        text: "gcloud container clusters get-credentials shop --location=us-central1"
+      - id: b
+        text: "gcloud auth application-default login"
+        why: "This sets credentials for client libraries (ADC). It does not add the cluster to the kubeconfig file."
+      - id: c
+        text: "kubectl config use-context us-central1"
+        why: "There is no such context yet. The context is created by get-credentials."
+      - id: d
+        text: "gcloud components install gke-gcloud-auth-plugin --cluster=shop"
+        why: "The auth plugin is needed by kubectl, but it has no --cluster flag and does not write the cluster entry."
+    answer: [a]
+    explanation: |
+      gcloud container clusters get-credentials writes the cluster endpoint and auth settings
+      into ~/.kube/config and sets the current context. After that, kubectl talks to the cluster.
+    docs:
+      - https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl
+    glossary: [gcp-gke, kubectl, gcp-gcloud]
+
+  - id: ace-plan-009
+    difficulty: 2
+    type: single
+    question: "When a user uploads an image to a Cloud Storage bucket, a small piece of Python code must create a thumbnail. The team wants the least operational work. What should you deploy?"
+    options:
+      - id: a
+        text: "A Compute Engine VM that lists the bucket every minute"
+        why: "Polling wastes resources, adds delay and needs a VM to manage."
+      - id: b
+        text: "A Cloud Run function triggered by the Cloud Storage object finalized event"
+      - id: c
+        text: "A GKE CronJob that runs every hour"
+        why: "This adds delay and requires a cluster. An event trigger reacts at once with no cluster."
+      - id: d
+        text: "A BigQuery scheduled query"
+        why: "BigQuery runs SQL on tables. It cannot process image files."
+    answer: [b]
+    explanation: |
+      Cloud Run functions can run on events. With an Eventarc trigger for the Cloud Storage
+      object finalized event, the function runs each time a new object is written. You only
+      write the function code; Google runs and scales it.
+    docs:
+      - https://docs.cloud.google.com/functions/docs/concepts/overview
+      - https://docs.cloud.google.com/eventarc/docs/overview
+    glossary: [gcp-cloud-run-functions, gcp-eventarc, gcp-cloud-storage]
+
+  - id: ace-plan-010
+    difficulty: 2
+    type: single
+    question: "A global mobile game needs a relational database with SQL, strong consistency, and automatic horizontal scaling to millions of writes per second across several regions. Which database should you choose?"
+    options:
+      - id: a
+        text: "Cloud SQL for PostgreSQL with read replicas"
+        why: "Cloud SQL scales writes only vertically on one primary in one region. Read replicas do not add write capacity."
+      - id: b
+        text: "Spanner"
+      - id: c
+        text: "Bigtable"
+        why: "Bigtable scales very well but it is NoSQL (wide-column), with no relational SQL schema and joins."
+      - id: d
+        text: "BigQuery"
+        why: "BigQuery is for analytics on large data, not for many small transactional writes from an app."
+    answer: [b]
+    explanation: |
+      Spanner is a managed relational database with SQL and strong consistency that scales
+      horizontally. Multi-region configurations give very high availability for global apps.
+    docs:
+      - https://docs.cloud.google.com/spanner/docs
+    glossary: [gcp-spanner, gcp-cloud-sql, gcp-bigtable]
+
+  - id: ace-plan-011
+    difficulty: 2
+    type: multiple
+    question: "Match the workload to the right service. Which TWO choices are correct? (Choose two.)"
+    options:
+      - id: a
+        text: "Sensor data from 1 million devices every second, read by device and time: Bigtable"
+      - id: b
+        text: "A mobile app that syncs user documents in real time and works offline: Firestore"
+      - id: c
+        text: "SQL analytics over 50 TB of sales history: Cloud SQL"
+        why: "Cloud SQL is for transactional apps on one instance. For 50 TB of analytics, BigQuery is the serverless data warehouse."
+      - id: d
+        text: "A WordPress site that needs MySQL: Bigtable"
+        why: "WordPress needs a MySQL relational database. Cloud SQL for MySQL is the managed choice."
+      - id: e
+        text: "Shared NFS file system for many VMs: BigQuery"
+        why: "BigQuery is a data warehouse. A managed NFS file share is Filestore."
+    answer: [a, b]
+    explanation: |
+      Bigtable is a wide-column NoSQL database for huge volumes of time series and IoT data
+      with low latency. Firestore is a serverless document database with real-time updates and
+      offline support for mobile and web apps. BigQuery is for analytics, Cloud SQL for
+      relational apps like WordPress, and Filestore for NFS.
+    docs:
+      - https://docs.cloud.google.com/bigtable/docs/overview
+      - https://docs.cloud.google.com/firestore/native/docs/overview
+      - https://docs.cloud.google.com/bigquery/docs/introduction
+    glossary: [gcp-bigtable, gcp-firestore, gcp-bigquery, gcp-cloud-sql]
+
+  - id: ace-plan-012
+    difficulty: 1
+    type: single
+    question: "A company must keep backup files for 7 years. The files are almost never read, maybe once in a disaster. Which Cloud Storage class has the LOWEST storage cost for this?"
+    options:
+      - id: a
+        text: "Standard"
+        why: "Standard is for data read often. It has the highest storage price."
+      - id: b
+        text: "Nearline"
+        why: "Nearline fits data read about once a month. It costs more to store than Coldline and Archive."
+      - id: c
+        text: "Coldline"
+        why: "Coldline fits data read about once a quarter. Archive is cheaper for data read less than once a year."
+      - id: d
+        text: "Archive"
+    answer: [d]
+    explanation: |
+      Archive storage has the lowest storage price and a 365-day minimum storage duration. It is
+      made for data read less than once a year, like disaster recovery backups. Reads cost more,
+      but data is still available in milliseconds (no restore wait).
+    docs:
+      - https://docs.cloud.google.com/storage/docs/storage-classes
+    glossary: [gcp-storage-class, gcp-cloud-storage]
+
+  - id: ace-plan-013
+    difficulty: 2
+    type: single
+    question: "A team needs to copy 300 TB of files from an Amazon S3 bucket to Cloud Storage and then copy only new files every night. They want a managed service, not their own scripts. What should they use?"
+    options:
+      - id: a
+        text: "gcloud storage cp from a laptop"
+        why: "A laptop is slow and unreliable for 300 TB, and nightly runs would need your own scheduling."
+      - id: b
+        text: "Storage Transfer Service with a scheduled transfer job"
+      - id: c
+        text: "BigQuery Data Transfer Service"
+        why: "BigQuery Data Transfer Service loads data into BigQuery tables, not files into Cloud Storage buckets."
+      - id: d
+        text: "Cloud VPN between AWS and Google Cloud, then copy with scp"
+        why: "This is much more work and scp is not built for hundreds of terabytes of objects."
+    answer: [b]
+    explanation: |
+      Storage Transfer Service moves data from other clouds, HTTP lists, on-premises file systems
+      or other buckets into Cloud Storage. It is managed, retries failures, and can run on a
+      schedule and copy only new or changed objects.
+    docs:
+      - https://docs.cloud.google.com/storage-transfer/docs/overview
+    glossary: [gcp-storage-transfer, gcp-cloud-storage]
+
+  - id: ace-plan-014
+    difficulty: 2
+    type: single
+    question: "VMs in a private subnet have no external IP addresses. They must download OS updates from the internet, but nobody on the internet should be able to open a connection to them. What should you configure?"
+    options:
+      - id: a
+        text: "Cloud NAT on a Cloud Router in the subnet's region"
+      - id: b
+        text: "An ingress firewall rule that allows 0.0.0.0/0 on port 443"
+        why: "This allows connections FROM the internet, which is what the team wants to avoid. It also does not give outbound internet access to VMs without external IPs."
+      - id: c
+        text: "Private Google Access on the subnet"
+        why: "Private Google Access reaches Google APIs and services only, not general internet sites for OS updates."
+      - id: d
+        text: "VPC Network Peering with the default network"
+        why: "Peering connects two VPC networks with internal IPs. It does not give internet access."
+    answer: [a]
+    explanation: |
+      Cloud NAT lets VMs without external IP addresses make outbound connections to the
+      internet and receive the replies. It does not allow new inbound connections. It is
+      configured on a Cloud Router per region.
+    docs:
+      - https://docs.cloud.google.com/nat/docs/overview
+    glossary: [gcp-cloud-nat, gcp-private-google-access, gcp-vpc]
+
+  - id: ace-plan-015
+    difficulty: 2
+    type: single
+    question: "Network A is peered with network B, and network B is peered with network C. VMs in A cannot reach VMs in C. Why?"
+    options:
+      - id: a
+        text: "VPC Network Peering is not transitive"
+      - id: b
+        text: "Peering only works between projects in the same folder"
+        why: "Peering works across projects and even across organizations. Folders do not matter."
+      - id: c
+        text: "A firewall rule in network B blocks the traffic"
+        why: "Traffic from A to C never goes through B. Peering does not route through a middle network at all."
+      - id: d
+        text: "Peered networks must use auto mode subnets"
+        why: "Both auto and custom mode networks can be peered. Ranges only must not overlap."
+    answer: [a]
+    explanation: |
+      VPC Network Peering connects exactly two networks. Routes are not passed on to a third
+      network, so A and C need their own peering (or another design, like a hub with VPN or
+      Network Connectivity Center).
+    docs:
+      - https://docs.cloud.google.com/vpc/docs/vpc-peering
+    glossary: [gcp-vpc-peering, gcp-vpc]
+
+  - id: ace-plan-016
+    difficulty: 2
+    type: single
+    question: "A company has 20 projects owned by different teams. A central network team must control all subnets and firewall rules in one place, while app teams create their own VMs in those subnets. What should you use?"
+    options:
+      - id: a
+        text: "VPC Network Peering between all 20 projects"
+        why: "With peering each project keeps its own network and firewall rules, so control is not central. You would also need many peerings."
+      - id: b
+        text: "Shared VPC with one host project and the 20 projects as service projects"
+      - id: c
+        text: "Cloud VPN tunnels between all projects"
+        why: "VPN is for connecting separate networks over encrypted tunnels. It adds cost and still leaves 20 networks to manage."
+      - id: d
+        text: "One project for all teams with the Editor role for everyone"
+        why: "This removes team separation and gives far too much access."
+    answer: [b]
+    explanation: |
+      Shared VPC lets a host project share its VPC network with service projects in the same
+      organization. The network team manages subnets, routes and firewall rules in the host
+      project; app teams get roles/compute.networkUser to use the subnets for their VMs.
+    docs:
+      - https://docs.cloud.google.com/vpc/docs/shared-vpc
+    glossary: [gcp-shared-vpc, gcp-vpc, gcp-project]
+
+  - id: ace-plan-017
+    difficulty: 2
+    type: single
+    question: "A public HTTPS website runs on managed instance groups in two regions (Europe and US). Users should reach the nearest healthy backend through one global anycast IP address, and the site needs URL-based routing. Which load balancer should you choose?"
+    options:
+      - id: a
+        text: "Global external Application Load Balancer"
+      - id: b
+        text: "Regional internal Application Load Balancer"
+        why: "Internal load balancers are reachable only from inside the VPC, not from the internet, and a regional one serves one region."
+      - id: c
+        text: "External passthrough Network Load Balancer"
+        why: "Passthrough Network Load Balancers are regional and work at layer 4. They cannot route by URL path."
+      - id: d
+        text: "Cloud DNS with two A records"
+        why: "DNS round robin does not check health or send users to the nearest backend, and it has no URL routing."
+    answer: [a]
+    explanation: |
+      The global external Application Load Balancer works at layer 7 (HTTP/HTTPS), uses one
+      global anycast IP, sends users to the closest healthy backend, and supports URL maps for
+      path-based routing.
+    docs:
+      - https://docs.cloud.google.com/load-balancing/docs/choosing-load-balancer
+      - https://docs.cloud.google.com/load-balancing/docs/load-balancing-overview
+    glossary: [gcp-load-balancing, gcp-mig]
+
+  - id: ace-plan-018
+    difficulty: 2
+    type: single
+    question: "Your team writes Terraform for its Google Cloud networks. It wants Google to run terraform apply and store the Terraform state for it, with no CI server or state bucket to manage. Which service should it use?"
+    options:
+      - id: a
+        text: "Infrastructure Manager"
+      - id: b
+        text: "Cloud Deployment Manager templates"
+        why: "Deployment Manager used its own YAML/Jinja format, not Terraform, and Google has deprecated it in favor of Infrastructure Manager."
+      - id: c
+        text: "Config Connector"
+        why: "Config Connector manages Google Cloud resources as Kubernetes objects. It does not run Terraform code."
+      - id: d
+        text: "Cloud Asset Inventory"
+        why: "Cloud Asset Inventory lists existing resources. It does not create them."
+    answer: [a]
+    explanation: |
+      Infrastructure Manager runs Terraform on Google Cloud for you. You point it at your
+      configuration (Git or Cloud Storage), it creates a deployment, runs Terraform with a
+      service account and keeps the state.
+    docs:
+      - https://docs.cloud.google.com/infrastructure-manager/docs/overview
+      - https://docs.cloud.google.com/docs/terraform/terraform-overview
+    glossary: [gcp-infra-manager, gcp-config-connector]
+
+  - id: ace-plan-019
+    difficulty: 2
+    type: single
+    question: "A company needs a private connection from its data center to Google Cloud with 20 Gbps of steady bandwidth and traffic that does not go over the public internet. Its data center is in a colocation facility where Google is present. What should it choose?"
+    options:
+      - id: a
+        text: "Dedicated Interconnect"
+      - id: b
+        text: "HA VPN"
+        why: "HA VPN sends encrypted traffic over the public internet, and each tunnel has limited bandwidth. The company wants no internet path."
+      - id: c
+        text: "VPC Network Peering"
+        why: "Peering connects two VPC networks inside Google Cloud. It cannot connect an on-premises data center."
+      - id: d
+        text: "Cloud NAT"
+        why: "Cloud NAT gives VMs outbound internet access. It is not a connection to a data center."
+    answer: [a]
+    explanation: |
+      Cloud Interconnect gives a private physical link with high bandwidth. Dedicated
+      Interconnect connects directly in a colocation facility (10 Gbps or larger circuits); Partner
+      Interconnect uses a service provider when you cannot reach a Google location. Cloud VPN is
+      cheaper and quicker, but uses the internet.
+    docs:
+      - https://docs.cloud.google.com/network-connectivity/docs/interconnect/concepts/overview
+      - https://docs.cloud.google.com/network-connectivity/docs/vpn/concepts/overview
+    glossary: [gcp-interconnect, gcp-cloud-vpn, gcp-vpc-peering]
+
+  - id: ace-plan-020
+    difficulty: 2
+    type: single
+    question: "A team has a Python web app written for a supported language runtime. They want to deploy source code with one command (no container image to build or manage), get automatic scaling to zero, and split traffic between versions. They already use this platform's app.yaml format. Which service fits?"
+    options:
+      - id: a
+        text: "App Engine standard environment"
+      - id: b
+        text: "App Engine flexible environment"
+        why: "The flexible environment runs your app in containers on Compute Engine VMs and keeps at least one instance running, so it does not scale to zero."
+      - id: c
+        text: "GKE Standard"
+        why: "GKE needs container images and Kubernetes objects. It does not use app.yaml or deploy source code directly."
+      - id: d
+        text: "Compute Engine with a startup script"
+        why: "You would manage VMs and build scaling and versions yourself."
+    answer: [a]
+    explanation: |
+      App Engine standard runs apps in language runtimes from your source code
+      (gcloud app deploy with app.yaml). It scales automatically, can scale to zero, and lets you
+      split traffic between versions. The flexible environment uses VMs and needs at least one
+      instance.
+    docs:
+      - https://docs.cloud.google.com/appengine/docs/the-appengine-environments
+    glossary: [gcp-app-engine]

@@ -1,0 +1,467 @@
+domain: identity-governance
+questions:
+  - id: az104-idg-001
+    difficulty: 1
+    type: single
+    question: "A developer must create, change and delete virtual machines in the resource group rg-dev. The developer must not be able to give access to other people. You want to follow the principle of least privilege. Which role should you assign, and at which scope?"
+    options:
+      - id: a
+        text: "Owner at the scope of the subscription"
+        why: "Owner can also grant access to others, and the subscription scope covers every resource group. This gives far more than needed."
+      - id: b
+        text: "Contributor at the scope of the resource group rg-dev"
+      - id: c
+        text: "Reader at the scope of the resource group rg-dev"
+        why: "Reader can only view resources. The developer could not create or delete VMs."
+      - id: d
+        text: "User Access Administrator at the scope of the resource group rg-dev"
+        why: "User Access Administrator can only manage role assignments. It cannot create or change VMs, and it lets the user give access to others."
+    answer: [b]
+    explanation: |
+      Contributor can manage all resources but cannot assign roles in Azure RBAC.
+      Assigning it at the resource group scope limits it to the resources in rg-dev.
+      Lower scopes inherit role assignments from higher scopes, so a narrow scope is
+      the least-privilege choice.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/scope-overview
+    glossary: [azure-builtin-roles, azure-rbac, azure-resource-group]
+
+  - id: az104-idg-002
+    difficulty: 2
+    type: single
+    question: "A help desk team must give other users access to the resources in one resource group. The team must not be able to create, change or delete those resources. Which built-in role should you assign to the team at the resource group scope?"
+    options:
+      - id: a
+        text: "Owner"
+        why: "Owner can manage access, but it can also create, change and delete every resource. That is more than the team needs."
+      - id: b
+        text: "Contributor"
+        why: "Contributor can manage resources but cannot create role assignments. It is the opposite of what the team needs."
+      - id: c
+        text: "User Access Administrator"
+      - id: d
+        text: "Virtual Machine Contributor"
+        why: "This role manages virtual machines but cannot create role assignments, and the team must not change resources."
+    answer: [c]
+    explanation: |
+      User Access Administrator lets a user manage role assignments (who has access)
+      without permission to manage the resources themselves. Assigned at the resource
+      group scope, the team can grant access only inside that resource group.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    glossary: [azure-builtin-roles, azure-rbac]
+
+  - id: az104-idg-003
+    difficulty: 2
+    type: single
+    question: "A user has the Reader role at the scope of the subscription Sub1. The same user has the Contributor role at the scope of the resource group rg-web in Sub1. What can the user do?"
+    options:
+      - id: a
+        text: "Only view resources everywhere in Sub1, because the role at the higher scope wins"
+        why: "Azure RBAC is additive. A role at a higher scope does not cancel a role at a lower scope."
+      - id: b
+        text: "Manage resources in rg-web and view resources in the rest of Sub1"
+      - id: c
+        text: "Manage resources everywhere in Sub1, because the strongest role always applies to the whole subscription"
+        why: "A role assignment only applies to its own scope and the scopes below it. Contributor on rg-web does not reach other resource groups."
+      - id: d
+        text: "Nothing in rg-web, because two role assignments on the same user create a conflict"
+        why: "Two role assignments never block each other. Only a deny assignment can remove access, and none is described here."
+    answer: [b]
+    explanation: |
+      Azure RBAC adds the permissions of all role assignments together. Reader at the
+      subscription is inherited by every resource group, and Contributor at rg-web adds
+      write permissions only in that resource group. The effective access is the union
+      of both.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/overview
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/scope-overview
+    glossary: [azure-rbac, azure-subscription, azure-builtin-roles]
+
+  - id: az104-idg-004
+    difficulty: 2
+    type: single
+    question: "A company has 12 subscriptions under one management group. New resources in all of them must be created only in the West Europe and North Europe regions. Existing and future subscriptions under the management group must follow the rule. What should you do?"
+    options:
+      - id: a
+        text: "Create a resource lock in each subscription that blocks other regions"
+        why: "Locks only block delete or change operations. They cannot check the region of a new resource."
+      - id: b
+        text: "Assign the built-in Allowed locations policy at the management group scope"
+      - id: c
+        text: "Give users the Reader role in every region except West Europe and North Europe"
+        why: "Regions are not a scope for role assignments. RBAC scopes are management groups, subscriptions, resource groups and resources."
+      - id: d
+        text: "Add a Region tag to each subscription with the two allowed values"
+        why: "Tags are only labels. They do not stop anybody from creating a resource in another region."
+    answer: [b]
+    explanation: |
+      Azure Policy can deny resources that break a rule. The built-in Allowed locations
+      policy uses the deny effect for any other region. A policy assigned at a management
+      group is inherited by every subscription below it, including subscriptions you add
+      later.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/governance/policy/overview
+      - https://learn.microsoft.com/en-us/azure/governance/management-groups/overview
+    glossary: [azure-policy, azure-management-group, azure-region]
+
+  - id: az104-idg-005
+    difficulty: 2
+    type: single
+    question: "You assign a policy with the Modify effect that adds the tag Environment=Prod to resources. New resources get the tag, but 300 resources that existed before the assignment do not have it. What should you do to fix the existing resources?"
+    options:
+      - id: a
+        text: "Delete the policy assignment and assign it again"
+        why: "A new assignment still only changes new or updated resources. Existing resources need a remediation task."
+      - id: b
+        text: "Create a remediation task for the policy assignment"
+      - id: c
+        text: "Change the policy effect from Modify to Audit"
+        why: "Audit only reports non-compliant resources. It never changes them."
+      - id: d
+        text: "Add a CanNotDelete lock to the resource group"
+        why: "A lock protects resources from deletion. It does not add tags."
+    answer: [b]
+    explanation: |
+      Policies with the Modify or DeployIfNotExists effect change resources when they are
+      created or updated. For resources that already exist, you start a remediation task.
+      The task uses the managed identity of the policy assignment to apply the change.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/governance/policy/how-to/remediate-resources
+      - https://learn.microsoft.com/en-us/azure/governance/policy/concepts/effect-basics
+    glossary: [azure-policy, azure-policy-effect, azure-tag]
+
+  - id: az104-idg-006
+    difficulty: 1
+    type: single
+    question: "Administrators must still be able to change the resources in the resource group rg-prod, but nobody should delete the resource group or its resources by mistake. What should you configure?"
+    options:
+      - id: a
+        text: "A ReadOnly lock on rg-prod"
+        why: "ReadOnly also blocks changes. The administrators could not update the resources."
+      - id: b
+        text: "A CanNotDelete lock on rg-prod"
+      - id: c
+        text: "A Reader role assignment for all administrators on rg-prod"
+        why: "Reader would remove the right to change the resources, and it is not a protection against deletion by other users."
+      - id: d
+        text: "A tag DoNotDelete=true on rg-prod"
+        why: "Tags are only metadata. Azure does not block anything because of a tag."
+    answer: [b]
+    explanation: |
+      A CanNotDelete lock (shown as Delete in the portal) lets authorized users read and
+      change resources but blocks deletion. Locks on a resource group are inherited by all
+      its resources and apply to every user, even an Owner, until the lock is removed.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources
+    glossary: [azure-resource-lock, azure-resource-group]
+
+  - id: az104-idg-007
+    difficulty: 3
+    type: single
+    question: "You add a ReadOnly lock to a storage account. After that, users who connect with the account access keys say they can no longer open the data from the Azure portal. What is the reason?"
+    options:
+      - id: a
+        text: "A ReadOnly lock deletes the access keys of the storage account"
+        why: "Locks never delete anything. The keys still exist, but listing them is blocked."
+      - id: b
+        text: "Listing the account keys is a write (POST) operation, so the ReadOnly lock blocks it"
+      - id: c
+        text: "A ReadOnly lock changes the storage redundancy to LRS"
+        why: "A lock does not change any setting of the resource. It only blocks operations."
+      - id: d
+        text: "A ReadOnly lock turns off the storage firewall"
+        why: "Locks do not change network rules. The firewall settings stay as they were."
+    answer: [b]
+    explanation: |
+      Locks apply to the control plane. Listing storage account keys uses a POST request,
+      and a ReadOnly lock blocks all requests except reads. Users who depend on the keys
+      cannot get them. They can use Microsoft Entra authorization with a data role instead.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources
+    glossary: [azure-resource-lock, azure-storage-account, azure-access-key]
+
+  - id: az104-idg-008
+    difficulty: 1
+    type: single
+    question: "The resource group rg-finance has the tag CostCenter=4410. The finance team sees that the VMs and disks inside rg-finance do not have this tag in cost reports. What should you do so that every resource in the group gets the tag automatically?"
+    options:
+      - id: a
+        text: "Nothing, because resources always inherit tags from their resource group"
+        why: "Tags are not inherited by default. Resources only have the tags set on them."
+      - id: b
+        text: "Assign a policy that inherits the tag from the resource group (Modify effect)"
+      - id: c
+        text: "Add a CanNotDelete lock so the tag cannot be removed"
+        why: "A lock does not add tags. It only stops deletion of the resource."
+      - id: d
+        text: "Move the resources to a new subscription with the same tag"
+        why: "Moving resources does not copy tags either. You would still need to add them."
+    answer: [b]
+    explanation: |
+      Resources do not inherit tags from the resource group or subscription. Built-in
+      Azure Policy definitions such as "Inherit a tag from the resource group" use the
+      Modify effect to add the tag. Use a remediation task for resources that already
+      exist.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-policies
+    glossary: [azure-tag, azure-policy, azure-resource-group]
+
+  - id: az104-idg-009
+    difficulty: 2
+    type: single
+    question: "Your manager wants an email when the cost of a subscription is expected to reach 90% of USD 5,000 before the end of the month. The resources must keep running. What should you configure?"
+    options:
+      - id: a
+        text: "A budget in Cost Management with an alert on 90% of the forecasted cost"
+      - id: b
+        text: "A spending limit that turns off the subscription at USD 4,500"
+        why: "A spending limit stops resources, and it is only for some offer types such as free credits. The resources must keep running."
+      - id: c
+        text: "An Azure Policy with the Deny effect for resources that cost more than USD 4,500"
+        why: "Azure Policy checks resource properties, not money spent. It cannot read the cost of a subscription."
+      - id: d
+        text: "A resource lock on the subscription when the cost reaches 90%"
+        why: "Locks are set by hand and block operations. They do not watch costs or send emails."
+    answer: [a]
+    explanation: |
+      Budgets in Cost Management compare actual or forecasted cost with an amount and send
+      alerts at the thresholds you choose. A budget only notifies (it can also start an
+      action group); it never stops resources by itself.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets
+      - https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/cost-mgt-alerts-monitor-usage-spending
+    glossary: [azure-cost-management, azure-subscription]
+
+  - id: az104-idg-010
+    difficulty: 1
+    type: single
+    question: "Every user whose department is Sales must be a member of the group SalesTeam. When a user moves to another department, the user must leave the group without manual work. What should you do?"
+    options:
+      - id: a
+        text: "Create SalesTeam with assigned membership and add users by hand each week"
+        why: "Assigned membership never changes by itself. Someone must add and remove users."
+      - id: b
+        text: "Create SalesTeam with dynamic membership and the rule user.department -eq \"Sales\""
+      - id: c
+        text: "Assign the Reader role to all users in the Sales department"
+        why: "A role assignment gives permissions on Azure resources. It does not change group membership."
+      - id: d
+        text: "Invite the Sales users as guest users"
+        why: "Guest users are people from other organizations. Sales users already belong to your tenant."
+    answer: [b]
+    explanation: |
+      A dynamic membership group in Microsoft Entra ID adds and removes members based on a
+      rule over user properties. When the department changes, membership is updated
+      automatically. Dynamic groups need a Microsoft Entra ID P1 license.
+    docs:
+      - https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/overview
+    glossary: [azure-entra-group, azure-entra-id]
+
+  - id: az104-idg-011
+    difficulty: 1
+    type: single
+    question: "A consultant from a partner company needs access to one resource group in your subscription. The consultant must sign in with the partner company's own account. What should you do first?"
+    options:
+      - id: a
+        text: "Create a new member user in your tenant and send the password to the consultant"
+        why: "This creates a second account to manage. The consultant would not use the partner's own account."
+      - id: b
+        text: "Invite the consultant as a guest user (B2B collaboration)"
+      - id: c
+        text: "Create a new subscription for the consultant"
+        why: "A subscription is a billing boundary. It does not give the consultant an identity in your tenant."
+      - id: d
+        text: "Share the access keys of a storage account with the consultant"
+        why: "Access keys give full access to storage only and have no user identity. They are not a way to give access to a resource group."
+    answer: [b]
+    explanation: |
+      Microsoft Entra B2B collaboration lets you invite external users as guests. They
+      sign in with their own work, school or social account. After the guest exists in
+      your tenant, you assign an Azure role to the guest at the resource group scope.
+    docs:
+      - https://learn.microsoft.com/en-us/entra/external-id/what-is-b2b
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-cli
+    glossary: [azure-guest-user, azure-rbac, azure-tenant]
+
+  - id: az104-idg-012
+    difficulty: 2
+    type: single
+    question: "You want to test self-service password reset (SSPR) with 20 users before you turn it on for the whole company. What should you configure?"
+    options:
+      - id: a
+        text: "Set SSPR to All and ask the other users not to use it"
+        why: "All turns SSPR on for every user. It is not a controlled pilot."
+      - id: b
+        text: "Set SSPR to Selected and choose a group that contains the 20 users"
+      - id: c
+        text: "Give the 20 users the User Access Administrator role"
+        why: "That is an Azure RBAC role for managing access to Azure resources. It has nothing to do with resetting passwords."
+      - id: d
+        text: "Add a CanNotDelete lock to the 20 user accounts"
+        why: "Resource locks are for Azure resources, not for user accounts in Microsoft Entra ID."
+    answer: [b]
+    explanation: |
+      SSPR can be enabled for None, Selected or All. With Selected, you choose one group,
+      so only its members can use SSPR. This is the normal way to run a pilot before you
+      enable it for all users.
+    docs:
+      - https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/rbac-and-directory-admin-roles
+    glossary: [azure-sspr, azure-entra-group]
+
+  - id: az104-idg-013
+    difficulty: 2
+    type: single
+    question: "You try to assign a Microsoft Entra ID P1 license to a new user, but the assignment fails. The tenant has free licenses left. Which user property should you set first?"
+    options:
+      - id: a
+        text: "Job title"
+        why: "Job title is optional information. It is not needed for license assignment."
+      - id: b
+        text: "Usage location"
+      - id: c
+        text: "Manager"
+        why: "Manager is used for org charts and approvals. License assignment does not need it."
+      - id: d
+        text: "Department"
+        why: "Department is useful for dynamic groups, but licenses do not depend on it."
+    answer: [b]
+    explanation: |
+      Some Microsoft services are not available in every country, so a user needs a usage
+      location before a license can be assigned. With group-based licensing, the tenant
+      location is used when the user has none.
+    docs:
+      - https://learn.microsoft.com/en-us/entra/fundamentals/how-to-create-delete-users
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/rbac-and-directory-admin-roles
+    glossary: [azure-license, azure-entra-id]
+
+  - id: az104-idg-014
+    difficulty: 2
+    type: multiple
+    question: "You plan to move a VM and its disks from the resource group rg-old (in East US) to the resource group rg-new (in West Europe) in the same subscription. Which TWO statements are true?"
+    options:
+      - id: a
+        text: "The resources stay in East US; only the resource group changes"
+      - id: b
+        text: "The resources are moved to West Europe, the region of rg-new"
+        why: "Moving between resource groups never changes the region. The location of a resource group only stores its metadata."
+      - id: c
+        text: "The resource IDs change, so scripts that use the old IDs must be updated"
+      - id: d
+        text: "Role assignments set directly on the VM move with it"
+        why: "Role assignments on the resource itself are not moved. You must create them again after the move."
+    answer: [a, c]
+    explanation: |
+      A move changes the resource group (and maybe the subscription) but not the region.
+      The resource ID contains the resource group name, so it changes. Role assignments
+      directly on the moved resource are not moved. To change the region, use a tool
+      such as Azure Resource Mover.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-resource-group-and-subscription
+    glossary: [azure-resource-group, azure-rbac]
+
+  - id: az104-idg-015
+    difficulty: 2
+    type: single
+    question: "The security team must have the Reader role on three subscriptions today and on every new subscription that the company adds later. You want the least administrative effort. What should you do?"
+    options:
+      - id: a
+        text: "Assign Reader on each subscription now and add a reminder for new ones"
+        why: "This works today but needs manual work for every new subscription, and it is easy to forget."
+      - id: b
+        text: "Put the subscriptions in a management group and assign Reader to the team there"
+      - id: c
+        text: "Create one resource group that contains the three subscriptions"
+        why: "Resource groups live inside a subscription. They cannot contain subscriptions."
+      - id: d
+        text: "Add the tag Team=Security to each subscription"
+        why: "Tags do not grant any permissions."
+    answer: [b]
+    explanation: |
+      Management groups are containers above subscriptions. Role assignments and policies
+      at a management group are inherited by all subscriptions in it. When you place a new
+      subscription in the group, it gets the access automatically.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/governance/management-groups/overview
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/scope-overview
+    glossary: [azure-management-group, azure-rbac, azure-subscription]
+
+  - id: az104-idg-016
+    difficulty: 3
+    type: multiple
+    question: "No built-in role fits a support team. The team must read VMs and restart them, but nothing more. You write a custom role in JSON. Which TWO parts must the role contain?"
+    options:
+      - id: a
+        text: "Actions with Microsoft.Compute/virtualMachines/read and Microsoft.Compute/virtualMachines/restart/action"
+      - id: b
+        text: "AssignableScopes with the subscriptions or resource groups where the role can be assigned"
+      - id: c
+        text: "DataActions with Microsoft.Compute/virtualMachines/restart/action"
+        why: "DataActions are for data plane operations, such as reading blobs. Restarting a VM is a control plane action and belongs in Actions."
+      - id: d
+        text: "Only NotActions with Microsoft.Compute/virtualMachines/delete"
+        why: "NotActions only removes permissions from Actions. Without Actions, the role grants nothing."
+    answer: [a, b]
+    explanation: |
+      A custom role lists allowed control plane operations in Actions and the scopes
+      where it can be used in AssignableScopes. NotActions subtracts permissions from
+      Actions and is not a deny. Create the role with `az role definition create
+      --role-definition role.json`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/custom-roles
+    glossary: [azure-custom-role, azure-rbac]
+
+  - id: az104-idg-017
+    difficulty: 2
+    type: single
+    question: "You must give the group App-Ops (object ID 11111111-2222-3333-4444-555555555555) the Reader role on the resource group rg-app by using the Azure CLI. Which command should you run?"
+    options:
+      - id: a
+        text: "az role assignment create --assignee 11111111-2222-3333-4444-555555555555 --role Reader --resource-group rg-app"
+      - id: b
+        text: "az role definition create --assignee 11111111-2222-3333-4444-555555555555 --role Reader --resource-group rg-app"
+        why: "az role definition create makes a new custom role from a JSON file. It does not assign a role to anyone."
+      - id: c
+        text: "az policy assignment create --name Reader --scope /subscriptions/<id>/resourceGroups/rg-app"
+        why: "This assigns an Azure Policy definition. Policies check resource settings; they do not give users access."
+      - id: d
+        text: "az ad group member add --group App-Ops --member-id 11111111-2222-3333-4444-555555555555"
+        why: "This adds a member to a Microsoft Entra group. It does not create an Azure role assignment."
+    answer: [a]
+    explanation: |
+      `az role assignment create` creates a role assignment: who (--assignee), which role
+      (--role) and where (--scope or --resource-group). In PowerShell the same task uses
+      `New-AzRoleAssignment`.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-cli
+    glossary: [azure-rbac, azure-builtin-roles, azure-resource-group]
+
+  - id: az104-idg-018
+    difficulty: 1
+    type: single
+    question: "Your manager asks for a list of VMs that are almost never used, with suggestions to resize or shut them down to save money. Which free Azure service gives these recommendations?"
+    options:
+      - id: a
+        text: "Azure Advisor"
+      - id: b
+        text: "Azure Policy"
+        why: "Azure Policy checks whether resources follow rules you define. It does not look at how much a VM is used."
+      - id: c
+        text: "Azure Site Recovery"
+        why: "Site Recovery replicates VMs for disaster recovery. It does not give cost recommendations."
+      - id: d
+        text: "Network Watcher"
+        why: "Network Watcher diagnoses network problems. It does not study VM usage or cost."
+    answer: [a]
+    explanation: |
+      Azure Advisor studies the use and configuration of your resources and gives
+      recommendations in five areas, including cost. For VMs with low CPU and network use,
+      it suggests a smaller size or shutting them down.
+    docs:
+      - https://learn.microsoft.com/en-us/azure/advisor/advisor-cost-recommendations
+      - https://learn.microsoft.com/en-us/azure/advisor/advisor-overview
+    glossary: [azure-advisor, azure-cost-management]

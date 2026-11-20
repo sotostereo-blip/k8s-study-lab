@@ -1,0 +1,45 @@
+id: vault-eaas-002
+title: Rotate a transit key and rewrap old data
+domain: eaas
+difficulty: 3
+minutes: 8
+environment: vault
+setup: |
+  labvault secrets enable transit >/dev/null
+  labvault write -f transit/keys/invoices >/dev/null
+  labvault write -field=ciphertext transit/encrypt/invoices plaintext="$(printf 'INV-2026-0042' | base64)" > /root/invoice.enc
+task: |
+  The security policy says encryption keys must be rotated. The transit key `invoices` has
+  only version 1, and `/root/invoice.enc` holds data encrypted with it.
+
+  1. **Rotate** the key `invoices`.
+  2. **Rewrap** the ciphertext in `/root/invoice.enc` so that it uses the newest key version,
+     without ever seeing the plaintext. Save the new ciphertext back in `/root/invoice.enc`.
+  3. Make Vault refuse to decrypt data that still uses key version 1
+     (the minimum decryption version must be **2**).
+checks:
+  - name: The key invoices has 2 or more versions
+    run: labvault read -format=json transit/keys/invoices | jq -e '.data.latest_version >= 2' >/dev/null
+  - name: /root/invoice.enc uses the latest key version and decrypts to INV-2026-0042
+    run: |
+      set -e
+      v=$(labvault read -format=json transit/keys/invoices | jq -r .data.latest_version)
+      grep -q "^vault:v$v:" /root/invoice.enc
+      p=$(labvault write -field=plaintext transit/decrypt/invoices ciphertext="$(cat /root/invoice.enc)")
+      [ "$(echo "$p" | base64 -d)" = INV-2026-0042 ]
+  - name: min_decryption_version of the key is 2
+    run: labvault read -format=json transit/keys/invoices | jq -e '.data.min_decryption_version == 2' >/dev/null
+solution: |
+  vault write -f transit/keys/invoices/rotate
+  vault write -field=ciphertext transit/rewrap/invoices ciphertext="$(cat /root/invoice.enc)" > /root/invoice.new
+  mv /root/invoice.new /root/invoice.enc          # now vault:v2:...
+  vault write transit/keys/invoices/config min_decryption_version=2
+  vault read transit/keys/invoices
+auto_solution: |
+  vault write -f transit/keys/invoices/rotate
+  vault write -field=ciphertext transit/rewrap/invoices ciphertext="$(cat /root/invoice.enc)" > /root/invoice.new
+  mv /root/invoice.new /root/invoice.enc
+  vault write transit/keys/invoices/config min_decryption_version=2
+docs:
+  - https://developer.hashicorp.com/vault/docs/secrets/transit
+  - https://developer.hashicorp.com/vault/tutorials/encryption-as-a-service/eaas-transit

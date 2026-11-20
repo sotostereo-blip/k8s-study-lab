@@ -1,0 +1,106 @@
+domain: eaas
+questions:
+  - id: vault-eaas-001
+    difficulty: 1
+    type: single
+    question: "A Transit key named `orders` exists. Which command encrypts the text `hello`?"
+    options:
+      - id: a
+        text: "`vault write transit/encrypt/orders plaintext=$(echo -n hello | base64)`"
+      - id: b
+        text: "`vault write transit/encrypt/orders plaintext=hello`"
+        why: "Transit expects the plaintext as base64, so binary data is safe. Plain text is rejected."
+      - id: c
+        text: "`vault kv put transit/orders plaintext=hello`"
+        why: "Transit is not a KV engine and does not store data. You call its encrypt endpoint."
+      - id: d
+        text: "`vault read transit/encrypt/orders plaintext=hello`"
+        why: "Encryption sends data to Vault, so it uses write (update), and the plaintext must be base64."
+    answer: [a]
+    explanation: |
+      You send base64-encoded plaintext to `transit/encrypt/<key>`. Vault
+      returns a ciphertext like `vault:v1:8SDd3WHDOjf7mq69...`, where `v1` is
+      the key version. Vault does not store the data: the app stores the
+      ciphertext in its own database.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/transit
+      - https://developer.hashicorp.com/vault/api-docs/secret/transit
+    glossary: [vault-transit, vault-key-version]
+
+  - id: vault-eaas-002
+    difficulty: 2
+    type: single
+    question: "You run `vault write transit/decrypt/orders ciphertext=vault:v1:...`. The response has `plaintext  aGVsbG8=`. What must the app do to get the original text?"
+    options:
+      - id: a
+        text: "Decrypt it again with the newest key version"
+        why: "The data is already decrypted. Running decrypt again would fail because it is not ciphertext."
+      - id: b
+        text: "Base64-decode it"
+      - id: c
+        text: "Unwrap it with `vault unwrap`"
+        why: "This is not a wrapping token. Response wrapping is only used when you ask for it."
+      - id: d
+        text: "Read it from the KV engine with the same name"
+        why: "Transit has no link to KV. The value in the response is the result."
+    answer: [b]
+    explanation: |
+      Transit works with base64 for plaintext in both directions. After
+      decrypt, decode the value, for example `echo aGVsbG8= | base64 --decode`,
+      to get `hello`.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/transit
+    glossary: [vault-transit]
+
+  - id: vault-eaas-003
+    difficulty: 2
+    type: single
+    question: "You rotate the Transit key `orders` with `vault write -f transit/keys/orders/rotate`. What happens to data that was encrypted before, with `vault:v1:`?"
+    options:
+      - id: a
+        text: "It can no longer be decrypted and must be restored from backup"
+        why: "Rotation keeps old versions, so old ciphertext still decrypts unless you raise min_decryption_version."
+      - id: b
+        text: "Vault re-encrypts all stored data with v2 automatically"
+        why: "Vault does not store Transit data, so it cannot re-encrypt it. You must call rewrap yourself."
+      - id: c
+        text: "It still decrypts, and new encryptions use v2"
+      - id: d
+        text: "It decrypts only with the root token from now on"
+        why: "Policies on the decrypt path still decide who can decrypt. Rotation does not change access."
+    answer: [c]
+    explanation: |
+      Rotation adds a new key version. New encrypt calls use the newest version,
+      and old ciphertext still decrypts with its own version. To move old data
+      to the newest version without seeing the plaintext, call
+      `transit/rewrap/<key>`. Raise `min_decryption_version` to stop old
+      versions from decrypting.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/transit
+      - https://developer.hashicorp.com/vault/api-docs/secret/transit
+    glossary: [vault-transit, vault-key-version]
+
+  - id: vault-eaas-004
+    difficulty: 3
+    type: multiple
+    question: "Which TWO statements about the Transit secrets engine are true? (Select 2)"
+    options:
+      - id: a
+        text: "Apps never receive the encryption key itself for normal encrypt calls"
+      - id: b
+        text: "Transit stores every ciphertext so it can be found later"
+        why: "Transit does not store the data it encrypts. The app keeps the ciphertext."
+      - id: c
+        text: "A policy needs `update` on `transit/encrypt/<key>` to encrypt"
+      - id: d
+        text: "Each key can be rotated only once"
+        why: "You can rotate a key as often as you want, by hand or with auto_rotate_period."
+    answer: [a, c]
+    explanation: |
+      Transit is encryption as a service: the keys stay in Vault, and apps send
+      data to encrypt or decrypt. Because encrypt and decrypt are writes to
+      `transit/encrypt/<key>` and `transit/decrypt/<key>`, policies give the
+      `update` capability on those paths.
+    docs:
+      - https://developer.hashicorp.com/vault/docs/secrets/transit
+    glossary: [vault-transit, vault-policy, vault-key-version]

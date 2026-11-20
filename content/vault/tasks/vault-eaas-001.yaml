@@ -1,0 +1,37 @@
+id: vault-eaas-001
+title: Encrypt data with the transit engine
+domain: eaas
+difficulty: 2
+minutes: 6
+environment: vault
+task: |
+  An application must store card tokens encrypted, but it must never see the encryption key.
+
+  1. Enable the **transit** secrets engine at its default path.
+  2. Create an encryption key called `cards`.
+  3. Encrypt the text `4111-0000-2026` with that key and save **only the ciphertext**
+     (it starts with `vault:v1:`) in `/root/card.enc`.
+
+  Remember: transit expects the plaintext **base64-encoded**.
+checks:
+  - name: transit is enabled and the key cards exists
+    run: labvault read transit/keys/cards >/dev/null
+  - name: /root/card.enc is a ciphertext from key version 1
+    run: grep -Eq '^vault:v1:' /root/card.enc
+  - name: Decrypting /root/card.enc with key cards gives 4111-0000-2026
+    run: |
+      p=$(labvault write -field=plaintext transit/decrypt/cards ciphertext="$(cat /root/card.enc)")
+      [ "$(echo "$p" | base64 -d)" = 4111-0000-2026 ]
+solution: |
+  vault secrets enable transit
+  vault write -f transit/keys/cards
+  vault write -field=ciphertext transit/encrypt/cards plaintext="$(printf '4111-0000-2026' | base64)" > /root/card.enc
+  cat /root/card.enc
+  # decrypt (the result is base64 again):
+  vault write -field=plaintext transit/decrypt/cards ciphertext="$(cat /root/card.enc)" | base64 -d
+auto_solution: |
+  vault secrets enable transit
+  vault write -f transit/keys/cards
+  vault write -field=ciphertext transit/encrypt/cards plaintext="$(printf '4111-0000-2026' | base64)" > /root/card.enc
+docs:
+  - https://developer.hashicorp.com/vault/docs/secrets/transit

@@ -189,6 +189,7 @@ terms:
   es: Token de la ServiceAccount que permite al Pod llamar al API server.
 - id: linux-capabilities
   term: Linux capabilities
+  certs: [kcna, kcsa, cka, ckad, cks, lfcs, dca, interview]
   match:
   - capability
   - capabilities

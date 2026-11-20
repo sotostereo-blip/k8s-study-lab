@@ -1,0 +1,280 @@
+domain: installation
+questions:
+  - id: ica-inst-001
+    difficulty: 1
+    type: single
+    question: You have downloaded istioctl and your kubeconfig points to a new cluster. Which command installs the Istio control plane with the default profile?
+    options:
+      - id: a
+        text: "istioctl install"
+      - id: b
+        text: "istioctl analyze"
+        why: "istioctl analyze only checks Istio configuration for problems. It does not install anything."
+      - id: c
+        text: "istioctl proxy-status"
+        why: "istioctl proxy-status shows if each proxy is in sync with istiod. It needs Istio to be installed already."
+      - id: d
+        text: "istioctl x precheck"
+        why: "istioctl x precheck checks that the cluster is ready for an install or upgrade, but it does not install Istio."
+    answer: [a]
+    explanation: |
+      `istioctl install` installs Istio. With no options it uses the `default`
+      profile (istiod and an ingress gateway). You can choose another profile with
+      `--set profile=<name>` or give a custom file with `-f`.
+    docs:
+      - https://istio.io/latest/docs/setup/install/istioctl/
+    glossary: [istioctl, istiod, installation-profile]
+
+  - id: ica-inst-002
+    difficulty: 1
+    type: single
+    question: Which installation profile do you choose with istioctl to install Istio in ambient mode?
+    options:
+      - id: a
+        text: "demo"
+        why: "The demo profile is for trying Istio features with sidecars. It turns on many features and is not the ambient setup."
+      - id: b
+        text: "ambient"
+      - id: c
+        text: "minimal"
+        why: "The minimal profile installs only istiod. It does not install ztunnel or the Istio CNI agent that ambient mode needs."
+      - id: d
+        text: "remote"
+        why: "The remote profile is for a cluster that uses a control plane in another cluster (multicluster). It is not for ambient mode."
+    answer: [b]
+    explanation: |
+      `istioctl install --set profile=ambient` installs istiod, the Istio CNI node
+      agent and ztunnel, which are the parts that ambient mode needs. The other
+      profiles are for sidecar mode or special setups.
+    docs:
+      - https://istio.io/latest/docs/ambient/install/istioctl/
+      - https://istio.io/latest/docs/setup/additional-setup/config-profiles/
+    glossary: [installation-profile, ambient-mode, ztunnel]
+
+  - id: ica-inst-003
+    difficulty: 1
+    type: single
+    question: Istio is installed in sidecar mode without revisions. Which command makes Istio add a sidecar proxy to new Pods in the namespace shop?
+    options:
+      - id: a
+        text: "kubectl label namespace shop istio.io/dataplane-mode=ambient"
+        why: "This label adds the namespace to the ambient mesh (ztunnel). It does not inject sidecars."
+      - id: b
+        text: "kubectl label namespace shop istio.io/use-waypoint=shop"
+        why: "This label tells ambient mode to send traffic through a waypoint proxy. It is not used for sidecar injection."
+      - id: c
+        text: "kubectl label namespace shop istio-injection=enabled"
+      - id: d
+        text: "kubectl annotate namespace shop sidecar.istio.io/status=injected"
+        why: "sidecar.istio.io/status is an annotation that Istio writes on injected Pods. Setting it on a namespace does nothing."
+    answer: [c]
+    explanation: |
+      The namespace label `istio-injection=enabled` turns on automatic sidecar
+      injection when there is no revision. (With revisions you use `istio.io/rev=<revision>`.)
+      Injection happens only when a Pod is created.
+    docs:
+      - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/
+    glossary: [sidecar-injection, envoy, label, namespace]
+
+  - id: ica-inst-004
+    difficulty: 2
+    type: single
+    question: You added the label istio-injection=enabled to a namespace, but the Pods that were already running still show 1/1 containers. What is the simplest fix?
+    options:
+      - id: a
+        text: "Run istioctl install again with the default profile"
+        why: "Reinstalling the control plane does not change running Pods. The sidecar is only added when a Pod is created."
+      - id: b
+        text: "Create a PeerAuthentication in STRICT mode"
+        why: "PeerAuthentication sets the mTLS mode. It does not add sidecars to Pods."
+      - id: c
+        text: "Delete the istio-sidecar-injector webhook"
+        why: "This webhook is what injects sidecars. Deleting it would stop injection for all new Pods."
+      - id: d
+        text: "Restart the Deployments so new Pods are created"
+    answer: [d]
+    explanation: |
+      Sidecar injection is done by a mutating admission webhook when a Pod is
+      created. Existing Pods are not changed. Run, for example,
+      `kubectl rollout restart deployment -n <namespace>` to create new Pods with the sidecar.
+    docs:
+      - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/
+    glossary: [sidecar-injection, admission-webhook, envoy]
+
+  - id: ica-inst-005
+    difficulty: 2
+    type: single
+    question: Istio is installed with the ambient profile. Which label adds all Pods in the namespace payments to the ambient mesh, without restarting them?
+    options:
+      - id: a
+        text: "istio.io/dataplane-mode=ambient"
+      - id: b
+        text: "istio-injection=enabled"
+        why: "This label turns on sidecar injection. The Pods would need a restart and would get sidecars, which is not ambient mode."
+      - id: c
+        text: "istio.io/rev=ambient"
+        why: "istio.io/rev chooses a control plane revision for sidecar injection. It does not enroll Pods in ambient mode."
+      - id: d
+        text: "istio.io/use-waypoint=payments"
+        why: "This label sends traffic through a waypoint proxy. The namespace must first be part of the ambient mesh."
+    answer: [a]
+    explanation: |
+      `kubectl label namespace payments istio.io/dataplane-mode=ambient` adds the
+      namespace to the ambient mesh. The Istio CNI agent and ztunnel start handling
+      the traffic of the Pods; no restart and no sidecar are needed.
+    docs:
+      - https://istio.io/latest/docs/ambient/usage/add-workloads/
+    glossary: [ambient-mode, ztunnel, istio-cni, label]
+
+  - id: ica-inst-006
+    difficulty: 2
+    type: multiple
+    question: Which components run in a cluster after you install Istio with the ambient profile? (Choose three.)
+    options:
+      - id: a
+        text: "istiod, the control plane"
+      - id: b
+        text: "An Envoy sidecar in every application Pod"
+        why: "Ambient mode does not use sidecars. Pod traffic is handled by ztunnel on the node, and by waypoints when you add them."
+      - id: c
+        text: "ztunnel, as a DaemonSet"
+      - id: d
+        text: "The Istio CNI node agent, as a DaemonSet"
+    answer: [a, c, d]
+    explanation: |
+      Ambient mode needs istiod (control plane), the Istio CNI node agent (it
+      redirects Pod traffic) and ztunnel (the per-node L4 proxy). Waypoint proxies
+      are optional and you create them later only when you need L7 features.
+    docs:
+      - https://istio.io/latest/docs/ambient/architecture/
+      - https://istio.io/latest/docs/ambient/install/istioctl/
+    glossary: [istiod, ztunnel, istio-cni, waypoint-proxy, daemonset]
+
+  - id: ica-inst-007
+    difficulty: 2
+    type: single
+    question: When you install Istio with Helm in sidecar mode, which chart must you install first?
+    options:
+      - id: a
+        text: "istio/istiod"
+        why: "The istiod chart installs the control plane. It needs the CRDs and cluster-wide resources from istio/base first."
+      - id: b
+        text: "istio/base"
+      - id: c
+        text: "istio/gateway"
+        why: "The gateway chart installs an ingress or egress gateway. You install it last, after the control plane."
+      - id: d
+        text: "istio/ztunnel"
+        why: "ztunnel is only for ambient mode, and it also needs istio/base and istiod first."
+    answer: [b]
+    explanation: |
+      With Helm the order is: `istio/base` (CRDs and cluster resources), then
+      `istio/istiod` (control plane), then optional `istio/gateway` charts. Ambient
+      mode also adds `istio/cni` and `istio/ztunnel`.
+    docs:
+      - https://istio.io/latest/docs/setup/install/helm/
+    glossary: [helm, crd, istiod]
+
+  - id: ica-inst-008
+    difficulty: 2
+    type: single
+    question: You installed a second control plane with istioctl install --set revision=1-32-0. How do you move the namespace shop (labeled istio-injection=enabled) to the new revision?
+    options:
+      - id: a
+        text: "Run istioctl upgrade, then restart the Pods"
+        why: "istioctl upgrade is the in-place upgrade. It replaces the running control plane instead of using the new revision."
+      - id: b
+        text: "Only restart the Pods; they move to the newest revision by themselves"
+        why: "The istio-injection label still points to the old default control plane, so restarted Pods get the old proxy."
+      - id: c
+        text: "Label the namespace istio.io/rev=1-32-0, remove istio-injection, then restart the Pods"
+      - id: d
+        text: "Create a DestinationRule that points to the new istiod"
+        why: "DestinationRules set traffic policies for services. They do not choose which control plane injects the proxy."
+    answer: [c]
+    explanation: |
+      In a canary upgrade the new control plane runs next to the old one. You run
+      `kubectl label namespace shop istio-injection- istio.io/rev=1-32-0` (the
+      istio-injection label wins over istio.io/rev, so remove it) and then restart
+      the workloads so they get the new proxy.
+    docs:
+      - https://istio.io/latest/docs/setup/upgrade/canary/
+    glossary: [canary-upgrade, istio-revision, sidecar-injection]
+
+  - id: ica-inst-009
+    difficulty: 3
+    type: single
+    question: Twenty namespaces use the label istio.io/rev=prod-stable, which is a revision tag. You want all of them to use the new revision 1-32-0. What is the easiest way?
+    options:
+      - id: a
+        text: "Relabel each namespace with istio.io/rev=1-32-0"
+        why: "This works, but it is the extra work that revision tags are made to avoid."
+      - id: b
+        text: "Delete the old control plane; the Pods move to the new one automatically"
+        why: "Deleting the old control plane leaves running proxies without a control plane. The namespaces still point to the tag, so it must be moved first."
+      - id: c
+        text: "Run istioctl install --set profile=prod-stable"
+        why: "prod-stable is a tag, not an installation profile. Profiles are names like default, minimal or ambient."
+      - id: d
+        text: "Move the tag with istioctl tag set prod-stable --revision 1-32-0 --overwrite, then restart the Pods"
+    answer: [d]
+    explanation: |
+      A revision tag is an alias for a revision. When you move the tag with
+      `istioctl tag set <tag> --revision <new> --overwrite`, every namespace that
+      uses the tag points to the new control plane. Restart the workloads to get the
+      new proxies.
+    docs:
+      - https://istio.io/latest/docs/setup/upgrade/canary/
+    glossary: [revision-tag, istio-revision, canary-upgrade]
+
+  - id: ica-inst-010
+    difficulty: 2
+    type: single
+    question: You upgrade Istio in place with istioctl upgrade. Which statement is true?
+    options:
+      - id: a
+        text: "Running Pods keep the old proxy version until they are restarted"
+      - id: b
+        text: "You can upgrade from any old version, for example 1.28 to 1.32, in one step"
+        why: "Istio supports upgrades of only one minor version at a time (for example 1.31 to 1.32)."
+      - id: c
+        text: "istioctl upgrade restarts every application Pod for you"
+        why: "istioctl upgrade updates the control plane and gateways. You must restart the workloads yourself."
+      - id: d
+        text: "Your old install options are kept even if you do not pass them again"
+        why: "The docs say to pass the same -f or --set options as the install. Otherwise your custom settings can go back to the defaults."
+    answer: [a]
+    explanation: |
+      An in-place upgrade replaces the control plane. The data plane is not changed
+      until Pods are recreated, so run `kubectl rollout restart deployment` in the
+      mesh namespaces. Check first with `istioctl x precheck`, and upgrade only one
+      minor version at a time.
+    docs:
+      - https://istio.io/latest/docs/setup/upgrade/in-place/
+    glossary: [in-place-upgrade, istioctl, envoy]
+
+  - id: ica-inst-011
+    difficulty: 3
+    type: single
+    question: You want every Envoy proxy in the mesh to write access logs to standard output, and you want to set it at install time. Which option do you use?
+    options:
+      - id: a
+        text: "istioctl proxy-config log <pod> --level debug"
+        why: "This changes the Envoy debug log level of one Pod at runtime. It does not turn on access logs for the mesh."
+      - id: b
+        text: "istioctl install --set meshConfig.accessLogFile=/dev/stdout"
+      - id: c
+        text: "istioctl install --set profile=minimal"
+        why: "The minimal profile only installs istiod. It does not change logging."
+      - id: d
+        text: "kubectl label namespace istio-system access-log=stdout"
+        why: "Istio does not read this label. Mesh-wide settings go in meshConfig."
+    answer: [b]
+    explanation: |
+      Mesh-wide settings live in `meshConfig`. You can set them with `--set` or in
+      an IstioOperator file given with `istioctl install -f config.yaml`.
+      `meshConfig.accessLogFile=/dev/stdout` makes all proxies write access logs.
+    docs:
+      - https://istio.io/latest/docs/tasks/observability/logs/access-log/
+      - https://istio.io/latest/docs/setup/additional-setup/customize-installation/
+    glossary: [istiooperator, envoy, istioctl]

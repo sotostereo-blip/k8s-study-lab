@@ -18,13 +18,17 @@ Everything runs on your machine with Docker. No account, no cloud costs, your pr
 | **CKA** — Certified Kubernetes Administrator | — | 45 tasks + mock exam (incl. Gateway API, etcd backup/restore, kubeadm upgrade and join) |
 | **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
 | **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
+| **ICA** — Istio Certified Associate | 53 concept questions | — |
 | **Terraform Associate (004)** — HashiCorp | 152 questions | 19 tasks (Terraform + LocalStack) |
+| **Vault Associate (003)** — HashiCorp | 64 questions | 12 tasks (real Vault 1.19 server + PostgreSQL) |
 | **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 33 tasks + mock exam (Ubuntu servers with systemd, LVM, swap) |
 | **DCA** — Docker Certified Associate | 120 questions | 23 tasks + mock exam (Docker Engine, Swarm, registry) |
 | **GH-200** — GitHub Actions | 100 questions | 19 tasks + mock exam (Gitea Actions, GitHub compatible) |
 | **CAPA** — Certified Argo Project Associate | 100 questions | 16 tasks + mock exam (Argo CD, Rollouts, Workflows, Events) |
 | **PCA** — Prometheus Certified Associate | 100 questions | 22 tasks + mock exam (Prometheus, Alertmanager, Grafana, exporters) |
 | **AWS SAA-C03** — Solutions Architect Associate | 150 questions | 12 tasks + mock exam (AWS CLI + LocalStack) |
+| **AZ-104** — Microsoft Azure Administrator | 70 questions | — |
+| **ACE** — Google Cloud Associate Cloud Engineer | 65 questions | — |
 | **DevOps job interviews in English** | 135 interview questions | mock interviews, useful phrases |
 
 ## Quick start
@@ -152,13 +156,17 @@ Requirements, Windows (WSL 2) and Linux notes, a lab smoke test and troubleshoot
 | CKA | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
 | CKAD | 15-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
 | CKS | 15-20 hands-on tasks | 2 h | 445, 1 free retake | passed CKA | 2 years |
+| ICA | 15-20 hands-on tasks | 2 h | 250, 1 free retake | — | 2 years |
 | Terraform Associate (004) | ~57 multiple choice | 1 h | 70.50 + tax, no retake | — | 2 years |
+| Vault Associate (003) | ~57 multiple choice | 1 h | 70.50 + tax, no retake | — | 2 years |
 | LFCS | ~17-20 hands-on tasks | 2 h | 445, 1 free retake | — | 2 years |
 | DCA | 55 (13 MC + 42 DOMC) | 90 min | 199, no retake | — | 2 years |
 | GH-200 | ~60-75 multiple choice | 100 min | by country (~99 in the US) | — | 2 years |
 | CAPA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
 | PCA | ~60 multiple choice | 90 min | 250, 1 free retake | — | 2 years |
 | AWS SAA-C03 | 65 multiple choice | 130 min | 150, no retake | — | 3 years |
+| AZ-104 | ~40-60 mixed types | 100 min | by country (165 in the US), no retake | — | 1 year (free renewal) |
+| ACE | 50-60 multiple choice | 2 h | 125 + tax, no retake | — | 3 years |
 
 "~" means the provider does not publish the number. More detail (passing score, renewal, what the price
 includes, official link) is in the **Real exam** tab of each certification and in `content/certifications.yaml`.
@@ -248,7 +256,7 @@ Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 ## En español
 
 Entorno de estudio local y gratuito para certificaciones Cloud / DevOps (KCNA, CKA, CKAD, CKS, LFCS,
-Terraform, Docker DCA, GitHub Actions, Argo, Prometheus, AWS SAA) con preguntas, simulacros, labs reales en
+Terraform, Vault, Istio, Docker DCA, GitHub Actions, Argo, Prometheus, AWS SAA, Azure AZ-104, Google Cloud ACE) con preguntas, simulacros, labs reales en
 el navegador y entrevistas de trabajo. El contenido está en inglés simple, con ayuda en español a pedido.
 Para instalarlo necesitas Docker Desktop y ejecutar los comandos de **Quick start**, o pedirle a tu
 asistente de IA que siga [INSTALL.md](INSTALL.md) (puedes pegarle el prompt de arriba).

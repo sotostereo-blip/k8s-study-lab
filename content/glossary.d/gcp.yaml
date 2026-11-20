@@ -1,0 +1,405 @@
+# Google Cloud glossary (Google Cloud Associate Cloud Engineer). Shown when you click a highlighted term.
+# Generic words (project, folder, zone, sink, budget) use certs: [ace] so they are only highlighted there.
+# Reuses kubectl, helm, least-privilege, hpa, label, image, dns from other glossary files.
+terms:
+- id: gcp-resource-hierarchy
+  term: Resource hierarchy (Google Cloud)
+  match: [resource hierarchy]
+  definition: "The tree that organizes Google Cloud resources: organization at the top, then folders, then projects, then resources like VMs and buckets. IAM and organization policies set on a parent are inherited by its children."
+  es: "Jerarquía de recursos: organización, carpetas, proyectos y recursos; los permisos se heredan hacia abajo."
+- id: gcp-organization
+  term: Organization node (Google Cloud)
+  match: [organization node, organization resource, Google Cloud organization]
+  definition: "The root node of the resource hierarchy. It belongs to a Google Workspace or Cloud Identity domain and owns all folders and projects of the company."
+  es: "Nodo raíz de la jerarquía de recursos, ligado a un dominio de Workspace o Cloud Identity."
+- id: gcp-folder
+  term: Folder (Google Cloud)
+  match: [folder, folders]
+  certs: [ace]
+  definition: "A node between the organization and projects. It groups projects (for example by department or environment) so you can set IAM roles and policies once for all of them."
+  es: "Carpeta: agrupa proyectos (por departamento o entorno) para aplicar permisos y políticas una sola vez."
+- id: gcp-project
+  term: Project (Google Cloud)
+  match: [project, projects, project ID, project IDs]
+  certs: [ace]
+  definition: "The base container for Google Cloud resources. Every resource belongs to one project. A project has a unique project ID, enabled APIs, IAM settings and a linked billing account."
+  es: "Proyecto: contenedor básico de recursos, con ID único, APIs habilitadas, permisos y cuenta de facturación."
+- id: gcp-org-policy
+  term: Organization policy
+  match: [organization policy, organization policies, Organization Policy Service, policy constraint, policy constraints]
+  definition: "A rule set on the organization, a folder or a project that limits HOW resources can be configured (for example allowed regions or no external IPs). It is about resource configuration, not about who can act."
+  es: "Política de organización: restringe cómo se configuran los recursos (regiones permitidas, sin IP externa...)."
+- id: gcp-billing-account
+  term: Cloud Billing account
+  match: [billing account, billing accounts, Cloud Billing account, Cloud Billing accounts]
+  definition: "Defines who pays for a set of projects. One billing account can pay for many projects; a project is linked to at most one billing account."
+  es: "Cuenta de facturación: define quién paga uno o varios proyectos."
+- id: gcp-budget
+  term: Budget (Cloud Billing)
+  match: [budget, budgets, budget alert, budget alerts, budget threshold, threshold rules]
+  certs: [ace]
+  definition: "A target amount for a billing account or some projects. Threshold rules send email alerts or Pub/Sub messages at a percent of the budget. A budget does NOT stop spending by itself."
+  es: "Presupuesto: envía alertas al llegar a un porcentaje; no detiene el gasto por sí solo."
+- id: gcp-billing-export
+  term: Cloud Billing export to BigQuery
+  match: [billing export, billing data export, Cloud Billing export]
+  definition: "A feature that sends detailed usage and cost data from a billing account to a BigQuery dataset automatically, so you can query and analyze it."
+  es: "Exportación de facturación a BigQuery para analizar costes con consultas."
+- id: gcp-cloud-identity
+  term: Cloud Identity
+  match: [Cloud Identity, Google group, Google groups]
+  definition: "Google's identity service that manages users and groups for a domain. Google Cloud uses these users and groups as IAM principals."
+  es: "Servicio de identidades de Google que gestiona usuarios y grupos de un dominio."
+- id: gcp-cloud-iam
+  term: Cloud IAM (Google Cloud)
+  match: [Cloud IAM, allow policy, allow policies, IAM allow policy, role binding, role bindings, principal, principals]
+  certs: [ace]
+  definition: "Google Cloud Identity and Access Management. An allow policy on a resource binds principals (users, groups, service accounts) to roles. Policies are inherited down the resource hierarchy."
+  es: "IAM de Google Cloud: una política vincula principales (usuarios, grupos, cuentas de servicio) con roles."
+- id: gcp-basic-role
+  term: Basic role (Google Cloud)
+  match: [basic role, basic roles, Owner role, Editor role, Viewer role, roles/owner, roles/editor, roles/viewer]
+  definition: "The old, very broad roles Owner, Editor and Viewer. They include thousands of permissions across all services, so Google recommends predefined roles in production."
+  es: "Rol básico (Owner, Editor, Viewer): muy amplio; no recomendado en producción."
+- id: gcp-predefined-role
+  term: Predefined role (Google Cloud)
+  match: [predefined role, predefined roles]
+  definition: "A role created and maintained by Google for one service and job, for example roles/storage.objectViewer. Google updates its permissions when the service changes."
+  es: "Rol predefinido: creado y mantenido por Google para un servicio y tarea concretos."
+- id: gcp-custom-role
+  term: Custom role (Google Cloud)
+  match: [custom role, custom roles]
+  definition: "A role you create with an exact list of permissions. It can live in an organization or a project (not in a folder), and you must maintain it yourself."
+  es: "Rol personalizado: lista exacta de permisos que creas y mantienes tú (en organización o proyecto)."
+- id: gcp-service-account
+  term: Service account (Google Cloud)
+  match: [service account, service accounts, user-managed service account, user-managed service accounts]
+  definition: "An identity for an application or a VM, not for a person. Workloads use it to call Google Cloud APIs. It is both a principal (it gets roles) and a resource (people get roles on it)."
+  es: "Cuenta de servicio: identidad para una aplicación o VM, no para una persona."
+- id: gcp-service-agent
+  term: Service agent (Google-managed service account)
+  match: [service agent, service agents, Google-managed service account, Google-managed service accounts]
+  definition: "A service account that Google creates and manages so a Google Cloud service can act on your resources. You do not create its keys."
+  es: "Agente de servicio: cuenta de servicio gestionada por Google para que un servicio actúe en tus recursos."
+- id: gcp-sa-impersonation
+  term: Service account impersonation
+  match: [impersonation, impersonate, impersonates, impersonating, Service Account Token Creator, short-lived credentials]
+  definition: "A principal with the Service Account Token Creator role on a service account gets short-lived credentials for it and acts as it, with no downloaded key."
+  es: "Suplantación de una cuenta de servicio con credenciales de corta duración, sin claves descargadas."
+- id: gcp-sa-key
+  term: Service account key
+  match: [service account key, service account keys, JSON key, JSON key file]
+  definition: "A long-lived private key file for a service account. Anyone who has the file can act as the account, so Google recommends avoiding keys when another method exists."
+  es: "Clave de cuenta de servicio: fichero de larga duración y riesgoso; mejor evitarlo."
+- id: gcp-workload-identity
+  term: Workload Identity Federation
+  match: [Workload Identity Federation, Workload Identity Federation for GKE, workload identity pool, workload identity pools]
+  definition: "Lets workloads outside Google Cloud (other clouds, CI systems) or Kubernetes ServiceAccounts in GKE get short-lived Google Cloud credentials without service account keys."
+  es: "Federación de identidades de carga de trabajo: credenciales temporales sin claves para cargas externas o de GKE."
+- id: gcp-workforce-identity
+  term: Workforce Identity Federation
+  match: [Workforce Identity Federation, workforce pool, workforce pools]
+  definition: "Lets employees sign in to Google Cloud with an external identity provider (for example Microsoft Entra ID or Okta) without copying users into Cloud Identity."
+  es: "Federación de identidades de personal: acceso con un proveedor de identidad externo sin sincronizar usuarios."
+- id: gcp-compute-engine
+  term: Compute Engine
+  match: [Compute Engine, VM instance, VM instances]
+  definition: "The Google Cloud service for virtual machines (VMs). You choose the machine type, disk, image, zone and network."
+  es: "Servicio de máquinas virtuales de Google Cloud."
+- id: gcp-machine-type
+  term: Machine type (Compute Engine)
+  match: [machine type, machine types, custom machine type, custom machine types, machine family, machine families]
+  definition: "The number of vCPUs and the amount of memory of a VM. Predefined types (like e2-standard-4) come in families; a custom machine type lets you choose vCPUs and memory yourself."
+  es: "Tipo de máquina: vCPU y memoria de la VM; puede ser predefinido o personalizado."
+- id: gcp-spot-vm
+  term: Spot VM (Google Cloud)
+  match: [Spot VM, Spot VMs, preemptible VM, preemptible VMs, preemptible instance, preemptible instances]
+  definition: "A much cheaper VM that uses spare capacity. Compute Engine can stop it at any time (preemption) with a short notice. Spot VMs replace the older preemptible VMs, which ran 24 hours at most."
+  es: "VM Spot: VM muy barata que Google puede detener en cualquier momento."
+- id: gcp-instance-template
+  term: Instance template
+  match: [instance template, instance templates]
+  definition: "A saved VM configuration (machine type, image, disks, network, metadata). Managed instance groups use it to create identical VMs. Templates cannot be edited; you create a new one."
+  es: "Plantilla de instancia: configuración guardada de VM que usan los grupos gestionados."
+- id: gcp-mig
+  term: Managed instance group (MIG)
+  match: [managed instance group, managed instance groups, MIG, MIGs, autohealing]
+  definition: "A group of identical VMs created from an instance template. It supports autoscaling, autohealing with health checks, rolling updates and zonal or regional (multi-zone) layouts."
+  es: "Grupo de instancias gestionado: VMs idénticas con autoescalado, autorreparación y actualizaciones graduales."
+- id: gcp-autoscaler
+  term: Autoscaler (Compute Engine)
+  match: [autoscaler, autoscaling policy, cool down period, initialization period]
+  certs: [ace]
+  definition: "Adds or removes VMs in a managed instance group based on a signal such as CPU use, load balancer use, a Cloud Monitoring metric or a schedule."
+  es: "Autoescalador: añade o quita VMs de un grupo gestionado según CPU, carga u otras métricas."
+- id: gcp-persistent-disk
+  term: Persistent Disk and Hyperdisk
+  match: [Persistent Disk, Persistent Disks, regional Persistent Disk, zonal Persistent Disk, Hyperdisk, Local SSD]
+  definition: "Network block storage for VMs. Zonal Persistent Disk lives in one zone; regional Persistent Disk copies data to two zones. Hyperdisk lets you set performance separately from size. Local SSD is very fast but its data is lost when the VM stops."
+  es: "Discos en red para VMs: zonales, regionales (dos zonas) o Hyperdisk; Local SSD es rápido pero temporal."
+- id: gcp-snapshot
+  term: Disk snapshot (Compute Engine)
+  match: [snapshot, snapshots, snapshot schedule, snapshot schedules, custom image, custom images]
+  certs: [ace]
+  definition: "A snapshot is an incremental backup of a disk; a snapshot schedule creates them automatically. A custom image is a boot disk template used to create new VMs."
+  es: "Snapshot: copia incremental de un disco; una imagen personalizada sirve para crear nuevas VMs."
+- id: gcp-os-login
+  term: OS Login
+  match: [OS Login]
+  definition: "Manages SSH access to Linux VMs with IAM roles (roles/compute.osLogin, roles/compute.osAdminLogin) instead of SSH keys stored in metadata."
+  es: "Gestiona el acceso SSH a las VMs con roles de IAM en lugar de claves en metadatos."
+- id: gcp-iap
+  term: Identity-Aware Proxy (IAP)
+  match: [Identity-Aware Proxy, IAP, IAP TCP forwarding]
+  definition: "Checks identity and IAM before it lets a user reach an app or a VM. IAP TCP forwarding gives SSH or RDP access to VMs that have no external IP address."
+  es: "Proxy que comprueba identidad e IAM; permite SSH a VMs sin IP externa."
+- id: gcp-zone
+  term: Zone and region (Google Cloud)
+  match: [zone, zones, zonal, regional resource, regional resources, multi-region, multi-regions, dual-region]
+  certs: [ace]
+  definition: "A region is a geographic area (for example europe-west1). A zone is one deployment area inside a region (europe-west1-b). Zonal resources live in one zone; multi-region resources span several regions."
+  es: "Región: área geográfica; zona: área de despliegue dentro de una región."
+- id: gcp-gke
+  term: Google Kubernetes Engine (GKE)
+  match: [GKE, Google Kubernetes Engine]
+  definition: "Google's managed Kubernetes service. Google runs the control plane; you deploy workloads with kubectl."
+  es: "Servicio gestionado de Kubernetes de Google."
+- id: gcp-gke-autopilot
+  term: GKE Autopilot and Standard modes
+  match: [Autopilot, GKE Autopilot, Autopilot mode, Standard mode, GKE Standard, Autopilot cluster, Autopilot clusters]
+  definition: "Two modes of GKE. In Autopilot, Google manages nodes and you pay for the resources your Pods request. In Standard, you manage node pools and pay for the nodes."
+  es: "Autopilot: Google gestiona los nodos y pagas por Pod; Standard: tú gestionas los grupos de nodos."
+- id: gcp-node-pool
+  term: Node pool (GKE)
+  match: [node pool, node pools]
+  definition: "A group of nodes in a GKE Standard cluster with the same configuration (machine type, Spot or not, labels). A cluster can have many node pools."
+  es: "Grupo de nodos de GKE con la misma configuración."
+- id: gcp-artifact-registry
+  term: Artifact Registry
+  match: [Artifact Registry]
+  definition: "The Google Cloud service that stores container images and language packages in repositories, with IAM access control."
+  es: "Servicio para guardar imágenes de contenedor y paquetes."
+- id: gcp-cloud-run
+  term: Cloud Run
+  match: [Cloud Run, Cloud Run service, Cloud Run services, Cloud Run job, Cloud Run jobs, Cloud Run revision, Cloud Run revisions]
+  definition: "A serverless platform that runs containers. It scales automatically (also to zero) and you pay for use. Every deploy creates a new revision, and you can split traffic between revisions."
+  es: "Plataforma serverless para contenedores; escala sola y cada despliegue crea una revisión."
+- id: gcp-cloud-run-functions
+  term: Cloud Run functions
+  match: [Cloud Run functions, Cloud Run function, Cloud Functions]
+  definition: "Serverless functions (formerly Cloud Functions). You write a small piece of code that runs on an HTTP request or an event, such as a new file in Cloud Storage."
+  es: "Funciones serverless (antes Cloud Functions) que se ejecutan por HTTP o por eventos."
+- id: gcp-app-engine
+  term: App Engine
+  match: [App Engine, App Engine standard, App Engine flexible]
+  definition: "A platform as a service for web apps. The standard environment uses language runtimes in sandboxes and can scale to zero; the flexible environment runs containers on VMs."
+  es: "Plataforma como servicio para aplicaciones web (entorno estándar o flexible)."
+- id: gcp-eventarc
+  term: Eventarc
+  match: [Eventarc, Eventarc trigger, Eventarc triggers]
+  definition: "Routes events from Google Cloud services (Cloud Storage, Pub/Sub, audit logs) to targets such as Cloud Run services or functions."
+  es: "Enruta eventos de servicios de Google Cloud hacia Cloud Run u otros destinos."
+- id: gcp-pubsub
+  term: Pub/Sub
+  match: [Pub/Sub, Pub/Sub topic, Pub/Sub topics, Pub/Sub subscription, Pub/Sub subscriptions]
+  definition: "An asynchronous messaging service. Publishers send messages to a topic; subscribers get them through subscriptions."
+  es: "Servicio de mensajería asíncrona con temas y suscripciones."
+- id: gcp-cloud-storage
+  term: Cloud Storage
+  match: [Cloud Storage, Cloud Storage bucket, Cloud Storage buckets]
+  definition: "Google Cloud object storage. You keep objects (files) in buckets; a bucket has a location (region, dual-region or multi-region) and a default storage class."
+  es: "Almacenamiento de objetos de Google Cloud, organizado en buckets."
+- id: gcp-storage-class
+  term: Cloud Storage class
+  match: [Standard storage, Nearline, Nearline storage, Coldline, Coldline storage, Archive storage, Autoclass, minimum storage duration]
+  definition: "Standard (hot data), Nearline (about once a month, 30-day minimum), Coldline (about once a quarter, 90 days) and Archive (less than once a year, 365 days). Colder classes cost less to store but more to read."
+  es: "Clases de Cloud Storage: Standard, Nearline (30 días), Coldline (90) y Archive (365)."
+- id: gcp-object-lifecycle
+  term: Object Lifecycle Management
+  match: [Object Lifecycle Management, lifecycle condition, lifecycle conditions, SetStorageClass]
+  definition: "Rules on a Cloud Storage bucket that act on objects that meet conditions (age, storage class, number of newer versions): change the storage class or delete them."
+  es: "Reglas de ciclo de vida de Cloud Storage: cambiar de clase o borrar objetos por edad u otras condiciones."
+- id: gcp-object-versioning
+  term: Object Versioning (Cloud Storage)
+  match: [Object Versioning, soft delete]
+  definition: "Object Versioning keeps a noncurrent copy when an object is overwritten or deleted. Soft delete keeps deleted objects for a retention time so you can restore them."
+  es: "Versionado de objetos: guarda copias anteriores al sobrescribir o borrar."
+- id: gcp-signed-url
+  term: Signed URL (Cloud Storage)
+  match: [signed URL, signed URLs]
+  definition: "A URL that gives anyone who has it time-limited access to one Cloud Storage object, without a Google account."
+  es: "URL firmada: acceso temporal a un objeto sin cuenta de Google."
+- id: gcp-uniform-access
+  term: Uniform bucket-level access
+  match: [uniform bucket-level access, object ACL, object ACLs]
+  definition: "A bucket setting that turns off object ACLs, so only IAM controls access to all objects in the bucket."
+  es: "Acceso uniforme a nivel de bucket: desactiva las ACL y solo usa IAM."
+- id: gcp-gcloud-storage
+  term: gcloud storage (and gsutil)
+  match: [gcloud storage, gsutil]
+  definition: "gcloud storage is the current command group for Cloud Storage (cp, rsync, ls, buckets create). It replaces the older gsutil tool and is faster for big transfers."
+  es: "Comandos actuales de Cloud Storage en gcloud; sustituyen a gsutil."
+- id: gcp-storage-transfer
+  term: Storage Transfer Service
+  match: [Storage Transfer Service]
+  definition: "A managed service that moves large amounts of data into Cloud Storage from other clouds, HTTP sources, on-premises file systems or other buckets, with schedules."
+  es: "Servicio gestionado para mover grandes volúmenes de datos a Cloud Storage."
+- id: gcp-cloud-sql
+  term: Cloud SQL
+  match: [Cloud SQL]
+  definition: "Managed MySQL, PostgreSQL and SQL Server in one region. It offers automated backups, high availability (a standby in another zone) and read replicas."
+  es: "MySQL, PostgreSQL y SQL Server gestionados, en una región."
+- id: gcp-spanner
+  term: Spanner
+  match: [Spanner, Cloud Spanner]
+  definition: "A fully managed relational database with SQL and strong consistency that scales horizontally and can run across regions with very high availability."
+  es: "Base de datos relacional global con escalado horizontal y consistencia fuerte."
+- id: gcp-firestore
+  term: Firestore
+  match: [Firestore]
+  definition: "A serverless NoSQL document database for mobile, web and server apps, with real-time updates and offline support."
+  es: "Base de datos NoSQL de documentos, serverless, con actualizaciones en tiempo real."
+- id: gcp-bigtable
+  term: Bigtable
+  match: [Bigtable, Cloud Bigtable]
+  definition: "A wide-column NoSQL database for very large amounts of data with low latency, such as time series and IoT data."
+  es: "Base de datos NoSQL de columnas anchas para grandes volúmenes y baja latencia."
+- id: gcp-bigquery
+  term: BigQuery
+  match: [BigQuery, BigQuery dataset, BigQuery datasets]
+  definition: "A serverless data warehouse for analytics with SQL. With on-demand pricing you pay for the bytes each query reads."
+  es: "Almacén de datos serverless para análisis con SQL."
+- id: gcp-vpc
+  term: VPC network (Google Cloud)
+  match: [VPC network, VPC networks, custom mode, custom mode VPC, auto mode, auto mode VPC, default network]
+  definition: "A global virtual network in Google Cloud. Its subnets are regional. Auto mode creates one subnet in every region with fixed ranges; custom mode lets you create only the subnets and ranges you want."
+  es: "Red VPC global con subredes regionales; modo automático o personalizado."
+- id: gcp-firewall-rule
+  term: VPC firewall rule (Google Cloud)
+  match: [firewall rule, firewall rules, VPC firewall rule, VPC firewall rules, network tag, network tags, target tag, target tags, Cloud NGFW, firewall policy, firewall policies]
+  definition: "A stateful rule that allows or denies ingress or egress traffic for VMs. It has a direction, priority (lower number wins), action, targets (all VMs, network tags or service accounts), sources or destinations, protocols and ports."
+  es: "Regla de firewall de VPC: permite o deniega tráfico con dirección, prioridad, destino y puertos."
+- id: gcp-cloud-nat
+  term: Cloud NAT
+  match: [Cloud NAT, Cloud Router]
+  definition: "A managed NAT service that lets VMs without external IP addresses reach the internet (outbound only). It uses a Cloud Router in the region."
+  es: "NAT gestionado: VMs sin IP externa salen a internet (solo tráfico saliente)."
+- id: gcp-cloud-vpn
+  term: Cloud VPN
+  match: [Cloud VPN, HA VPN]
+  definition: "An encrypted IPsec tunnel over the internet between a VPC network and another network. HA VPN uses two interfaces and gives a 99.99% SLA."
+  es: "Túnel IPsec cifrado sobre internet; HA VPN ofrece alta disponibilidad."
+- id: gcp-interconnect
+  term: Cloud Interconnect
+  match: [Cloud Interconnect, Dedicated Interconnect, Partner Interconnect]
+  definition: "A private, high-bandwidth physical connection between an on-premises network and Google Cloud, directly (Dedicated) or through a service provider (Partner)."
+  es: "Conexión física privada y de gran ancho de banda con Google Cloud."
+- id: gcp-vpc-peering
+  term: VPC Network Peering
+  match: [VPC Network Peering, peered network, peered networks]
+  definition: "Connects two VPC networks so they use internal IP addresses. It is not transitive: if A peers with B and B with C, A cannot reach C. Ranges must not overlap."
+  es: "Conecta dos redes VPC con IPs internas; no es transitivo."
+- id: gcp-shared-vpc
+  term: Shared VPC
+  match: [Shared VPC, host project, service project, service projects]
+  definition: "Lets a host project share its VPC network with service projects in the same organization, so a central network team controls subnets and firewall rules."
+  es: "VPC compartida: un proyecto host comparte su red con proyectos de servicio."
+- id: gcp-private-google-access
+  term: Private Google Access
+  match: [Private Google Access]
+  definition: "A subnet setting that lets VMs with only internal IP addresses reach Google APIs and services such as Cloud Storage."
+  es: "Permite a VMs sin IP externa llegar a las APIs de Google."
+- id: gcp-load-balancing
+  term: Cloud Load Balancing
+  match: [Cloud Load Balancing, external Application Load Balancer, internal Application Load Balancer, passthrough Network Load Balancer, proxy Network Load Balancer, backend service, backend services]
+  definition: "Google's managed load balancers. Application Load Balancers work at layer 7 (HTTP/HTTPS); Network Load Balancers work at layer 4 (TCP/UDP), as proxy or passthrough. Some are global, some regional."
+  es: "Balanceadores gestionados: de aplicación (capa 7) o de red (capa 4), globales o regionales."
+- id: gcp-network-tier
+  term: Network Service Tiers
+  match: [Network Service Tiers, Premium Tier, Standard Tier]
+  definition: "Premium Tier carries traffic on Google's global network for most of the way; Standard Tier uses the public internet more and costs less, and is regional only."
+  es: "Niveles de red: Premium (red global de Google) o Standard (más barato, regional)."
+- id: gcp-cloud-dns
+  term: Cloud DNS
+  match: [Cloud DNS, managed zone, managed zones, public zone, private zone, private zones]
+  definition: "Google's managed DNS service. A public managed zone answers on the internet; a private zone answers only inside the VPC networks you choose."
+  es: "DNS gestionado; zonas públicas o privadas (solo visibles en ciertas VPC)."
+- id: gcp-static-ip
+  term: Static IP address (Google Cloud)
+  match: [static IP address, static IP addresses, static external IP address, ephemeral IP address, ephemeral IP addresses]
+  definition: "A reserved IP address that stays the same until you release it. An ephemeral IP address can change when the VM stops."
+  es: "IP estática reservada que no cambia; la efímera puede cambiar."
+- id: gcp-cloud-monitoring
+  term: Cloud Monitoring
+  match: [Cloud Monitoring, alerting policy, alerting policies, uptime check, uptime checks, notification channel, notification channels]
+  definition: "Collects metrics from Google Cloud and apps, shows dashboards, and sends alerts through notification channels when an alerting policy condition is met."
+  es: "Recoge métricas, muestra paneles y envía alertas según políticas."
+- id: gcp-cloud-logging
+  term: Cloud Logging
+  match: [Cloud Logging, Logs Explorer, log bucket, log buckets, Log Analytics, _Default bucket, _Required bucket]
+  definition: "Stores, searches and analyzes logs. Logs are kept in log buckets (_Required for 400 days, _Default for 30 days by default) and you search them in Logs Explorer."
+  es: "Guarda y busca registros; los logs se guardan en buckets de logs."
+- id: gcp-log-sink
+  term: Log sink (Log Router)
+  match: [sink, sinks, log sink, log sinks, Log Router, aggregated sink, aggregated sinks, inclusion filter, exclusion filter]
+  certs: [ace]
+  definition: "A Log Router rule that sends matching log entries to a destination: a log bucket, BigQuery, Cloud Storage, Pub/Sub or another project. Aggregated sinks collect logs from a whole folder or organization."
+  es: "Sumidero de logs: envía los registros que cumplen un filtro a otro destino."
+- id: gcp-audit-logs
+  term: Cloud Audit Logs
+  match: [Cloud Audit Logs, Admin Activity audit logs, Data Access audit logs, Admin Activity, Data Access]
+  definition: "Logs that record who did what, where and when. Admin Activity logs are always on and free. Data Access logs (reading data) are off by default for most services and must be enabled."
+  es: "Registros de auditoría: quién hizo qué; los de acceso a datos deben activarse."
+- id: gcp-log-based-metric
+  term: Log-based metric
+  match: [log-based metric, log-based metrics]
+  definition: "A Cloud Monitoring metric built from log entries that match a filter, for example a count of error lines. You can create alerts on it."
+  es: "Métrica creada a partir de entradas de log que cumplen un filtro."
+- id: gcp-ops-agent
+  term: Ops Agent
+  match: [Ops Agent]
+  definition: "The agent you install on Compute Engine VMs to send system and app logs and extra metrics (like memory use) to Cloud Logging and Cloud Monitoring."
+  es: "Agente para VMs que envía logs y métricas extra (como memoria) a Google Cloud."
+- id: gcp-gcloud
+  term: gcloud CLI
+  match: [gcloud, gcloud CLI, Google Cloud CLI, Cloud Shell, gcloud configuration, gcloud configurations]
+  certs: [ace]
+  definition: "The command-line tool for Google Cloud. Named configurations store the account, project and default region or zone. Cloud Shell is a browser terminal with gcloud already installed."
+  es: "Herramienta de línea de comandos de Google Cloud; Cloud Shell la trae instalada."
+- id: gcp-infra-manager
+  term: Infrastructure Manager
+  match: [Infrastructure Manager, Infra Manager]
+  definition: "A managed Google Cloud service that runs Terraform for you: it stores the state and creates deployments of your Terraform configuration."
+  es: "Servicio gestionado que ejecuta Terraform y guarda su estado."
+- id: gcp-config-connector
+  term: Config Connector
+  match: [Config Connector]
+  definition: "A Kubernetes add-on that lets you manage Google Cloud resources (buckets, databases) as Kubernetes objects in YAML."
+  es: "Complemento de Kubernetes para gestionar recursos de Google Cloud como objetos YAML."
+- id: gcp-cmek
+  term: Customer-managed encryption key (CMEK)
+  match: [CMEK, customer-managed encryption key, customer-managed encryption keys, Cloud KMS]
+  definition: "An encryption key that you create and control in Cloud KMS and that a Google Cloud service uses to protect your data, instead of a Google-owned key."
+  es: "Clave de cifrado gestionada por el cliente en Cloud KMS."
+- id: gcp-quota
+  term: Quota (Google Cloud)
+  match: [quota, quota increase, quota increases, Cloud Quotas]
+  certs: [ace]
+  definition: "A limit on how much of a resource a project can use (for example vCPUs per region). You can view quotas and request an increase in the console or with Cloud Quotas."
+  es: "Cuota: límite de uso de un recurso por proyecto; se puede pedir un aumento."
+- id: gcp-asset-inventory
+  term: Cloud Asset Inventory
+  match: [Cloud Asset Inventory]
+  definition: "A service that lists and searches all resources and IAM policies across projects, folders and the organization, with history of changes."
+  es: "Inventario de todos los recursos y políticas de la organización, con historial."
+- id: gcp-active-assist
+  term: Active Assist (Recommender)
+  match: [Active Assist, Recommender, recommendation, recommendations]
+  certs: [ace]
+  definition: "Google Cloud tools that analyze usage and suggest changes, such as resizing idle VMs or removing unused IAM permissions."
+  es: "Herramientas que analizan el uso y recomiendan cambios (VMs inactivas, permisos sobrantes)."
+- id: gcp-gpu-tpu
+  term: GPU and TPU (Google Cloud)
+  match: [GPU, GPUs, TPU, TPUs, Cloud TPU]
+  definition: "Accelerators for heavy math. GPUs work for many tasks (graphics, ML, video). TPUs are Google chips made for large machine learning model training and serving."
+  es: "Aceleradores: GPU (uso general) y TPU (chips de Google para aprendizaje automático)."

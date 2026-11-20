@@ -1,0 +1,286 @@
+domain: troubleshooting
+questions:
+  - id: ica-ts-001
+    difficulty: 1
+    type: single
+    question: A VirtualService refers to a Gateway that does not exist. Which command finds this kind of configuration problem in a namespace before you look at the proxies?
+    options:
+      - id: a
+        text: "istioctl proxy-status"
+        why: "proxy-status shows if proxies are in sync with istiod. A wrong reference can be in sync and still be wrong."
+      - id: b
+        text: "kubectl get pods -n <namespace>"
+        why: "This lists Pods and their status. It does not check Istio resources."
+      - id: c
+        text: "istioctl version"
+        why: "This shows client, control plane and data plane versions only."
+      - id: d
+        text: "istioctl analyze -n <namespace>"
+    answer: [d]
+    explanation: |
+      `istioctl analyze` checks Istio configuration in the cluster (or in local
+      files) and reports errors and warnings, such as references to unknown
+      gateways, hosts or subsets, or namespaces without injection.
+    docs:
+      - https://istio.io/latest/docs/ops/diagnostic-tools/istioctl-analyze/
+    glossary: [istioctl, virtualservice, istio-gateway]
+
+  - id: ica-ts-002
+    difficulty: 2
+    type: single
+    question: You changed a VirtualService, but one Pod still uses the old routes. Which command shows whether each proxy has received the latest configuration from istiod (SYNCED, NOT SENT, STALE)?
+    options:
+      - id: a
+        text: "istioctl proxy-status"
+      - id: b
+        text: "istioctl analyze"
+        why: "analyze checks your resources for mistakes. It does not show what each proxy received."
+      - id: c
+        text: "istioctl dashboard kiali"
+        why: "This opens the Kiali console. It shows traffic and config issues, not the xDS sync state of each proxy."
+      - id: d
+        text: "kubectl rollout status deployment/istiod -n istio-system"
+        why: "This only shows if the istiod Deployment finished rolling out."
+    answer: [a]
+    explanation: |
+      `istioctl proxy-status` lists every proxy connected to istiod and the state of
+      each xDS type (CDS, LDS, EDS, RDS...). STALE means istiod sent an update but
+      did not get an answer; NOT SENT means there was nothing to send.
+    docs:
+      - https://istio.io/latest/docs/ops/diagnostic-tools/proxy-cmd/
+    glossary: [istioctl, xds, istiod, envoy]
+
+  - id: ica-ts-003
+    difficulty: 2
+    type: single
+    question: You want to see which IP addresses the proxy of Pod productpage will use for the reviews service, and if they are HEALTHY. Which command do you run?
+    options:
+      - id: a
+        text: "istioctl proxy-config listener productpage-xxx"
+        why: "Listeners show which ports the proxy listens on. They do not show the backend endpoints."
+      - id: b
+        text: "istioctl proxy-config endpoint productpage-xxx"
+      - id: c
+        text: "istioctl proxy-config route productpage-xxx"
+        why: "Routes show how requests are matched to clusters, but not the endpoint IPs or their health."
+      - id: d
+        text: "istioctl proxy-config secret productpage-xxx"
+        why: "This shows the certificates of the proxy, not the endpoints of a service."
+    answer: [b]
+    explanation: |
+      `istioctl proxy-config` reads the Envoy configuration of one Pod: listener,
+      route, cluster, endpoint, secret and more. `endpoint` shows the IP addresses of
+      each cluster with their health status. Add, for example,
+      `--cluster "outbound|9080||reviews.default.svc.cluster.local"` to show only reviews.
+    docs:
+      - https://istio.io/latest/docs/ops/diagnostic-tools/proxy-cmd/
+    glossary: [istioctl, envoy]
+
+  - id: ica-ts-004
+    difficulty: 2
+    type: single
+    question: On which port does the Envoy admin interface of a sidecar listen inside the Pod?
+    options:
+      - id: a
+        text: "15001"
+        why: "15001 is where the sidecar captures outbound traffic from the application."
+      - id: b
+        text: "15006"
+        why: "15006 is where the sidecar captures inbound traffic for the application."
+      - id: c
+        text: "15000"
+      - id: d
+        text: "15021"
+        why: "15021 is the health check port of the proxy."
+    answer: [c]
+    explanation: |
+      The Envoy admin interface is on port 15000 and is only reachable inside the
+      Pod. You can use it with `kubectl port-forward <pod> 15000` or
+      `kubectl exec <pod> -c istio-proxy -- pilot-agent request GET config_dump`.
+      Port 15090 serves Envoy Prometheus metrics and 15020 the merged metrics.
+    docs:
+      - https://istio.io/latest/docs/ops/deployment/application-requirements/
+      - https://istio.io/latest/docs/ops/diagnostic-tools/proxy-cmd/
+    glossary: [envoy-admin, envoy]
+
+  - id: ica-ts-005
+    difficulty: 2
+    type: multiple
+    question: The namespace shop has the label istio-injection=enabled, but one Pod in it has no istio-proxy container. What can be the cause? (Choose two.)
+    options:
+      - id: a
+        text: "The Pod has the label sidecar.istio.io/inject=\"false\""
+      - id: b
+        text: "The namespace has a PeerAuthentication in STRICT mode"
+        why: "PeerAuthentication controls mTLS between proxies. It never removes or blocks sidecar injection."
+      - id: c
+        text: "The Pod was created before the namespace got the label"
+      - id: d
+        text: "The service has no DestinationRule"
+        why: "DestinationRules are optional traffic policies. They are not related to injection."
+    answer: [a, c]
+    explanation: |
+      Injection happens at Pod creation, and a Pod can opt out with the label
+      `sidecar.istio.io/inject: "false"`. Check also that the injector webhook
+      exists (`kubectl get mutatingwebhookconfiguration`) and that istiod is
+      running. `istioctl analyze` warns about Pods without sidecars.
+    docs:
+      - https://istio.io/latest/docs/ops/common-problems/injection/
+      - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/
+    glossary: [sidecar-injection, admission-webhook, envoy]
+
+  - id: ica-ts-006
+    difficulty: 2
+    type: single
+    question: Which command gives a short summary for one Pod, with the VirtualServices and DestinationRules that apply to it and whether it uses strict mTLS?
+    options:
+      - id: a
+        text: "kubectl describe pod <pod>"
+        why: "kubectl describe shows Kubernetes data like events and containers. It does not know about Istio routing rules."
+      - id: b
+        text: "istioctl proxy-config log <pod>"
+        why: "This shows or changes the Envoy log levels of the Pod."
+      - id: c
+        text: "istioctl x precheck"
+        why: "precheck checks if the cluster is ready to install or upgrade Istio."
+      - id: d
+        text: "istioctl x describe pod <pod>"
+    answer: [d]
+    explanation: |
+      `istioctl experimental describe pod` (short: `istioctl x describe pod`) shows
+      the ports, the DestinationRule and subsets that match, the VirtualServices
+      that route to the Pod, and warnings such as mTLS conflicts.
+    docs:
+      - https://istio.io/latest/docs/ops/diagnostic-tools/istioctl-describe/
+    glossary: [istioctl, virtualservice, destinationrule, mtls]
+
+  - id: ica-ts-007
+    difficulty: 2
+    type: single
+    question: An Envoy access log line shows status 503 with the response flag UO. What does UO mean?
+    options:
+      - id: a
+        text: "Upstream overflow: a circuit breaker limit was reached"
+      - id: b
+        text: "No route was found for the request"
+        why: "No route has the flag NR."
+      - id: c
+        text: "There is no healthy upstream host"
+        why: "No healthy upstream has the flag UH."
+      - id: d
+        text: "The request was denied by an AuthorizationPolicy"
+        why: "A denied request gets HTTP 403 (RBAC), not a 503 with UO."
+    answer: [a]
+    explanation: |
+      UO (upstream overflow) means Envoy rejected the request because a circuit
+      breaker limit from the DestinationRule connectionPool was reached. Other
+      common flags: UH (no healthy upstream), NR (no route), UF (upstream
+      connection failure).
+    docs:
+      - https://istio.io/latest/docs/tasks/traffic-management/circuit-breaking/
+      - https://istio.io/latest/docs/tasks/observability/logs/access-log/
+    glossary: [response-flags, circuit-breaking, envoy]
+
+  - id: ica-ts-008
+    difficulty: 2
+    type: single
+    question: You want more detailed Envoy logs for one Pod only, without restarting it. Which command do you use?
+    options:
+      - id: a
+        text: "istioctl install --set values.global.logging.level=debug"
+        why: "This changes the install for the whole control plane and needs a reinstall. It is not for one Pod at runtime."
+      - id: b
+        text: "istioctl proxy-config log <pod> --level debug"
+      - id: c
+        text: "kubectl logs <pod> -c istio-proxy --previous"
+        why: "This shows the logs of the previous container run. It does not change the log level."
+      - id: d
+        text: "kubectl rollout restart deployment/istiod -n istio-system"
+        why: "Restarting istiod does not change the log level of a sidecar."
+    answer: [b]
+    explanation: |
+      `istioctl proxy-config log <pod> --level debug` changes the Envoy log level
+      of that proxy at runtime (you can also choose single loggers). Read the logs
+      with `kubectl logs <pod> -c istio-proxy`.
+    docs:
+      - https://istio.io/latest/docs/ops/diagnostic-tools/component-logging/
+      - https://istio.io/latest/docs/ops/diagnostic-tools/proxy-cmd/
+    glossary: [istioctl, envoy]
+
+  - id: ica-ts-009
+    difficulty: 3
+    type: single
+    question: A Pod in an ambient namespace seems to bypass the mesh. Which command shows the workloads that ztunnel knows and whether it reaches them with HBONE?
+    options:
+      - id: a
+        text: "istioctl proxy-config listener ztunnel"
+        why: "ztunnel is not Envoy, so the sidecar proxy-config commands do not fit. Istio has ztunnel-config for it."
+      - id: b
+        text: "kubectl get pods -n istio-system -l app=ztunnel"
+        why: "This only shows that the ztunnel Pods run. It does not show which workloads they handle."
+      - id: c
+        text: "istioctl ztunnel-config workloads"
+      - id: d
+        text: "istioctl waypoint list"
+        why: "This lists waypoint proxies. Many ambient workloads have no waypoint at all."
+    answer: [c]
+    explanation: |
+      `istioctl ztunnel-config workloads` lists the workloads that ztunnel tracks,
+      with a PROTOCOL column: HBONE for mesh workloads, TCP for workloads outside
+      the mesh. Check also the namespace label and the ztunnel logs
+      (`kubectl -n istio-system logs -l app=ztunnel`).
+    docs:
+      - https://istio.io/latest/docs/ambient/usage/troubleshoot-ztunnel/
+    glossary: [ztunnel, hbone, istioctl, ambient-mode]
+
+  - id: ica-ts-010
+    difficulty: 1
+    type: single
+    question: Which standard Istio metric do you use in Prometheus to find the rate of HTTP 5xx responses of a service?
+    options:
+      - id: a
+        text: "istio_request_duration_milliseconds"
+        why: "This histogram measures latency. It is not the best metric to count responses by code."
+      - id: b
+        text: "istio_tcp_connections_opened_total"
+        why: "This counts TCP connections. It has no HTTP response codes."
+      - id: c
+        text: "container_cpu_usage_seconds_total"
+        why: "This is a cAdvisor metric for CPU, not an Istio request metric."
+      - id: d
+        text: "istio_requests_total"
+    answer: [d]
+    explanation: |
+      `istio_requests_total` is a counter with labels such as
+      `destination_service` and `response_code`. For example
+      `rate(istio_requests_total{response_code=~"5.."}[5m])` gives the 5xx rate.
+    docs:
+      - https://istio.io/latest/docs/reference/config/metrics/
+      - https://istio.io/latest/docs/tasks/observability/metrics/querying-metrics/
+    glossary: [prometheus, metrics]
+
+  - id: ica-ts-011
+    difficulty: 1
+    type: single
+    question: Which tool shows a graph of the services in the mesh, the traffic between them and their error rates, and also points out configuration problems?
+    options:
+      - id: a
+        text: "Kiali"
+      - id: b
+        text: "ztunnel"
+        why: "ztunnel is the L4 proxy of ambient mode. It produces telemetry but has no user interface."
+      - id: c
+        text: "istiod"
+        why: "istiod is the control plane. It does not show a service graph."
+      - id: d
+        text: "Helm"
+        why: "Helm is a package manager. It can install Kiali but does not show traffic."
+    answer: [a]
+    explanation: |
+      Kiali is the console for Istio. It builds the service graph from Prometheus
+      metrics, shows health and traffic, and validates Istio configuration. Open
+      it with `istioctl dashboard kiali`.
+    docs:
+      - https://istio.io/latest/docs/ops/integrations/kiali/
+      - https://istio.io/latest/docs/tasks/observability/kiali/
+    glossary: [kiali, prometheus, observability]

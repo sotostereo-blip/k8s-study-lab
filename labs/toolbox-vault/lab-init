@@ -1,0 +1,14 @@
+#!/bin/bash
+# Initialize Vault once (3 key shares, threshold 2), unseal it and save the keys and root token:
+#   /etc/lab/init.json   full init output (only for checks and task setups)
+#   /etc/lab/root-token  root token used by `labvault` (checks never depend on ~/.vault-token)
+#   /root/.vault-token   the student starts logged in as root
+until curl -s -o /dev/null "$VAULT_ADDR/v1/sys/health"; do sleep 1; done
+if [ "$(vault status -format=json 2>/dev/null | jq -r .initialized)" != true ]; then
+  vault operator init -key-shares=3 -key-threshold=2 -format=json > /etc/lab/init.json.tmp \
+    && mv /etc/lab/init.json.tmp /etc/lab/init.json
+fi
+for i in 0 1; do vault operator unseal "$(jq -r ".unseal_keys_b64[$i]" /etc/lab/init.json)" >/dev/null; done
+jq -r .root_token /etc/lab/init.json > /etc/lab/root-token
+cp /etc/lab/root-token /root/.vault-token
+chmod 600 /etc/lab/* /root/.vault-token

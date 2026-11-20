@@ -1,0 +1,213 @@
+# Vault glossary (HashiCorp Vault Associate). Shown when you click a highlighted term.
+# Reused from other files: tf-vault (Vault), raft, tls, oidc, kms, pki, lx-ldap,
+# lx-environment-variable, authentication, authorization.
+terms:
+- id: vault-token
+  term: Token (Vault)
+  match: [token, tokens]
+  certs: [vault]
+  definition: The core way to authenticate to Vault. Every request sends a token, and the token carries the policies that say what the request may do.
+  es: Token de Vault; credencial que acompaña cada petición y lleva las políticas.
+- id: vault-policy
+  term: Policy (Vault)
+  match: [policy, policies, ACL policy, ACL policies]
+  certs: [vault]
+  definition: An HCL or JSON document that lists paths and the capabilities (create, read, update, delete, list, sudo, deny) allowed on them. Vault denies everything that no policy allows.
+  es: Política de Vault; reglas de rutas y capacidades permitidas.
+- id: vault-default-policy
+  term: Default policy
+  match: [default policy]
+  certs: [vault]
+  definition: A built-in policy attached to every token unless you turn it off. It lets a token look up and renew itself and use its cubbyhole. You can change it but not delete it.
+  es: Política por defecto que Vault añade a todos los tokens.
+- id: vault-root-token
+  term: Root token
+  match: [root token, root tokens]
+  definition: A token with the root policy, which can do anything in Vault. It is created by `vault operator init`, never expires, and should be revoked after the first setup.
+  es: Token raíz; puede hacer todo en Vault y conviene revocarlo tras la configuración inicial.
+- id: vault-service-token
+  term: Service token
+  match: [service token, service tokens]
+  definition: The normal, full-featured Vault token (prefix hvs.). It is stored by Vault, has an accessor, can be renewed and can create child tokens.
+  es: Token de servicio; el tipo normal y completo de token de Vault.
+- id: vault-batch-token
+  term: Batch token
+  match: [batch token, batch tokens]
+  definition: A light, encrypted token (prefix hvb.) that Vault does not store. It has no accessor, cannot be renewed and cannot create child tokens, so it is good for many short jobs.
+  es: Token por lotes; ligero, no se guarda, no se renueva y no tiene accessor.
+- id: vault-orphan-token
+  term: Orphan token
+  match: [orphan token, orphan tokens]
+  definition: A token with no parent. It is not revoked when the token that created it is revoked.
+  es: Token huérfano; no tiene padre y no se revoca con él.
+- id: vault-periodic-token
+  term: Periodic token
+  match: [periodic token, periodic tokens]
+  definition: A token with a period instead of a max TTL. It lives forever as long as it is renewed before each period ends.
+  es: Token periódico; vive indefinidamente si se renueva antes de cada periodo.
+- id: vault-token-accessor
+  term: Token accessor
+  match: [token accessor, token accessors, accessor, accessors]
+  certs: [vault]
+  definition: A second value for a token that can look up, renew or revoke the token, but cannot be used to log in or read secrets.
+  es: Accessor del token; referencia que permite consultar, renovar o revocar un token sin poder usarlo.
+- id: vault-lease
+  term: Lease (Vault)
+  match: [lease, leases, lease ID, lease IDs]
+  certs: [vault]
+  definition: Metadata Vault attaches to a dynamic secret or service token, with a TTL and an ID. When the lease expires or is revoked, Vault removes the secret.
+  es: Concesión; tiempo de vida e ID asociados a un secreto dinámico.
+- id: vault-auth-method
+  term: Auth method
+  match: [auth method, auth methods]
+  definition: A Vault component that checks who a client is (with a password, a cloud identity, a JWT and so on) and gives it a token. Examples are userpass, AppRole, LDAP and Kubernetes.
+  es: Método de autenticación de Vault, que verifica la identidad y entrega un token.
+- id: vault-userpass
+  term: Userpass auth method
+  match: [userpass]
+  definition: An auth method where users log in with a username and password stored in Vault.
+  es: Método de autenticación con usuario y contraseña guardados en Vault.
+- id: vault-approle
+  term: AppRole
+  match: [AppRole, RoleID, SecretID, role_id, secret_id]
+  definition: An auth method for machines and apps. The app logs in with a RoleID (like a username) and a SecretID (like a password).
+  es: Método de autenticación para máquinas con RoleID y SecretID.
+- id: vault-entity
+  term: Entity (Vault identity)
+  match: [entity, entities, entity alias, entity aliases]
+  certs: [vault]
+  definition: One person or system in the Vault identity store. Its aliases link the accounts it has in different auth methods, and policies on the entity apply to all its tokens.
+  es: Entidad; representa a una persona o sistema y une sus cuentas de varios métodos.
+- id: vault-identity-group
+  term: Identity group
+  match: [identity group, identity groups, internal group, internal groups, external group, external groups]
+  definition: A set of entities (internal group) or a group mapped from an outside system such as LDAP or OIDC (external group). Its policies apply to all members.
+  es: Grupo de identidad; conjunto de entidades que comparten políticas.
+- id: vault-secrets-engine
+  term: Secrets engine
+  match: [secrets engine, secrets engines]
+  definition: A Vault component enabled at a path that stores, creates or encrypts data. Examples are KV, database, AWS, PKI and Transit.
+  es: Motor de secretos; componente montado en una ruta que guarda, genera o cifra datos.
+- id: vault-mount-path
+  term: Mount path
+  match: [mount path, mount paths]
+  definition: The path where a secrets engine or auth method is enabled, such as secret/ or auth/approle/. Several copies of the same engine can use different paths.
+  es: Ruta de montaje de un motor de secretos o método de autenticación.
+- id: vault-kv
+  term: KV secrets engine
+  match: [KV, KV v1, KV v2, key/value]
+  definition: A secrets engine that stores static key/value secrets. Version 2 keeps several versions of each secret and uses data/ and metadata/ paths in the API and in policies.
+  es: Motor clave/valor para secretos estáticos; la versión 2 guarda versiones.
+- id: vault-dynamic-secret
+  term: Dynamic secret
+  match: [dynamic secret, dynamic secrets]
+  definition: A secret that Vault creates on demand for one client, with a lease, and deletes when the lease ends. Example - a database user created by the database secrets engine.
+  es: Secreto dinámico; credencial creada al momento con tiempo de vida limitado.
+- id: vault-static-secret
+  term: Static secret
+  match: [static secret, static secrets]
+  definition: A secret that you write into Vault and that stays the same until someone changes it, such as a value in the KV secrets engine.
+  es: Secreto estático; valor que guardas tú y no cambia solo.
+- id: vault-cubbyhole
+  term: Cubbyhole
+  match: [cubbyhole]
+  definition: A private storage area for each token. Only that token can read it, and it is deleted when the token expires or is revoked.
+  es: Almacén privado de cada token que se borra al expirar el token.
+- id: vault-response-wrapping
+  term: Response wrapping
+  match: [response wrapping, wrapping token, wrapping tokens]
+  definition: Vault puts a response in the cubbyhole of a new single-use token and returns only that wrapping token. The receiver unwraps it once to get the real data.
+  es: Envoltura de respuesta; Vault entrega un token de un solo uso en lugar del secreto.
+- id: vault-transit
+  term: Transit secrets engine
+  match: [Transit, Transit secrets engine, encryption as a service]
+  certs: [vault]
+  definition: A secrets engine that encrypts, decrypts, signs and hashes data sent to it, without storing that data. Apps never see the encryption keys.
+  es: Motor Transit; cifrado como servicio sin guardar los datos.
+- id: vault-key-version
+  term: Key version (Transit)
+  match: [key version, key versions, rewrap, min_decryption_version]
+  definition: Each rotation of a Transit key adds a new version. Ciphertext shows the version it used (vault:v2:...), and rewrap moves old ciphertext to the newest version.
+  es: Versión de clave de Transit; cada rotación crea una nueva.
+- id: vault-seal
+  term: Seal / unseal
+  match: [seal, sealed, unseal, unsealed, unsealing]
+  certs: [vault]
+  definition: A sealed Vault knows where its data is but cannot decrypt it. Unsealing gives Vault the key it needs to decrypt the root key, so it can serve requests.
+  es: Sellar / desellar; estado en el que Vault no puede (o puede) descifrar sus datos.
+- id: vault-shamir
+  term: Shamir's Secret Sharing
+  match: [Shamir, Shamir's Secret Sharing, unseal key, unseal keys, key shares, key threshold]
+  definition: The default seal. The unseal key is split into shares (5 by default) and a threshold of them (3 by default) must be entered to unseal Vault.
+  es: Esquema de Shamir; la clave de desellado se divide en partes y hace falta un mínimo.
+- id: vault-auto-unseal
+  term: Auto unseal
+  match: [auto unseal, auto-unseal]
+  definition: A seal that uses a trusted service such as a cloud KMS, an HSM or another Vault's Transit engine to protect the root key, so Vault unseals itself when it starts.
+  es: Desellado automático con un KMS, HSM u otro Vault.
+- id: vault-recovery-key
+  term: Recovery key
+  match: [recovery key, recovery keys]
+  definition: Key shares created when Vault uses auto unseal. They cannot unseal Vault, but they authorize actions like generating a new root token.
+  es: Claves de recuperación; no desellan, pero autorizan operaciones como generar un root token.
+- id: vault-root-key
+  term: Root key and keyring
+  match: [root key, keyring]
+  definition: The keyring holds the encryption keys that protect all data in storage. The root key encrypts the keyring, and the seal protects the root key.
+  es: Clave raíz y llavero de claves que cifran los datos de Vault.
+- id: vault-barrier
+  term: Barrier
+  match: [barrier, cryptographic barrier]
+  certs: [vault]
+  definition: The encryption layer between Vault and its storage backend. All data leaving Vault for storage is encrypted with AES-256-GCM.
+  es: Barrera criptográfica entre Vault y su almacenamiento.
+- id: vault-storage-backend
+  term: Storage backend
+  match: [storage backend, storage backends]
+  definition: Where Vault keeps its encrypted data, such as Integrated Storage (Raft) or Consul. Vault does not trust the storage backend.
+  es: Backend de almacenamiento donde Vault guarda sus datos cifrados.
+- id: vault-integrated-storage
+  term: Integrated Storage
+  match: [Integrated Storage]
+  definition: Vault's built-in storage backend based on Raft. Each node keeps a copy of the data, and it supports high availability without an outside service.
+  es: Almacenamiento integrado de Vault basado en Raft.
+- id: vault-dev-server
+  term: Dev server
+  match: [dev server, dev mode]
+  definition: A Vault server started with `vault server -dev`. It runs in memory, starts unsealed with a root token and a KV v2 engine at secret/. Only for learning and tests.
+  es: Servidor de desarrollo; en memoria, ya desellado, solo para pruebas.
+- id: vault-env
+  term: Vault CLI environment variables
+  match: [VAULT_ADDR, VAULT_TOKEN, VAULT_NAMESPACE, VAULT_CACERT, VAULT_SKIP_VERIFY]
+  definition: Variables the vault CLI reads, for example VAULT_ADDR (server address), VAULT_TOKEN (token to use) and VAULT_NAMESPACE (namespace for requests).
+  es: Variables de entorno que lee el CLI de Vault.
+- id: vault-performance-replication
+  term: Performance replication
+  match: [performance replication, performance secondary, performance secondaries]
+  definition: A Vault Enterprise feature that copies configuration and secrets to other clusters, which serve client reads. Each secondary keeps its own tokens and leases.
+  es: Replicación de rendimiento; clusters secundarios que atienden peticiones.
+- id: vault-dr-replication
+  term: Disaster recovery replication
+  match: [DR replication, disaster recovery replication, DR secondary, DR secondaries]
+  definition: A Vault Enterprise feature that keeps a full copy of a cluster, tokens and leases included. A DR secondary serves no clients until you promote it.
+  es: Replicación para recuperación ante desastres; copia completa en espera.
+- id: vault-hcp-dedicated
+  term: HCP Vault Dedicated
+  match: [HCP Vault Dedicated, HCP Vault]
+  definition: Vault clusters run by HashiCorp on the HashiCorp Cloud Platform. HashiCorp handles servers, storage, unsealing, upgrades and backups; you manage auth, policies and secrets.
+  es: Vault gestionado por HashiCorp en su nube (HCP).
+- id: vault-agent
+  term: Vault Agent
+  match: [Vault Agent, auto-auth]
+  definition: A client daemon that logs in to Vault for an app (auto-auth), keeps the token renewed and renders secrets into files with templates.
+  es: Agente de Vault; se autentica por la aplicación y escribe secretos en archivos.
+- id: vault-agent-injector
+  term: Vault Agent Injector
+  match: [Vault Agent Injector, Agent Injector]
+  definition: A Kubernetes webhook that adds a Vault Agent container to Pods that have special annotations, so secrets appear as files in a shared volume.
+  es: Inyector que añade un contenedor de Vault Agent a los Pods.
+- id: vault-vso
+  term: Vault Secrets Operator
+  match: [Vault Secrets Operator, VSO]
+  definition: A Kubernetes operator that reads secrets from Vault, as described in custom resources such as VaultStaticSecret, and syncs them into Kubernetes Secrets.
+  es: Operador de Kubernetes que sincroniza secretos de Vault en Secrets de Kubernetes.
