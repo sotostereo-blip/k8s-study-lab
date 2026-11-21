@@ -1,0 +1,59 @@
+id: ica-debug-001
+title: Fix a route that always returns 503
+domain: troubleshooting
+difficulty: 2
+minutes: 8
+environment: istio
+setup: |
+  lab-app ns store inject
+  lab-app echo store cart v1 "cart v1"
+  lab-app echo store cart v2 "cart v2"
+  lab-app client store store-client
+  lab-app wait store
+  kubectl apply -n store -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: DestinationRule
+  metadata: { name: cart }
+  spec:
+    host: cart
+    subsets:
+      - { name: v1, labels: { version: v1 } }
+      - { name: v2, labels: { version: "2" } }
+  ---
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata: { name: cart }
+  spec:
+    hosts: [cart]
+    http:
+      - route:
+          - destination: { host: cart, subset: v2 }
+  YAML
+task: |
+  In the namespace `store`, all traffic for `cart` should go to version **v2** (the Pods of
+  the Deployment `cart-v2`). But every request now fails with HTTP 503.
+
+  Find the cause and fix it, so that requests to `cart` get `cart v2`. Do not change the
+  `VirtualService` `cart` and do not change the Pods.
+
+  Test: `lab-app curl store store-client http://cart`. Useful: `istioctl analyze -n store`,
+  `istioctl proxy-config endpoints deploy/store-client -n store`.
+checks:
+  - name: Requests to cart get cart v2 (5 requests)
+    run: |
+      out=$(for i in $(seq 5); do lab-app curl store store-client http://cart; done)
+      [ "$(echo "$out" | grep -c "cart v2")" -eq 5 ]
+  - name: VirtualService `cart` still sends all traffic to subset v2
+    run: |
+      kubectl -n store get virtualservice cart -o json | jq -e '[.spec.http[].route[].destination.subset] == ["v2"]' >/dev/null
+    guard: true
+solution: |
+  lab-app curl store store-client http://cart        # "no healthy upstream" (HTTP 503)
+  kubectl -n store get pods --show-labels             # the Pods have version=v2
+  kubectl -n store get destinationrule cart -o yaml   # subset v2 selects version: "2" -> no Pods
+  kubectl -n store patch destinationrule cart --type=json \
+    -p '[{"op": "replace", "path": "/spec/subsets/1/labels/version", "value": "v2"}]'
+  # A subset whose labels match no Pod has no endpoints: Envoy answers 503 "no healthy upstream".
+docs:
+  - https://istio.io/latest/docs/ops/common-problems/network-issues/
+  - https://istio.io/latest/docs/ops/diagnostic-tools/proxy-cmd/

@@ -1,0 +1,69 @@
+id: ica-debug-003
+title: Make header routing work for a TCP-named port
+domain: troubleshooting
+difficulty: 3
+minutes: 8
+environment: istio
+setup: |
+  lab-app ns helpdesk inject
+  lab-app echo helpdesk desk v1 "desk v1"
+  lab-app echo helpdesk desk v2 "desk v2"
+  lab-app client helpdesk helpdesk-client
+  kubectl -n helpdesk patch service desk --type=json -p '[{"op": "replace", "path": "/spec/ports/0/name", "value": "tcp-web"}]'
+  lab-app wait helpdesk
+  kubectl apply -n helpdesk -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: DestinationRule
+  metadata: { name: desk }
+  spec:
+    host: desk
+    subsets:
+      - { name: v1, labels: { version: v1 } }
+      - { name: v2, labels: { version: v2 } }
+  ---
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata: { name: desk }
+  spec:
+    hosts: [desk]
+    http:
+      - match:
+          - headers:
+              x-vip: { exact: "yes" }
+        route:
+          - destination: { host: desk, subset: v2 }
+      - route:
+          - destination: { host: desk, subset: v1 }
+  YAML
+task: |
+  In the namespace `helpdesk`, the `VirtualService` `desk` should send requests with the header
+  `x-vip: yes` to **v2** and all other requests to **v1**. The DestinationRule and the
+  VirtualService look correct, but requests go to v1 and v2 at random.
+
+  Find the cause and fix it **without changing** the VirtualService or the DestinationRule.
+  The app speaks HTTP on its port.
+
+  Test: `lab-app curl helpdesk helpdesk-client http://desk` (a few times).
+checks:
+  - name: Requests without x-vip always get desk v1
+    run: |
+      out=$(for i in $(seq 10); do lab-app curl helpdesk helpdesk-client http://desk; done)
+      [ "$(echo "$out" | grep -c "desk v1")" -eq 10 ]
+  - name: Requests with x-vip=yes always get desk v2
+    run: |
+      out=$(for i in $(seq 10); do lab-app curl helpdesk helpdesk-client -H "x-vip: yes" http://desk; done)
+      [ "$(echo "$out" | grep -c "desk v2")" -eq 10 ]
+  - name: The VirtualService `desk` was not changed
+    run: |
+      kubectl -n helpdesk get virtualservice desk -o json | jq -e '.spec.http | length == 2
+        and .[0].match[0].headers["x-vip"].exact == "yes" and .[0].route[0].destination.subset == "v2"' >/dev/null
+    guard: true
+solution: |
+  kubectl -n helpdesk get service desk -o yaml    # the port is called "tcp-web"
+  # Istio picks the protocol from the port name (or appProtocol). "tcp-..." means plain TCP,
+  # so the HTTP rules of the VirtualService are never used. Tell Istio it is HTTP:
+  kubectl -n helpdesk patch service desk --type=json \
+    -p '[{"op": "replace", "path": "/spec/ports/0/name", "value": "http-web"}]'
+  # or set appProtocol: http on the port.
+docs:
+  - https://istio.io/latest/docs/ops/configuration/traffic-management/protocol-selection/

@@ -1,0 +1,43 @@
+id: ica-debug-002
+title: Find why a Pod has no sidecar
+domain: troubleshooting
+difficulty: 1
+minutes: 6
+environment: istio
+setup: |
+  lab-app ns media inject
+  lab-app echo media player v1 "player v1"
+  kubectl -n media patch deployment player-v1 --type=merge \
+    -p '{"spec":{"template":{"metadata":{"labels":{"sidecar.istio.io/inject":"false"}}}}}'
+  lab-app wait media
+task: |
+  The namespace `media` has automatic sidecar injection turned on, but the Pods of the
+  Deployment `player-v1` start **without** the Envoy sidecar (`istioctl proxy-status` does not
+  list them).
+
+  Find the reason and fix it, so the running `player-v1` Pods have the sidecar.
+  Keep the injection label on the namespace.
+checks:
+  - name: The running player-v1 Pods have the istio-proxy sidecar and are ready
+    run: |
+      out=$(kubectl -n media get pods -l app=player -o json) &&
+      [ "$(echo "$out" | jq '[.items[] | select(.metadata.deletionTimestamp == null)] | length')" -ge 1 ] &&
+      echo "$out" | jq -e '[.items[] | select(.metadata.deletionTimestamp == null)
+        | ([.spec.containers[].name] + [.spec.initContainers[]?.name] | index("istio-proxy") != null)
+          and (.status.conditions[]? | select(.type == "Ready") | .status == "True")] | all' >/dev/null
+  - name: Namespace media still has istio-injection=enabled
+    run: '[ "$(kubectl get ns media -o jsonpath="{.metadata.labels.istio-injection}")" = enabled ]'
+    guard: true
+solution: |
+  kubectl -n media get deploy player-v1 -o yaml | grep -n inject
+  # The Pod template has the label sidecar.istio.io/inject: "false". It turns injection off for
+  # these Pods even when the namespace has it on.
+  kubectl -n media patch deployment player-v1 --type=json \
+    -p '[{"op": "remove", "path": "/spec/template/metadata/labels/sidecar.istio.io~1inject"}]'
+  kubectl -n media rollout status deployment player-v1
+  istioctl proxy-status | grep player
+  # Other things to check: the namespace label, the istiod Pod, and the webhook:
+  #   kubectl get mutatingwebhookconfigurations
+docs:
+  - https://istio.io/latest/docs/ops/common-problems/injection/
+  - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/

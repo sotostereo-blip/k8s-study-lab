@@ -1,0 +1,48 @@
+id: ica-security-001
+title: Require mutual TLS in a namespace
+domain: securing-workloads
+difficulty: 1
+minutes: 5
+environment: istio
+setup: |
+  lab-app ns payments inject
+  lab-app echo payments ledger v1 "ledger v1"
+  lab-app client payments payments-client
+  lab-app ns outsider
+  lab-app client outsider outsider-client
+  lab-app wait payments
+  lab-app wait outsider
+task: |
+  The Service `ledger` runs in the namespace `payments`, which is in the mesh. The namespace
+  `outsider` is **not** in the mesh (no sidecars), and today its Pods can still call `ledger`
+  with plain text, because Istio accepts both (PERMISSIVE mode).
+
+  Make every workload in `payments` accept **only mutual TLS** traffic. Change only the
+  namespace `payments` (not the whole mesh).
+
+  Test: `lab-app curl outsider outsider-client http://ledger.payments` and
+  `lab-app curl payments payments-client http://ledger`
+checks:
+  - name: Pods outside the mesh can no longer call ledger
+    run: '! lab-app curl outsider outsider-client http://ledger.payments >/dev/null 2>&1'
+  - name: A PeerAuthentication in payments sets mTLS mode STRICT
+    run: |
+      kubectl -n payments get peerauthentication -o json | jq -e '[.items[] | select(.spec.mtls.mode == "STRICT")] | length > 0' >/dev/null
+  - name: Pods in the mesh still call ledger
+    run: '[ "$(lab-app curl payments payments-client http://ledger)" = "ledger v1" ]'
+    guard: true
+solution: |
+  kubectl apply -n payments -f - <<'YAML'
+  apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    name: default
+  spec:
+    mtls:
+      mode: STRICT
+  YAML
+  # A PeerAuthentication without a selector applies to the whole namespace.
+  # In istio-system (the root namespace) it would apply to the whole mesh.
+docs:
+  - https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/
+  - https://istio.io/latest/docs/reference/config/security/peer_authentication/

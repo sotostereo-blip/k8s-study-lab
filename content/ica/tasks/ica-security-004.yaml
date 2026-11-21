@@ -1,0 +1,77 @@
+id: ica-security-004
+title: Require a valid JWT for a service
+domain: securing-workloads
+difficulty: 3
+minutes: 10
+environment: istio
+setup: |
+  lab-app ns tickets inject
+  lab-app echo tickets orders-api v1 "orders-api v1"
+  lab-app client tickets tickets-client
+  lab-app wait tickets
+  # an RSA key, its public JWKS and two signed tokens (issuers https://auth.lab and https://other.lab)
+  mkdir -p /etc/lab/jwt && cd /etc/lab/jwt
+  b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+  openssl genrsa -out key.pem 2048 2>/dev/null
+  n=$(openssl rsa -in key.pem -noout -modulus | cut -d= -f2 | xxd -r -p | b64url)
+  printf '{"keys":[{"kty":"RSA","alg":"RS256","use":"sig","kid":"lab","n":"%s","e":"AQAB"}]}\n' "$n" > /root/jwks.json
+  mk() {
+    h=$(printf '{"alg":"RS256","typ":"JWT","kid":"lab"}' | b64url)
+    p=$(printf '{"iss":"%s","sub":"student","exp":%s}' "$1" $(( $(date +%s) + 31536000 )) | b64url)
+    s=$(printf '%s.%s' "$h" "$p" | openssl dgst -sha256 -sign key.pem -binary | b64url)
+    echo "$h.$p.$s"
+  }
+  mk https://auth.lab > /root/good.jwt
+  mk https://other.lab > /etc/lab/jwt/other.jwt
+task: |
+  The Service `orders-api` runs in the namespace `tickets`. Only callers with a valid **JWT**
+  from the issuer `https://auth.lab` may use it. The issuer's public keys (a JWKS) are in
+  `/root/jwks.json`, and a valid token for testing is in `/root/good.jwt`.
+
+  1. Create a `RequestAuthentication` for the workloads with the label `app: orders-api` that
+     accepts tokens from the issuer `https://auth.lab`, with the keys from `/root/jwks.json`
+     (use the `jwks` field).
+  2. Create an `AuthorizationPolicy` so that requests **without** a valid token are denied.
+
+  Test: `lab-app curl tickets tickets-client -H "Authorization: Bearer $(cat /root/good.jwt)" http://orders-api`
+checks:
+  - name: A request with the valid token gets HTTP 200
+    run: |
+      [ "$(lab-app curl tickets tickets-client -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $(cat /root/good.jwt)" http://orders-api)" = 200 ]
+    guard: true
+  - name: A request without a token gets HTTP 403
+    run: '[ "$(lab-app curl tickets tickets-client -o /dev/null -w "%{http_code}" http://orders-api)" = 403 ]'
+  - name: A token from another issuer gets HTTP 401
+    run: |
+      [ "$(lab-app curl tickets tickets-client -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $(cat /etc/lab/jwt/other.jwt)" http://orders-api)" = 401 ]
+solution: |
+  kubectl apply -n tickets -f - <<YAML
+  apiVersion: security.istio.io/v1
+  kind: RequestAuthentication
+  metadata:
+    name: orders-api-jwt
+  spec:
+    selector:
+      matchLabels: { app: orders-api }
+    jwtRules:
+      - issuer: https://auth.lab
+        jwks: '$(cat /root/jwks.json)'
+  ---
+  apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    name: orders-api-require-jwt
+  spec:
+    selector:
+      matchLabels: { app: orders-api }
+    action: ALLOW
+    rules:
+      - from:
+          - source:
+              requestPrincipals: ["https://auth.lab/*"]
+  YAML
+  # RequestAuthentication only rejects BAD tokens (401). A request with NO token passes it,
+  # so the AuthorizationPolicy with requestPrincipals is what denies it (403).
+docs:
+  - https://istio.io/latest/docs/tasks/security/authorization/authz-jwt/
+  - https://istio.io/latest/docs/reference/config/security/request_authentication/

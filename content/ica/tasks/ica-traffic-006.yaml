@@ -1,0 +1,52 @@
+id: ica-traffic-006
+title: Allow one external host in a closed namespace
+domain: traffic-management
+difficulty: 2
+minutes: 7
+environment: istio
+setup: |
+  lab-app ns partners inject
+  lab-app client partners partners-client
+  lab-app wait partners
+  kubectl apply -n partners -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: Sidecar
+  metadata: { name: default }
+  spec:
+    outboundTrafficPolicy: { mode: REGISTRY_ONLY }
+  YAML
+task: |
+  The namespace `partners` has a `Sidecar` resource with `outboundTrafficPolicy: REGISTRY_ONLY`:
+  its Pods can only call hosts that the mesh knows. The app now needs the web server
+  `legacy.lab` (port 80, HTTP). It runs **outside** the cluster.
+
+  Make `http://legacy.lab/` work from the Pods in `partners`. Keep `REGISTRY_ONLY`: do not
+  change or delete the `Sidecar` resource.
+
+  Test: `lab-app curl partners partners-client -o /dev/null -w '%{http_code}\n' http://legacy.lab/`
+checks:
+  - name: The client in partners gets the page from http://legacy.lab/
+    run: |
+      out=$(lab-app curl partners partners-client http://legacy.lab/) && echo "$out" | grep -q "Welcome to nginx"
+  - name: Sidecar `default` in partners still uses REGISTRY_ONLY
+    run: '[ "$(kubectl -n partners get sidecar default -o jsonpath="{.spec.outboundTrafficPolicy.mode}")" = REGISTRY_ONLY ]'
+    guard: true
+solution: |
+  kubectl apply -n partners -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: ServiceEntry
+  metadata:
+    name: legacy
+  spec:
+    hosts: ["legacy.lab"]
+    location: MESH_EXTERNAL
+    resolution: DNS
+    ports:
+      - { number: 80, name: http, protocol: HTTP }
+  YAML
+  # Before: HTTP 502 (the proxy sends unknown hosts to the BlackHoleCluster).
+  # A ServiceEntry adds the host to the mesh's service registry.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/
+  - https://istio.io/latest/docs/reference/config/networking/service-entry/
+  - https://istio.io/latest/docs/reference/config/networking/sidecar/

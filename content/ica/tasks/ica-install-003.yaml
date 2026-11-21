@@ -1,0 +1,45 @@
+id: ica-install-003
+title: Move a namespace to a canary control plane
+domain: installation
+difficulty: 2
+minutes: 8
+environment: istio
+setup: |
+  lab-app ns billing inject
+  lab-app echo billing invoices v1 "invoices v1"
+  lab-app wait billing
+task: |
+  You will test a new control plane before you move the whole mesh to it (a **canary upgrade**).
+
+  1. Install a second control plane with the **revision** `canary`, next to the existing one.
+     Install only istiod (no extra gateways), for example with the `minimal` profile.
+  2. Move the namespace `billing` to the `canary` revision and restart its Deployment
+     `invoices-v1`, so its proxy is injected by `istiod-canary`.
+
+  The default control plane (`istiod`) must keep running.
+checks:
+  - name: Deployment `istiod-canary` runs in istio-system
+    run: kubectl -n istio-system rollout status deployment istiod-canary --timeout=5s
+  - name: Namespace `billing` uses the label istio.io/rev=canary (and not istio-injection)
+    run: |
+      [ "$(kubectl get ns billing -o jsonpath='{.metadata.labels.istio\.io/rev}')" = canary ] &&
+      [ -z "$(kubectl get ns billing -o jsonpath='{.metadata.labels.istio-injection}')" ]
+  - name: The running `invoices` Pod was injected by the canary revision
+    run: |
+      st=$(kubectl -n billing get pods -l app=invoices -o json | jq -r '[.items[] | select(.metadata.deletionTimestamp == null)
+        | .metadata.annotations["sidecar.istio.io/status"] // "{}" | fromjson | .revision // ""] | unique | join(",")') &&
+      [ "$st" = canary ]
+  - name: The default control plane `istiod` still runs
+    run: kubectl -n istio-system rollout status deployment istiod --timeout=5s
+    guard: true
+solution: |
+  istioctl install -y --set revision=canary --set profile=minimal
+  kubectl -n istio-system get deploy            # istiod and istiod-canary
+  kubectl label namespace billing istio-injection- istio.io/rev=canary
+  kubectl -n billing rollout restart deployment invoices-v1
+  istioctl proxy-status                          # the billing Pod now shows istiod-canary
+  # istio-injection=enabled always wins over istio.io/rev, so remove it first.
+  # When the canary works, move the other namespaces, then remove the old control plane.
+docs:
+  - https://istio.io/latest/docs/setup/upgrade/canary/
+  - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/

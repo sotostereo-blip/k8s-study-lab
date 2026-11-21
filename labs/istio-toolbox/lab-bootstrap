@@ -1,0 +1,29 @@
+#!/bin/bash
+# Runs once in the background when the lab starts: makes legacy.lab (a web server outside the
+# cluster) resolvable inside the cluster and installs Istio 1.31 (k3s ships the Gateway API CRDs).
+# Log: /var/log/lab-bootstrap.log. lab-ready waits for /run/lab-bootstrap.done.
+exec >>/var/log/lab-bootstrap.log 2>&1
+set -x
+until kubectl get --raw /readyz >/dev/null 2>&1; do sleep 2; done
+
+# Pods use CoreDNS, which cannot see Docker's DNS: add a hosts entry for the outside web server.
+until ip=$(getent hosts legacy.lab | awk '{print $1; exit}') && [ -n "$ip" ]; do sleep 1; done
+until kubectl apply -f - <<YAML
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: coredns-custom, namespace: kube-system }
+data:
+  legacy.server: |
+    legacy.lab:53 {
+      hosts {
+        $ip legacy.lab
+      }
+    }
+YAML
+do sleep 2; done
+until kubectl -n kube-system get deploy coredns >/dev/null 2>&1; do sleep 2; done
+kubectl -n kube-system rollout restart deploy coredns
+
+until kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; do sleep 3; done
+until istioctl install -y -f /opt/istio/base.yaml; do sleep 5; done
+touch /run/lab-bootstrap.done

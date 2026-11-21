@@ -15,6 +15,7 @@ labs/
 ├── toolbox-gitea/, gitea-runner/, gitea-server/  # git + Gitea API helpers, act_runner, Gitea (GH-200)
 ├── toolbox-prometheus/, prometheus-apps/   # promtool, amtool; demo apps and an alert webhook (PCA)
 ├── argocd-k3s/, argocd-toolbox/, argocd-git/  # k3s with Argo images preloaded, argocd/argo CLIs, Git server (CAPA)
+├── istio-k3s/, istio-toolbox/  # k3s with Istio 1.31 images preloaded; istioctl and the lab-app test apps (ICA)
 ├── toolbox-aws/          # AWS CLI for LocalStack (AWS SAA)
 ├── toolbox-vault/        # vault CLI 1.19, psql; initializes and unseals the Vault server at start (Vault)
 └── envs/
@@ -24,6 +25,7 @@ labs/
     ├── kubeadm/          # kubeadm v1.36: controlplane + node01 (not joined)  (CKA etcd, upgrade, join)
     ├── secure-node/      # k3s v1.37 with API audit logging        (CKS)
     ├── argocd/           # k3s v1.37 + Argo CD, Rollouts, Workflows + a Git server (CAPA)
+    ├── istio/            # k3s v1.37 + Istio 1.31 + a web server outside the cluster (ICA)
     ├── terraform/        # LocalStack (free AWS emulator) + terraform (Terraform labs)
     ├── aws/              # LocalStack with 13 AWS services + AWS CLI (AWS SAA)
     ├── vault/            # Vault 1.19 server (Shamir, file storage) + PostgreSQL 17 (Vault Associate)

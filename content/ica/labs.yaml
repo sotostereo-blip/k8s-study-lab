@@ -1,0 +1,32 @@
+# Hands-on labs for the ICA (Istio Certified Associate). The real exam is performance-based:
+# these tasks are solved with kubectl and istioctl on a real cluster with Istio 1.31 (the version
+# of the exam environment).
+id: ica
+name: Istio Certified Associate
+exam_minutes: 120
+passing_score: 68
+intro: "a one-node k3s cluster with Istio 1.31 (istiod and an ingress gateway)"
+domains:
+  - { id: installation, name: "Installation, Upgrades, and Configuration", weight: 20 }
+  - { id: traffic-management, name: "Traffic Management", weight: 35 }
+  - { id: securing-workloads, name: "Securing Workloads", weight: 25 }
+  - { id: troubleshooting, name: "Troubleshooting", weight: 20 }
+environments:
+  istio:
+    name: "k3s v1.37 + Istio 1.31 (default profile, ingress gateway on NodePort 30080/30443)"
+    nodes: 1
+    label: "Istio"
+    tools: "`kubectl`, `istioctl`, `helm`; test apps with `lab-app`; ingress at `http://server:30080`"
+    ready: "lab-ready"
+    ready_timeout: 900
+mock: true
+mock_environment: istio
+exam_rules:
+  docs:
+    - { name: "Istio Documentation", url: "https://istio.io/latest/docs/" }
+    - { name: "Istio Blog", url: "https://istio.io/latest/blog/" }
+    - { name: "Kubernetes Documentation", url: "https://kubernetes.io/docs/home/" }
+  notes:
+    - "Only one browser, inside the exam machine. Do not open external search results."
+    - "The exam environment runs Istio 1.31; istio.io/latest describes the newest release, so check the version notes when a feature changed."
+  source: "https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed"

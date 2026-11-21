@@ -12,7 +12,7 @@ format: >-
   The real ICA exam is hands-on (performance-based): 15-20 tasks that you solve on the command
   line (kubectl, istioctl) in 2 hours. There are no multiple-choice questions in the real exam.
   This multiple-choice bank is only for learning the concepts, the Istio resources, the commands
-  and the English words; practise the real skills on a cluster with Istio installed.
+  and the English words; practise the real skills in the Labs tab (a real cluster with Istio 1.31).
 exam_minutes: 120
 exam_questions: 40
 passing_score: 68

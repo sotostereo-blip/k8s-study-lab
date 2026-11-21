@@ -18,7 +18,7 @@ Everything runs on your machine with Docker. No account, no cloud costs, your pr
 | **CKA** — Certified Kubernetes Administrator | — | 45 tasks + mock exam (incl. Gateway API, etcd backup/restore, kubeadm upgrade and join) |
 | **CKAD** — Certified Kubernetes Application Developer | — | 27 tasks + mock exam |
 | **CKS** — Certified Kubernetes Security Specialist | — | 24 tasks + mock exam |
-| **ICA** — Istio Certified Associate | 53 concept questions | — |
+| **ICA** — Istio Certified Associate | 53 concept questions | 16 tasks + mock exam (k3s + Istio 1.31) |
 | **Terraform Associate (004)** — HashiCorp | 152 questions | 19 tasks (Terraform + LocalStack) |
 | **Vault Associate (003)** — HashiCorp | 64 questions | 12 tasks (real Vault 1.19 server + PostgreSQL) |
 | **LFCS** — Linux Foundation Certified System Administrator | 80 concept questions | 33 tasks + mock exam (Ubuntu servers with systemd, LVM, swap) |

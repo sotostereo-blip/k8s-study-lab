@@ -1,0 +1,62 @@
+id: ica-traffic-003
+title: Route test users by a request header
+domain: traffic-management
+difficulty: 2
+minutes: 7
+environment: istio
+setup: |
+  lab-app ns beta inject
+  lab-app echo beta api v1 "api v1"
+  lab-app echo beta api v2 "api v2"
+  lab-app client beta beta-client
+  lab-app wait beta
+  kubectl apply -n beta -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: DestinationRule
+  metadata: { name: api }
+  spec:
+    host: api
+    subsets:
+      - { name: v1, labels: { version: v1 } }
+      - { name: v2, labels: { version: v2 } }
+  YAML
+task: |
+  In the namespace `beta` the Service `api` has two versions, and the `DestinationRule` `api`
+  already defines the subsets `v1` and `v2`.
+
+  Create a `VirtualService` called `api` so that:
+
+  - requests with the header `x-group: testers` (exact value) go to subset **v2**;
+  - all other requests go to subset **v1**.
+
+  Test: `lab-app curl beta beta-client -H "x-group: testers" http://api`
+checks:
+  - name: Requests with x-group=testers always get v2
+    run: |
+      out=$(for i in $(seq 8); do lab-app curl beta beta-client -H "x-group: testers" http://api; done)
+      [ "$(echo "$out" | grep -c "api v2")" -eq 8 ]
+  - name: Requests without the header (or another value) always get v1
+    run: |
+      out=$(for i in $(seq 6); do lab-app curl beta beta-client http://api; lab-app curl beta beta-client -H "x-group: users" http://api; done)
+      [ "$(echo "$out" | grep -c "api v1")" -eq 12 ]
+solution: |
+  kubectl apply -n beta -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata:
+    name: api
+  spec:
+    hosts: ["api"]
+    http:
+      - match:
+          - headers:
+              x-group: { exact: testers }
+        route:
+          - destination: { host: api, subset: v2 }
+      - route:
+          - destination: { host: api, subset: v1 }
+  YAML
+  # Rules are checked in order: put the specific match first and the default route last.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/request-routing/
+  - https://istio.io/latest/docs/reference/config/networking/virtual-service/

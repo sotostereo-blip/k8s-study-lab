@@ -1,0 +1,55 @@
+id: ica-security-002
+title: Allow only one service account to call a service
+domain: securing-workloads
+difficulty: 2
+minutes: 8
+environment: istio
+setup: |
+  lab-app ns bank inject
+  lab-app echo bank accounts v1 "accounts v1"
+  lab-app client bank frontend
+  lab-app client bank batch
+  lab-app wait bank
+task: |
+  In the namespace `bank`, the Service `accounts` can be called by every Pod. The Pods of the
+  Deployment `frontend` use the ServiceAccount `frontend`; the Pods of `batch` use `batch`.
+
+  Create an `AuthorizationPolicy` for the `accounts` workloads (label `app: accounts`) so that:
+
+  - only the ServiceAccount **frontend** (namespace `bank`) can call it,
+  - and only with the HTTP method **GET**.
+
+  Everything else must get HTTP 403.
+
+  Test: `lab-app curl bank frontend http://accounts` and `lab-app curl bank batch http://accounts`
+checks:
+  - name: frontend can GET accounts
+    run: '[ "$(lab-app curl bank frontend -o /dev/null -w "%{http_code}" http://accounts)" = 200 ]'
+    guard: true
+  - name: batch gets 403 from accounts
+    run: '[ "$(lab-app curl bank batch -o /dev/null -w "%{http_code}" http://accounts)" = 403 ]'
+  - name: frontend gets 403 for POST
+    run: '[ "$(lab-app curl bank frontend -o /dev/null -w "%{http_code}" -X POST http://accounts)" = 403 ]'
+solution: |
+  kubectl apply -n bank -f - <<'YAML'
+  apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    name: accounts-frontend-get
+  spec:
+    selector:
+      matchLabels: { app: accounts }
+    action: ALLOW
+    rules:
+      - from:
+          - source:
+              principals: ["cluster.local/ns/bank/sa/frontend"]
+        to:
+          - operation:
+              methods: ["GET"]
+  YAML
+  # When an ALLOW policy selects a workload, every request that matches no rule is denied (403).
+  # principals come from the mTLS certificate: cluster.local/ns/<namespace>/sa/<service account>.
+docs:
+  - https://istio.io/latest/docs/tasks/security/authorization/authz-http/
+  - https://istio.io/latest/docs/reference/config/security/authorization-policy/

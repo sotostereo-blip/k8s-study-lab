@@ -1,0 +1,26 @@
+# The Istio install used by this lab (istioctl install -f /opt/istio/base.yaml).
+# Default profile (istiod + ingress gateway). The ingress gateway is a NodePort Service, so the
+# toolbox reaches it at http://server:30080 and https://server:30443.
+# Small resource requests for the proxies, so many Pods fit on the one lab node (the Istio default
+# is 100m CPU and 128Mi per sidecar).
+# To change the mesh, copy this file, edit the copy and run: istioctl install -y -f <copy>
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: default
+  values:
+    global:
+      proxy:
+        resources:
+          requests: { cpu: 10m, memory: 40Mi }
+  components:
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          service:
+            type: NodePort
+            ports:
+              - { name: status-port, port: 15021, targetPort: 15021 }
+              - { name: http2, port: 80, targetPort: 8080, nodePort: 30080 }
+              - { name: https, port: 443, targetPort: 8443, nodePort: 30443 }

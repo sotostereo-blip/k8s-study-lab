@@ -1,0 +1,29 @@
+# Istio lab: one-node k3s with Istio 1.31 (installed by the toolbox at start; images preloaded in
+# the server image), a web server outside the cluster (legacy.lab) and a browser terminal.
+# Debug: docker compose -p istiolab -f labs/envs/istio/compose.yaml up -d --build
+services:
+  server:
+    build: ../../istio-k3s
+    image: k8s-study-lab/istio-k3s:1
+    hostname: controlplane
+    command: server --disable=traefik --disable=servicelb --tls-san=server --node-name=controlplane
+    privileged: true
+    tmpfs: [/run, /var/run]
+    environment:
+      K3S_TOKEN: study-lab
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      K3S_KUBECONFIG_MODE: "644"
+    volumes: [kubeconfig:/output]
+  legacy:
+    image: nginx:1.27-alpine
+    networks:
+      default:
+        aliases: [legacy.lab]
+  toolbox:
+    build: ../../istio-toolbox
+    image: k8s-study-lab/istio-toolbox:1
+    depends_on: [server, legacy]
+    ports: ["127.0.0.1:${TERMINAL_PORT:-7681}:7681"]
+    volumes: [kubeconfig:/output:ro]
+volumes:
+  kubeconfig:

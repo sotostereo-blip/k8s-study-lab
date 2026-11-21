@@ -142,7 +142,8 @@ certifications:
     area: Kubernetes
     after: [cka]   # suggested study order (not required)
     exam: ica
-    description: Concepts for the hands-on Istio exam. Install, route, secure and debug a service mesh.
+    track: ica
+    description: Hands-on Istio labs (kubectl, istioctl) and concept questions. Install, route, secure and debug a service mesh.
     official:
       provider: Linux Foundation / CNCF
       format: Performance-based. You solve tasks on the command line (kubectl, istioctl) on real clusters, online with a proctor

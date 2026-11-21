@@ -1,0 +1,41 @@
+id: ica-install-001
+title: Add the sidecar proxy to an existing app
+domain: installation
+difficulty: 1
+minutes: 5
+environment: istio
+setup: |
+  lab-app ns orders
+  lab-app echo orders orders v1 "orders v1"
+  lab-app client orders orders-client
+  lab-app wait orders
+task: |
+  The namespace `orders` runs two Deployments, `orders-v1` and `orders-client`. Their Pods are
+  **not** in the mesh yet: they have no Envoy sidecar.
+
+  1. Turn on **automatic sidecar injection** for the namespace `orders` (use the default control plane).
+  2. Make the running Pods of both Deployments get the sidecar. Do not delete the Deployments.
+checks:
+  - name: Namespace `orders` has automatic sidecar injection turned on
+    run: |
+      [ "$(kubectl get ns orders -o jsonpath='{.metadata.labels.istio-injection}')" = enabled ] ||
+        [ -n "$(kubectl get ns orders -o jsonpath='{.metadata.labels.istio\.io/rev}')" ]
+  - name: Every Pod of `orders-v1` and `orders-client` has the istio-proxy sidecar and is ready
+    run: |
+      out=$(kubectl -n orders get pods -o json) &&
+      [ "$(echo "$out" | jq '[.items[] | select(.metadata.deletionTimestamp == null)] | length')" -ge 2 ] &&
+      echo "$out" | jq -e '[.items[] | select(.metadata.deletionTimestamp == null)
+        | ([.spec.containers[].name] + [.spec.initContainers[]?.name] | index("istio-proxy") != null)
+          and (.status.conditions[]? | select(.type == "Ready") | .status == "True")] | all' >/dev/null
+  - name: The client still reaches `orders` through the mesh
+    run: '[ "$(lab-app curl orders orders-client http://orders)" = "orders v1" ]'
+    guard: true
+solution: |
+  kubectl label namespace orders istio-injection=enabled
+  kubectl -n orders rollout restart deployment orders-v1 orders-client
+  kubectl -n orders rollout status deployment orders-v1
+  kubectl -n orders get pods      # READY 2/2: the app container + istio-proxy
+  # Injection happens only when a Pod is created, so existing Pods need a restart.
+  # In Istio 1.31 the proxy runs as a native sidecar (an init container that keeps running).
+docs:
+  - https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/

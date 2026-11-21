@@ -1,0 +1,116 @@
+#!/bin/bash
+# Small apps for the Istio lab tasks (used by the task setups and checks; you may use it too).
+#   lab-app ns NS [inject]                  namespace; "inject" adds istio-injection=enabled
+#   lab-app echo NS APP VERSION TEXT        Deployment APP-VERSION (labels app=APP, version=VERSION)
+#                                           that answers TEXT, ServiceAccount APP, Service APP port 80
+#   lab-app httpbin NS APP                  Deployment + Service APP (go-httpbin) on port 8000
+#   lab-app client NS NAME                  Deployment NAME with curl (ServiceAccount NAME)
+#   lab-app wait NS                         wait until every Deployment in NS is ready
+#   lab-app curl NS CLIENT CURL-ARGS...     run curl in the client Pod (curl -s --max-time 10 ...)
+set -e
+cmd=$1; ns=$2; shift 2 || true
+case "$cmd" in
+  ns)
+    kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+    [ "$1" = inject ] && kubectl label namespace "$ns" istio-injection=enabled --overwrite >/dev/null
+    true ;;
+  echo)
+    app=$1 version=$2 text=$3
+    kubectl apply -n "$ns" -f - >/dev/null <<YAML
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: $app }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: $app, labels: { app: $app } }
+spec:
+  selector: { app: $app }
+  ports: [{ name: http, port: 80, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: $app-$version, labels: { app: $app, version: $version } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: $app, version: $version } }
+  template:
+    metadata: { labels: { app: $app, version: $version } }
+    spec:
+      serviceAccountName: $app
+      containers:
+        - name: echo
+          image: hashicorp/http-echo:1.0
+          args: ["-listen=:8080", "-text=$text"]
+          ports: [{ containerPort: 8080 }]
+YAML
+    ;;
+  httpbin)
+    app=$1
+    kubectl apply -n "$ns" -f - >/dev/null <<YAML
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: $app }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: $app, labels: { app: $app } }
+spec:
+  selector: { app: $app }
+  ports: [{ name: http, port: 8000, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: $app, labels: { app: $app, version: v1 } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: $app } }
+  template:
+    metadata: { labels: { app: $app, version: v1 } }
+    spec:
+      serviceAccountName: $app
+      containers:
+        - name: httpbin
+          image: mccutchen/go-httpbin:v2.15.0
+          ports: [{ containerPort: 8080 }]
+YAML
+    ;;
+  client)
+    name=$1
+    kubectl apply -n "$ns" -f - >/dev/null <<YAML
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: $name }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: $name, labels: { app: $name } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: $name } }
+  template:
+    metadata: { labels: { app: $name } }
+    spec:
+      serviceAccountName: $name
+      containers:
+        - name: curl
+          image: curlimages/curl:8.16.0
+          command: ["sleep", "infinity"]
+YAML
+    ;;
+  wait)
+    sleep 2
+    for d in $(kubectl -n "$ns" get deploy -o name); do
+      kubectl -n "$ns" rollout status "$d" --timeout=180s >/dev/null
+    done
+    # retry: an old Pod of a rollout may disappear while we wait for it
+    for i in 1 2 3 4 5; do
+      kubectl -n "$ns" wait --for=condition=Ready pod --all --timeout=180s >/dev/null 2>&1 && exit 0
+      sleep 3
+    done
+    kubectl -n "$ns" wait --for=condition=Ready pod --all --timeout=60s >/dev/null ;;
+  curl)
+    client=$1; shift
+    exec kubectl -n "$ns" exec "deploy/$client" -c curl -- curl -s --max-time 10 "$@" ;;
+  *) sed -n '2,9p' "$0"; exit 1 ;;
+esac

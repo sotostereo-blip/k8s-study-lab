@@ -1,0 +1,47 @@
+id: ica-traffic-004
+title: Inject a delay to test a slow service
+domain: traffic-management
+difficulty: 2
+minutes: 6
+environment: istio
+setup: |
+  lab-app ns ratings inject
+  lab-app httpbin ratings ratings
+  lab-app client ratings ratings-client
+  lab-app wait ratings
+task: |
+  You want to see how the apps behave when the Service `ratings` (namespace `ratings`,
+  port 8000) is slow.
+
+  Create a `VirtualService` called `ratings` that adds a **fixed delay of 3 seconds** to
+  **100%** of the requests to `ratings`. The requests must still succeed (HTTP 200).
+
+  Test: `lab-app curl ratings ratings-client -w '%{time_total}\n' -o /dev/null http://ratings:8000/get`
+checks:
+  - name: Requests to ratings take at least 2.5 seconds
+    run: |
+      t=$(lab-app curl ratings ratings-client -o /dev/null -w '%{time_total}' http://ratings:8000/get) &&
+      awk -v t="$t" 'BEGIN { exit !(t >= 2.5) }'
+  - name: Requests to ratings still return HTTP 200
+    run: '[ "$(lab-app curl ratings ratings-client -o /dev/null -w "%{http_code}" http://ratings:8000/get)" = 200 ]'
+    guard: true
+solution: |
+  kubectl apply -n ratings -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata:
+    name: ratings
+  spec:
+    hosts: ["ratings"]
+    http:
+      - fault:
+          delay:
+            fixedDelay: 3s
+            percentage: { value: 100 }
+        route:
+          - destination: { host: ratings }
+  YAML
+  # The client's sidecar adds the delay before it sends the request.
+  # fault.abort (httpStatus) returns an error instead of waiting.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/fault-injection/

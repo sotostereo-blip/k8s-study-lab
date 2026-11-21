@@ -1,0 +1,18 @@
+source /usr/share/bash-completion/bash_completion 2>/dev/null
+source <(kubectl completion bash)
+source <(helm completion bash)
+source <(istioctl completion bash 2>/dev/null)
+alias k=kubectl
+complete -o default -F __start_kubectl k
+export do="--dry-run=client -o yaml"
+export EDITOR=vim
+PS1='\[\e[34m\]lab\[\e[0m\]:\w\$ '
+cat <<'MSG'
+Istio lab ready. Istio 1.31 (default profile) runs in the cluster.
+  istioctl version      istioctl analyze -A      istioctl proxy-status
+  Ingress gateway: http://server:30080 and https://server:30443 (NodePort)
+  Install file: /opt/istio/base.yaml (copy it to change the mesh with istioctl install)
+  Outside web server (not in the cluster): http://legacy.lab
+  Test apps: lab-app (run it with no arguments for help), e.g. lab-app curl <ns> <client> http://web
+Shortcuts: k=kubectl, $do = --dry-run=client -o yaml
+MSG

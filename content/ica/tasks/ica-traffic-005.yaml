@@ -1,0 +1,53 @@
+id: ica-traffic-005
+title: Set a request timeout and retries
+domain: traffic-management
+difficulty: 2
+minutes: 7
+environment: istio
+setup: |
+  lab-app ns inventory inject
+  lab-app httpbin inventory stock
+  lab-app client inventory inventory-client
+  lab-app wait inventory
+task: |
+  In the namespace `inventory`, the Service `stock` (port 8000) sometimes answers very slowly
+  or fails. Create a `VirtualService` called `stock` for the host `stock` that:
+
+  1. stops waiting after **1 second** (request **timeout**), and
+  2. **retries** a failed request up to **3 times** when the answer is a 5xx error
+     (`retryOn` must include `5xx`).
+
+  Test: `lab-app curl inventory inventory-client -w '%{http_code} %{time_total}\n' -o /dev/null http://stock:8000/delay/3`
+checks:
+  - name: A request that needs 3 seconds is stopped after about 1 second (HTTP 504)
+    run: |
+      out=$(lab-app curl inventory inventory-client -o /dev/null -w '%{http_code} %{time_total}' http://stock:8000/delay/3) &&
+      [ "${out% *}" = 504 ] && awk -v t="${out#* }" 'BEGIN { exit !(t < 2.5) }'
+  - name: VirtualService `stock` retries 3 times on 5xx
+    run: |
+      kubectl -n inventory get virtualservice stock -o json | jq -e '[.spec.http[] | select(.retries.attempts == 3
+        and (.retries.retryOn // "" | split(",") | index("5xx") != null))] | length > 0' >/dev/null
+  - name: Normal requests still work (HTTP 200)
+    run: '[ "$(lab-app curl inventory inventory-client -o /dev/null -w "%{http_code}" http://stock:8000/get)" = 200 ]'
+    guard: true
+solution: |
+  kubectl apply -n inventory -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata:
+    name: stock
+  spec:
+    hosts: ["stock"]
+    http:
+      - timeout: 1s
+        retries:
+          attempts: 3
+          perTryTimeout: 500ms
+          retryOn: 5xx,connect-failure
+        route:
+          - destination: { host: stock }
+  YAML
+  # timeout is the total time for the request, retries included.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/request-timeouts/
+  - https://istio.io/latest/docs/reference/config/networking/virtual-service/

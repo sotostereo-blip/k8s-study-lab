@@ -1,0 +1,58 @@
+id: ica-traffic-001
+title: Expose a service through the ingress gateway
+domain: traffic-management
+difficulty: 1
+minutes: 7
+environment: istio
+setup: |
+  lab-app ns shop inject
+  lab-app echo shop web v1 "shop web v1"
+  lab-app wait shop
+task: |
+  The Service `web` (port 80) runs in the namespace `shop`. Make it reachable from outside the
+  cluster through the Istio **ingress gateway** (the Pods with the label `istio: ingressgateway`):
+
+  1. Create an Istio `Gateway` called `shop-gateway` in `shop` that accepts HTTP on port 80 for
+     the host `shop.lab`.
+  2. Create a `VirtualService` called `web` in `shop` that sends the requests for `shop.lab` from
+     that gateway to the Service `web`.
+
+  Test from the terminal: `curl -H "Host: shop.lab" http://server:30080/`
+checks:
+  - name: Gateway `shop-gateway` exists in namespace shop
+    run: kubectl -n shop get gateways.networking.istio.io shop-gateway
+  - name: A request for host shop.lab on the ingress gateway gets the web app
+    run: '[ "$(curl -s --max-time 5 -H "Host: shop.lab" http://server:30080/)" = "shop web v1" ]'
+  - name: Other hosts are not routed to the web app
+    run: '! curl -s --max-time 5 -H "Host: other.lab" http://server:30080/ | grep -q "shop web"'
+    guard: true
+solution: |
+  kubectl apply -n shop -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: Gateway
+  metadata:
+    name: shop-gateway
+  spec:
+    selector:
+      istio: ingressgateway
+    servers:
+      - port: { number: 80, name: http, protocol: HTTP }
+        hosts: ["shop.lab"]
+  ---
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata:
+    name: web
+  spec:
+    hosts: ["shop.lab"]
+    gateways: ["shop-gateway"]
+    http:
+      - route:
+          - destination: { host: web, port: { number: 80 } }
+  YAML
+  curl -H "Host: shop.lab" http://server:30080/     # the new route needs a few seconds
+  # The Gateway opens the port on the gateway Pods; the VirtualService binds to it with
+  # `gateways:` and says where the traffic goes.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-control/
+  - https://istio.io/latest/docs/reference/config/networking/gateway/

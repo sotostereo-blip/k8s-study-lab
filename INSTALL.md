@@ -115,6 +115,7 @@ sh scripts/build_labs.sh single-node linux   # or only some (names: ls labs/envs
 | `single-node`, `two-node` | CKA, CKAD |
 | `secure-node` | CKS |
 | `argocd` | CAPA (needs 6 GB of Docker memory) |
+| `istio` | Istio ICA |
 | `linux` | LFCS |
 | `docker` | Docker DCA |
 | `gitea` | GitHub Actions GH-200 |

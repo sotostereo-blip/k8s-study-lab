@@ -1,0 +1,66 @@
+id: ica-traffic-002
+title: Send 20% of the traffic to a new version
+domain: traffic-management
+difficulty: 2
+minutes: 8
+environment: istio
+setup: |
+  lab-app ns catalog inject
+  lab-app echo catalog reviews v1 "reviews v1"
+  lab-app echo catalog reviews v2 "reviews v2"
+  lab-app client catalog catalog-client
+  lab-app wait catalog
+task: |
+  In the namespace `catalog` the Service `reviews` has two versions: Pods with the label
+  `version: v1` and Pods with `version: v2`. Today the traffic goes to both at random.
+
+  1. Create a `DestinationRule` called `reviews` with two **subsets**, `v1` and `v2`, chosen by the
+     `version` label.
+  2. Create a `VirtualService` called `reviews` that sends **80%** of the requests for `reviews` to
+     `v1` and **20%** to `v2`.
+
+  Test: `lab-app curl catalog catalog-client http://reviews` (run it a few times).
+checks:
+  - name: DestinationRule `reviews` has subsets v1 and v2 chosen by the version label
+    run: |
+      kubectl -n catalog get destinationrule reviews -o json | jq -e '[.spec.subsets[] | {(.name): .labels.version}] | add
+        | .v1 == "v1" and .v2 == "v2"' >/dev/null
+  - name: VirtualService `reviews` sends 80% to v1 and 20% to v2 (checked with 50 requests)
+    run: |
+      kubectl -n catalog get virtualservice reviews -o json | jq -e '[.spec.http[-1].route[] | {(.destination.subset): (.weight // 0)}] | add
+        | .v1 == 80 and .v2 == 20' >/dev/null || exit 1
+      out=$(for i in $(seq 50); do lab-app curl catalog catalog-client http://reviews; done)
+      v2=$(echo "$out" | grep -c "reviews v2"); v1=$(echo "$out" | grep -c "reviews v1")
+      [ $((v1 + v2)) -eq 50 ] && [ "$v2" -ge 1 ] && [ "$v2" -le 25 ]
+solution: |
+  kubectl apply -n catalog -f - <<'YAML'
+  apiVersion: networking.istio.io/v1
+  kind: DestinationRule
+  metadata:
+    name: reviews
+  spec:
+    host: reviews
+    subsets:
+      - name: v1
+        labels: { version: v1 }
+      - name: v2
+        labels: { version: v2 }
+  ---
+  apiVersion: networking.istio.io/v1
+  kind: VirtualService
+  metadata:
+    name: reviews
+  spec:
+    hosts: ["reviews"]
+    http:
+      - route:
+          - destination: { host: reviews, subset: v1 }
+            weight: 80
+          - destination: { host: reviews, subset: v2 }
+            weight: 20
+  YAML
+  for i in $(seq 20); do lab-app curl catalog catalog-client http://reviews; done | sort | uniq -c
+  # The weights of one route must add up to 100.
+docs:
+  - https://istio.io/latest/docs/tasks/traffic-management/traffic-shifting/
+  - https://istio.io/latest/docs/reference/config/networking/destination-rule/

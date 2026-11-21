@@ -11,7 +11,7 @@
 set -e
 cd "$(dirname "$0")/.."
 REG="${LAB_IMAGE_REGISTRY-ghcr.io/sotostereo-blip/k8s-study-lab}"
-envs="${*:-single-node two-node secure-node argocd linux docker gitea prometheus terraform aws}"
+envs="${*:-single-node two-node secure-node argocd istio linux docker gitea prometheus terraform aws vault}"
 for e in $envs; do
   f="labs/envs/$e/compose.yaml"
   [ -f "$f" ] || { echo "unknown environment: $e (see labs/envs/)"; exit 1; }
@@ -24,8 +24,8 @@ for e in $envs; do
       fi
     done
   fi
-  # the Argo CD toolbox is built FROM the Kubernetes toolbox image
-  if [ "$e" = argocd ] && ! docker image inspect k8s-study-lab/toolbox:3 >/dev/null 2>&1; then
+  # the Argo CD and Istio toolboxes are built FROM the Kubernetes toolbox image
+  if { [ "$e" = argocd ] || [ "$e" = istio ]; } && ! docker image inspect k8s-study-lab/toolbox:3 >/dev/null 2>&1; then
     echo "building base image k8s-study-lab/toolbox:3"
     docker compose -p k8slab -f labs/envs/single-node/compose.yaml build toolbox
   fi

@@ -1,0 +1,48 @@
+id: ica-install-002
+title: Change the mesh with istioctl install
+domain: installation
+difficulty: 2
+minutes: 8
+environment: istio
+task: |
+  Istio was installed with `istioctl install -f /opt/istio/base.yaml` (an `IstioOperator` file).
+  Change the installation:
+
+  1. Every Envoy proxy in the mesh writes **access logs** to `/dev/stdout`.
+  2. Add an **egress gateway** called `istio-egressgateway` in `istio-system`.
+
+  Keep everything that `base.yaml` sets (the ingress gateway must stay a NodePort Service on
+  port 30080). Tip: copy the file, edit the copy and install it.
+checks:
+  - name: The mesh config sets accessLogFile to /dev/stdout
+    run: |
+      mesh=$(kubectl -n istio-system get configmap istio -o jsonpath='{.data.mesh}') &&
+      [ "$(echo "$mesh" | yq '.accessLogFile')" = /dev/stdout ]
+  - name: Deployment `istio-egressgateway` runs in istio-system
+    run: kubectl -n istio-system rollout status deployment istio-egressgateway --timeout=5s
+  - name: The ingress gateway is still a NodePort Service on port 30080
+    run: '[ "$(kubectl -n istio-system get svc istio-ingressgateway -o jsonpath="{.spec.ports[?(@.port==80)].nodePort}")" = 30080 ]'
+    guard: true
+solution: |
+  cp /opt/istio/base.yaml /root/mesh.yaml
+  # Add under spec: (same level as components:)
+  #   meshConfig:
+  #     accessLogFile: /dev/stdout
+  # and under spec.components:
+  #   egressGateways:
+  #     - name: istio-egressgateway
+  #       enabled: true
+  vim /root/mesh.yaml
+  istioctl install -y -f /root/mesh.yaml
+  kubectl -n istio-system get deploy
+  # istioctl install applies the WHOLE file: what is not in it goes back to the profile default.
+  # That is why you start from the file that was used before.
+auto_solution: |
+  cp /opt/istio/base.yaml /root/mesh.yaml
+  yq -i '.spec.meshConfig.accessLogFile = "/dev/stdout" |
+    .spec.components.egressGateways = [{"name": "istio-egressgateway", "enabled": true}]' /root/mesh.yaml
+  istioctl install -y -f /root/mesh.yaml
+docs:
+  - https://istio.io/latest/docs/setup/install/istioctl/
+  - https://istio.io/latest/docs/tasks/observability/logs/access-log/
+  - https://istio.io/latest/docs/tasks/traffic-management/egress/egress-gateway/
